@@ -1,0 +1,73 @@
+# Note: this workflow is based on https://github.com/goreleaser/example-supply-chain
+name: Release with goreleaser
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v*.*.*
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # this is important, otherwise it won't checkout the full tree (i.e. no previous tags)
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+
+
+      - name: setup qemu for docker
+        uses: docker/setup-qemu-action@v4
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Download syft
+        uses: anchore/sbom-action/download-syft@v0
+      - name: Prepare cosign installer
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: release-drafter/release-drafter@v7
+        id: rd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: prepare changlog
+        run: |
+          echo "${{ steps.rd.outputs.body }}" > "${{ runner.temp }}/CHANGELOG.md"
+
+      - name: Release via goreleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          args: release --release-notes="${{ runner.temp }}/CHANGELOG.md"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: attest checksums
+        uses: actions/attest@v4
+        with:
+          subject-checksums: dist/checksums.txt
+      - name: attest digests
+        uses: actions/attest@v4
+        with:
+          subject-checksums: dist/digests.txt
+
+        # Note: The standard setting for the repository doesn't allow the default GITHUB_TOKEN to be used here
+        # You have the following options:
+        # - define the required permission in this job (see above)
+        # - define a separate Personal Access Token
+        # - or permit the default GITHUB_TOKEN read/write access
+        #   see section "Workflow permissions" on https://github.com/srlmgr/backend/settings/actions

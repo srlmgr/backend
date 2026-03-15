@@ -1,0 +1,241 @@
+version: "2"
+run:
+  concurrency: 4
+  issues-exit-code: 1
+  tests: true
+  allow-parallel-runners: false
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+  path-prefix: ""
+linters:
+  default: none
+  enable:
+    - dogsled
+    - dupl
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - predeclared
+    - revive
+    - staticcheck
+    - tagliatelle
+    - thelper
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+  settings:
+    cyclop:
+      max-complexity: 10
+      package-average: 0
+    dogsled:
+      max-blank-identifiers: 2
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    exhaustive:
+      default-signifies-exhaustive: false
+    forbidigo:
+      forbid:
+        - pattern: ^print.*$
+      exclude-godoc-examples: true
+    funlen:
+      lines: 45
+      statements: 30
+    gocognit:
+      min-complexity: 15
+    goconst:
+      match-constant: true
+      min-len: 3
+      min-occurrences: 3
+      numbers: false
+      min: 3
+      max: 3
+      ignore-calls: true
+    gocritic:
+      disabled-checks:
+        - ptrToRefParam
+      enabled-tags:
+        - performance
+        - diagnostic
+        - opinionated
+        - style
+      settings:
+        captLocal:
+          paramsOnly: true
+        elseif:
+          skipBalanced: true
+        hugeParam:
+          sizeThreshold: 100
+        nestingReduce:
+          bodyWidth: 5
+        rangeExprCopy:
+          sizeThreshold: 512
+          skipTestFuncs: true
+        rangeValCopy:
+          sizeThreshold: 32
+          skipTestFuncs: true
+        ruleguard:
+          rules: ""
+        truncateCmp:
+          skipArchDependent: true
+        underef:
+          skipRecvDeref: true
+        unnamedResult:
+          checkExported: true
+    gocyclo:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G115
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+      disable-all: false
+    lll:
+      line-length: 88
+      tab-width: 1
+    makezero:
+      always: false
+    misspell:
+      locale: US
+      ignore-rules:
+        - incorrekt-word
+    nakedret:
+      max-func-lines: 10
+    nestif:
+      min-complexity: 4
+    nilnil:
+      checked-types:
+        - ptr
+        - func
+        - iface
+        - map
+        - chan
+    nlreturn:
+      block-size: 1
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    predeclared:
+      qualified-name: false
+    revive:
+      severity: warning
+    staticcheck:
+      checks:
+        - all
+      dot-import-whitelist:
+        - fmt
+    tagliatelle:
+      case:
+        rules:
+          avro: snake
+          bson: camel
+          json: camel
+          mapstructure: kebab
+          xml: camel
+          yaml: camel
+        use-field-name: true
+    unparam:
+      check-exported: false
+    whitespace:
+      multi-if: true
+      multi-func: true
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+        - .Wrap(
+        - .Wrapf(
+        - .WithMessage(
+        - .WithMessagef(
+        - .WithStack(
+      ignore-package-globs:
+        - encoding/*
+        - github.com/pkg/*
+    wsl:
+      strict-append: true
+      allow-assign-and-call: false
+      allow-assign-and-anything: false
+      allow-multiline-assign: false
+      force-case-trailing-whitespace: 0
+      allow-trailing-comment: false
+      allow-separated-leading-comment: true
+      allow-cuddle-declarations: false
+      force-err-cuddling: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  uniq-by-line: true
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/srlmgr/backend)
+      no-inline-comments: false
+      no-prefix-comments: false
+    gofmt:
+      simplify: true
+    gofumpt:
+      module-path: "github.com/srlmgr/backend"
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - "github.com/srlmgr/backend"
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -1,0 +1,17 @@
+zap:
+  level: "info"
+  development: true
+  encoding: "console"
+  outputPaths:
+    - "stdout"
+  errorOutputPaths:
+    - "stderr"
+  encoderConfig:
+    levelEncoder: "color"
+    stacktraceKey: ""
+    # callerKey: ""
+    timeEncoder:
+      layout: "15:04:05.000"
+    durationEncoder: "string"
+loggers:
+  demoLogger: debug
