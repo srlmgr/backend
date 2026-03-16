@@ -20,3 +20,5 @@ dist/**
 # Ignore private dotfiles
 .gitconfig.local*
 .npmrc
+.backend.yml
+.env*

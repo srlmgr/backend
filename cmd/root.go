@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/srlmgr/backend/cmd/config"
+	migratecmd "github.com/srlmgr/backend/cmd/migrate"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/otel"
 	"github.com/srlmgr/backend/version"
@@ -100,10 +101,10 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&config.OtelOutput, "otel-output", "stdout",
 		"output destination (stdout, grpc)")
-	rootCmd.PersistentFlags().StringVar(&config.TelemetryEndpoint,
-		"telemetry-endpoint",
-		"localhost:4317",
-		"Endpoint that receives open telemetry data")
+	rootCmd.PersistentFlags().StringVar(&config.DBURI,
+		"db-uri",
+		"",
+		"Database URI, example: postgresql://user:password@localhost:5432/dbname")
 	rootCmd.PersistentFlags().StringVar(&config.LogLevel,
 		"log-level",
 		"info",
@@ -119,12 +120,8 @@ func init() {
 		true,
 		"if true, don't log fields that contain a context.Context")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 	// add commands here
-	// e.g. rootCmd.AddCommand(sampleCmd.NewSampleCmd())
+	rootCmd.AddCommand(migratecmd.NewMigrateCmd())
 }
 
 // initConfig reads in config file and ENV variables if set.
