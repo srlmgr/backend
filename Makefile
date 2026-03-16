@@ -130,3 +130,15 @@ release-tag:
 	echo "  >  Creating release $(v)"
 	git tag -a  $(v) -m "Release $(v)"
 	git push origin $(v)
+
+.PHONY: update-bufbuild
+## `update-bufbuild`: Update bufbuild artifacts by commit-id. (`make update-bufbuild id=<bufbuild-commit-id>` for example)
+update-bufbuild:
+	go get buf.build/gen/go/srlmgr/api/protocolbuffers/go@$(id)
+	go get buf.build/gen/go/srlmgr/connectrpc/go@$(id)
+
+.PHONY: generate bob files
+## `bob`: Generate bob files from database
+bob:
+	echo "  >  Generating bob files from database"
+	go run github.com/stephenafamo/bob/gen/bobgen-psql@latest -c ./bobgen.yml

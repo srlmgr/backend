@@ -1,0 +1,34 @@
+# no_tests: true
+plugins_preset: default
+plugins:
+  dbinfo:
+    disabled: false
+    pkgname: "dbinfo"
+    destination: "db/dbinfo"
+  enums:
+    disabled: false
+    pkgname: "enums"
+    destination: "db/enums"
+  models:
+    disabled: false
+    pkgname: "models"
+    destination: "db/models"
+  factory:
+    disabled: false
+    pkgname: "factory"
+    destination: "db/factory"
+  dberrors:
+    disabled: false
+    pkgname: "dberrors"
+    destination: "db/dberrors"
+  where:
+    disabled: false
+  loaders:
+    disabled: false
+  joins:
+    disabled: false
+psql:
+  dsn: "postgres://docker:docker@localhost:5532/srlmgr?sslmode=disable"
+  driver: github.com/jackc/pgx/v5/stdlib
+  except:
+    "schema_migrations":

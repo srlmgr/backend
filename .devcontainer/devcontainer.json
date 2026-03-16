@@ -1,65 +1,80 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.231.2/containers/go
 {
-	"name": "Go",
+  "name": "Go",
 
-	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-	// alternative: use the bullseye image
-	// "image": "mcr.microsoft.com/devcontainers/go:1.26-bullseye",
-	"runArgs": [
-		"--cap-add=SYS_PTRACE",
-		"--security-opt",
-		"seccomp=unconfined",
-		"--network=host"
-	],
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  // alternative: use the bullseye image
+  // "image": "mcr.microsoft.com/devcontainers/go:1.26-bullseye",
+  "runArgs": [
+    "--cap-add=SYS_PTRACE",
+    "--security-opt",
+    "seccomp=unconfined",
+    "--network=host"
+  ],
 
-	"customizations": {
-		"vscode": {
-		  // Set *default* container specific settings.json values on container create.
-		  "settings": {
-			"go.toolsManagement.checkForUpdates": "local",
-			"go.useLanguageServer": true,
-			"go.gopath": "/go",
-			"go.lintTool": "golangci-lint",
-			"gopls": {
-			  "formatting.gofumpt": true
-			},
-			"[go]": {
-			  "editor.rulers": [90],
-			  "editor.defaultFormatter": "golang.go",
-			  "editor.formatOnSave": true
-			}
-		  },
-		  // Add the IDs of extensions you want installed when the container is created.
-		  "extensions": [
-			"golang.Go",
-			"eamodio.gitlens",
-			"esbenp.prettier-vscode",
-			"github.vscode-pull-request-github",
-			"EditorConfig.EditorConfig",
-			"redhat.vscode-yaml",
-			"cschleiden.vscode-github-actions"
-		  ]
-		}
-	  },
+  "customizations": {
+    "vscode": {
+      "mcp": {
+        "servers": {
+          "awesome-copilot": {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+              "run",
+              "-i",
+              "--rm",
+              "ghcr.io/microsoft/mcp-dotnet-samples/awesome-copilot:latest"
+            ]
+          }
+        }
+      },
+      // Set *default* container specific settings.json values on container create.
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go",
+        "go.lintTool": "golangci-lint",
+        "go.testEnvFile": "${workspaceFolder}/.env.test",
+        "gopls": {
+          "formatting.gofumpt": true
+        },
+        "[go]": {
+          "editor.rulers": [90],
+          "editor.defaultFormatter": "golang.go",
+          "editor.formatOnSave": true
+        }
+      },
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": [
+        "golang.Go",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode",
+        "github.vscode-pull-request-github",
+        "EditorConfig.EditorConfig",
+        "redhat.vscode-yaml",
+        "cschleiden.vscode-github-actions"
+      ]
+    }
+  },
 
-	"containerEnv": {
-		"TZ": "Europe/Berlin"
-	},
+  "containerEnv": {
+    "TZ": "Europe/Berlin"
+  },
 
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "./devinit.sh",
+  // Use 'postCreateCommand' to run commands after the container is created.
+  "postCreateCommand": "./devinit.sh",
 
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode",
-	"features": {
-		"ghcr.io/devcontainers/features/go": {
-			"version": "1.26"
-		},
-		"ghcr.io/devcontainers/features/docker-in-docker": "latest",
-		"ghcr.io/devcontainers-extra/features/pre-commit": "latest"
-	}
+  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/go": {
+      "version": "1.26"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker": "latest",
+    "ghcr.io/devcontainers-extra/features/pre-commit": "latest"
+  }
 }
