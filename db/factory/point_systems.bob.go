@@ -49,9 +49,19 @@ type PointSystemTemplate struct {
 	CreatedBy      func() string
 	UpdatedBy      func() string
 
+	r pointSystemR
 	f *Factory
 
 	alreadyPersisted bool
+}
+
+type pointSystemR struct {
+	Seasons []*pointSystemRSeasonsR
+}
+
+type pointSystemRSeasonsR struct {
+	number int
+	o      *SeasonTemplate
 }
 
 // Apply mods to the PointSystemTemplate
@@ -63,7 +73,20 @@ func (o *PointSystemTemplate) Apply(ctx context.Context, mods ...PointSystemMod)
 
 // setModelRels creates and sets the relationships on *models.PointSystem
 // according to the relationships in the template. Nothing is inserted into the db
-func (t PointSystemTemplate) setModelRels(o *models.PointSystem) {}
+func (t PointSystemTemplate) setModelRels(o *models.PointSystem) {
+	if t.r.Seasons != nil {
+		rel := models.SeasonSlice{}
+		for _, r := range t.r.Seasons {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.PointSystemID = o.ID // h2
+				rel.R.PointSystem = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.Seasons = rel
+	}
+}
 
 // BuildSetter returns an *models.PointSystemSetter
 // this does nothing with the relationship templates
@@ -186,6 +209,26 @@ func ensureCreatablePointSystem(m *models.PointSystemSetter) {
 // any required relationship should have already exist on the model
 func (o *PointSystemTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.PointSystem) error {
 	var err error
+
+	isSeasonsDone, _ := pointSystemRelSeasonsCtx.Value(ctx)
+	if !isSeasonsDone && o.r.Seasons != nil {
+		ctx = pointSystemRelSeasonsCtx.WithValue(ctx, true)
+		for _, r := range o.r.Seasons {
+			if r.o.alreadyPersisted {
+				m.R.Seasons = append(m.R.Seasons, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasons(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return err
 }
@@ -598,5 +641,53 @@ func (m pointSystemMods) WithParentsCascading() PointSystemMod {
 			return
 		}
 		ctx = pointSystemWithParentsCascadingCtx.WithValue(ctx, true)
+	})
+}
+
+func (m pointSystemMods) WithSeasons(number int, related *SeasonTemplate) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.Seasons = []*pointSystemRSeasonsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m pointSystemMods) WithNewSeasons(number int, mods ...SeasonMod) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		related := o.f.NewSeasonWithContext(ctx, mods...)
+		m.WithSeasons(number, related).Apply(ctx, o)
+	})
+}
+
+func (m pointSystemMods) AddSeasons(number int, related *SeasonTemplate) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.Seasons = append(o.r.Seasons, &pointSystemRSeasonsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m pointSystemMods) AddNewSeasons(number int, mods ...SeasonMod) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		related := o.f.NewSeasonWithContext(ctx, mods...)
+		m.AddSeasons(number, related).Apply(ctx, o)
+	})
+}
+
+func (m pointSystemMods) AddExistingSeasons(existingModels ...*models.Season) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		for _, em := range existingModels {
+			o.r.Seasons = append(o.r.Seasons, &pointSystemRSeasonsR{
+				o: o.f.FromExistingSeason(em),
+			})
+		}
+	})
+}
+
+func (m pointSystemMods) WithoutSeasons() PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.Seasons = nil
 	})
 }

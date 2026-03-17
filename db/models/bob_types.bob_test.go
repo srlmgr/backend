@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 
+	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/types"
@@ -19,26 +20,38 @@ var testDB bob.Transactor[bob.Tx]
 // Make sure the type Driver runs hooks after queries
 var _ bob.HookableType = &Driver{}
 
+// Make sure the type Event runs hooks after queries
+var _ bob.HookableType = &Event{}
+
 // Make sure the type PointSystem runs hooks after queries
 var _ bob.HookableType = &PointSystem{}
 
 // Make sure the type RacingSim runs hooks after queries
 var _ bob.HookableType = &RacingSim{}
 
-// Make sure the type pq.Int32Array satisfies database/sql.Scanner
-var _ sql.Scanner = (*pq.Int32Array)(nil)
+// Make sure the type Season runs hooks after queries
+var _ bob.HookableType = &Season{}
 
-// Make sure the type pq.Int32Array satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(pq.Int32Array)
+// Make sure the type Series runs hooks after queries
+var _ bob.HookableType = &Series{}
 
-// Make sure the type pq.StringArray satisfies database/sql.Scanner
-var _ sql.Scanner = (*pq.StringArray)(nil)
+// Make sure the type Team runs hooks after queries
+var _ bob.HookableType = &Team{}
 
-// Make sure the type pq.StringArray satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(pq.StringArray)
+// Make sure the type uuid.UUID satisfies database/sql.Scanner
+var _ sql.Scanner = (*uuid.UUID)(nil)
+
+// Make sure the type uuid.UUID satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(uuid.UUID)
 
 // Make sure the type types.JSON[json.RawMessage] satisfies database/sql.Scanner
 var _ sql.Scanner = (*types.JSON[json.RawMessage])(nil)
 
 // Make sure the type types.JSON[json.RawMessage] satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(types.JSON[json.RawMessage])
+
+// Make sure the type pq.StringArray satisfies database/sql.Scanner
+var _ sql.Scanner = (*pq.StringArray)(nil)
+
+// Make sure the type pq.StringArray satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(pq.StringArray)

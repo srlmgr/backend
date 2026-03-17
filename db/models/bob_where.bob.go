@@ -18,16 +18,28 @@ var (
 
 func Where[Q psql.Filterable]() struct {
 	Drivers      driverWhere[Q]
+	Events       eventWhere[Q]
 	PointSystems pointSystemWhere[Q]
 	RacingSims   racingSimWhere[Q]
+	Seasons      seasonWhere[Q]
+	Serieses     seriesWhere[Q]
+	Teams        teamWhere[Q]
 } {
 	return struct {
 		Drivers      driverWhere[Q]
+		Events       eventWhere[Q]
 		PointSystems pointSystemWhere[Q]
 		RacingSims   racingSimWhere[Q]
+		Seasons      seasonWhere[Q]
+		Serieses     seriesWhere[Q]
+		Teams        teamWhere[Q]
 	}{
 		Drivers:      buildDriverWhere[Q](Drivers.Columns),
+		Events:       buildEventWhere[Q](Events.Columns),
 		PointSystems: buildPointSystemWhere[Q](PointSystems.Columns),
 		RacingSims:   buildRacingSimWhere[Q](RacingSims.Columns),
+		Seasons:      buildSeasonWhere[Q](Seasons.Columns),
+		Serieses:     buildSeriesWhere[Q](Serieses.Columns),
+		Teams:        buildTeamWhere[Q](Teams.Columns),
 	}
 }

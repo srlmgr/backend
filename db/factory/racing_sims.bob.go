@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/jaswdr/faker/v2"
 	"github.com/lib/pq"
@@ -48,9 +49,19 @@ type RacingSimTemplate struct {
 	CreatedBy              func() string
 	UpdatedBy              func() string
 
+	r racingSimR
 	f *Factory
 
 	alreadyPersisted bool
+}
+
+type racingSimR struct {
+	SimulationSeries []*racingSimRSimulationSeriesR
+}
+
+type racingSimRSimulationSeriesR struct {
+	number int
+	o      *SeriesTemplate
 }
 
 // Apply mods to the RacingSimTemplate
@@ -62,7 +73,20 @@ func (o *RacingSimTemplate) Apply(ctx context.Context, mods ...RacingSimMod) {
 
 // setModelRels creates and sets the relationships on *models.RacingSim
 // according to the relationships in the template. Nothing is inserted into the db
-func (t RacingSimTemplate) setModelRels(o *models.RacingSim) {}
+func (t RacingSimTemplate) setModelRels(o *models.RacingSim) {
+	if t.r.SimulationSeries != nil {
+		rel := models.SeriesSlice{}
+		for _, r := range t.r.SimulationSeries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SimulationID = null.From(o.ID) // h2
+				rel.R.SimulationRacingSim = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SimulationSeries = rel
+	}
+}
 
 // BuildSetter returns an *models.RacingSimSetter
 // this does nothing with the relationship templates
@@ -185,6 +209,26 @@ func ensureCreatableRacingSim(m *models.RacingSimSetter) {
 // any required relationship should have already exist on the model
 func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.RacingSim) error {
 	var err error
+
+	isSimulationSeriesDone, _ := racingSimRelSimulationSeriesCtx.Value(ctx)
+	if !isSimulationSeriesDone && o.r.SimulationSeries != nil {
+		ctx = racingSimRelSimulationSeriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.SimulationSeries {
+			if r.o.alreadyPersisted {
+				m.R.SimulationSeries = append(m.R.SimulationSeries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSimulationSeries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return err
 }
@@ -575,5 +619,53 @@ func (m racingSimMods) WithParentsCascading() RacingSimMod {
 			return
 		}
 		ctx = racingSimWithParentsCascadingCtx.WithValue(ctx, true)
+	})
+}
+
+func (m racingSimMods) WithSimulationSeries(number int, related *SeriesTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSeries = []*racingSimRSimulationSeriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m racingSimMods) WithNewSimulationSeries(number int, mods ...SeriesMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSeriesWithContext(ctx, mods...)
+		m.WithSimulationSeries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddSimulationSeries(number int, related *SeriesTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSeries = append(o.r.SimulationSeries, &racingSimRSimulationSeriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m racingSimMods) AddNewSimulationSeries(number int, mods ...SeriesMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSeriesWithContext(ctx, mods...)
+		m.AddSimulationSeries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddExistingSimulationSeries(existingModels ...*models.Series) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		for _, em := range existingModels {
+			o.r.SimulationSeries = append(o.r.SimulationSeries, &racingSimRSimulationSeriesR{
+				o: o.f.FromExistingSeries(em),
+			})
+		}
+	})
+}
+
+func (m racingSimMods) WithoutSimulationSeries() RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSeries = nil
 	})
 }

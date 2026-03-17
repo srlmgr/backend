@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/null"
+	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob/types"
@@ -16,8 +17,12 @@ import (
 
 type Factory struct {
 	baseDriverMods      DriverModSlice
+	baseEventMods       EventModSlice
 	basePointSystemMods PointSystemModSlice
 	baseRacingSimMods   RacingSimModSlice
+	baseSeasonMods      SeasonModSlice
+	baseSeriesMods      SeriesModSlice
+	baseTeamMods        TeamModSlice
 }
 
 func New() *Factory {
@@ -44,10 +49,10 @@ func (f *Factory) FromExistingDriver(m *models.Driver) *DriverTemplate {
 	o := &DriverTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.ExternalID = func() string { return m.ExternalID }
 	o.Name = func() string { return m.Name }
-	o.SimulationIds = func() pq.Int32Array { return m.SimulationIds }
-	o.Aliases = func() pq.StringArray { return m.Aliases }
+	o.SimulationIds = func() types.JSON[json.RawMessage] { return m.SimulationIds }
 	o.IsActive = func() bool { return m.IsActive }
 	o.JoinedAt = func() time.Time { return m.JoinedAt }
 	o.LastImportedFrom = func() null.Val[string] { return m.LastImportedFrom }
@@ -55,6 +60,46 @@ func (f *Factory) FromExistingDriver(m *models.Driver) *DriverTemplate {
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	return o
+}
+
+func (f *Factory) NewEvent(mods ...EventMod) *EventTemplate {
+	return f.NewEventWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewEventWithContext(ctx context.Context, mods ...EventMod) *EventTemplate {
+	o := &EventTemplate{f: f}
+
+	if f != nil {
+		f.baseEventMods.Apply(ctx, o)
+	}
+
+	EventModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingEvent(m *models.Event) *EventTemplate {
+	o := &EventTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.Name = func() string { return m.Name }
+	o.RoundNumber = func() int32 { return m.RoundNumber }
+	o.Venue = func() null.Val[string] { return m.Venue }
+	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
+	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
+	o.Status = func() string { return m.Status }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Season != nil {
+		EventMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
 
 	return o
 }
@@ -88,6 +133,11 @@ func (f *Factory) FromExistingPointSystem(m *models.PointSystem) *PointSystemTem
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
+	ctx := context.Background()
+	if len(m.R.Seasons) > 0 {
+		PointSystemMods.AddExistingSeasons(m.R.Seasons...).Apply(ctx, o)
+	}
+
 	return o
 }
 
@@ -120,6 +170,138 @@ func (f *Factory) FromExistingRacingSim(m *models.RacingSim) *RacingSimTemplate 
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
+	ctx := context.Background()
+	if len(m.R.SimulationSeries) > 0 {
+		RacingSimMods.AddExistingSimulationSeries(m.R.SimulationSeries...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeason(mods ...SeasonMod) *SeasonTemplate {
+	return f.NewSeasonWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeasonWithContext(ctx context.Context, mods ...SeasonMod) *SeasonTemplate {
+	o := &SeasonTemplate{f: f}
+
+	if f != nil {
+		f.baseSeasonMods.Apply(ctx, o)
+	}
+
+	SeasonModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeason(m *models.Season) *SeasonTemplate {
+	o := &SeasonTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SeriesID = func() int32 { return m.SeriesID }
+	o.PointSystemID = func() int32 { return m.PointSystemID }
+	o.Name = func() string { return m.Name }
+	o.ShortName = func() string { return m.ShortName }
+	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
+	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
+	o.Status = func() string { return m.Status }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.Events) > 0 {
+		SeasonMods.AddExistingEvents(m.R.Events...).Apply(ctx, o)
+	}
+	if m.R.PointSystem != nil {
+		SeasonMods.WithExistingPointSystem(m.R.PointSystem).Apply(ctx, o)
+	}
+	if m.R.Series != nil {
+		SeasonMods.WithExistingSeries(m.R.Series).Apply(ctx, o)
+	}
+	if len(m.R.Teams) > 0 {
+		SeasonMods.AddExistingTeams(m.R.Teams...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeries(mods ...SeriesMod) *SeriesTemplate {
+	return f.NewSeriesWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeriesWithContext(ctx context.Context, mods ...SeriesMod) *SeriesTemplate {
+	o := &SeriesTemplate{f: f}
+
+	if f != nil {
+		f.baseSeriesMods.Apply(ctx, o)
+	}
+
+	SeriesModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeries(m *models.Series) *SeriesTemplate {
+	o := &SeriesTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.Name = func() string { return m.Name }
+	o.Description = func() null.Val[string] { return m.Description }
+	o.SimulationID = func() null.Val[int32] { return m.SimulationID }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.Seasons) > 0 {
+		SeriesMods.AddExistingSeasons(m.R.Seasons...).Apply(ctx, o)
+	}
+	if m.R.SimulationRacingSim != nil {
+		SeriesMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewTeam(mods ...TeamMod) *TeamTemplate {
+	return f.NewTeamWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewTeamWithContext(ctx context.Context, mods ...TeamMod) *TeamTemplate {
+	o := &TeamTemplate{f: f}
+
+	if f != nil {
+		f.baseTeamMods.Apply(ctx, o)
+	}
+
+	TeamModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingTeam(m *models.Team) *TeamTemplate {
+	o := &TeamTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.Name = func() string { return m.Name }
+	o.ExternalID = func() null.Val[string] { return m.ExternalID }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Season != nil {
+		TeamMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+
 	return o
 }
 
@@ -129,6 +311,14 @@ func (f *Factory) ClearBaseDriverMods() {
 
 func (f *Factory) AddBaseDriverMod(mods ...DriverMod) {
 	f.baseDriverMods = append(f.baseDriverMods, mods...)
+}
+
+func (f *Factory) ClearBaseEventMods() {
+	f.baseEventMods = nil
+}
+
+func (f *Factory) AddBaseEventMod(mods ...EventMod) {
+	f.baseEventMods = append(f.baseEventMods, mods...)
 }
 
 func (f *Factory) ClearBasePointSystemMods() {
@@ -145,4 +335,28 @@ func (f *Factory) ClearBaseRacingSimMods() {
 
 func (f *Factory) AddBaseRacingSimMod(mods ...RacingSimMod) {
 	f.baseRacingSimMods = append(f.baseRacingSimMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeasonMods() {
+	f.baseSeasonMods = nil
+}
+
+func (f *Factory) AddBaseSeasonMod(mods ...SeasonMod) {
+	f.baseSeasonMods = append(f.baseSeasonMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeriesMods() {
+	f.baseSeriesMods = nil
+}
+
+func (f *Factory) AddBaseSeriesMod(mods ...SeriesMod) {
+	f.baseSeriesMods = append(f.baseSeriesMods, mods...)
+}
+
+func (f *Factory) ClearBaseTeamMods() {
+	f.baseTeamMods = nil
+}
+
+func (f *Factory) AddBaseTeamMod(mods ...TeamMod) {
+	f.baseTeamMods = append(f.baseTeamMods, mods...)
 }

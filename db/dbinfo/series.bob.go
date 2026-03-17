@@ -5,38 +5,20 @@ package dbinfo
 
 import "github.com/aarondl/opt/null"
 
-var Drivers = Table[
-	driverColumns,
-	driverIndexes,
-	driverForeignKeys,
-	driverUniques,
-	driverChecks,
+var Serieses = Table[
+	seriesColumns,
+	seriesIndexes,
+	seriesForeignKeys,
+	seriesUniques,
+	seriesChecks,
 ]{
 	Schema: "",
-	Name:   "drivers",
-	Columns: driverColumns{
+	Name:   "series",
+	Columns: seriesColumns{
 		ID: column{
 			Name:      "id",
 			DBType:    "integer",
-			Default:   "nextval('drivers_id_seq'::regclass)",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		FrontendID: column{
-			Name:      "frontend_id",
-			DBType:    "uuid",
-			Default:   "uuid_generate_v4()",
-			Comment:   "id used to reference in frontend",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		ExternalID: column{
-			Name:      "external_id",
-			DBType:    "text",
-			Default:   "",
+			Default:   "nextval('series_id_seq'::regclass)",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -51,12 +33,21 @@ var Drivers = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		SimulationIds: column{
-			Name:      "simulation_ids",
-			DBType:    "jsonb",
-			Default:   "'{}'::jsonb",
-			Comment:   "map by simID to array of sim specific driver IDs",
-			Nullable:  false,
+		Description: column{
+			Name:      "description",
+			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		SimulationID: column{
+			Name:      "simulation_id",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -66,24 +57,6 @@ var Drivers = Table[
 			Default:   "true",
 			Comment:   "",
 			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		JoinedAt: column{
-			Name:      "joined_at",
-			DBType:    "timestamp with time zone",
-			Default:   "now()",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		LastImportedFrom: column{
-			Name:      "last_imported_from",
-			DBType:    "text",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -124,10 +97,10 @@ var Drivers = Table[
 			AutoIncr:  false,
 		},
 	},
-	Indexes: driverIndexes{
-		DriversPkey: index{
+	Indexes: seriesIndexes{
+		SeriesPkey: index{
 			Type: "btree",
-			Name: "drivers_pkey",
+			Name: "series_pkey",
 			Columns: []indexColumn{
 				{
 					Name:         "id",
@@ -142,26 +115,9 @@ var Drivers = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		DriversExternalIDUnique: index{
+		IdxSeriesIsActive: index{
 			Type: "btree",
-			Name: "drivers_external_id_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "external_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		IdxDriversIsActive: index{
-			Type: "btree",
-			Name: "idx_drivers_is_active",
+			Name: "idx_series_is_active",
 			Columns: []indexColumn{
 				{
 					Name:         "is_active",
@@ -176,12 +132,12 @@ var Drivers = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxDriversName: index{
+		IdxSeriesSimulationID: index{
 			Type: "btree",
-			Name: "idx_drivers_name",
+			Name: "idx_series_simulation_id",
 			Columns: []indexColumn{
 				{
-					Name:         "name",
+					Name:         "simulation_id",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -193,17 +149,44 @@ var Drivers = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		SeriesNameUnique: index{
+			Type: "btree",
+			Name: "series_name_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "name",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
 	},
 	PrimaryKey: &constraint{
-		Name:    "drivers_pkey",
+		Name:    "series_pkey",
 		Columns: []string{"id"},
 		Comment: "",
 	},
-
-	Uniques: driverUniques{
-		DriversExternalIDUnique: constraint{
-			Name:    "drivers_external_id_unique",
-			Columns: []string{"external_id"},
+	ForeignKeys: seriesForeignKeys{
+		SeriesSeriesSimulationIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "series.series_simulation_id_fk",
+				Columns: []string{"simulation_id"},
+				Comment: "",
+			},
+			ForeignTable:   "racing_sims",
+			ForeignColumns: []string{"id"},
+		},
+	},
+	Uniques: seriesUniques{
+		SeriesNameUnique: constraint{
+			Name:    "series_name_unique",
+			Columns: []string{"name"},
 			Comment: "",
 		},
 	},
@@ -211,58 +194,59 @@ var Drivers = Table[
 	Comment: "",
 }
 
-type driverColumns struct {
-	ID               column
-	FrontendID       column
-	ExternalID       column
-	Name             column
-	SimulationIds    column
-	IsActive         column
-	JoinedAt         column
-	LastImportedFrom column
-	CreatedAt        column
-	UpdatedAt        column
-	CreatedBy        column
-	UpdatedBy        column
+type seriesColumns struct {
+	ID           column
+	Name         column
+	Description  column
+	SimulationID column
+	IsActive     column
+	CreatedAt    column
+	UpdatedAt    column
+	CreatedBy    column
+	UpdatedBy    column
 }
 
-func (c driverColumns) AsSlice() []column {
+func (c seriesColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.ExternalID, c.Name, c.SimulationIds, c.IsActive, c.JoinedAt, c.LastImportedFrom, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.Name, c.Description, c.SimulationID, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
-type driverIndexes struct {
-	DriversPkey             index
-	DriversExternalIDUnique index
-	IdxDriversIsActive      index
-	IdxDriversName          index
+type seriesIndexes struct {
+	SeriesPkey            index
+	IdxSeriesIsActive     index
+	IdxSeriesSimulationID index
+	SeriesNameUnique      index
 }
 
-func (i driverIndexes) AsSlice() []index {
+func (i seriesIndexes) AsSlice() []index {
 	return []index{
-		i.DriversPkey, i.DriversExternalIDUnique, i.IdxDriversIsActive, i.IdxDriversName,
+		i.SeriesPkey, i.IdxSeriesIsActive, i.IdxSeriesSimulationID, i.SeriesNameUnique,
 	}
 }
 
-type driverForeignKeys struct{}
-
-func (f driverForeignKeys) AsSlice() []foreignKey {
-	return []foreignKey{}
+type seriesForeignKeys struct {
+	SeriesSeriesSimulationIDFK foreignKey
 }
 
-type driverUniques struct {
-	DriversExternalIDUnique constraint
+func (f seriesForeignKeys) AsSlice() []foreignKey {
+	return []foreignKey{
+		f.SeriesSeriesSimulationIDFK,
+	}
 }
 
-func (u driverUniques) AsSlice() []constraint {
+type seriesUniques struct {
+	SeriesNameUnique constraint
+}
+
+func (u seriesUniques) AsSlice() []constraint {
 	return []constraint{
-		u.DriversExternalIDUnique,
+		u.SeriesNameUnique,
 	}
 }
 
-type driverChecks struct{}
+type seriesChecks struct{}
 
-func (c driverChecks) AsSlice() []check {
+func (c seriesChecks) AsSlice() []check {
 	return []check{}
 }

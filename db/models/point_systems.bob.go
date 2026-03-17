@@ -6,6 +6,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -19,7 +20,10 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 	"github.com/stephenafamo/bob/dialect/psql/um"
 	"github.com/stephenafamo/bob/expr"
+	"github.com/stephenafamo/bob/mods"
+	"github.com/stephenafamo/bob/orm"
 	"github.com/stephenafamo/bob/types"
+	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // PointSystem is an object representing the database table.
@@ -33,6 +37,8 @@ type PointSystem struct {
 	UpdatedAt      time.Time                   `db:"updated_at" `
 	CreatedBy      string                      `db:"created_by" `
 	UpdatedBy      string                      `db:"updated_by" `
+
+	R pointSystemR `db:"-" `
 }
 
 // PointSystemSlice is an alias for a slice of pointers to PointSystem.
@@ -44,6 +50,11 @@ var PointSystems = psql.NewTablex[*PointSystem, PointSystemSlice, *PointSystemSe
 
 // PointSystemsQuery is a query on the point_systems table
 type PointSystemsQuery = *psql.ViewQuery[*PointSystem, PointSystemSlice]
+
+// pointSystemR is where relationships are stored.
+type pointSystemR struct {
+	Seasons SeasonSlice // seasons.seasons_point_system_id_fk
+}
 
 func buildPointSystemColumns(alias string) pointSystemColumns {
 	return pointSystemColumns{
@@ -358,6 +369,7 @@ func (o *PointSystem) Update(ctx context.Context, exec bob.Executor, s *PointSys
 		return err
 	}
 
+	o.R = v.R
 	*o = *v
 
 	return nil
@@ -377,7 +389,7 @@ func (o *PointSystem) Reload(ctx context.Context, exec bob.Executor) error {
 	if err != nil {
 		return err
 	}
-
+	o2.R = o.R
 	*o = *o2
 
 	return nil
@@ -424,7 +436,7 @@ func (o PointSystemSlice) copyMatchingRows(from ...*PointSystem) {
 			if new.ID != old.ID {
 				continue
 			}
-
+			new.R = old.R
 			o[i] = new
 			break
 		}
@@ -522,6 +534,98 @@ func (o PointSystemSlice) ReloadAll(ctx context.Context, exec bob.Executor) erro
 	return nil
 }
 
+// Seasons starts a query for related objects on seasons
+func (o *PointSystem) Seasons(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery {
+	return Seasons.Query(append(mods,
+		sm.Where(Seasons.Columns.PointSystemID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os PointSystemSlice) Seasons(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return Seasons.Query(append(mods,
+		sm.Where(psql.Group(Seasons.Columns.PointSystemID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+func insertPointSystemSeasons0(ctx context.Context, exec bob.Executor, seasons1 []*SeasonSetter, pointSystem0 *PointSystem) (SeasonSlice, error) {
+	for i := range seasons1 {
+		seasons1[i].PointSystemID = omit.From(pointSystem0.ID)
+	}
+
+	ret, err := Seasons.Insert(bob.ToMods(seasons1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertPointSystemSeasons0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachPointSystemSeasons0(ctx context.Context, exec bob.Executor, count int, seasons1 SeasonSlice, pointSystem0 *PointSystem) (SeasonSlice, error) {
+	setter := &SeasonSetter{
+		PointSystemID: omit.From(pointSystem0.ID),
+	}
+
+	err := seasons1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachPointSystemSeasons0: %w", err)
+	}
+
+	return seasons1, nil
+}
+
+func (pointSystem0 *PointSystem) InsertSeasons(ctx context.Context, exec bob.Executor, related ...*SeasonSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasons1, err := insertPointSystemSeasons0(ctx, exec, related, pointSystem0)
+	if err != nil {
+		return err
+	}
+
+	pointSystem0.R.Seasons = append(pointSystem0.R.Seasons, seasons1...)
+
+	for _, rel := range seasons1 {
+		rel.R.PointSystem = pointSystem0
+	}
+	return nil
+}
+
+func (pointSystem0 *PointSystem) AttachSeasons(ctx context.Context, exec bob.Executor, related ...*Season) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasons1 := SeasonSlice(related)
+
+	_, err = attachPointSystemSeasons0(ctx, exec, len(related), seasons1, pointSystem0)
+	if err != nil {
+		return err
+	}
+
+	pointSystem0.R.Seasons = append(pointSystem0.R.Seasons, seasons1...)
+
+	for _, rel := range related {
+		rel.R.PointSystem = pointSystem0
+	}
+
+	return nil
+}
+
 type pointSystemWhere[Q psql.Filterable] struct {
 	ID             psql.WhereMod[Q, int32]
 	Name           psql.WhereMod[Q, string]
@@ -549,5 +653,145 @@ func buildPointSystemWhere[Q psql.Filterable](cols pointSystemColumns) pointSyst
 		UpdatedAt:      psql.Where[Q, time.Time](cols.UpdatedAt),
 		CreatedBy:      psql.Where[Q, string](cols.CreatedBy),
 		UpdatedBy:      psql.Where[Q, string](cols.UpdatedBy),
+	}
+}
+
+func (o *PointSystem) Preload(name string, retrieved any) error {
+	if o == nil {
+		return nil
+	}
+
+	switch name {
+	case "Seasons":
+		rels, ok := retrieved.(SeasonSlice)
+		if !ok {
+			return fmt.Errorf("pointSystem cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.Seasons = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.PointSystem = o
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("pointSystem has no relationship %q", name)
+	}
+}
+
+type pointSystemPreloader struct{}
+
+func buildPointSystemPreloader() pointSystemPreloader {
+	return pointSystemPreloader{}
+}
+
+type pointSystemThenLoader[Q orm.Loadable] struct {
+	Seasons func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+}
+
+func buildPointSystemThenLoader[Q orm.Loadable]() pointSystemThenLoader[Q] {
+	type SeasonsLoadInterface interface {
+		LoadSeasons(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+
+	return pointSystemThenLoader[Q]{
+		Seasons: thenLoadBuilder[Q](
+			"Seasons",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasons(ctx, exec, mods...)
+			},
+		),
+	}
+}
+
+// LoadSeasons loads the pointSystem's Seasons into the .R struct
+func (o *PointSystem) LoadSeasons(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.Seasons = nil
+
+	related, err := o.Seasons(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.PointSystem = o
+	}
+
+	o.R.Seasons = related
+	return nil
+}
+
+// LoadSeasons loads the pointSystem's Seasons into the .R struct
+func (os PointSystemSlice) LoadSeasons(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasons, err := os.Seasons(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.Seasons = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasons {
+
+			if !(o.ID == rel.PointSystemID) {
+				continue
+			}
+
+			rel.R.PointSystem = o
+
+			o.R.Seasons = append(o.R.Seasons, rel)
+		}
+	}
+
+	return nil
+}
+
+type pointSystemJoins[Q dialect.Joinable] struct {
+	typ     string
+	Seasons modAs[Q, seasonColumns]
+}
+
+func (j pointSystemJoins[Q]) aliasedAs(alias string) pointSystemJoins[Q] {
+	return buildPointSystemJoins[Q](buildPointSystemColumns(alias), j.typ)
+}
+
+func buildPointSystemJoins[Q dialect.Joinable](cols pointSystemColumns, typ string) pointSystemJoins[Q] {
+	return pointSystemJoins[Q]{
+		typ: typ,
+		Seasons: modAs[Q, seasonColumns]{
+			c: Seasons.Columns,
+			f: func(to seasonColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, Seasons.Name().As(to.Alias())).On(
+						to.PointSystemID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 	}
 }

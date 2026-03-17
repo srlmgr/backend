@@ -5,13 +5,14 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"time"
 
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	"github.com/lib/pq"
+	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -19,22 +20,25 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 	"github.com/stephenafamo/bob/dialect/psql/um"
 	"github.com/stephenafamo/bob/expr"
+	"github.com/stephenafamo/bob/types"
 )
 
 // Driver is an object representing the database table.
 type Driver struct {
-	ID               int32            `db:"id,pk" `
-	ExternalID       string           `db:"external_id" `
-	Name             string           `db:"name" `
-	SimulationIds    pq.Int32Array    `db:"simulation_ids" `
-	Aliases          pq.StringArray   `db:"aliases" `
-	IsActive         bool             `db:"is_active" `
-	JoinedAt         time.Time        `db:"joined_at" `
-	LastImportedFrom null.Val[string] `db:"last_imported_from" `
-	CreatedAt        time.Time        `db:"created_at" `
-	UpdatedAt        time.Time        `db:"updated_at" `
-	CreatedBy        string           `db:"created_by" `
-	UpdatedBy        string           `db:"updated_by" `
+	ID int32 `db:"id,pk" `
+	// id used to reference in frontend
+	FrontendID uuid.UUID `db:"frontend_id" `
+	ExternalID string    `db:"external_id" `
+	Name       string    `db:"name" `
+	// map by simID to array of sim specific driver IDs
+	SimulationIds    types.JSON[json.RawMessage] `db:"simulation_ids" `
+	IsActive         bool                        `db:"is_active" `
+	JoinedAt         time.Time                   `db:"joined_at" `
+	LastImportedFrom null.Val[string]            `db:"last_imported_from" `
+	CreatedAt        time.Time                   `db:"created_at" `
+	UpdatedAt        time.Time                   `db:"updated_at" `
+	CreatedBy        string                      `db:"created_by" `
+	UpdatedBy        string                      `db:"updated_by" `
 }
 
 // DriverSlice is an alias for a slice of pointers to Driver.
@@ -50,14 +54,14 @@ type DriversQuery = *psql.ViewQuery[*Driver, DriverSlice]
 func buildDriverColumns(alias string) driverColumns {
 	return driverColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "external_id", "name", "simulation_ids", "aliases", "is_active", "joined_at", "last_imported_from", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "external_id", "name", "simulation_ids", "is_active", "joined_at", "last_imported_from", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("drivers"),
 		tableAlias:       alias,
 		ID:               psql.Quote(alias, "id"),
+		FrontendID:       psql.Quote(alias, "frontend_id"),
 		ExternalID:       psql.Quote(alias, "external_id"),
 		Name:             psql.Quote(alias, "name"),
 		SimulationIds:    psql.Quote(alias, "simulation_ids"),
-		Aliases:          psql.Quote(alias, "aliases"),
 		IsActive:         psql.Quote(alias, "is_active"),
 		JoinedAt:         psql.Quote(alias, "joined_at"),
 		LastImportedFrom: psql.Quote(alias, "last_imported_from"),
@@ -72,10 +76,10 @@ type driverColumns struct {
 	expr.ColumnsExpr
 	tableAlias       string
 	ID               psql.Expression
+	FrontendID       psql.Expression
 	ExternalID       psql.Expression
 	Name             psql.Expression
 	SimulationIds    psql.Expression
-	Aliases          psql.Expression
 	IsActive         psql.Expression
 	JoinedAt         psql.Expression
 	LastImportedFrom psql.Expression
@@ -97,24 +101,27 @@ func (driverColumns) AliasedAs(alias string) driverColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type DriverSetter struct {
-	ID               omit.Val[int32]          `db:"id,pk" `
-	ExternalID       omit.Val[string]         `db:"external_id" `
-	Name             omit.Val[string]         `db:"name" `
-	SimulationIds    omit.Val[pq.Int32Array]  `db:"simulation_ids" `
-	Aliases          omit.Val[pq.StringArray] `db:"aliases" `
-	IsActive         omit.Val[bool]           `db:"is_active" `
-	JoinedAt         omit.Val[time.Time]      `db:"joined_at" `
-	LastImportedFrom omitnull.Val[string]     `db:"last_imported_from" `
-	CreatedAt        omit.Val[time.Time]      `db:"created_at" `
-	UpdatedAt        omit.Val[time.Time]      `db:"updated_at" `
-	CreatedBy        omit.Val[string]         `db:"created_by" `
-	UpdatedBy        omit.Val[string]         `db:"updated_by" `
+	ID               omit.Val[int32]                       `db:"id,pk" `
+	FrontendID       omit.Val[uuid.UUID]                   `db:"frontend_id" `
+	ExternalID       omit.Val[string]                      `db:"external_id" `
+	Name             omit.Val[string]                      `db:"name" `
+	SimulationIds    omit.Val[types.JSON[json.RawMessage]] `db:"simulation_ids" `
+	IsActive         omit.Val[bool]                        `db:"is_active" `
+	JoinedAt         omit.Val[time.Time]                   `db:"joined_at" `
+	LastImportedFrom omitnull.Val[string]                  `db:"last_imported_from" `
+	CreatedAt        omit.Val[time.Time]                   `db:"created_at" `
+	UpdatedAt        omit.Val[time.Time]                   `db:"updated_at" `
+	CreatedBy        omit.Val[string]                      `db:"created_by" `
+	UpdatedBy        omit.Val[string]                      `db:"updated_by" `
 }
 
 func (s DriverSetter) SetColumns() []string {
 	vals := make([]string, 0, 12)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
+	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
 	}
 	if s.ExternalID.IsValue() {
 		vals = append(vals, "external_id")
@@ -124,9 +131,6 @@ func (s DriverSetter) SetColumns() []string {
 	}
 	if s.SimulationIds.IsValue() {
 		vals = append(vals, "simulation_ids")
-	}
-	if s.Aliases.IsValue() {
-		vals = append(vals, "aliases")
 	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
@@ -156,6 +160,9 @@ func (s DriverSetter) Overwrite(t *Driver) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
 	if s.ExternalID.IsValue() {
 		t.ExternalID = s.ExternalID.MustGet()
 	}
@@ -164,9 +171,6 @@ func (s DriverSetter) Overwrite(t *Driver) {
 	}
 	if s.SimulationIds.IsValue() {
 		t.SimulationIds = s.SimulationIds.MustGet()
-	}
-	if s.Aliases.IsValue() {
-		t.Aliases = s.Aliases.MustGet()
 	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
@@ -204,26 +208,26 @@ func (s *DriverSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.ExternalID.IsValue() {
-			vals[1] = psql.Arg(s.ExternalID.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[2] = psql.Arg(s.Name.MustGet())
+		if s.ExternalID.IsValue() {
+			vals[2] = psql.Arg(s.ExternalID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.SimulationIds.IsValue() {
-			vals[3] = psql.Arg(s.SimulationIds.MustGet())
+		if s.Name.IsValue() {
+			vals[3] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.Aliases.IsValue() {
-			vals[4] = psql.Arg(s.Aliases.MustGet())
+		if s.SimulationIds.IsValue() {
+			vals[4] = psql.Arg(s.SimulationIds.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
@@ -288,6 +292,13 @@ func (s DriverSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
+		}})
+	}
+
 	if s.ExternalID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "external_id")...),
@@ -306,13 +317,6 @@ func (s DriverSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "simulation_ids")...),
 			psql.Arg(s.SimulationIds),
-		}})
-	}
-
-	if s.Aliases.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "aliases")...),
-			psql.Arg(s.Aliases),
 		}})
 	}
 
@@ -592,10 +596,10 @@ func (o DriverSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 
 type driverWhere[Q psql.Filterable] struct {
 	ID               psql.WhereMod[Q, int32]
+	FrontendID       psql.WhereMod[Q, uuid.UUID]
 	ExternalID       psql.WhereMod[Q, string]
 	Name             psql.WhereMod[Q, string]
-	SimulationIds    psql.WhereMod[Q, pq.Int32Array]
-	Aliases          psql.WhereMod[Q, pq.StringArray]
+	SimulationIds    psql.WhereMod[Q, types.JSON[json.RawMessage]]
 	IsActive         psql.WhereMod[Q, bool]
 	JoinedAt         psql.WhereMod[Q, time.Time]
 	LastImportedFrom psql.WhereNullMod[Q, string]
@@ -612,10 +616,10 @@ func (driverWhere[Q]) AliasedAs(alias string) driverWhere[Q] {
 func buildDriverWhere[Q psql.Filterable](cols driverColumns) driverWhere[Q] {
 	return driverWhere[Q]{
 		ID:               psql.Where[Q, int32](cols.ID),
+		FrontendID:       psql.Where[Q, uuid.UUID](cols.FrontendID),
 		ExternalID:       psql.Where[Q, string](cols.ExternalID),
 		Name:             psql.Where[Q, string](cols.Name),
-		SimulationIds:    psql.Where[Q, pq.Int32Array](cols.SimulationIds),
-		Aliases:          psql.Where[Q, pq.StringArray](cols.Aliases),
+		SimulationIds:    psql.Where[Q, types.JSON[json.RawMessage]](cols.SimulationIds),
 		IsActive:         psql.Where[Q, bool](cols.IsActive),
 		JoinedAt:         psql.Where[Q, time.Time](cols.JoinedAt),
 		LastImportedFrom: psql.WhereNull[Q, string](cols.LastImportedFrom),
