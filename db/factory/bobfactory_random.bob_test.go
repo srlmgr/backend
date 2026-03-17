@@ -25,17 +25,6 @@ func TestRandom_int32(t *testing.T) {
 	}
 }
 
-func TestRandom_pq_Int32Array(t *testing.T) {
-	t.Parallel()
-
-	val1 := random_pq_Int32Array(nil)
-	val2 := random_pq_Int32Array(nil)
-
-	if slices.Equal(val1, val2) {
-		t.Fatalf("random_pq_Int32Array() returned the same value twice: %v", val1)
-	}
-}
-
 func TestRandom_pq_StringArray(t *testing.T) {
 	t.Parallel()
 
@@ -77,5 +66,16 @@ func TestRandom_types_JSON_json_RawMessage_(t *testing.T) {
 
 	if bytes.Equal(val1.Val, val2.Val) {
 		t.Fatalf("random_types_JSON_json_RawMessage_() returned the same value twice: %v", val1)
+	}
+}
+
+func TestRandom_uuid_UUID(t *testing.T) {
+	t.Parallel()
+
+	val1 := random_uuid_UUID(nil)
+	val2 := random_uuid_UUID(nil)
+
+	if val1 == val2 {
+		t.Fatalf("random_uuid_UUID() returned the same value twice: %v", val1)
 	}
 }

@@ -32,6 +32,30 @@ func TestCreateDriver(t *testing.T) {
 	}
 }
 
+func TestCreateEvent(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewEventWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Event: %v", err)
+	}
+}
+
 func TestCreatePointSystem(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -77,5 +101,77 @@ func TestCreateRacingSim(t *testing.T) {
 
 	if _, err := New().NewRacingSimWithContext(ctx).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating RacingSim: %v", err)
+	}
+}
+
+func TestCreateSeason(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSeasonWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Season: %v", err)
+	}
+}
+
+func TestCreateSeries(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSeriesWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Series: %v", err)
+	}
+}
+
+func TestCreateTeam(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewTeamWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Team: %v", err)
 	}
 }

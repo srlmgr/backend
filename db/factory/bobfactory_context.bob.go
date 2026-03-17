@@ -11,11 +11,33 @@ var (
 	// Relationship Contexts for drivers
 	driverWithParentsCascadingCtx = newContextual[bool]("driverWithParentsCascading")
 
+	// Relationship Contexts for events
+	eventWithParentsCascadingCtx = newContextual[bool]("eventWithParentsCascading")
+	eventRelSeasonCtx            = newContextual[bool]("events.seasons.events.events_season_id_fk")
+
 	// Relationship Contexts for point_systems
 	pointSystemWithParentsCascadingCtx = newContextual[bool]("pointSystemWithParentsCascading")
+	pointSystemRelSeasonsCtx           = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
 
 	// Relationship Contexts for racing_sims
 	racingSimWithParentsCascadingCtx = newContextual[bool]("racingSimWithParentsCascading")
+	racingSimRelSimulationSeriesCtx  = newContextual[bool]("racing_sims.series.series.series_simulation_id_fk")
+
+	// Relationship Contexts for seasons
+	seasonWithParentsCascadingCtx = newContextual[bool]("seasonWithParentsCascading")
+	seasonRelEventsCtx            = newContextual[bool]("events.seasons.events.events_season_id_fk")
+	seasonRelPointSystemCtx       = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
+	seasonRelSeriesCtx            = newContextual[bool]("seasons.series.seasons.seasons_series_id_fk")
+	seasonRelTeamsCtx             = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
+
+	// Relationship Contexts for series
+	seriesWithParentsCascadingCtx   = newContextual[bool]("seriesWithParentsCascading")
+	seriesRelSeasonsCtx             = newContextual[bool]("seasons.series.seasons.seasons_series_id_fk")
+	seriesRelSimulationRacingSimCtx = newContextual[bool]("racing_sims.series.series.series_simulation_id_fk")
+
+	// Relationship Contexts for teams
+	teamWithParentsCascadingCtx = newContextual[bool]("teamWithParentsCascading")
+	teamRelSeasonCtx            = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
 )
 
 // Contextual is a convienience wrapper around context.WithValue and context.Value

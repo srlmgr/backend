@@ -27,6 +27,12 @@ plugins:
     disabled: false
   joins:
     disabled: false
+aliases:
+  series:
+    up_plural: "Serieses"
+    up_singular: "Series"
+    down_plural: "serieses"
+    down_singular: "series"
 psql:
   dsn: "postgres://docker:docker@localhost:5532/srlmgr?sslmode=disable"
   driver: github.com/jackc/pgx/v5/stdlib

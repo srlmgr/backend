@@ -5,16 +5,18 @@ package factory
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
-	"github.com/lib/pq"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/types"
 )
 
 type DriverMod interface {
@@ -39,10 +41,10 @@ func (mods DriverModSlice) Apply(ctx context.Context, n *DriverTemplate) {
 // all columns are optional and should be set by mods
 type DriverTemplate struct {
 	ID               func() int32
+	FrontendID       func() uuid.UUID
 	ExternalID       func() string
 	Name             func() string
-	SimulationIds    func() pq.Int32Array
-	Aliases          func() pq.StringArray
+	SimulationIds    func() types.JSON[json.RawMessage]
 	IsActive         func() bool
 	JoinedAt         func() time.Time
 	LastImportedFrom func() null.Val[string]
@@ -76,6 +78,10 @@ func (o DriverTemplate) BuildSetter() *models.DriverSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.ExternalID != nil {
 		val := o.ExternalID()
 		m.ExternalID = omit.From(val)
@@ -87,10 +93,6 @@ func (o DriverTemplate) BuildSetter() *models.DriverSetter {
 	if o.SimulationIds != nil {
 		val := o.SimulationIds()
 		m.SimulationIds = omit.From(val)
-	}
-	if o.Aliases != nil {
-		val := o.Aliases()
-		m.Aliases = omit.From(val)
 	}
 	if o.IsActive != nil {
 		val := o.IsActive()
@@ -145,6 +147,9 @@ func (o DriverTemplate) Build() *models.Driver {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.ExternalID != nil {
 		m.ExternalID = o.ExternalID()
 	}
@@ -153,9 +158,6 @@ func (o DriverTemplate) Build() *models.Driver {
 	}
 	if o.SimulationIds != nil {
 		m.SimulationIds = o.SimulationIds()
-	}
-	if o.Aliases != nil {
-		m.Aliases = o.Aliases()
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
@@ -307,10 +309,10 @@ type driverMods struct{}
 func (m driverMods) RandomizeAllColumns(f *faker.Faker) DriverMod {
 	return DriverModSlice{
 		DriverMods.RandomID(f),
+		DriverMods.RandomFrontendID(f),
 		DriverMods.RandomExternalID(f),
 		DriverMods.RandomName(f),
 		DriverMods.RandomSimulationIds(f),
-		DriverMods.RandomAliases(f),
 		DriverMods.RandomIsActive(f),
 		DriverMods.RandomJoinedAt(f),
 		DriverMods.RandomLastImportedFrom(f),
@@ -348,6 +350,37 @@ func (m driverMods) RandomID(f *faker.Faker) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m driverMods) FrontendID(val uuid.UUID) DriverMod {
+	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m driverMods) FrontendIDFunc(f func() uuid.UUID) DriverMod {
+	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m driverMods) UnsetFrontendID() DriverMod {
+	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m driverMods) RandomFrontendID(f *faker.Faker) DriverMod {
+	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -415,14 +448,14 @@ func (m driverMods) RandomName(f *faker.Faker) DriverMod {
 }
 
 // Set the model columns to this value
-func (m driverMods) SimulationIds(val pq.Int32Array) DriverMod {
+func (m driverMods) SimulationIds(val types.JSON[json.RawMessage]) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = func() pq.Int32Array { return val }
+		o.SimulationIds = func() types.JSON[json.RawMessage] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m driverMods) SimulationIdsFunc(f func() pq.Int32Array) DriverMod {
+func (m driverMods) SimulationIdsFunc(f func() types.JSON[json.RawMessage]) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
 		o.SimulationIds = f
 	})
@@ -439,39 +472,8 @@ func (m driverMods) UnsetSimulationIds() DriverMod {
 // if faker is nil, a default faker is used
 func (m driverMods) RandomSimulationIds(f *faker.Faker) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = func() pq.Int32Array {
-			return random_pq_Int32Array(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m driverMods) Aliases(val pq.StringArray) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.Aliases = func() pq.StringArray { return val }
-	})
-}
-
-// Set the Column from the function
-func (m driverMods) AliasesFunc(f func() pq.StringArray) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.Aliases = f
-	})
-}
-
-// Clear any values for the column
-func (m driverMods) UnsetAliases() DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.Aliases = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m driverMods) RandomAliases(f *faker.Faker) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.Aliases = func() pq.StringArray {
-			return random_pq_StringArray(f)
+		o.SimulationIds = func() types.JSON[json.RawMessage] {
+			return random_types_JSON_json_RawMessage_(f)
 		}
 	})
 }

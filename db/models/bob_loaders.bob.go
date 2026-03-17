@@ -16,10 +16,24 @@ import (
 
 var Preload = getPreloaders()
 
-type preloaders struct{}
+type preloaders struct {
+	Event       eventPreloader
+	PointSystem pointSystemPreloader
+	RacingSim   racingSimPreloader
+	Season      seasonPreloader
+	Series      seriesPreloader
+	Team        teamPreloader
+}
 
 func getPreloaders() preloaders {
-	return preloaders{}
+	return preloaders{
+		Event:       buildEventPreloader(),
+		PointSystem: buildPointSystemPreloader(),
+		RacingSim:   buildRacingSimPreloader(),
+		Season:      buildSeasonPreloader(),
+		Series:      buildSeriesPreloader(),
+		Team:        buildTeamPreloader(),
+	}
 }
 
 var (
@@ -28,10 +42,24 @@ var (
 	UpdateThenLoad = getThenLoaders[*dialect.UpdateQuery]()
 )
 
-type thenLoaders[Q orm.Loadable] struct{}
+type thenLoaders[Q orm.Loadable] struct {
+	Event       eventThenLoader[Q]
+	PointSystem pointSystemThenLoader[Q]
+	RacingSim   racingSimThenLoader[Q]
+	Season      seasonThenLoader[Q]
+	Series      seriesThenLoader[Q]
+	Team        teamThenLoader[Q]
+}
 
 func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
-	return thenLoaders[Q]{}
+	return thenLoaders[Q]{
+		Event:       buildEventThenLoader[Q](),
+		PointSystem: buildPointSystemThenLoader[Q](),
+		RacingSim:   buildRacingSimThenLoader[Q](),
+		Season:      buildSeasonThenLoader[Q](),
+		Series:      buildSeriesThenLoader[Q](),
+		Team:        buildTeamThenLoader[Q](),
+	}
 }
 
 func thenLoadBuilder[Q orm.Loadable, T any](name string, f func(context.Context, bob.Executor, T, ...bob.Mod[*dialect.SelectQuery]) error) func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q] {

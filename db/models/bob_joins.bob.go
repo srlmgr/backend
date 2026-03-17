@@ -31,7 +31,14 @@ func (j joinSet[Q]) AliasedAs(alias string) joinSet[Q] {
 	}
 }
 
-type joins[Q dialect.Joinable] struct{}
+type joins[Q dialect.Joinable] struct {
+	Events       joinSet[eventJoins[Q]]
+	PointSystems joinSet[pointSystemJoins[Q]]
+	RacingSims   joinSet[racingSimJoins[Q]]
+	Seasons      joinSet[seasonJoins[Q]]
+	Serieses     joinSet[seriesJoins[Q]]
+	Teams        joinSet[teamJoins[Q]]
+}
 
 func buildJoinSet[Q interface{ aliasedAs(string) Q }, C any, F func(C, string) Q](c C, f F) joinSet[Q] {
 	return joinSet[Q]{
@@ -42,7 +49,14 @@ func buildJoinSet[Q interface{ aliasedAs(string) Q }, C any, F func(C, string) Q
 }
 
 func getJoins[Q dialect.Joinable]() joins[Q] {
-	return joins[Q]{}
+	return joins[Q]{
+		Events:       buildJoinSet[eventJoins[Q]](Events.Columns, buildEventJoins),
+		PointSystems: buildJoinSet[pointSystemJoins[Q]](PointSystems.Columns, buildPointSystemJoins),
+		RacingSims:   buildJoinSet[racingSimJoins[Q]](RacingSims.Columns, buildRacingSimJoins),
+		Seasons:      buildJoinSet[seasonJoins[Q]](Seasons.Columns, buildSeasonJoins),
+		Serieses:     buildJoinSet[seriesJoins[Q]](Serieses.Columns, buildSeriesJoins),
+		Teams:        buildJoinSet[teamJoins[Q]](Teams.Columns, buildTeamJoins),
+	}
 }
 
 type modAs[Q any, C interface{ AliasedAs(string) C }] struct {

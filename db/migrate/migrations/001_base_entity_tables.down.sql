@@ -1,7 +1,0 @@
-BEGIN;
-
-DROP TABLE IF EXISTS point_systems;
-DROP TABLE IF EXISTS drivers;
-DROP TABLE IF EXISTS racing_sims;
-
-COMMIT;
