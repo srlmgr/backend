@@ -135,7 +135,7 @@ release-tag:
 ## `update-bufbuild`: Update bufbuild artifacts by commit-id. (`make update-bufbuild id=<bufbuild-commit-id>` for example)
 update-bufbuild:
 	go get buf.build/gen/go/srlmgr/api/protocolbuffers/go@$(id)
-	go get buf.build/gen/go/srlmgr/connectrpc/go@$(id)
+	go get buf.build/gen/go/srlmgr/api/connectrpc/go@$(id)
 
 .PHONY: generate bob files
 ## `bob`: Generate bob files from database
