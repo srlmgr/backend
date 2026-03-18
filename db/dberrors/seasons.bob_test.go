@@ -43,6 +43,24 @@ func TestSeasonUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
+			name:        "ErrUniqueSeasonsFrontendIdUnique",
+			expectedErr: SeasonErrors.ErrUniqueSeasonsFrontendIdUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Season) factory.SeasonModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.SeasonModSlice, 0, 1)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewSeasonWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.SeasonModSlice{
+					factory.SeasonMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
+		{
 			name:        "ErrUniqueSeasonsSeriesIdNameUnique",
 			expectedErr: SeasonErrors.ErrUniqueSeasonsSeriesIdNameUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Season) factory.SeasonModSlice {
@@ -58,25 +76,6 @@ func TestSeasonUniqueConstraintErrors(t *testing.T) {
 				return factory.SeasonModSlice{
 					factory.SeasonMods.SeriesID(obj.SeriesID),
 					factory.SeasonMods.Name(obj.Name),
-				}
-			},
-		},
-		{
-			name:        "ErrUniqueSeasonsSeriesIdShortNameUnique",
-			expectedErr: SeasonErrors.ErrUniqueSeasonsSeriesIdShortNameUnique,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Season) factory.SeasonModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.SeasonModSlice, 0, 2)
-
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewSeasonWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.SeasonModSlice{
-					factory.SeasonMods.SeriesID(obj.SeriesID),
-					factory.SeasonMods.ShortName(obj.ShortName),
 				}
 			},
 		},

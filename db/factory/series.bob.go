@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -38,9 +39,10 @@ func (mods SeriesModSlice) Apply(ctx context.Context, n *SeriesTemplate) {
 // all columns are optional and should be set by mods
 type SeriesTemplate struct {
 	ID           func() int32
+	FrontendID   func() uuid.UUID
+	SimulationID func() int32
 	Name         func() string
 	Description  func() null.Val[string]
-	SimulationID func() null.Val[int32]
 	IsActive     func() bool
 	CreatedAt    func() time.Time
 	UpdatedAt    func() time.Time
@@ -92,7 +94,7 @@ func (t SeriesTemplate) setModelRels(o *models.Series) {
 	if t.r.SimulationRacingSim != nil {
 		rel := t.r.SimulationRacingSim.o.Build()
 		rel.R.SimulationSeries = append(rel.R.SimulationSeries, o)
-		o.SimulationID = null.From(rel.ID) // h2
+		o.SimulationID = rel.ID // h2
 		o.R.SimulationRacingSim = rel
 	}
 }
@@ -106,6 +108,14 @@ func (o SeriesTemplate) BuildSetter() *models.SeriesSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
+	if o.SimulationID != nil {
+		val := o.SimulationID()
+		m.SimulationID = omit.From(val)
+	}
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
@@ -113,10 +123,6 @@ func (o SeriesTemplate) BuildSetter() *models.SeriesSetter {
 	if o.Description != nil {
 		val := o.Description()
 		m.Description = omitnull.FromNull(val)
-	}
-	if o.SimulationID != nil {
-		val := o.SimulationID()
-		m.SimulationID = omitnull.FromNull(val)
 	}
 	if o.IsActive != nil {
 		val := o.IsActive()
@@ -163,14 +169,17 @@ func (o SeriesTemplate) Build() *models.Series {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
+	if o.SimulationID != nil {
+		m.SimulationID = o.SimulationID()
+	}
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
 	if o.Description != nil {
 		m.Description = o.Description()
-	}
-	if o.SimulationID != nil {
-		m.SimulationID = o.SimulationID()
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
@@ -207,6 +216,10 @@ func (o SeriesTemplate) BuildMany(number int) models.SeriesSlice {
 }
 
 func ensureCreatableSeries(m *models.SeriesSetter) {
+	if !(m.SimulationID.IsValue()) {
+		val := random_int32(nil)
+		m.SimulationID = omit.From(val)
+	}
 	if !(m.Name.IsValue()) {
 		val := random_string(nil)
 		m.Name = omit.From(val)
@@ -239,25 +252,6 @@ func (o *SeriesTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 		}
 	}
 
-	isSimulationRacingSimDone, _ := seriesRelSimulationRacingSimCtx.Value(ctx)
-	if !isSimulationRacingSimDone && o.r.SimulationRacingSim != nil {
-		ctx = seriesRelSimulationRacingSimCtx.WithValue(ctx, true)
-		if o.r.SimulationRacingSim.o.alreadyPersisted {
-			m.R.SimulationRacingSim = o.r.SimulationRacingSim.o.Build()
-		} else {
-			var rel1 *models.RacingSim
-			rel1, err = o.r.SimulationRacingSim.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachSimulationRacingSim(ctx, exec, rel1)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
 	return err
 }
 
@@ -268,10 +262,29 @@ func (o *SeriesTemplate) Create(ctx context.Context, exec bob.Executor) (*models
 	opt := o.BuildSetter()
 	ensureCreatableSeries(opt)
 
+	if o.r.SimulationRacingSim == nil {
+		SeriesMods.WithNewSimulationRacingSim().Apply(ctx, o)
+	}
+
+	var rel1 *models.RacingSim
+
+	if o.r.SimulationRacingSim.o.alreadyPersisted {
+		rel1 = o.r.SimulationRacingSim.o.Build()
+	} else {
+		rel1, err = o.r.SimulationRacingSim.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.SimulationID = omit.From(rel1.ID)
+
 	m, err := models.Serieses.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
+
+	m.R.SimulationRacingSim = rel1
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -351,9 +364,10 @@ type seriesMods struct{}
 func (m seriesMods) RandomizeAllColumns(f *faker.Faker) SeriesMod {
 	return SeriesModSlice{
 		SeriesMods.RandomID(f),
+		SeriesMods.RandomFrontendID(f),
+		SeriesMods.RandomSimulationID(f),
 		SeriesMods.RandomName(f),
 		SeriesMods.RandomDescription(f),
-		SeriesMods.RandomSimulationID(f),
 		SeriesMods.RandomIsActive(f),
 		SeriesMods.RandomCreatedAt(f),
 		SeriesMods.RandomUpdatedAt(f),
@@ -388,6 +402,68 @@ func (m seriesMods) UnsetID() SeriesMod {
 func (m seriesMods) RandomID(f *faker.Faker) SeriesMod {
 	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
 		o.ID = func() int32 {
+			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seriesMods) FrontendID(val uuid.UUID) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seriesMods) FrontendIDFunc(f func() uuid.UUID) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m seriesMods) UnsetFrontendID() SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seriesMods) RandomFrontendID(f *faker.Faker) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seriesMods) SimulationID(val int32) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.SimulationID = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seriesMods) SimulationIDFunc(f func() int32) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.SimulationID = f
+	})
+}
+
+// Clear any values for the column
+func (m seriesMods) UnsetSimulationID() SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.SimulationID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seriesMods) RandomSimulationID(f *faker.Faker) SeriesMod {
+	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
+		o.SimulationID = func() int32 {
 			return random_int32(f)
 		}
 	})
@@ -472,59 +548,6 @@ func (m seriesMods) RandomDescriptionNotNull(f *faker.Faker) SeriesMod {
 			}
 
 			val := random_string(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m seriesMods) SimulationID(val null.Val[int32]) SeriesMod {
-	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
-		o.SimulationID = func() null.Val[int32] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m seriesMods) SimulationIDFunc(f func() null.Val[int32]) SeriesMod {
-	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
-		o.SimulationID = f
-	})
-}
-
-// Clear any values for the column
-func (m seriesMods) UnsetSimulationID() SeriesMod {
-	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
-		o.SimulationID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m seriesMods) RandomSimulationID(f *faker.Faker) SeriesMod {
-	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
-		o.SimulationID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m seriesMods) RandomSimulationIDNotNull(f *faker.Faker) SeriesMod {
-	return SeriesModFunc(func(_ context.Context, o *SeriesTemplate) {
-		o.SimulationID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
 			return null.From(val)
 		}
 	})

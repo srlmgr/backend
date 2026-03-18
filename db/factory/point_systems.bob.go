@@ -5,17 +5,16 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/types"
 )
 
 type PointSystemMod interface {
@@ -39,15 +38,15 @@ func (mods PointSystemModSlice) Apply(ctx context.Context, n *PointSystemTemplat
 // PointSystemTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type PointSystemTemplate struct {
-	ID             func() int32
-	Name           func() string
-	Description    func() null.Val[string]
-	PositionPoints func() types.JSON[json.RawMessage]
-	IsActive       func() bool
-	CreatedAt      func() time.Time
-	UpdatedAt      func() time.Time
-	CreatedBy      func() string
-	UpdatedBy      func() string
+	ID          func() int32
+	FrontendID  func() uuid.UUID
+	Name        func() string
+	Description func() null.Val[string]
+	IsActive    func() bool
+	CreatedAt   func() time.Time
+	UpdatedAt   func() time.Time
+	CreatedBy   func() string
+	UpdatedBy   func() string
 
 	r pointSystemR
 	f *Factory
@@ -56,9 +55,14 @@ type PointSystemTemplate struct {
 }
 
 type pointSystemR struct {
-	Seasons []*pointSystemRSeasonsR
+	PointRules []*pointSystemRPointRulesR
+	Seasons    []*pointSystemRSeasonsR
 }
 
+type pointSystemRPointRulesR struct {
+	number int
+	o      *PointRuleTemplate
+}
 type pointSystemRSeasonsR struct {
 	number int
 	o      *SeasonTemplate
@@ -74,6 +78,19 @@ func (o *PointSystemTemplate) Apply(ctx context.Context, mods ...PointSystemMod)
 // setModelRels creates and sets the relationships on *models.PointSystem
 // according to the relationships in the template. Nothing is inserted into the db
 func (t PointSystemTemplate) setModelRels(o *models.PointSystem) {
+	if t.r.PointRules != nil {
+		rel := models.PointRuleSlice{}
+		for _, r := range t.r.PointRules {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.PointSystemID = o.ID // h2
+				rel.R.PointSystem = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.PointRules = rel
+	}
+
 	if t.r.Seasons != nil {
 		rel := models.SeasonSlice{}
 		for _, r := range t.r.Seasons {
@@ -97,6 +114,10 @@ func (o PointSystemTemplate) BuildSetter() *models.PointSystemSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
@@ -104,10 +125,6 @@ func (o PointSystemTemplate) BuildSetter() *models.PointSystemSetter {
 	if o.Description != nil {
 		val := o.Description()
 		m.Description = omitnull.FromNull(val)
-	}
-	if o.PositionPoints != nil {
-		val := o.PositionPoints()
-		m.PositionPoints = omit.From(val)
 	}
 	if o.IsActive != nil {
 		val := o.IsActive()
@@ -154,14 +171,14 @@ func (o PointSystemTemplate) Build() *models.PointSystem {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
 	if o.Description != nil {
 		m.Description = o.Description()
-	}
-	if o.PositionPoints != nil {
-		m.PositionPoints = o.PositionPoints()
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
@@ -210,6 +227,26 @@ func ensureCreatablePointSystem(m *models.PointSystemSetter) {
 func (o *PointSystemTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.PointSystem) error {
 	var err error
 
+	isPointRulesDone, _ := pointSystemRelPointRulesCtx.Value(ctx)
+	if !isPointRulesDone && o.r.PointRules != nil {
+		ctx = pointSystemRelPointRulesCtx.WithValue(ctx, true)
+		for _, r := range o.r.PointRules {
+			if r.o.alreadyPersisted {
+				m.R.PointRules = append(m.R.PointRules, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachPointRules(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isSeasonsDone, _ := pointSystemRelSeasonsCtx.Value(ctx)
 	if !isSeasonsDone && o.r.Seasons != nil {
 		ctx = pointSystemRelSeasonsCtx.WithValue(ctx, true)
@@ -217,12 +254,12 @@ func (o *PointSystemTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 			if r.o.alreadyPersisted {
 				m.R.Seasons = append(m.R.Seasons, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSeasons(ctx, exec, rel0...)
+				err = m.AttachSeasons(ctx, exec, rel1...)
 				if err != nil {
 					return err
 				}
@@ -323,9 +360,9 @@ type pointSystemMods struct{}
 func (m pointSystemMods) RandomizeAllColumns(f *faker.Faker) PointSystemMod {
 	return PointSystemModSlice{
 		PointSystemMods.RandomID(f),
+		PointSystemMods.RandomFrontendID(f),
 		PointSystemMods.RandomName(f),
 		PointSystemMods.RandomDescription(f),
-		PointSystemMods.RandomPositionPoints(f),
 		PointSystemMods.RandomIsActive(f),
 		PointSystemMods.RandomCreatedAt(f),
 		PointSystemMods.RandomUpdatedAt(f),
@@ -361,6 +398,37 @@ func (m pointSystemMods) RandomID(f *faker.Faker) PointSystemMod {
 	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m pointSystemMods) FrontendID(val uuid.UUID) PointSystemMod {
+	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m pointSystemMods) FrontendIDFunc(f func() uuid.UUID) PointSystemMod {
+	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m pointSystemMods) UnsetFrontendID() PointSystemMod {
+	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m pointSystemMods) RandomFrontendID(f *faker.Faker) PointSystemMod {
+	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -445,37 +513,6 @@ func (m pointSystemMods) RandomDescriptionNotNull(f *faker.Faker) PointSystemMod
 
 			val := random_string(f)
 			return null.From(val)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m pointSystemMods) PositionPoints(val types.JSON[json.RawMessage]) PointSystemMod {
-	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
-		o.PositionPoints = func() types.JSON[json.RawMessage] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m pointSystemMods) PositionPointsFunc(f func() types.JSON[json.RawMessage]) PointSystemMod {
-	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
-		o.PositionPoints = f
-	})
-}
-
-// Clear any values for the column
-func (m pointSystemMods) UnsetPositionPoints() PointSystemMod {
-	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
-		o.PositionPoints = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m pointSystemMods) RandomPositionPoints(f *faker.Faker) PointSystemMod {
-	return PointSystemModFunc(func(_ context.Context, o *PointSystemTemplate) {
-		o.PositionPoints = func() types.JSON[json.RawMessage] {
-			return random_types_JSON_json_RawMessage_(f)
 		}
 	})
 }
@@ -641,6 +678,54 @@ func (m pointSystemMods) WithParentsCascading() PointSystemMod {
 			return
 		}
 		ctx = pointSystemWithParentsCascadingCtx.WithValue(ctx, true)
+	})
+}
+
+func (m pointSystemMods) WithPointRules(number int, related *PointRuleTemplate) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.PointRules = []*pointSystemRPointRulesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m pointSystemMods) WithNewPointRules(number int, mods ...PointRuleMod) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		related := o.f.NewPointRuleWithContext(ctx, mods...)
+		m.WithPointRules(number, related).Apply(ctx, o)
+	})
+}
+
+func (m pointSystemMods) AddPointRules(number int, related *PointRuleTemplate) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.PointRules = append(o.r.PointRules, &pointSystemRPointRulesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m pointSystemMods) AddNewPointRules(number int, mods ...PointRuleMod) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		related := o.f.NewPointRuleWithContext(ctx, mods...)
+		m.AddPointRules(number, related).Apply(ctx, o)
+	})
+}
+
+func (m pointSystemMods) AddExistingPointRules(existingModels ...*models.PointRule) PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		for _, em := range existingModels {
+			o.r.PointRules = append(o.r.PointRules, &pointSystemRPointRulesR{
+				o: o.f.FromExistingPointRule(em),
+			})
+		}
+	})
+}
+
+func (m pointSystemMods) WithoutPointRules() PointSystemMod {
+	return PointSystemModFunc(func(ctx context.Context, o *PointSystemTemplate) {
+		o.r.PointRules = nil
 	})
 }
 

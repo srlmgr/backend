@@ -11,16 +11,25 @@ var SeriesErrors = &seriesErrors{
 		s:       "series_pkey",
 	},
 
-	ErrUniqueSeriesNameUnique: &UniqueConstraintError{
+	ErrUniqueSeriesFrontendIdUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "series",
-		columns: []string{"name"},
-		s:       "series_name_unique",
+		columns: []string{"frontend_id"},
+		s:       "series_frontend_id_unique",
+	},
+
+	ErrUniqueSeriesSimulationIdNameUnique: &UniqueConstraintError{
+		schema:  "",
+		table:   "series",
+		columns: []string{"simulation_id", "name"},
+		s:       "series_simulation_id_name_unique",
 	},
 }
 
 type seriesErrors struct {
 	ErrUniqueSeriesPkey *UniqueConstraintError
 
-	ErrUniqueSeriesNameUnique *UniqueConstraintError
+	ErrUniqueSeriesFrontendIdUnique *UniqueConstraintError
+
+	ErrUniqueSeriesSimulationIdNameUnique *UniqueConstraintError
 }

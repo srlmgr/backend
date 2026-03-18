@@ -24,8 +24,26 @@ var Events = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		SeasonID: column{
 			Name:      "season_id",
+			DBType:    "integer",
+			Default:   "",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		TrackLayoutID: column{
+			Name:      "track_layout_id",
 			DBType:    "integer",
 			Default:   "",
 			Comment:   "",
@@ -42,39 +60,12 @@ var Events = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		RoundNumber: column{
-			Name:      "round_number",
-			DBType:    "integer",
+		EventDate: column{
+			Name:      "event_date",
+			DBType:    "timestamp with time zone",
 			Default:   "",
 			Comment:   "",
 			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		Venue: column{
-			Name:      "venue",
-			DBType:    "text",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		StartsAt: column{
-			Name:      "starts_at",
-			DBType:    "timestamp with time zone",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		EndsAt: column{
-			Name:      "ends_at",
-			DBType:    "timestamp with time zone",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -84,6 +75,24 @@ var Events = Table[
 			Default:   "'scheduled'::text",
 			Comment:   "",
 			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		ProcessingState: column{
+			Name:      "processing_state",
+			DBType:    "text",
+			Default:   "'draft'::text",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		FinalizedAt: column{
+			Name:      "finalized_at",
+			DBType:    "timestamp with time zone",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -142,9 +151,26 @@ var Events = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		EventsSeasonIDRoundNumberUnique: index{
+		EventsFrontendIDUnique: index{
 			Type: "btree",
-			Name: "events_season_id_round_number_unique",
+			Name: "events_frontend_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "frontend_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		EventsSeasonIDNameUnique: index{
+			Type: "btree",
+			Name: "events_season_id_name_unique",
 			Columns: []indexColumn{
 				{
 					Name:         "season_id",
@@ -152,7 +178,7 @@ var Events = Table[
 					IsExpression: false,
 				},
 				{
-					Name:         "round_number",
+					Name:         "name",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -160,6 +186,40 @@ var Events = Table[
 			Unique:        true,
 			Comment:       "",
 			NullsFirst:    []bool{false, false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxEventsEventDate: index{
+			Type: "btree",
+			Name: "idx_events_event_date",
+			Columns: []indexColumn{
+				{
+					Name:         "event_date",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxEventsProcessingState: index{
+			Type: "btree",
+			Name: "idx_events_processing_state",
+			Columns: []indexColumn{
+				{
+					Name:         "processing_state",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
 			NullsDistinct: false,
 			Where:         "",
 			Include:       []string{},
@@ -181,29 +241,12 @@ var Events = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxEventsStartsAt: index{
+		IdxEventsTrackLayoutID: index{
 			Type: "btree",
-			Name: "idx_events_starts_at",
+			Name: "idx_events_track_layout_id",
 			Columns: []indexColumn{
 				{
-					Name:         "starts_at",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		IdxEventsStatus: index{
-			Type: "btree",
-			Name: "idx_events_status",
-			Columns: []indexColumn{
-				{
-					Name:         "status",
+					Name:         "track_layout_id",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -231,22 +274,36 @@ var Events = Table[
 			ForeignTable:   "seasons",
 			ForeignColumns: []string{"id"},
 		},
+		EventsEventsTrackLayoutIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "events.events_track_layout_id_fk",
+				Columns: []string{"track_layout_id"},
+				Comment: "",
+			},
+			ForeignTable:   "track_layouts",
+			ForeignColumns: []string{"id"},
+		},
 	},
 	Uniques: eventUniques{
-		EventsSeasonIDRoundNumberUnique: constraint{
-			Name:    "events_season_id_round_number_unique",
-			Columns: []string{"season_id", "round_number"},
+		EventsFrontendIDUnique: constraint{
+			Name:    "events_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
+		EventsSeasonIDNameUnique: constraint{
+			Name:    "events_season_id_name_unique",
+			Columns: []string{"season_id", "name"},
 			Comment: "",
 		},
 	},
 	Checks: eventChecks{
-		EventsDateOrderCheck: check{
+		EventsProcessingStateCheck: check{
 			constraint: constraint{
-				Name:    "events_date_order_check",
-				Columns: []string{"ends_at", "starts_at"},
+				Name:    "events_processing_state_check",
+				Columns: []string{"processing_state"},
 				Comment: "",
 			},
-			Expression: "((ends_at IS NULL) OR (starts_at IS NULL) OR (ends_at >= starts_at))",
+			Expression: "(processing_state = ANY (ARRAY['draft'::text, 'raw_imported'::text, 'preprocessed'::text, 'driver_entries_computed'::text, 'team_entries_computed'::text, 'finalized'::text]))",
 		},
 		EventsStatusCheck: check{
 			constraint: constraint{
@@ -254,74 +311,79 @@ var Events = Table[
 				Columns: []string{"status"},
 				Comment: "",
 			},
-			Expression: "(status = ANY (ARRAY['scheduled'::text, 'in_progress'::text, 'completed'::text, 'cancelled'::text, 'postponed'::text]))",
+			Expression: "(status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text]))",
 		},
 	},
 	Comment: "",
 }
 
 type eventColumns struct {
-	ID          column
-	SeasonID    column
-	Name        column
-	RoundNumber column
-	Venue       column
-	StartsAt    column
-	EndsAt      column
-	Status      column
-	CreatedAt   column
-	UpdatedAt   column
-	CreatedBy   column
-	UpdatedBy   column
+	ID              column
+	FrontendID      column
+	SeasonID        column
+	TrackLayoutID   column
+	Name            column
+	EventDate       column
+	Status          column
+	ProcessingState column
+	FinalizedAt     column
+	CreatedAt       column
+	UpdatedAt       column
+	CreatedBy       column
+	UpdatedBy       column
 }
 
 func (c eventColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.SeasonID, c.Name, c.RoundNumber, c.Venue, c.StartsAt, c.EndsAt, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeasonID, c.TrackLayoutID, c.Name, c.EventDate, c.Status, c.ProcessingState, c.FinalizedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type eventIndexes struct {
-	EventsPkey                      index
-	EventsSeasonIDRoundNumberUnique index
-	IdxEventsSeasonID               index
-	IdxEventsStartsAt               index
-	IdxEventsStatus                 index
+	EventsPkey               index
+	EventsFrontendIDUnique   index
+	EventsSeasonIDNameUnique index
+	IdxEventsEventDate       index
+	IdxEventsProcessingState index
+	IdxEventsSeasonID        index
+	IdxEventsTrackLayoutID   index
 }
 
 func (i eventIndexes) AsSlice() []index {
 	return []index{
-		i.EventsPkey, i.EventsSeasonIDRoundNumberUnique, i.IdxEventsSeasonID, i.IdxEventsStartsAt, i.IdxEventsStatus,
+		i.EventsPkey, i.EventsFrontendIDUnique, i.EventsSeasonIDNameUnique, i.IdxEventsEventDate, i.IdxEventsProcessingState, i.IdxEventsSeasonID, i.IdxEventsTrackLayoutID,
 	}
 }
 
 type eventForeignKeys struct {
-	EventsEventsSeasonIDFK foreignKey
+	EventsEventsSeasonIDFK      foreignKey
+	EventsEventsTrackLayoutIDFK foreignKey
 }
 
 func (f eventForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.EventsEventsSeasonIDFK,
+		f.EventsEventsSeasonIDFK, f.EventsEventsTrackLayoutIDFK,
 	}
 }
 
 type eventUniques struct {
-	EventsSeasonIDRoundNumberUnique constraint
+	EventsFrontendIDUnique   constraint
+	EventsSeasonIDNameUnique constraint
 }
 
 func (u eventUniques) AsSlice() []constraint {
 	return []constraint{
-		u.EventsSeasonIDRoundNumberUnique,
+		u.EventsFrontendIDUnique, u.EventsSeasonIDNameUnique,
 	}
 }
 
 type eventChecks struct {
-	EventsDateOrderCheck check
-	EventsStatusCheck    check
+	EventsProcessingStateCheck check
+	EventsStatusCheck          check
 }
 
 func (c eventChecks) AsSlice() []check {
 	return []check{
-		c.EventsDateOrderCheck, c.EventsStatusCheck,
+		c.EventsProcessingStateCheck, c.EventsStatusCheck,
 	}
 }

@@ -1,0 +1,6 @@
+BEGIN;
+
+DROP TABLE IF EXISTS point_rules;
+DROP TABLE IF EXISTS point_systems;
+
+COMMIT;

@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -37,18 +38,19 @@ func (mods EventModSlice) Apply(ctx context.Context, n *EventTemplate) {
 // EventTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type EventTemplate struct {
-	ID          func() int32
-	SeasonID    func() int32
-	Name        func() string
-	RoundNumber func() int32
-	Venue       func() null.Val[string]
-	StartsAt    func() null.Val[time.Time]
-	EndsAt      func() null.Val[time.Time]
-	Status      func() string
-	CreatedAt   func() time.Time
-	UpdatedAt   func() time.Time
-	CreatedBy   func() string
-	UpdatedBy   func() string
+	ID              func() int32
+	FrontendID      func() uuid.UUID
+	SeasonID        func() int32
+	TrackLayoutID   func() int32
+	Name            func() string
+	EventDate       func() time.Time
+	Status          func() string
+	ProcessingState func() string
+	FinalizedAt     func() null.Val[time.Time]
+	CreatedAt       func() time.Time
+	UpdatedAt       func() time.Time
+	CreatedBy       func() string
+	UpdatedBy       func() string
 
 	r eventR
 	f *Factory
@@ -57,11 +59,45 @@ type EventTemplate struct {
 }
 
 type eventR struct {
-	Season *eventRSeasonR
+	BookingEntries        []*eventRBookingEntriesR
+	EventDriverStandings  []*eventREventDriverStandingsR
+	EventProcessingAudits []*eventREventProcessingAuditsR
+	EventTeamStandings    []*eventREventTeamStandingsR
+	Season                *eventRSeasonR
+	TrackLayout           *eventRTrackLayoutR
+	ImportBatches         []*eventRImportBatchesR
+	Races                 []*eventRRacesR
 }
 
+type eventRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
+type eventREventDriverStandingsR struct {
+	number int
+	o      *EventDriverStandingTemplate
+}
+type eventREventProcessingAuditsR struct {
+	number int
+	o      *EventProcessingAuditTemplate
+}
+type eventREventTeamStandingsR struct {
+	number int
+	o      *EventTeamStandingTemplate
+}
 type eventRSeasonR struct {
 	o *SeasonTemplate
+}
+type eventRTrackLayoutR struct {
+	o *TrackLayoutTemplate
+}
+type eventRImportBatchesR struct {
+	number int
+	o      *ImportBatchTemplate
+}
+type eventRRacesR struct {
+	number int
+	o      *RaceTemplate
 }
 
 // Apply mods to the EventTemplate
@@ -74,11 +110,96 @@ func (o *EventTemplate) Apply(ctx context.Context, mods ...EventMod) {
 // setModelRels creates and sets the relationships on *models.Event
 // according to the relationships in the template. Nothing is inserted into the db
 func (t EventTemplate) setModelRels(o *models.Event) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+	}
+
+	if t.r.EventDriverStandings != nil {
+		rel := models.EventDriverStandingSlice{}
+		for _, r := range t.r.EventDriverStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventDriverStandings = rel
+	}
+
+	if t.r.EventProcessingAudits != nil {
+		rel := models.EventProcessingAuditSlice{}
+		for _, r := range t.r.EventProcessingAudits {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventProcessingAudits = rel
+	}
+
+	if t.r.EventTeamStandings != nil {
+		rel := models.EventTeamStandingSlice{}
+		for _, r := range t.r.EventTeamStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventTeamStandings = rel
+	}
+
 	if t.r.Season != nil {
 		rel := t.r.Season.o.Build()
 		rel.R.Events = append(rel.R.Events, o)
 		o.SeasonID = rel.ID // h2
 		o.R.Season = rel
+	}
+
+	if t.r.TrackLayout != nil {
+		rel := t.r.TrackLayout.o.Build()
+		rel.R.Events = append(rel.R.Events, o)
+		o.TrackLayoutID = rel.ID // h2
+		o.R.TrackLayout = rel
+	}
+
+	if t.r.ImportBatches != nil {
+		rel := models.ImportBatchSlice{}
+		for _, r := range t.r.ImportBatches {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.ImportBatches = rel
+	}
+
+	if t.r.Races != nil {
+		rel := models.RaceSlice{}
+		for _, r := range t.r.Races {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.EventID = o.ID // h2
+				rel.R.Event = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.Races = rel
 	}
 }
 
@@ -91,33 +212,37 @@ func (o EventTemplate) BuildSetter() *models.EventSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.SeasonID != nil {
 		val := o.SeasonID()
 		m.SeasonID = omit.From(val)
+	}
+	if o.TrackLayoutID != nil {
+		val := o.TrackLayoutID()
+		m.TrackLayoutID = omit.From(val)
 	}
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
 	}
-	if o.RoundNumber != nil {
-		val := o.RoundNumber()
-		m.RoundNumber = omit.From(val)
-	}
-	if o.Venue != nil {
-		val := o.Venue()
-		m.Venue = omitnull.FromNull(val)
-	}
-	if o.StartsAt != nil {
-		val := o.StartsAt()
-		m.StartsAt = omitnull.FromNull(val)
-	}
-	if o.EndsAt != nil {
-		val := o.EndsAt()
-		m.EndsAt = omitnull.FromNull(val)
+	if o.EventDate != nil {
+		val := o.EventDate()
+		m.EventDate = omit.From(val)
 	}
 	if o.Status != nil {
 		val := o.Status()
 		m.Status = omit.From(val)
+	}
+	if o.ProcessingState != nil {
+		val := o.ProcessingState()
+		m.ProcessingState = omit.From(val)
+	}
+	if o.FinalizedAt != nil {
+		val := o.FinalizedAt()
+		m.FinalizedAt = omitnull.FromNull(val)
 	}
 	if o.CreatedAt != nil {
 		val := o.CreatedAt()
@@ -160,26 +285,29 @@ func (o EventTemplate) Build() *models.Event {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.SeasonID != nil {
 		m.SeasonID = o.SeasonID()
+	}
+	if o.TrackLayoutID != nil {
+		m.TrackLayoutID = o.TrackLayoutID()
 	}
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
-	if o.RoundNumber != nil {
-		m.RoundNumber = o.RoundNumber()
-	}
-	if o.Venue != nil {
-		m.Venue = o.Venue()
-	}
-	if o.StartsAt != nil {
-		m.StartsAt = o.StartsAt()
-	}
-	if o.EndsAt != nil {
-		m.EndsAt = o.EndsAt()
+	if o.EventDate != nil {
+		m.EventDate = o.EventDate()
 	}
 	if o.Status != nil {
 		m.Status = o.Status()
+	}
+	if o.ProcessingState != nil {
+		m.ProcessingState = o.ProcessingState()
+	}
+	if o.FinalizedAt != nil {
+		m.FinalizedAt = o.FinalizedAt()
 	}
 	if o.CreatedAt != nil {
 		m.CreatedAt = o.CreatedAt()
@@ -217,13 +345,17 @@ func ensureCreatableEvent(m *models.EventSetter) {
 		val := random_int32(nil)
 		m.SeasonID = omit.From(val)
 	}
+	if !(m.TrackLayoutID.IsValue()) {
+		val := random_int32(nil)
+		m.TrackLayoutID = omit.From(val)
+	}
 	if !(m.Name.IsValue()) {
 		val := random_string(nil)
 		m.Name = omit.From(val)
 	}
-	if !(m.RoundNumber.IsValue()) {
-		val := random_int32(nil)
-		m.RoundNumber = omit.From(val)
+	if !(m.EventDate.IsValue()) {
+		val := random_time_Time(nil)
+		m.EventDate = omit.From(val)
 	}
 }
 
@@ -232,6 +364,126 @@ func ensureCreatableEvent(m *models.EventSetter) {
 // any required relationship should have already exist on the model
 func (o *EventTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Event) error {
 	var err error
+
+	isBookingEntriesDone, _ := eventRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = eventRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventDriverStandingsDone, _ := eventRelEventDriverStandingsCtx.Value(ctx)
+	if !isEventDriverStandingsDone && o.r.EventDriverStandings != nil {
+		ctx = eventRelEventDriverStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventDriverStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventDriverStandings = append(m.R.EventDriverStandings, r.o.Build())
+			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventDriverStandings(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventProcessingAuditsDone, _ := eventRelEventProcessingAuditsCtx.Value(ctx)
+	if !isEventProcessingAuditsDone && o.r.EventProcessingAudits != nil {
+		ctx = eventRelEventProcessingAuditsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventProcessingAudits {
+			if r.o.alreadyPersisted {
+				m.R.EventProcessingAudits = append(m.R.EventProcessingAudits, r.o.Build())
+			} else {
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventProcessingAudits(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventTeamStandingsDone, _ := eventRelEventTeamStandingsCtx.Value(ctx)
+	if !isEventTeamStandingsDone && o.r.EventTeamStandings != nil {
+		ctx = eventRelEventTeamStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventTeamStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventTeamStandings = append(m.R.EventTeamStandings, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventTeamStandings(ctx, exec, rel3...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isImportBatchesDone, _ := eventRelImportBatchesCtx.Value(ctx)
+	if !isImportBatchesDone && o.r.ImportBatches != nil {
+		ctx = eventRelImportBatchesCtx.WithValue(ctx, true)
+		for _, r := range o.r.ImportBatches {
+			if r.o.alreadyPersisted {
+				m.R.ImportBatches = append(m.R.ImportBatches, r.o.Build())
+			} else {
+				rel6, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachImportBatches(ctx, exec, rel6...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isRacesDone, _ := eventRelRacesCtx.Value(ctx)
+	if !isRacesDone && o.r.Races != nil {
+		ctx = eventRelRacesCtx.WithValue(ctx, true)
+		for _, r := range o.r.Races {
+			if r.o.alreadyPersisted {
+				m.R.Races = append(m.R.Races, r.o.Build())
+			} else {
+				rel7, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachRaces(ctx, exec, rel7...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return err
 }
@@ -247,25 +499,43 @@ func (o *EventTemplate) Create(ctx context.Context, exec bob.Executor) (*models.
 		EventMods.WithNewSeason().Apply(ctx, o)
 	}
 
-	var rel0 *models.Season
+	var rel4 *models.Season
 
 	if o.r.Season.o.alreadyPersisted {
-		rel0 = o.r.Season.o.Build()
+		rel4 = o.r.Season.o.Build()
 	} else {
-		rel0, err = o.r.Season.o.Create(ctx, exec)
+		rel4, err = o.r.Season.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.SeasonID = omit.From(rel0.ID)
+	opt.SeasonID = omit.From(rel4.ID)
+
+	if o.r.TrackLayout == nil {
+		EventMods.WithNewTrackLayout().Apply(ctx, o)
+	}
+
+	var rel5 *models.TrackLayout
+
+	if o.r.TrackLayout.o.alreadyPersisted {
+		rel5 = o.r.TrackLayout.o.Build()
+	} else {
+		rel5, err = o.r.TrackLayout.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.TrackLayoutID = omit.From(rel5.ID)
 
 	m, err := models.Events.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Season = rel0
+	m.R.Season = rel4
+	m.R.TrackLayout = rel5
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -345,13 +615,14 @@ type eventMods struct{}
 func (m eventMods) RandomizeAllColumns(f *faker.Faker) EventMod {
 	return EventModSlice{
 		EventMods.RandomID(f),
+		EventMods.RandomFrontendID(f),
 		EventMods.RandomSeasonID(f),
+		EventMods.RandomTrackLayoutID(f),
 		EventMods.RandomName(f),
-		EventMods.RandomRoundNumber(f),
-		EventMods.RandomVenue(f),
-		EventMods.RandomStartsAt(f),
-		EventMods.RandomEndsAt(f),
+		EventMods.RandomEventDate(f),
 		EventMods.RandomStatus(f),
+		EventMods.RandomProcessingState(f),
+		EventMods.RandomFinalizedAt(f),
 		EventMods.RandomCreatedAt(f),
 		EventMods.RandomUpdatedAt(f),
 		EventMods.RandomCreatedBy(f),
@@ -391,6 +662,37 @@ func (m eventMods) RandomID(f *faker.Faker) EventMod {
 }
 
 // Set the model columns to this value
+func (m eventMods) FrontendID(val uuid.UUID) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m eventMods) FrontendIDFunc(f func() uuid.UUID) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m eventMods) UnsetFrontendID() EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m eventMods) RandomFrontendID(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
+		}
+	})
+}
+
+// Set the model columns to this value
 func (m eventMods) SeasonID(val int32) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
 		o.SeasonID = func() int32 { return val }
@@ -416,6 +718,37 @@ func (m eventMods) UnsetSeasonID() EventMod {
 func (m eventMods) RandomSeasonID(f *faker.Faker) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
 		o.SeasonID = func() int32 {
+			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m eventMods) TrackLayoutID(val int32) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.TrackLayoutID = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m eventMods) TrackLayoutIDFunc(f func() int32) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.TrackLayoutID = f
+	})
+}
+
+// Clear any values for the column
+func (m eventMods) UnsetTrackLayoutID() EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.TrackLayoutID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m eventMods) RandomTrackLayoutID(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.TrackLayoutID = func() int32 {
 			return random_int32(f)
 		}
 	})
@@ -453,191 +786,32 @@ func (m eventMods) RandomName(f *faker.Faker) EventMod {
 }
 
 // Set the model columns to this value
-func (m eventMods) RoundNumber(val int32) EventMod {
+func (m eventMods) EventDate(val time.Time) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.RoundNumber = func() int32 { return val }
+		o.EventDate = func() time.Time { return val }
 	})
 }
 
 // Set the Column from the function
-func (m eventMods) RoundNumberFunc(f func() int32) EventMod {
+func (m eventMods) EventDateFunc(f func() time.Time) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.RoundNumber = f
+		o.EventDate = f
 	})
 }
 
 // Clear any values for the column
-func (m eventMods) UnsetRoundNumber() EventMod {
+func (m eventMods) UnsetEventDate() EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.RoundNumber = nil
+		o.EventDate = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m eventMods) RandomRoundNumber(f *faker.Faker) EventMod {
+func (m eventMods) RandomEventDate(f *faker.Faker) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.RoundNumber = func() int32 {
-			return random_int32(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m eventMods) Venue(val null.Val[string]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.Venue = func() null.Val[string] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m eventMods) VenueFunc(f func() null.Val[string]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.Venue = f
-	})
-}
-
-// Clear any values for the column
-func (m eventMods) UnsetVenue() EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.Venue = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m eventMods) RandomVenue(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.Venue = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m eventMods) RandomVenueNotNull(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.Venue = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m eventMods) StartsAt(val null.Val[time.Time]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.StartsAt = func() null.Val[time.Time] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m eventMods) StartsAtFunc(f func() null.Val[time.Time]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.StartsAt = f
-	})
-}
-
-// Clear any values for the column
-func (m eventMods) UnsetStartsAt() EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.StartsAt = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m eventMods) RandomStartsAt(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.StartsAt = func() null.Val[time.Time] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_time_Time(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m eventMods) RandomStartsAtNotNull(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.StartsAt = func() null.Val[time.Time] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_time_Time(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m eventMods) EndsAt(val null.Val[time.Time]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.EndsAt = func() null.Val[time.Time] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m eventMods) EndsAtFunc(f func() null.Val[time.Time]) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.EndsAt = f
-	})
-}
-
-// Clear any values for the column
-func (m eventMods) UnsetEndsAt() EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.EndsAt = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m eventMods) RandomEndsAt(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.EndsAt = func() null.Val[time.Time] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_time_Time(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m eventMods) RandomEndsAtNotNull(f *faker.Faker) EventMod {
-	return EventModFunc(func(_ context.Context, o *EventTemplate) {
-		o.EndsAt = func() null.Val[time.Time] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_time_Time(f)
-			return null.From(val)
+		o.EventDate = func() time.Time {
+			return random_time_Time(f)
 		}
 	})
 }
@@ -669,6 +843,90 @@ func (m eventMods) RandomStatus(f *faker.Faker) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
 		o.Status = func() string {
 			return random_string(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m eventMods) ProcessingState(val string) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.ProcessingState = func() string { return val }
+	})
+}
+
+// Set the Column from the function
+func (m eventMods) ProcessingStateFunc(f func() string) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.ProcessingState = f
+	})
+}
+
+// Clear any values for the column
+func (m eventMods) UnsetProcessingState() EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.ProcessingState = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m eventMods) RandomProcessingState(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.ProcessingState = func() string {
+			return random_string(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m eventMods) FinalizedAt(val null.Val[time.Time]) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FinalizedAt = func() null.Val[time.Time] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m eventMods) FinalizedAtFunc(f func() null.Val[time.Time]) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FinalizedAt = f
+	})
+}
+
+// Clear any values for the column
+func (m eventMods) UnsetFinalizedAt() EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FinalizedAt = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m eventMods) RandomFinalizedAt(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FinalizedAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m eventMods) RandomFinalizedAtNotNull(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.FinalizedAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
 		}
 	})
 }
@@ -808,6 +1066,11 @@ func (m eventMods) WithParentsCascading() EventMod {
 			related := o.f.NewSeasonWithContext(ctx, SeasonMods.WithParentsCascading())
 			m.WithSeason(related).Apply(ctx, o)
 		}
+		{
+
+			related := o.f.NewTrackLayoutWithContext(ctx, TrackLayoutMods.WithParentsCascading())
+			m.WithTrackLayout(related).Apply(ctx, o)
+		}
 	})
 }
 
@@ -838,5 +1101,323 @@ func (m eventMods) WithExistingSeason(em *models.Season) EventMod {
 func (m eventMods) WithoutSeason() EventMod {
 	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
 		o.r.Season = nil
+	})
+}
+
+func (m eventMods) WithTrackLayout(rel *TrackLayoutTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.TrackLayout = &eventRTrackLayoutR{
+			o: rel,
+		}
+	})
+}
+
+func (m eventMods) WithNewTrackLayout(mods ...TrackLayoutMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewTrackLayoutWithContext(ctx, mods...)
+
+		m.WithTrackLayout(related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) WithExistingTrackLayout(em *models.TrackLayout) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.TrackLayout = &eventRTrackLayoutR{
+			o: o.f.FromExistingTrackLayout(em),
+		}
+	})
+}
+
+func (m eventMods) WithoutTrackLayout() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.TrackLayout = nil
+	})
+}
+
+func (m eventMods) WithBookingEntries(number int, related *BookingEntryTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.BookingEntries = []*eventRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddBookingEntries(number int, related *BookingEntryTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &eventRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &eventRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutBookingEntries() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.BookingEntries = nil
+	})
+}
+
+func (m eventMods) WithEventDriverStandings(number int, related *EventDriverStandingTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventDriverStandings = []*eventREventDriverStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewEventDriverStandings(number int, mods ...EventDriverStandingMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.WithEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddEventDriverStandings(number int, related *EventDriverStandingTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventDriverStandings = append(o.r.EventDriverStandings, &eventREventDriverStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewEventDriverStandings(number int, mods ...EventDriverStandingMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.AddEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingEventDriverStandings(existingModels ...*models.EventDriverStanding) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.EventDriverStandings = append(o.r.EventDriverStandings, &eventREventDriverStandingsR{
+				o: o.f.FromExistingEventDriverStanding(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutEventDriverStandings() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventDriverStandings = nil
+	})
+}
+
+func (m eventMods) WithEventProcessingAudits(number int, related *EventProcessingAuditTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventProcessingAudits = []*eventREventProcessingAuditsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewEventProcessingAudits(number int, mods ...EventProcessingAuditMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventProcessingAuditWithContext(ctx, mods...)
+		m.WithEventProcessingAudits(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddEventProcessingAudits(number int, related *EventProcessingAuditTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventProcessingAudits = append(o.r.EventProcessingAudits, &eventREventProcessingAuditsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewEventProcessingAudits(number int, mods ...EventProcessingAuditMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventProcessingAuditWithContext(ctx, mods...)
+		m.AddEventProcessingAudits(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingEventProcessingAudits(existingModels ...*models.EventProcessingAudit) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.EventProcessingAudits = append(o.r.EventProcessingAudits, &eventREventProcessingAuditsR{
+				o: o.f.FromExistingEventProcessingAudit(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutEventProcessingAudits() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventProcessingAudits = nil
+	})
+}
+
+func (m eventMods) WithEventTeamStandings(number int, related *EventTeamStandingTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventTeamStandings = []*eventREventTeamStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewEventTeamStandings(number int, mods ...EventTeamStandingMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.WithEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddEventTeamStandings(number int, related *EventTeamStandingTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventTeamStandings = append(o.r.EventTeamStandings, &eventREventTeamStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewEventTeamStandings(number int, mods ...EventTeamStandingMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.AddEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingEventTeamStandings(existingModels ...*models.EventTeamStanding) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.EventTeamStandings = append(o.r.EventTeamStandings, &eventREventTeamStandingsR{
+				o: o.f.FromExistingEventTeamStanding(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutEventTeamStandings() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.EventTeamStandings = nil
+	})
+}
+
+func (m eventMods) WithImportBatches(number int, related *ImportBatchTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.ImportBatches = []*eventRImportBatchesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewImportBatches(number int, mods ...ImportBatchMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewImportBatchWithContext(ctx, mods...)
+		m.WithImportBatches(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddImportBatches(number int, related *ImportBatchTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.ImportBatches = append(o.r.ImportBatches, &eventRImportBatchesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewImportBatches(number int, mods ...ImportBatchMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewImportBatchWithContext(ctx, mods...)
+		m.AddImportBatches(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingImportBatches(existingModels ...*models.ImportBatch) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.ImportBatches = append(o.r.ImportBatches, &eventRImportBatchesR{
+				o: o.f.FromExistingImportBatch(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutImportBatches() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.ImportBatches = nil
+	})
+}
+
+func (m eventMods) WithRaces(number int, related *RaceTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.Races = []*eventRRacesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m eventMods) WithNewRaces(number int, mods ...RaceMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewRaceWithContext(ctx, mods...)
+		m.WithRaces(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddRaces(number int, related *RaceTemplate) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.Races = append(o.r.Races, &eventRRacesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m eventMods) AddNewRaces(number int, mods ...RaceMod) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		related := o.f.NewRaceWithContext(ctx, mods...)
+		m.AddRaces(number, related).Apply(ctx, o)
+	})
+}
+
+func (m eventMods) AddExistingRaces(existingModels ...*models.Race) EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		for _, em := range existingModels {
+			o.r.Races = append(o.r.Races, &eventRRacesR{
+				o: o.f.FromExistingRace(em),
+			})
+		}
+	})
+}
+
+func (m eventMods) WithoutRaces() EventMod {
+	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
+		o.r.Races = nil
 	})
 }

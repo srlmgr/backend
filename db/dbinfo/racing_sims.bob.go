@@ -24,6 +24,15 @@ var RacingSims = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		Name: column{
 			Name:      "name",
 			DBType:    "text",
@@ -36,16 +45,7 @@ var RacingSims = Table[
 		SupportedImportFormats: column{
 			Name:      "supported_import_formats",
 			DBType:    "text[]",
-			Default:   "'{}'::text[]",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		DataMapping: column{
-			Name:      "data_mapping",
-			DBType:    "jsonb",
-			Default:   "'{}'::jsonb",
+			Default:   "ARRAY['json'::text, 'csv'::text]",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -132,6 +132,23 @@ var RacingSims = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		RacingSimsFrontendIDUnique: index{
+			Type: "btree",
+			Name: "racing_sims_frontend_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "frontend_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
 		RacingSimsNameUnique: index{
 			Type: "btree",
 			Name: "racing_sims_name_unique",
@@ -157,21 +174,35 @@ var RacingSims = Table[
 	},
 
 	Uniques: racingSimUniques{
+		RacingSimsFrontendIDUnique: constraint{
+			Name:    "racing_sims_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
 		RacingSimsNameUnique: constraint{
 			Name:    "racing_sims_name_unique",
 			Columns: []string{"name"},
 			Comment: "",
 		},
 	},
-
+	Checks: racingSimChecks{
+		RacingSimsSupportedImportFormatsCheck: check{
+			constraint: constraint{
+				Name:    "racing_sims_supported_import_formats_check",
+				Columns: []string{"supported_import_formats"},
+				Comment: "",
+			},
+			Expression: "(supported_import_formats <@ ARRAY['json'::text, 'csv'::text])",
+		},
+	},
 	Comment: "",
 }
 
 type racingSimColumns struct {
 	ID                     column
+	FrontendID             column
 	Name                   column
 	SupportedImportFormats column
-	DataMapping            column
 	IsActive               column
 	CreatedAt              column
 	UpdatedAt              column
@@ -181,19 +212,20 @@ type racingSimColumns struct {
 
 func (c racingSimColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.SupportedImportFormats, c.DataMapping, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.Name, c.SupportedImportFormats, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type racingSimIndexes struct {
-	RacingSimsPkey        index
-	IdxRacingSimsIsActive index
-	RacingSimsNameUnique  index
+	RacingSimsPkey             index
+	IdxRacingSimsIsActive      index
+	RacingSimsFrontendIDUnique index
+	RacingSimsNameUnique       index
 }
 
 func (i racingSimIndexes) AsSlice() []index {
 	return []index{
-		i.RacingSimsPkey, i.IdxRacingSimsIsActive, i.RacingSimsNameUnique,
+		i.RacingSimsPkey, i.IdxRacingSimsIsActive, i.RacingSimsFrontendIDUnique, i.RacingSimsNameUnique,
 	}
 }
 
@@ -204,17 +236,22 @@ func (f racingSimForeignKeys) AsSlice() []foreignKey {
 }
 
 type racingSimUniques struct {
-	RacingSimsNameUnique constraint
+	RacingSimsFrontendIDUnique constraint
+	RacingSimsNameUnique       constraint
 }
 
 func (u racingSimUniques) AsSlice() []constraint {
 	return []constraint{
-		u.RacingSimsNameUnique,
+		u.RacingSimsFrontendIDUnique, u.RacingSimsNameUnique,
 	}
 }
 
-type racingSimChecks struct{}
+type racingSimChecks struct {
+	RacingSimsSupportedImportFormatsCheck check
+}
 
 func (c racingSimChecks) AsSlice() []check {
-	return []check{}
+	return []check{
+		c.RacingSimsSupportedImportFormatsCheck,
+	}
 }

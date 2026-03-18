@@ -24,6 +24,24 @@ var Serieses = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		SimulationID: column{
+			Name:      "simulation_id",
+			DBType:    "integer",
+			Default:   "",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		Name: column{
 			Name:      "name",
 			DBType:    "text",
@@ -36,15 +54,6 @@ var Serieses = Table[
 		Description: column{
 			Name:      "description",
 			DBType:    "text",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		SimulationID: column{
-			Name:      "simulation_id",
-			DBType:    "integer",
 			Default:   "NULL",
 			Comment:   "",
 			Nullable:  true,
@@ -149,10 +158,32 @@ var Serieses = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		SeriesNameUnique: index{
+		SeriesFrontendIDUnique: index{
 			Type: "btree",
-			Name: "series_name_unique",
+			Name: "series_frontend_id_unique",
 			Columns: []indexColumn{
+				{
+					Name:         "frontend_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		SeriesSimulationIDNameUnique: index{
+			Type: "btree",
+			Name: "series_simulation_id_name_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "simulation_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
 				{
 					Name:         "name",
 					Desc:         null.FromCond(false, true),
@@ -161,7 +192,7 @@ var Serieses = Table[
 			},
 			Unique:        true,
 			Comment:       "",
-			NullsFirst:    []bool{false},
+			NullsFirst:    []bool{false, false},
 			NullsDistinct: false,
 			Where:         "",
 			Include:       []string{},
@@ -184,9 +215,14 @@ var Serieses = Table[
 		},
 	},
 	Uniques: seriesUniques{
-		SeriesNameUnique: constraint{
-			Name:    "series_name_unique",
-			Columns: []string{"name"},
+		SeriesFrontendIDUnique: constraint{
+			Name:    "series_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
+		SeriesSimulationIDNameUnique: constraint{
+			Name:    "series_simulation_id_name_unique",
+			Columns: []string{"simulation_id", "name"},
 			Comment: "",
 		},
 	},
@@ -196,9 +232,10 @@ var Serieses = Table[
 
 type seriesColumns struct {
 	ID           column
+	FrontendID   column
+	SimulationID column
 	Name         column
 	Description  column
-	SimulationID column
 	IsActive     column
 	CreatedAt    column
 	UpdatedAt    column
@@ -208,20 +245,21 @@ type seriesColumns struct {
 
 func (c seriesColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Description, c.SimulationID, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SimulationID, c.Name, c.Description, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type seriesIndexes struct {
-	SeriesPkey            index
-	IdxSeriesIsActive     index
-	IdxSeriesSimulationID index
-	SeriesNameUnique      index
+	SeriesPkey                   index
+	IdxSeriesIsActive            index
+	IdxSeriesSimulationID        index
+	SeriesFrontendIDUnique       index
+	SeriesSimulationIDNameUnique index
 }
 
 func (i seriesIndexes) AsSlice() []index {
 	return []index{
-		i.SeriesPkey, i.IdxSeriesIsActive, i.IdxSeriesSimulationID, i.SeriesNameUnique,
+		i.SeriesPkey, i.IdxSeriesIsActive, i.IdxSeriesSimulationID, i.SeriesFrontendIDUnique, i.SeriesSimulationIDNameUnique,
 	}
 }
 
@@ -236,12 +274,13 @@ func (f seriesForeignKeys) AsSlice() []foreignKey {
 }
 
 type seriesUniques struct {
-	SeriesNameUnique constraint
+	SeriesFrontendIDUnique       constraint
+	SeriesSimulationIDNameUnique constraint
 }
 
 func (u seriesUniques) AsSlice() []constraint {
 	return []constraint{
-		u.SeriesNameUnique,
+		u.SeriesFrontendIDUnique, u.SeriesSimulationIDNameUnique,
 	}
 }
 

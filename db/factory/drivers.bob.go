@@ -5,7 +5,6 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/types"
 )
 
 type DriverMod interface {
@@ -44,18 +42,51 @@ type DriverTemplate struct {
 	FrontendID       func() uuid.UUID
 	ExternalID       func() string
 	Name             func() string
-	SimulationIds    func() types.JSON[json.RawMessage]
 	IsActive         func() bool
-	JoinedAt         func() time.Time
 	LastImportedFrom func() null.Val[string]
 	CreatedAt        func() time.Time
 	UpdatedAt        func() time.Time
 	CreatedBy        func() string
 	UpdatedBy        func() string
 
+	r driverR
 	f *Factory
 
 	alreadyPersisted bool
+}
+
+type driverR struct {
+	BookingEntries        []*driverRBookingEntriesR
+	DriverSimulationIds   []*driverRDriverSimulationIdsR
+	EventDriverStandings  []*driverREventDriverStandingsR
+	ResultEntries         []*driverRResultEntriesR
+	SeasonDriverStandings []*driverRSeasonDriverStandingsR
+	TeamDrivers           []*driverRTeamDriversR
+}
+
+type driverRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
+type driverRDriverSimulationIdsR struct {
+	number int
+	o      *DriverSimulationIDTemplate
+}
+type driverREventDriverStandingsR struct {
+	number int
+	o      *EventDriverStandingTemplate
+}
+type driverRResultEntriesR struct {
+	number int
+	o      *ResultEntryTemplate
+}
+type driverRSeasonDriverStandingsR struct {
+	number int
+	o      *SeasonDriverStandingTemplate
+}
+type driverRTeamDriversR struct {
+	number int
+	o      *TeamDriverTemplate
 }
 
 // Apply mods to the DriverTemplate
@@ -67,7 +98,85 @@ func (o *DriverTemplate) Apply(ctx context.Context, mods ...DriverMod) {
 
 // setModelRels creates and sets the relationships on *models.Driver
 // according to the relationships in the template. Nothing is inserted into the db
-func (t DriverTemplate) setModelRels(o *models.Driver) {}
+func (t DriverTemplate) setModelRels(o *models.Driver) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = null.From(o.ID) // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+	}
+
+	if t.r.DriverSimulationIds != nil {
+		rel := models.DriverSimulationIDSlice{}
+		for _, r := range t.r.DriverSimulationIds {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = o.ID // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.DriverSimulationIds = rel
+	}
+
+	if t.r.EventDriverStandings != nil {
+		rel := models.EventDriverStandingSlice{}
+		for _, r := range t.r.EventDriverStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = o.ID // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventDriverStandings = rel
+	}
+
+	if t.r.ResultEntries != nil {
+		rel := models.ResultEntrySlice{}
+		for _, r := range t.r.ResultEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = null.From(o.ID) // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.ResultEntries = rel
+	}
+
+	if t.r.SeasonDriverStandings != nil {
+		rel := models.SeasonDriverStandingSlice{}
+		for _, r := range t.r.SeasonDriverStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = o.ID // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SeasonDriverStandings = rel
+	}
+
+	if t.r.TeamDrivers != nil {
+		rel := models.TeamDriverSlice{}
+		for _, r := range t.r.TeamDrivers {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.DriverID = o.ID // h2
+				rel.R.Driver = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.TeamDrivers = rel
+	}
+}
 
 // BuildSetter returns an *models.DriverSetter
 // this does nothing with the relationship templates
@@ -90,17 +199,9 @@ func (o DriverTemplate) BuildSetter() *models.DriverSetter {
 		val := o.Name()
 		m.Name = omit.From(val)
 	}
-	if o.SimulationIds != nil {
-		val := o.SimulationIds()
-		m.SimulationIds = omit.From(val)
-	}
 	if o.IsActive != nil {
 		val := o.IsActive()
 		m.IsActive = omit.From(val)
-	}
-	if o.JoinedAt != nil {
-		val := o.JoinedAt()
-		m.JoinedAt = omit.From(val)
 	}
 	if o.LastImportedFrom != nil {
 		val := o.LastImportedFrom()
@@ -156,14 +257,8 @@ func (o DriverTemplate) Build() *models.Driver {
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
-	if o.SimulationIds != nil {
-		m.SimulationIds = o.SimulationIds()
-	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
-	}
-	if o.JoinedAt != nil {
-		m.JoinedAt = o.JoinedAt()
 	}
 	if o.LastImportedFrom != nil {
 		m.LastImportedFrom = o.LastImportedFrom()
@@ -215,6 +310,126 @@ func ensureCreatableDriver(m *models.DriverSetter) {
 // any required relationship should have already exist on the model
 func (o *DriverTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Driver) error {
 	var err error
+
+	isBookingEntriesDone, _ := driverRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = driverRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isDriverSimulationIdsDone, _ := driverRelDriverSimulationIdsCtx.Value(ctx)
+	if !isDriverSimulationIdsDone && o.r.DriverSimulationIds != nil {
+		ctx = driverRelDriverSimulationIdsCtx.WithValue(ctx, true)
+		for _, r := range o.r.DriverSimulationIds {
+			if r.o.alreadyPersisted {
+				m.R.DriverSimulationIds = append(m.R.DriverSimulationIds, r.o.Build())
+			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachDriverSimulationIds(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventDriverStandingsDone, _ := driverRelEventDriverStandingsCtx.Value(ctx)
+	if !isEventDriverStandingsDone && o.r.EventDriverStandings != nil {
+		ctx = driverRelEventDriverStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventDriverStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventDriverStandings = append(m.R.EventDriverStandings, r.o.Build())
+			} else {
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventDriverStandings(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isResultEntriesDone, _ := driverRelResultEntriesCtx.Value(ctx)
+	if !isResultEntriesDone && o.r.ResultEntries != nil {
+		ctx = driverRelResultEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.ResultEntries {
+			if r.o.alreadyPersisted {
+				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachResultEntries(ctx, exec, rel3...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSeasonDriverStandingsDone, _ := driverRelSeasonDriverStandingsCtx.Value(ctx)
+	if !isSeasonDriverStandingsDone && o.r.SeasonDriverStandings != nil {
+		ctx = driverRelSeasonDriverStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.SeasonDriverStandings {
+			if r.o.alreadyPersisted {
+				m.R.SeasonDriverStandings = append(m.R.SeasonDriverStandings, r.o.Build())
+			} else {
+				rel4, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasonDriverStandings(ctx, exec, rel4...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isTeamDriversDone, _ := driverRelTeamDriversCtx.Value(ctx)
+	if !isTeamDriversDone && o.r.TeamDrivers != nil {
+		ctx = driverRelTeamDriversCtx.WithValue(ctx, true)
+		for _, r := range o.r.TeamDrivers {
+			if r.o.alreadyPersisted {
+				m.R.TeamDrivers = append(m.R.TeamDrivers, r.o.Build())
+			} else {
+				rel5, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachTeamDrivers(ctx, exec, rel5...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return err
 }
@@ -312,9 +527,7 @@ func (m driverMods) RandomizeAllColumns(f *faker.Faker) DriverMod {
 		DriverMods.RandomFrontendID(f),
 		DriverMods.RandomExternalID(f),
 		DriverMods.RandomName(f),
-		DriverMods.RandomSimulationIds(f),
 		DriverMods.RandomIsActive(f),
-		DriverMods.RandomJoinedAt(f),
 		DriverMods.RandomLastImportedFrom(f),
 		DriverMods.RandomCreatedAt(f),
 		DriverMods.RandomUpdatedAt(f),
@@ -448,37 +661,6 @@ func (m driverMods) RandomName(f *faker.Faker) DriverMod {
 }
 
 // Set the model columns to this value
-func (m driverMods) SimulationIds(val types.JSON[json.RawMessage]) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = func() types.JSON[json.RawMessage] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m driverMods) SimulationIdsFunc(f func() types.JSON[json.RawMessage]) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = f
-	})
-}
-
-// Clear any values for the column
-func (m driverMods) UnsetSimulationIds() DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m driverMods) RandomSimulationIds(f *faker.Faker) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.SimulationIds = func() types.JSON[json.RawMessage] {
-			return random_types_JSON_json_RawMessage_(f)
-		}
-	})
-}
-
-// Set the model columns to this value
 func (m driverMods) IsActive(val bool) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
 		o.IsActive = func() bool { return val }
@@ -505,37 +687,6 @@ func (m driverMods) RandomIsActive(f *faker.Faker) DriverMod {
 	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
 		o.IsActive = func() bool {
 			return random_bool(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m driverMods) JoinedAt(val time.Time) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.JoinedAt = func() time.Time { return val }
-	})
-}
-
-// Set the Column from the function
-func (m driverMods) JoinedAtFunc(f func() time.Time) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.JoinedAt = f
-	})
-}
-
-// Clear any values for the column
-func (m driverMods) UnsetJoinedAt() DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.JoinedAt = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m driverMods) RandomJoinedAt(f *faker.Faker) DriverMod {
-	return DriverModFunc(func(_ context.Context, o *DriverTemplate) {
-		o.JoinedAt = func() time.Time {
-			return random_time_Time(f)
 		}
 	})
 }
@@ -723,5 +874,293 @@ func (m driverMods) WithParentsCascading() DriverMod {
 			return
 		}
 		ctx = driverWithParentsCascadingCtx.WithValue(ctx, true)
+	})
+}
+
+func (m driverMods) WithBookingEntries(number int, related *BookingEntryTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.BookingEntries = []*driverRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddBookingEntries(number int, related *BookingEntryTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &driverRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &driverRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutBookingEntries() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.BookingEntries = nil
+	})
+}
+
+func (m driverMods) WithDriverSimulationIds(number int, related *DriverSimulationIDTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.DriverSimulationIds = []*driverRDriverSimulationIdsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewDriverSimulationIds(number int, mods ...DriverSimulationIDMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
+		m.WithDriverSimulationIds(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddDriverSimulationIds(number int, related *DriverSimulationIDTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.DriverSimulationIds = append(o.r.DriverSimulationIds, &driverRDriverSimulationIdsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewDriverSimulationIds(number int, mods ...DriverSimulationIDMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
+		m.AddDriverSimulationIds(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingDriverSimulationIds(existingModels ...*models.DriverSimulationID) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.DriverSimulationIds = append(o.r.DriverSimulationIds, &driverRDriverSimulationIdsR{
+				o: o.f.FromExistingDriverSimulationID(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutDriverSimulationIds() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.DriverSimulationIds = nil
+	})
+}
+
+func (m driverMods) WithEventDriverStandings(number int, related *EventDriverStandingTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.EventDriverStandings = []*driverREventDriverStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewEventDriverStandings(number int, mods ...EventDriverStandingMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.WithEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddEventDriverStandings(number int, related *EventDriverStandingTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.EventDriverStandings = append(o.r.EventDriverStandings, &driverREventDriverStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewEventDriverStandings(number int, mods ...EventDriverStandingMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.AddEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingEventDriverStandings(existingModels ...*models.EventDriverStanding) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.EventDriverStandings = append(o.r.EventDriverStandings, &driverREventDriverStandingsR{
+				o: o.f.FromExistingEventDriverStanding(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutEventDriverStandings() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.EventDriverStandings = nil
+	})
+}
+
+func (m driverMods) WithResultEntries(number int, related *ResultEntryTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.ResultEntries = []*driverRResultEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewResultEntries(number int, mods ...ResultEntryMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewResultEntryWithContext(ctx, mods...)
+		m.WithResultEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddResultEntries(number int, related *ResultEntryTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.ResultEntries = append(o.r.ResultEntries, &driverRResultEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewResultEntries(number int, mods ...ResultEntryMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewResultEntryWithContext(ctx, mods...)
+		m.AddResultEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingResultEntries(existingModels ...*models.ResultEntry) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.ResultEntries = append(o.r.ResultEntries, &driverRResultEntriesR{
+				o: o.f.FromExistingResultEntry(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutResultEntries() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.ResultEntries = nil
+	})
+}
+
+func (m driverMods) WithSeasonDriverStandings(number int, related *SeasonDriverStandingTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.SeasonDriverStandings = []*driverRSeasonDriverStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewSeasonDriverStandings(number int, mods ...SeasonDriverStandingMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewSeasonDriverStandingWithContext(ctx, mods...)
+		m.WithSeasonDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddSeasonDriverStandings(number int, related *SeasonDriverStandingTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.SeasonDriverStandings = append(o.r.SeasonDriverStandings, &driverRSeasonDriverStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewSeasonDriverStandings(number int, mods ...SeasonDriverStandingMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewSeasonDriverStandingWithContext(ctx, mods...)
+		m.AddSeasonDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingSeasonDriverStandings(existingModels ...*models.SeasonDriverStanding) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.SeasonDriverStandings = append(o.r.SeasonDriverStandings, &driverRSeasonDriverStandingsR{
+				o: o.f.FromExistingSeasonDriverStanding(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutSeasonDriverStandings() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.SeasonDriverStandings = nil
+	})
+}
+
+func (m driverMods) WithTeamDrivers(number int, related *TeamDriverTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.TeamDrivers = []*driverRTeamDriversR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m driverMods) WithNewTeamDrivers(number int, mods ...TeamDriverMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewTeamDriverWithContext(ctx, mods...)
+		m.WithTeamDrivers(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddTeamDrivers(number int, related *TeamDriverTemplate) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.TeamDrivers = append(o.r.TeamDrivers, &driverRTeamDriversR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m driverMods) AddNewTeamDrivers(number int, mods ...TeamDriverMod) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		related := o.f.NewTeamDriverWithContext(ctx, mods...)
+		m.AddTeamDrivers(number, related).Apply(ctx, o)
+	})
+}
+
+func (m driverMods) AddExistingTeamDrivers(existingModels ...*models.TeamDriver) DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		for _, em := range existingModels {
+			o.r.TeamDrivers = append(o.r.TeamDrivers, &driverRTeamDriversR{
+				o: o.f.FromExistingTeamDriver(em),
+			})
+		}
+	})
+}
+
+func (m driverMods) WithoutTeamDrivers() DriverMod {
+	return DriverModFunc(func(ctx context.Context, o *DriverTemplate) {
+		o.r.TeamDrivers = nil
 	})
 }

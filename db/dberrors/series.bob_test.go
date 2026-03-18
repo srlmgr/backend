@@ -43,8 +43,8 @@ func TestSeriesUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ErrUniqueSeriesNameUnique",
-			expectedErr: SeriesErrors.ErrUniqueSeriesNameUnique,
+			name:        "ErrUniqueSeriesFrontendIdUnique",
+			expectedErr: SeriesErrors.ErrUniqueSeriesFrontendIdUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Series) factory.SeriesModSlice {
 				shouldUpdate := false
 				updateMods := make(factory.SeriesModSlice, 0, 1)
@@ -56,6 +56,25 @@ func TestSeriesUniqueConstraintErrors(t *testing.T) {
 				}
 
 				return factory.SeriesModSlice{
+					factory.SeriesMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
+		{
+			name:        "ErrUniqueSeriesSimulationIdNameUnique",
+			expectedErr: SeriesErrors.ErrUniqueSeriesSimulationIdNameUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Series) factory.SeriesModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.SeriesModSlice, 0, 2)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewSeriesWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.SeriesModSlice{
+					factory.SeriesMods.SimulationID(obj.SimulationID),
 					factory.SeriesMods.Name(obj.Name),
 				}
 			},

@@ -8,6 +8,126 @@ import (
 	"testing"
 )
 
+func TestCreateBookingEntry(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewBookingEntryWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating BookingEntry: %v", err)
+	}
+}
+
+func TestCreateCarBrand(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewCarBrandWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarBrand: %v", err)
+	}
+}
+
+func TestCreateCarManufacturer(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewCarManufacturerWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarManufacturer: %v", err)
+	}
+}
+
+func TestCreateCarModel(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewCarModelWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarModel: %v", err)
+	}
+}
+
+func TestCreateDriverSimulationID(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewDriverSimulationIDWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating DriverSimulationID: %v", err)
+	}
+}
+
 func TestCreateDriver(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -29,6 +149,78 @@ func TestCreateDriver(t *testing.T) {
 
 	if _, err := New().NewDriverWithContext(ctx).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating Driver: %v", err)
+	}
+}
+
+func TestCreateEventDriverStanding(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewEventDriverStandingWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating EventDriverStanding: %v", err)
+	}
+}
+
+func TestCreateEventProcessingAudit(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewEventProcessingAuditWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating EventProcessingAudit: %v", err)
+	}
+}
+
+func TestCreateEventTeamStanding(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewEventTeamStandingWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating EventTeamStanding: %v", err)
 	}
 }
 
@@ -56,6 +248,54 @@ func TestCreateEvent(t *testing.T) {
 	}
 }
 
+func TestCreateImportBatch(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewImportBatchWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating ImportBatch: %v", err)
+	}
+}
+
+func TestCreatePointRule(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewPointRuleWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating PointRule: %v", err)
+	}
+}
+
 func TestCreatePointSystem(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -80,6 +320,30 @@ func TestCreatePointSystem(t *testing.T) {
 	}
 }
 
+func TestCreateRace(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewRaceWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Race: %v", err)
+	}
+}
+
 func TestCreateRacingSim(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -101,6 +365,78 @@ func TestCreateRacingSim(t *testing.T) {
 
 	if _, err := New().NewRacingSimWithContext(ctx).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating RacingSim: %v", err)
+	}
+}
+
+func TestCreateResultEntry(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewResultEntryWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating ResultEntry: %v", err)
+	}
+}
+
+func TestCreateSeasonDriverStanding(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSeasonDriverStandingWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SeasonDriverStanding: %v", err)
+	}
+}
+
+func TestCreateSeasonTeamStanding(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSeasonTeamStandingWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SeasonTeamStanding: %v", err)
 	}
 }
 
@@ -152,6 +488,78 @@ func TestCreateSeries(t *testing.T) {
 	}
 }
 
+func TestCreateSimulationCarAlias(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSimulationCarAliasWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SimulationCarAlias: %v", err)
+	}
+}
+
+func TestCreateSimulationTrackLayoutAlias(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSimulationTrackLayoutAliasWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SimulationTrackLayoutAlias: %v", err)
+	}
+}
+
+func TestCreateTeamDriver(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewTeamDriverWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating TeamDriver: %v", err)
+	}
+}
+
 func TestCreateTeam(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -173,5 +581,53 @@ func TestCreateTeam(t *testing.T) {
 
 	if _, err := New().NewTeamWithContext(ctx).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating Team: %v", err)
+	}
+}
+
+func TestCreateTrackLayout(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewTrackLayoutWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating TrackLayout: %v", err)
+	}
+}
+
+func TestCreateTrack(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewTrackWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Track: %v", err)
 	}
 }

@@ -24,6 +24,15 @@ var PointSystems = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		Name: column{
 			Name:      "name",
 			DBType:    "text",
@@ -39,15 +48,6 @@ var PointSystems = Table[
 			Default:   "NULL",
 			Comment:   "",
 			Nullable:  true,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		PositionPoints: column{
-			Name:      "position_points",
-			DBType:    "jsonb",
-			Default:   "'{}'::jsonb",
-			Comment:   "",
-			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -168,20 +168,20 @@ var PointSystems = Table[
 }
 
 type pointSystemColumns struct {
-	ID             column
-	Name           column
-	Description    column
-	PositionPoints column
-	IsActive       column
-	CreatedAt      column
-	UpdatedAt      column
-	CreatedBy      column
-	UpdatedBy      column
+	ID          column
+	FrontendID  column
+	Name        column
+	Description column
+	IsActive    column
+	CreatedAt   column
+	UpdatedAt   column
+	CreatedBy   column
+	UpdatedBy   column
 }
 
 func (c pointSystemColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.Name, c.Description, c.PositionPoints, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.Name, c.Description, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 

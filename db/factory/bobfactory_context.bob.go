@@ -8,36 +8,167 @@ import "context"
 type contextKey string
 
 var (
+	// Relationship Contexts for booking_entries
+	bookingEntryWithParentsCascadingCtx            = newContextual[bool]("bookingEntryWithParentsCascading")
+	bookingEntryRelDriverCtx                       = newContextual[bool]("booking_entries.drivers.booking_entries.booking_entries_driver_id_fk")
+	bookingEntryRelEventCtx                        = newContextual[bool]("booking_entries.events.booking_entries.booking_entries_event_id_fk")
+	bookingEntryRelSourceBookingEntryCtx           = newContextual[bool]("booking_entries.booking_entries.booking_entries.booking_entries_source_booking_entry_id_fk")
+	bookingEntryRelReverseSourceBookingEntriesCtx  = newContextual[bool]("booking_entries.booking_entries.booking_entries.booking_entries_source_booking_entry_id_fk")
+	bookingEntryRelSourceResultEntryResultEntryCtx = newContextual[bool]("booking_entries.result_entries.booking_entries.booking_entries_source_result_entry_id_fk")
+	bookingEntryRelTeamCtx                         = newContextual[bool]("booking_entries.teams.booking_entries.booking_entries_team_id_fk")
+
+	// Relationship Contexts for car_brands
+	carBrandWithParentsCascadingCtx           = newContextual[bool]("carBrandWithParentsCascading")
+	carBrandRelManufacturerCarManufacturerCtx = newContextual[bool]("car_brands.car_manufacturers.car_brands.car_brands_manufacturer_id_fk")
+	carBrandRelBrandCarModelsCtx              = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
+
+	// Relationship Contexts for car_manufacturers
+	carManufacturerWithParentsCascadingCtx     = newContextual[bool]("carManufacturerWithParentsCascading")
+	carManufacturerRelManufacturerCarBrandsCtx = newContextual[bool]("car_brands.car_manufacturers.car_brands.car_brands_manufacturer_id_fk")
+
+	// Relationship Contexts for car_models
+	carModelWithParentsCascadingCtx    = newContextual[bool]("carModelWithParentsCascading")
+	carModelRelBrandCarBrandCtx        = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
+	carModelRelResultEntriesCtx        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
+	carModelRelSimulationCarAliasesCtx = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
+
+	// Relationship Contexts for driver_simulation_ids
+	driverSimulationIDWithParentsCascadingCtx   = newContextual[bool]("driverSimulationIDWithParentsCascading")
+	driverSimulationIDRelDriverCtx              = newContextual[bool]("driver_simulation_ids.drivers.driver_simulation_ids.driver_simulation_ids_driver_id_fk")
+	driverSimulationIDRelSimulationRacingSimCtx = newContextual[bool]("driver_simulation_ids.racing_sims.driver_simulation_ids.driver_simulation_ids_simulation_id_fk")
+
 	// Relationship Contexts for drivers
-	driverWithParentsCascadingCtx = newContextual[bool]("driverWithParentsCascading")
+	driverWithParentsCascadingCtx     = newContextual[bool]("driverWithParentsCascading")
+	driverRelBookingEntriesCtx        = newContextual[bool]("booking_entries.drivers.booking_entries.booking_entries_driver_id_fk")
+	driverRelDriverSimulationIdsCtx   = newContextual[bool]("driver_simulation_ids.drivers.driver_simulation_ids.driver_simulation_ids_driver_id_fk")
+	driverRelEventDriverStandingsCtx  = newContextual[bool]("drivers.event_driver_standings.event_driver_standings.event_driver_standings_driver_id_fk")
+	driverRelResultEntriesCtx         = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
+	driverRelSeasonDriverStandingsCtx = newContextual[bool]("drivers.season_driver_standings.season_driver_standings.season_driver_standings_driver_id_fk")
+	driverRelTeamDriversCtx           = newContextual[bool]("drivers.team_drivers.team_drivers.team_drivers_driver_id_fk")
+
+	// Relationship Contexts for event_driver_standings
+	eventDriverStandingWithParentsCascadingCtx = newContextual[bool]("eventDriverStandingWithParentsCascading")
+	eventDriverStandingRelDriverCtx            = newContextual[bool]("drivers.event_driver_standings.event_driver_standings.event_driver_standings_driver_id_fk")
+	eventDriverStandingRelEventCtx             = newContextual[bool]("event_driver_standings.events.event_driver_standings.event_driver_standings_event_id_fk")
+	eventDriverStandingRelSeasonCtx            = newContextual[bool]("event_driver_standings.seasons.event_driver_standings.event_driver_standings_season_id_fk")
+
+	// Relationship Contexts for event_processing_audit
+	eventProcessingAuditWithParentsCascadingCtx = newContextual[bool]("eventProcessingAuditWithParentsCascading")
+	eventProcessingAuditRelEventCtx             = newContextual[bool]("event_processing_audit.events.event_processing_audit.event_processing_audit_event_id_fk")
+	eventProcessingAuditRelImportBatchCtx       = newContextual[bool]("event_processing_audit.import_batches.event_processing_audit.event_processing_audit_import_batch_id_fk")
+
+	// Relationship Contexts for event_team_standings
+	eventTeamStandingWithParentsCascadingCtx = newContextual[bool]("eventTeamStandingWithParentsCascading")
+	eventTeamStandingRelEventCtx             = newContextual[bool]("event_team_standings.events.event_team_standings.event_team_standings_event_id_fk")
+	eventTeamStandingRelSeasonCtx            = newContextual[bool]("event_team_standings.seasons.event_team_standings.event_team_standings_season_id_fk")
+	eventTeamStandingRelTeamCtx              = newContextual[bool]("event_team_standings.teams.event_team_standings.event_team_standings_team_id_fk")
 
 	// Relationship Contexts for events
-	eventWithParentsCascadingCtx = newContextual[bool]("eventWithParentsCascading")
-	eventRelSeasonCtx            = newContextual[bool]("events.seasons.events.events_season_id_fk")
+	eventWithParentsCascadingCtx     = newContextual[bool]("eventWithParentsCascading")
+	eventRelBookingEntriesCtx        = newContextual[bool]("booking_entries.events.booking_entries.booking_entries_event_id_fk")
+	eventRelEventDriverStandingsCtx  = newContextual[bool]("event_driver_standings.events.event_driver_standings.event_driver_standings_event_id_fk")
+	eventRelEventProcessingAuditsCtx = newContextual[bool]("event_processing_audit.events.event_processing_audit.event_processing_audit_event_id_fk")
+	eventRelEventTeamStandingsCtx    = newContextual[bool]("event_team_standings.events.event_team_standings.event_team_standings_event_id_fk")
+	eventRelSeasonCtx                = newContextual[bool]("events.seasons.events.events_season_id_fk")
+	eventRelTrackLayoutCtx           = newContextual[bool]("events.track_layouts.events.events_track_layout_id_fk")
+	eventRelImportBatchesCtx         = newContextual[bool]("events.import_batches.import_batches.import_batches_event_id_fk")
+	eventRelRacesCtx                 = newContextual[bool]("events.races.races.races_event_id_fk")
+
+	// Relationship Contexts for import_batches
+	importBatchWithParentsCascadingCtx     = newContextual[bool]("importBatchWithParentsCascading")
+	importBatchRelEventProcessingAuditsCtx = newContextual[bool]("event_processing_audit.import_batches.event_processing_audit.event_processing_audit_import_batch_id_fk")
+	importBatchRelEventCtx                 = newContextual[bool]("events.import_batches.import_batches.import_batches_event_id_fk")
+	importBatchRelRaceCtx                  = newContextual[bool]("import_batches.races.import_batches.import_batches_race_id_fk")
+	importBatchRelResultEntriesCtx         = newContextual[bool]("import_batches.result_entries.result_entries.result_entries_import_batch_id_fk")
+
+	// Relationship Contexts for point_rules
+	pointRuleWithParentsCascadingCtx = newContextual[bool]("pointRuleWithParentsCascading")
+	pointRuleRelPointSystemCtx       = newContextual[bool]("point_rules.point_systems.point_rules.point_rules_point_system_id_fk")
 
 	// Relationship Contexts for point_systems
 	pointSystemWithParentsCascadingCtx = newContextual[bool]("pointSystemWithParentsCascading")
+	pointSystemRelPointRulesCtx        = newContextual[bool]("point_rules.point_systems.point_rules.point_rules_point_system_id_fk")
 	pointSystemRelSeasonsCtx           = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
 
+	// Relationship Contexts for races
+	raceWithParentsCascadingCtx = newContextual[bool]("raceWithParentsCascading")
+	raceRelImportBatchesCtx     = newContextual[bool]("import_batches.races.import_batches.import_batches_race_id_fk")
+	raceRelEventCtx             = newContextual[bool]("events.races.races.races_event_id_fk")
+	raceRelResultEntriesCtx     = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
+
 	// Relationship Contexts for racing_sims
-	racingSimWithParentsCascadingCtx = newContextual[bool]("racingSimWithParentsCascading")
-	racingSimRelSimulationSeriesCtx  = newContextual[bool]("racing_sims.series.series.series_simulation_id_fk")
+	racingSimWithParentsCascadingCtx                      = newContextual[bool]("racingSimWithParentsCascading")
+	racingSimRelSimulationDriverSimulationIdsCtx          = newContextual[bool]("driver_simulation_ids.racing_sims.driver_simulation_ids.driver_simulation_ids_simulation_id_fk")
+	racingSimRelSimulationSeriesCtx                       = newContextual[bool]("racing_sims.series.series.series_simulation_id_fk")
+	racingSimRelSimulationSimulationCarAliasesCtx         = newContextual[bool]("racing_sims.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_simulation_id_fk")
+	racingSimRelSimulationSimulationTrackLayoutAliasesCtx = newContextual[bool]("racing_sims.simulation_track_layout_aliases.simulation_track_layout_aliases.simulation_track_layout_aliases_simulation_id_fk")
+
+	// Relationship Contexts for result_entries
+	resultEntryWithParentsCascadingCtx               = newContextual[bool]("resultEntryWithParentsCascading")
+	resultEntryRelSourceResultEntryBookingEntriesCtx = newContextual[bool]("booking_entries.result_entries.booking_entries.booking_entries_source_result_entry_id_fk")
+	resultEntryRelCarModelCtx                        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
+	resultEntryRelDriverCtx                          = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
+	resultEntryRelImportBatchCtx                     = newContextual[bool]("import_batches.result_entries.result_entries.result_entries_import_batch_id_fk")
+	resultEntryRelRaceCtx                            = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
+
+	// Relationship Contexts for season_driver_standings
+	seasonDriverStandingWithParentsCascadingCtx = newContextual[bool]("seasonDriverStandingWithParentsCascading")
+	seasonDriverStandingRelDriverCtx            = newContextual[bool]("drivers.season_driver_standings.season_driver_standings.season_driver_standings_driver_id_fk")
+	seasonDriverStandingRelSeasonCtx            = newContextual[bool]("season_driver_standings.seasons.season_driver_standings.season_driver_standings_season_id_fk")
+
+	// Relationship Contexts for season_team_standings
+	seasonTeamStandingWithParentsCascadingCtx = newContextual[bool]("seasonTeamStandingWithParentsCascading")
+	seasonTeamStandingRelSeasonCtx            = newContextual[bool]("season_team_standings.seasons.season_team_standings.season_team_standings_season_id_fk")
+	seasonTeamStandingRelTeamCtx              = newContextual[bool]("season_team_standings.teams.season_team_standings.season_team_standings_team_id_fk")
 
 	// Relationship Contexts for seasons
-	seasonWithParentsCascadingCtx = newContextual[bool]("seasonWithParentsCascading")
-	seasonRelEventsCtx            = newContextual[bool]("events.seasons.events.events_season_id_fk")
-	seasonRelPointSystemCtx       = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
-	seasonRelSeriesCtx            = newContextual[bool]("seasons.series.seasons.seasons_series_id_fk")
-	seasonRelTeamsCtx             = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
+	seasonWithParentsCascadingCtx     = newContextual[bool]("seasonWithParentsCascading")
+	seasonRelEventDriverStandingsCtx  = newContextual[bool]("event_driver_standings.seasons.event_driver_standings.event_driver_standings_season_id_fk")
+	seasonRelEventTeamStandingsCtx    = newContextual[bool]("event_team_standings.seasons.event_team_standings.event_team_standings_season_id_fk")
+	seasonRelEventsCtx                = newContextual[bool]("events.seasons.events.events_season_id_fk")
+	seasonRelSeasonDriverStandingsCtx = newContextual[bool]("season_driver_standings.seasons.season_driver_standings.season_driver_standings_season_id_fk")
+	seasonRelSeasonTeamStandingsCtx   = newContextual[bool]("season_team_standings.seasons.season_team_standings.season_team_standings_season_id_fk")
+	seasonRelPointSystemCtx           = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
+	seasonRelSeriesCtx                = newContextual[bool]("seasons.series.seasons.seasons_series_id_fk")
+	seasonRelTeamsCtx                 = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
 
 	// Relationship Contexts for series
 	seriesWithParentsCascadingCtx   = newContextual[bool]("seriesWithParentsCascading")
 	seriesRelSeasonsCtx             = newContextual[bool]("seasons.series.seasons.seasons_series_id_fk")
 	seriesRelSimulationRacingSimCtx = newContextual[bool]("racing_sims.series.series.series_simulation_id_fk")
 
+	// Relationship Contexts for simulation_car_aliases
+	simulationCarAliasWithParentsCascadingCtx   = newContextual[bool]("simulationCarAliasWithParentsCascading")
+	simulationCarAliasRelCarModelCtx            = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
+	simulationCarAliasRelSimulationRacingSimCtx = newContextual[bool]("racing_sims.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_simulation_id_fk")
+
+	// Relationship Contexts for simulation_track_layout_aliases
+	simulationTrackLayoutAliasWithParentsCascadingCtx   = newContextual[bool]("simulationTrackLayoutAliasWithParentsCascading")
+	simulationTrackLayoutAliasRelSimulationRacingSimCtx = newContextual[bool]("racing_sims.simulation_track_layout_aliases.simulation_track_layout_aliases.simulation_track_layout_aliases_simulation_id_fk")
+	simulationTrackLayoutAliasRelTrackLayoutCtx         = newContextual[bool]("simulation_track_layout_aliases.track_layouts.simulation_track_layout_aliases.simulation_track_layout_aliases_track_layout_id_fk")
+
+	// Relationship Contexts for team_drivers
+	teamDriverWithParentsCascadingCtx = newContextual[bool]("teamDriverWithParentsCascading")
+	teamDriverRelDriverCtx            = newContextual[bool]("drivers.team_drivers.team_drivers.team_drivers_driver_id_fk")
+	teamDriverRelTeamCtx              = newContextual[bool]("team_drivers.teams.team_drivers.team_drivers_team_id_fk")
+
 	// Relationship Contexts for teams
-	teamWithParentsCascadingCtx = newContextual[bool]("teamWithParentsCascading")
-	teamRelSeasonCtx            = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
+	teamWithParentsCascadingCtx   = newContextual[bool]("teamWithParentsCascading")
+	teamRelBookingEntriesCtx      = newContextual[bool]("booking_entries.teams.booking_entries.booking_entries_team_id_fk")
+	teamRelEventTeamStandingsCtx  = newContextual[bool]("event_team_standings.teams.event_team_standings.event_team_standings_team_id_fk")
+	teamRelSeasonTeamStandingsCtx = newContextual[bool]("season_team_standings.teams.season_team_standings.season_team_standings_team_id_fk")
+	teamRelTeamDriversCtx         = newContextual[bool]("team_drivers.teams.team_drivers.team_drivers_team_id_fk")
+	teamRelSeasonCtx              = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
+
+	// Relationship Contexts for track_layouts
+	trackLayoutWithParentsCascadingCtx            = newContextual[bool]("trackLayoutWithParentsCascading")
+	trackLayoutRelEventsCtx                       = newContextual[bool]("events.track_layouts.events.events_track_layout_id_fk")
+	trackLayoutRelSimulationTrackLayoutAliasesCtx = newContextual[bool]("simulation_track_layout_aliases.track_layouts.simulation_track_layout_aliases.simulation_track_layout_aliases_track_layout_id_fk")
+	trackLayoutRelTrackCtx                        = newContextual[bool]("track_layouts.tracks.track_layouts.track_layouts_track_id_fk")
+
+	// Relationship Contexts for tracks
+	trackWithParentsCascadingCtx = newContextual[bool]("trackWithParentsCascading")
+	trackRelTrackLayoutsCtx      = newContextual[bool]("track_layouts.tracks.track_layouts.track_layouts_track_id_fk")
 )
 
 // Contextual is a convienience wrapper around context.WithValue and context.Value

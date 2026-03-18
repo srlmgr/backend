@@ -17,10 +17,19 @@ var DriverErrors = &driverErrors{
 		columns: []string{"external_id"},
 		s:       "drivers_external_id_unique",
 	},
+
+	ErrUniqueDriversFrontendIdUnique: &UniqueConstraintError{
+		schema:  "",
+		table:   "drivers",
+		columns: []string{"frontend_id"},
+		s:       "drivers_frontend_id_unique",
+	},
 }
 
 type driverErrors struct {
 	ErrUniqueDriversPkey *UniqueConstraintError
 
 	ErrUniqueDriversExternalIdUnique *UniqueConstraintError
+
+	ErrUniqueDriversFrontendIdUnique *UniqueConstraintError
 }

@@ -5,13 +5,12 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -22,21 +21,20 @@ import (
 	"github.com/stephenafamo/bob/expr"
 	"github.com/stephenafamo/bob/mods"
 	"github.com/stephenafamo/bob/orm"
-	"github.com/stephenafamo/bob/types"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // RacingSim is an object representing the database table.
 type RacingSim struct {
-	ID                     int32                       `db:"id,pk" `
-	Name                   string                      `db:"name" `
-	SupportedImportFormats pq.StringArray              `db:"supported_import_formats" `
-	DataMapping            types.JSON[json.RawMessage] `db:"data_mapping" `
-	IsActive               bool                        `db:"is_active" `
-	CreatedAt              time.Time                   `db:"created_at" `
-	UpdatedAt              time.Time                   `db:"updated_at" `
-	CreatedBy              string                      `db:"created_by" `
-	UpdatedBy              string                      `db:"updated_by" `
+	ID                     int32          `db:"id,pk" `
+	FrontendID             uuid.UUID      `db:"frontend_id" `
+	Name                   string         `db:"name" `
+	SupportedImportFormats pq.StringArray `db:"supported_import_formats" `
+	IsActive               bool           `db:"is_active" `
+	CreatedAt              time.Time      `db:"created_at" `
+	UpdatedAt              time.Time      `db:"updated_at" `
+	CreatedBy              string         `db:"created_by" `
+	UpdatedBy              string         `db:"updated_by" `
 
 	R racingSimR `db:"-" `
 }
@@ -53,19 +51,22 @@ type RacingSimsQuery = *psql.ViewQuery[*RacingSim, RacingSimSlice]
 
 // racingSimR is where relationships are stored.
 type racingSimR struct {
-	SimulationSeries SeriesSlice // series.series_simulation_id_fk
+	SimulationDriverSimulationIds          DriverSimulationIDSlice         // driver_simulation_ids.driver_simulation_ids_simulation_id_fk
+	SimulationSeries                       SeriesSlice                     // series.series_simulation_id_fk
+	SimulationSimulationCarAliases         SimulationCarAliasSlice         // simulation_car_aliases.simulation_car_aliases_simulation_id_fk
+	SimulationSimulationTrackLayoutAliases SimulationTrackLayoutAliasSlice // simulation_track_layout_aliases.simulation_track_layout_aliases_simulation_id_fk
 }
 
 func buildRacingSimColumns(alias string) racingSimColumns {
 	return racingSimColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "name", "supported_import_formats", "data_mapping", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "name", "supported_import_formats", "is_active", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("racing_sims"),
 		tableAlias:             alias,
 		ID:                     psql.Quote(alias, "id"),
+		FrontendID:             psql.Quote(alias, "frontend_id"),
 		Name:                   psql.Quote(alias, "name"),
 		SupportedImportFormats: psql.Quote(alias, "supported_import_formats"),
-		DataMapping:            psql.Quote(alias, "data_mapping"),
 		IsActive:               psql.Quote(alias, "is_active"),
 		CreatedAt:              psql.Quote(alias, "created_at"),
 		UpdatedAt:              psql.Quote(alias, "updated_at"),
@@ -78,9 +79,9 @@ type racingSimColumns struct {
 	expr.ColumnsExpr
 	tableAlias             string
 	ID                     psql.Expression
+	FrontendID             psql.Expression
 	Name                   psql.Expression
 	SupportedImportFormats psql.Expression
-	DataMapping            psql.Expression
 	IsActive               psql.Expression
 	CreatedAt              psql.Expression
 	UpdatedAt              psql.Expression
@@ -100,15 +101,15 @@ func (racingSimColumns) AliasedAs(alias string) racingSimColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type RacingSimSetter struct {
-	ID                     omit.Val[int32]                       `db:"id,pk" `
-	Name                   omit.Val[string]                      `db:"name" `
-	SupportedImportFormats omit.Val[pq.StringArray]              `db:"supported_import_formats" `
-	DataMapping            omit.Val[types.JSON[json.RawMessage]] `db:"data_mapping" `
-	IsActive               omit.Val[bool]                        `db:"is_active" `
-	CreatedAt              omit.Val[time.Time]                   `db:"created_at" `
-	UpdatedAt              omit.Val[time.Time]                   `db:"updated_at" `
-	CreatedBy              omit.Val[string]                      `db:"created_by" `
-	UpdatedBy              omit.Val[string]                      `db:"updated_by" `
+	ID                     omit.Val[int32]          `db:"id,pk" `
+	FrontendID             omit.Val[uuid.UUID]      `db:"frontend_id" `
+	Name                   omit.Val[string]         `db:"name" `
+	SupportedImportFormats omit.Val[pq.StringArray] `db:"supported_import_formats" `
+	IsActive               omit.Val[bool]           `db:"is_active" `
+	CreatedAt              omit.Val[time.Time]      `db:"created_at" `
+	UpdatedAt              omit.Val[time.Time]      `db:"updated_at" `
+	CreatedBy              omit.Val[string]         `db:"created_by" `
+	UpdatedBy              omit.Val[string]         `db:"updated_by" `
 }
 
 func (s RacingSimSetter) SetColumns() []string {
@@ -116,14 +117,14 @@ func (s RacingSimSetter) SetColumns() []string {
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
+	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
 	if s.SupportedImportFormats.IsValue() {
 		vals = append(vals, "supported_import_formats")
-	}
-	if s.DataMapping.IsValue() {
-		vals = append(vals, "data_mapping")
 	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
@@ -147,14 +148,14 @@ func (s RacingSimSetter) Overwrite(t *RacingSim) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
 	if s.SupportedImportFormats.IsValue() {
 		t.SupportedImportFormats = s.SupportedImportFormats.MustGet()
-	}
-	if s.DataMapping.IsValue() {
-		t.DataMapping = s.DataMapping.MustGet()
 	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
@@ -186,20 +187,20 @@ func (s *RacingSimSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[1] = psql.Arg(s.Name.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.SupportedImportFormats.IsValue() {
-			vals[2] = psql.Arg(s.SupportedImportFormats.MustGet())
+		if s.Name.IsValue() {
+			vals[2] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.DataMapping.IsValue() {
-			vals[3] = psql.Arg(s.DataMapping.MustGet())
+		if s.SupportedImportFormats.IsValue() {
+			vals[3] = psql.Arg(s.SupportedImportFormats.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
@@ -252,6 +253,13 @@ func (s RacingSimSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
+		}})
+	}
+
 	if s.Name.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "name")...),
@@ -263,13 +271,6 @@ func (s RacingSimSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "supported_import_formats")...),
 			psql.Arg(s.SupportedImportFormats),
-		}})
-	}
-
-	if s.DataMapping.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "data_mapping")...),
-			psql.Arg(s.DataMapping),
 		}})
 	}
 
@@ -534,6 +535,30 @@ func (o RacingSimSlice) ReloadAll(ctx context.Context, exec bob.Executor) error 
 	return nil
 }
 
+// SimulationDriverSimulationIds starts a query for related objects on driver_simulation_ids
+func (o *RacingSim) SimulationDriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
+	return DriverSimulationIds.Query(append(mods,
+		sm.Where(DriverSimulationIds.Columns.SimulationID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os RacingSimSlice) SimulationDriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return DriverSimulationIds.Query(append(mods,
+		sm.Where(psql.Group(DriverSimulationIds.Columns.SimulationID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // SimulationSeries starts a query for related objects on series
 func (o *RacingSim) SimulationSeries(mods ...bob.Mod[*dialect.SelectQuery]) SeriesesQuery {
 	return Serieses.Query(append(mods,
@@ -558,9 +583,125 @@ func (os RacingSimSlice) SimulationSeries(mods ...bob.Mod[*dialect.SelectQuery])
 	)...)
 }
 
+// SimulationSimulationCarAliases starts a query for related objects on simulation_car_aliases
+func (o *RacingSim) SimulationSimulationCarAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationCarAliasesQuery {
+	return SimulationCarAliases.Query(append(mods,
+		sm.Where(SimulationCarAliases.Columns.SimulationID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os RacingSimSlice) SimulationSimulationCarAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationCarAliasesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SimulationCarAliases.Query(append(mods,
+		sm.Where(psql.Group(SimulationCarAliases.Columns.SimulationID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// SimulationSimulationTrackLayoutAliases starts a query for related objects on simulation_track_layout_aliases
+func (o *RacingSim) SimulationSimulationTrackLayoutAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationTrackLayoutAliasesQuery {
+	return SimulationTrackLayoutAliases.Query(append(mods,
+		sm.Where(SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os RacingSimSlice) SimulationSimulationTrackLayoutAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationTrackLayoutAliasesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SimulationTrackLayoutAliases.Query(append(mods,
+		sm.Where(psql.Group(SimulationTrackLayoutAliases.Columns.SimulationID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+func insertRacingSimSimulationDriverSimulationIds0(ctx context.Context, exec bob.Executor, driverSimulationIds1 []*DriverSimulationIDSetter, racingSim0 *RacingSim) (DriverSimulationIDSlice, error) {
+	for i := range driverSimulationIds1 {
+		driverSimulationIds1[i].SimulationID = omit.From(racingSim0.ID)
+	}
+
+	ret, err := DriverSimulationIds.Insert(bob.ToMods(driverSimulationIds1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertRacingSimSimulationDriverSimulationIds0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachRacingSimSimulationDriverSimulationIds0(ctx context.Context, exec bob.Executor, count int, driverSimulationIds1 DriverSimulationIDSlice, racingSim0 *RacingSim) (DriverSimulationIDSlice, error) {
+	setter := &DriverSimulationIDSetter{
+		SimulationID: omit.From(racingSim0.ID),
+	}
+
+	err := driverSimulationIds1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachRacingSimSimulationDriverSimulationIds0: %w", err)
+	}
+
+	return driverSimulationIds1, nil
+}
+
+func (racingSim0 *RacingSim) InsertSimulationDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationIDSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	driverSimulationIds1, err := insertRacingSimSimulationDriverSimulationIds0(ctx, exec, related, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationDriverSimulationIds = append(racingSim0.R.SimulationDriverSimulationIds, driverSimulationIds1...)
+
+	for _, rel := range driverSimulationIds1 {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+	return nil
+}
+
+func (racingSim0 *RacingSim) AttachSimulationDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationID) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	driverSimulationIds1 := DriverSimulationIDSlice(related)
+
+	_, err = attachRacingSimSimulationDriverSimulationIds0(ctx, exec, len(related), driverSimulationIds1, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationDriverSimulationIds = append(racingSim0.R.SimulationDriverSimulationIds, driverSimulationIds1...)
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+
+	return nil
+}
+
 func insertRacingSimSimulationSeries0(ctx context.Context, exec bob.Executor, serieses1 []*SeriesSetter, racingSim0 *RacingSim) (SeriesSlice, error) {
 	for i := range serieses1 {
-		serieses1[i].SimulationID = omitnull.From(racingSim0.ID)
+		serieses1[i].SimulationID = omit.From(racingSim0.ID)
 	}
 
 	ret, err := Serieses.Insert(bob.ToMods(serieses1...)).All(ctx, exec)
@@ -573,7 +714,7 @@ func insertRacingSimSimulationSeries0(ctx context.Context, exec bob.Executor, se
 
 func attachRacingSimSimulationSeries0(ctx context.Context, exec bob.Executor, count int, serieses1 SeriesSlice, racingSim0 *RacingSim) (SeriesSlice, error) {
 	setter := &SeriesSetter{
-		SimulationID: omitnull.From(racingSim0.ID),
+		SimulationID: omit.From(racingSim0.ID),
 	}
 
 	err := serieses1.UpdateAll(ctx, exec, *setter)
@@ -626,11 +767,147 @@ func (racingSim0 *RacingSim) AttachSimulationSeries(ctx context.Context, exec bo
 	return nil
 }
 
+func insertRacingSimSimulationSimulationCarAliases0(ctx context.Context, exec bob.Executor, simulationCarAliases1 []*SimulationCarAliasSetter, racingSim0 *RacingSim) (SimulationCarAliasSlice, error) {
+	for i := range simulationCarAliases1 {
+		simulationCarAliases1[i].SimulationID = omit.From(racingSim0.ID)
+	}
+
+	ret, err := SimulationCarAliases.Insert(bob.ToMods(simulationCarAliases1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertRacingSimSimulationSimulationCarAliases0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachRacingSimSimulationSimulationCarAliases0(ctx context.Context, exec bob.Executor, count int, simulationCarAliases1 SimulationCarAliasSlice, racingSim0 *RacingSim) (SimulationCarAliasSlice, error) {
+	setter := &SimulationCarAliasSetter{
+		SimulationID: omit.From(racingSim0.ID),
+	}
+
+	err := simulationCarAliases1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachRacingSimSimulationSimulationCarAliases0: %w", err)
+	}
+
+	return simulationCarAliases1, nil
+}
+
+func (racingSim0 *RacingSim) InsertSimulationSimulationCarAliases(ctx context.Context, exec bob.Executor, related ...*SimulationCarAliasSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	simulationCarAliases1, err := insertRacingSimSimulationSimulationCarAliases0(ctx, exec, related, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationSimulationCarAliases = append(racingSim0.R.SimulationSimulationCarAliases, simulationCarAliases1...)
+
+	for _, rel := range simulationCarAliases1 {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+	return nil
+}
+
+func (racingSim0 *RacingSim) AttachSimulationSimulationCarAliases(ctx context.Context, exec bob.Executor, related ...*SimulationCarAlias) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	simulationCarAliases1 := SimulationCarAliasSlice(related)
+
+	_, err = attachRacingSimSimulationSimulationCarAliases0(ctx, exec, len(related), simulationCarAliases1, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationSimulationCarAliases = append(racingSim0.R.SimulationSimulationCarAliases, simulationCarAliases1...)
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+
+	return nil
+}
+
+func insertRacingSimSimulationSimulationTrackLayoutAliases0(ctx context.Context, exec bob.Executor, simulationTrackLayoutAliases1 []*SimulationTrackLayoutAliasSetter, racingSim0 *RacingSim) (SimulationTrackLayoutAliasSlice, error) {
+	for i := range simulationTrackLayoutAliases1 {
+		simulationTrackLayoutAliases1[i].SimulationID = omit.From(racingSim0.ID)
+	}
+
+	ret, err := SimulationTrackLayoutAliases.Insert(bob.ToMods(simulationTrackLayoutAliases1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertRacingSimSimulationSimulationTrackLayoutAliases0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachRacingSimSimulationSimulationTrackLayoutAliases0(ctx context.Context, exec bob.Executor, count int, simulationTrackLayoutAliases1 SimulationTrackLayoutAliasSlice, racingSim0 *RacingSim) (SimulationTrackLayoutAliasSlice, error) {
+	setter := &SimulationTrackLayoutAliasSetter{
+		SimulationID: omit.From(racingSim0.ID),
+	}
+
+	err := simulationTrackLayoutAliases1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachRacingSimSimulationSimulationTrackLayoutAliases0: %w", err)
+	}
+
+	return simulationTrackLayoutAliases1, nil
+}
+
+func (racingSim0 *RacingSim) InsertSimulationSimulationTrackLayoutAliases(ctx context.Context, exec bob.Executor, related ...*SimulationTrackLayoutAliasSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	simulationTrackLayoutAliases1, err := insertRacingSimSimulationSimulationTrackLayoutAliases0(ctx, exec, related, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationSimulationTrackLayoutAliases = append(racingSim0.R.SimulationSimulationTrackLayoutAliases, simulationTrackLayoutAliases1...)
+
+	for _, rel := range simulationTrackLayoutAliases1 {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+	return nil
+}
+
+func (racingSim0 *RacingSim) AttachSimulationSimulationTrackLayoutAliases(ctx context.Context, exec bob.Executor, related ...*SimulationTrackLayoutAlias) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	simulationTrackLayoutAliases1 := SimulationTrackLayoutAliasSlice(related)
+
+	_, err = attachRacingSimSimulationSimulationTrackLayoutAliases0(ctx, exec, len(related), simulationTrackLayoutAliases1, racingSim0)
+	if err != nil {
+		return err
+	}
+
+	racingSim0.R.SimulationSimulationTrackLayoutAliases = append(racingSim0.R.SimulationSimulationTrackLayoutAliases, simulationTrackLayoutAliases1...)
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = racingSim0
+	}
+
+	return nil
+}
+
 type racingSimWhere[Q psql.Filterable] struct {
 	ID                     psql.WhereMod[Q, int32]
+	FrontendID             psql.WhereMod[Q, uuid.UUID]
 	Name                   psql.WhereMod[Q, string]
 	SupportedImportFormats psql.WhereMod[Q, pq.StringArray]
-	DataMapping            psql.WhereMod[Q, types.JSON[json.RawMessage]]
 	IsActive               psql.WhereMod[Q, bool]
 	CreatedAt              psql.WhereMod[Q, time.Time]
 	UpdatedAt              psql.WhereMod[Q, time.Time]
@@ -645,9 +922,9 @@ func (racingSimWhere[Q]) AliasedAs(alias string) racingSimWhere[Q] {
 func buildRacingSimWhere[Q psql.Filterable](cols racingSimColumns) racingSimWhere[Q] {
 	return racingSimWhere[Q]{
 		ID:                     psql.Where[Q, int32](cols.ID),
+		FrontendID:             psql.Where[Q, uuid.UUID](cols.FrontendID),
 		Name:                   psql.Where[Q, string](cols.Name),
 		SupportedImportFormats: psql.Where[Q, pq.StringArray](cols.SupportedImportFormats),
-		DataMapping:            psql.Where[Q, types.JSON[json.RawMessage]](cols.DataMapping),
 		IsActive:               psql.Where[Q, bool](cols.IsActive),
 		CreatedAt:              psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:              psql.Where[Q, time.Time](cols.UpdatedAt),
@@ -662,6 +939,20 @@ func (o *RacingSim) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "SimulationDriverSimulationIds":
+		rels, ok := retrieved.(DriverSimulationIDSlice)
+		if !ok {
+			return fmt.Errorf("racingSim cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SimulationDriverSimulationIds = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.SimulationRacingSim = o
+			}
+		}
+		return nil
 	case "SimulationSeries":
 		rels, ok := retrieved.(SeriesSlice)
 		if !ok {
@@ -669,6 +960,34 @@ func (o *RacingSim) Preload(name string, retrieved any) error {
 		}
 
 		o.R.SimulationSeries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.SimulationRacingSim = o
+			}
+		}
+		return nil
+	case "SimulationSimulationCarAliases":
+		rels, ok := retrieved.(SimulationCarAliasSlice)
+		if !ok {
+			return fmt.Errorf("racingSim cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SimulationSimulationCarAliases = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.SimulationRacingSim = o
+			}
+		}
+		return nil
+	case "SimulationSimulationTrackLayoutAliases":
+		rels, ok := retrieved.(SimulationTrackLayoutAliasSlice)
+		if !ok {
+			return fmt.Errorf("racingSim cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SimulationSimulationTrackLayoutAliases = rels
 
 		for _, rel := range rels {
 			if rel != nil {
@@ -688,22 +1007,113 @@ func buildRacingSimPreloader() racingSimPreloader {
 }
 
 type racingSimThenLoader[Q orm.Loadable] struct {
-	SimulationSeries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationDriverSimulationIds          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationSeries                       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationSimulationCarAliases         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationSimulationTrackLayoutAliases func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildRacingSimThenLoader[Q orm.Loadable]() racingSimThenLoader[Q] {
+	type SimulationDriverSimulationIdsLoadInterface interface {
+		LoadSimulationDriverSimulationIds(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type SimulationSeriesLoadInterface interface {
 		LoadSimulationSeries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
+	type SimulationSimulationCarAliasesLoadInterface interface {
+		LoadSimulationSimulationCarAliases(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SimulationSimulationTrackLayoutAliasesLoadInterface interface {
+		LoadSimulationSimulationTrackLayoutAliases(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 
 	return racingSimThenLoader[Q]{
+		SimulationDriverSimulationIds: thenLoadBuilder[Q](
+			"SimulationDriverSimulationIds",
+			func(ctx context.Context, exec bob.Executor, retrieved SimulationDriverSimulationIdsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSimulationDriverSimulationIds(ctx, exec, mods...)
+			},
+		),
 		SimulationSeries: thenLoadBuilder[Q](
 			"SimulationSeries",
 			func(ctx context.Context, exec bob.Executor, retrieved SimulationSeriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadSimulationSeries(ctx, exec, mods...)
 			},
 		),
+		SimulationSimulationCarAliases: thenLoadBuilder[Q](
+			"SimulationSimulationCarAliases",
+			func(ctx context.Context, exec bob.Executor, retrieved SimulationSimulationCarAliasesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSimulationSimulationCarAliases(ctx, exec, mods...)
+			},
+		),
+		SimulationSimulationTrackLayoutAliases: thenLoadBuilder[Q](
+			"SimulationSimulationTrackLayoutAliases",
+			func(ctx context.Context, exec bob.Executor, retrieved SimulationSimulationTrackLayoutAliasesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSimulationSimulationTrackLayoutAliases(ctx, exec, mods...)
+			},
+		),
 	}
+}
+
+// LoadSimulationDriverSimulationIds loads the racingSim's SimulationDriverSimulationIds into the .R struct
+func (o *RacingSim) LoadSimulationDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SimulationDriverSimulationIds = nil
+
+	related, err := o.SimulationDriverSimulationIds(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = o
+	}
+
+	o.R.SimulationDriverSimulationIds = related
+	return nil
+}
+
+// LoadSimulationDriverSimulationIds loads the racingSim's SimulationDriverSimulationIds into the .R struct
+func (os RacingSimSlice) LoadSimulationDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	driverSimulationIds, err := os.SimulationDriverSimulationIds(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SimulationDriverSimulationIds = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range driverSimulationIds {
+
+			if !(o.ID == rel.SimulationID) {
+				continue
+			}
+
+			rel.R.SimulationRacingSim = o
+
+			o.R.SimulationDriverSimulationIds = append(o.R.SimulationDriverSimulationIds, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadSimulationSeries loads the racingSim's SimulationSeries into the .R struct
@@ -754,10 +1164,7 @@ func (os RacingSimSlice) LoadSimulationSeries(ctx context.Context, exec bob.Exec
 
 		for _, rel := range serieses {
 
-			if !rel.SimulationID.IsValue() {
-				continue
-			}
-			if !(rel.SimulationID.IsValue() && o.ID == rel.SimulationID.MustGet()) {
+			if !(o.ID == rel.SimulationID) {
 				continue
 			}
 
@@ -770,9 +1177,134 @@ func (os RacingSimSlice) LoadSimulationSeries(ctx context.Context, exec bob.Exec
 	return nil
 }
 
+// LoadSimulationSimulationCarAliases loads the racingSim's SimulationSimulationCarAliases into the .R struct
+func (o *RacingSim) LoadSimulationSimulationCarAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SimulationSimulationCarAliases = nil
+
+	related, err := o.SimulationSimulationCarAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = o
+	}
+
+	o.R.SimulationSimulationCarAliases = related
+	return nil
+}
+
+// LoadSimulationSimulationCarAliases loads the racingSim's SimulationSimulationCarAliases into the .R struct
+func (os RacingSimSlice) LoadSimulationSimulationCarAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	simulationCarAliases, err := os.SimulationSimulationCarAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SimulationSimulationCarAliases = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range simulationCarAliases {
+
+			if !(o.ID == rel.SimulationID) {
+				continue
+			}
+
+			rel.R.SimulationRacingSim = o
+
+			o.R.SimulationSimulationCarAliases = append(o.R.SimulationSimulationCarAliases, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadSimulationSimulationTrackLayoutAliases loads the racingSim's SimulationSimulationTrackLayoutAliases into the .R struct
+func (o *RacingSim) LoadSimulationSimulationTrackLayoutAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SimulationSimulationTrackLayoutAliases = nil
+
+	related, err := o.SimulationSimulationTrackLayoutAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.SimulationRacingSim = o
+	}
+
+	o.R.SimulationSimulationTrackLayoutAliases = related
+	return nil
+}
+
+// LoadSimulationSimulationTrackLayoutAliases loads the racingSim's SimulationSimulationTrackLayoutAliases into the .R struct
+func (os RacingSimSlice) LoadSimulationSimulationTrackLayoutAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	simulationTrackLayoutAliases, err := os.SimulationSimulationTrackLayoutAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SimulationSimulationTrackLayoutAliases = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range simulationTrackLayoutAliases {
+
+			if !(o.ID == rel.SimulationID) {
+				continue
+			}
+
+			rel.R.SimulationRacingSim = o
+
+			o.R.SimulationSimulationTrackLayoutAliases = append(o.R.SimulationSimulationTrackLayoutAliases, rel)
+		}
+	}
+
+	return nil
+}
+
 type racingSimJoins[Q dialect.Joinable] struct {
-	typ              string
-	SimulationSeries modAs[Q, seriesColumns]
+	typ                                    string
+	SimulationDriverSimulationIds          modAs[Q, driverSimulationIDColumns]
+	SimulationSeries                       modAs[Q, seriesColumns]
+	SimulationSimulationCarAliases         modAs[Q, simulationCarAliasColumns]
+	SimulationSimulationTrackLayoutAliases modAs[Q, simulationTrackLayoutAliasColumns]
 }
 
 func (j racingSimJoins[Q]) aliasedAs(alias string) racingSimJoins[Q] {
@@ -782,6 +1314,20 @@ func (j racingSimJoins[Q]) aliasedAs(alias string) racingSimJoins[Q] {
 func buildRacingSimJoins[Q dialect.Joinable](cols racingSimColumns, typ string) racingSimJoins[Q] {
 	return racingSimJoins[Q]{
 		typ: typ,
+		SimulationDriverSimulationIds: modAs[Q, driverSimulationIDColumns]{
+			c: DriverSimulationIds.Columns,
+			f: func(to driverSimulationIDColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, DriverSimulationIds.Name().As(to.Alias())).On(
+						to.SimulationID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		SimulationSeries: modAs[Q, seriesColumns]{
 			c: Serieses.Columns,
 			f: func(to seriesColumns) bob.Mod[Q] {
@@ -789,6 +1335,34 @@ func buildRacingSimJoins[Q dialect.Joinable](cols racingSimColumns, typ string) 
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, Serieses.Name().As(to.Alias())).On(
+						to.SimulationID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SimulationSimulationCarAliases: modAs[Q, simulationCarAliasColumns]{
+			c: SimulationCarAliases.Columns,
+			f: func(to simulationCarAliasColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SimulationCarAliases.Name().As(to.Alias())).On(
+						to.SimulationID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SimulationSimulationTrackLayoutAliases: modAs[Q, simulationTrackLayoutAliasColumns]{
+			c: SimulationTrackLayoutAliases.Columns,
+			f: func(to simulationTrackLayoutAliasColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SimulationTrackLayoutAliases.Name().As(to.Alias())).On(
 						to.SimulationID.EQ(cols.ID),
 					))
 				}

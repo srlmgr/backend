@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -37,19 +38,21 @@ func (mods SeasonModSlice) Apply(ctx context.Context, n *SeasonTemplate) {
 // SeasonTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type SeasonTemplate struct {
-	ID            func() int32
-	SeriesID      func() int32
-	PointSystemID func() int32
-	Name          func() string
-	ShortName     func() string
-	StartsAt      func() null.Val[time.Time]
-	EndsAt        func() null.Val[time.Time]
-	Status        func() string
-	IsActive      func() bool
-	CreatedAt     func() time.Time
-	UpdatedAt     func() time.Time
-	CreatedBy     func() string
-	UpdatedBy     func() string
+	ID             func() int32
+	FrontendID     func() uuid.UUID
+	SeriesID       func() int32
+	PointSystemID  func() int32
+	Name           func() string
+	StartsAt       func() null.Val[time.Time]
+	EndsAt         func() null.Val[time.Time]
+	HasTeams       func() bool
+	SkipEvents     func() int32
+	TeamPointsTopN func() null.Val[int32]
+	Status         func() string
+	CreatedAt      func() time.Time
+	UpdatedAt      func() time.Time
+	CreatedBy      func() string
+	UpdatedBy      func() string
 
 	r seasonR
 	f *Factory
@@ -58,15 +61,35 @@ type SeasonTemplate struct {
 }
 
 type seasonR struct {
-	Events      []*seasonREventsR
-	PointSystem *seasonRPointSystemR
-	Series      *seasonRSeriesR
-	Teams       []*seasonRTeamsR
+	EventDriverStandings  []*seasonREventDriverStandingsR
+	EventTeamStandings    []*seasonREventTeamStandingsR
+	Events                []*seasonREventsR
+	SeasonDriverStandings []*seasonRSeasonDriverStandingsR
+	SeasonTeamStandings   []*seasonRSeasonTeamStandingsR
+	PointSystem           *seasonRPointSystemR
+	Series                *seasonRSeriesR
+	Teams                 []*seasonRTeamsR
 }
 
+type seasonREventDriverStandingsR struct {
+	number int
+	o      *EventDriverStandingTemplate
+}
+type seasonREventTeamStandingsR struct {
+	number int
+	o      *EventTeamStandingTemplate
+}
 type seasonREventsR struct {
 	number int
 	o      *EventTemplate
+}
+type seasonRSeasonDriverStandingsR struct {
+	number int
+	o      *SeasonDriverStandingTemplate
+}
+type seasonRSeasonTeamStandingsR struct {
+	number int
+	o      *SeasonTeamStandingTemplate
 }
 type seasonRPointSystemR struct {
 	o *PointSystemTemplate
@@ -89,6 +112,32 @@ func (o *SeasonTemplate) Apply(ctx context.Context, mods ...SeasonMod) {
 // setModelRels creates and sets the relationships on *models.Season
 // according to the relationships in the template. Nothing is inserted into the db
 func (t SeasonTemplate) setModelRels(o *models.Season) {
+	if t.r.EventDriverStandings != nil {
+		rel := models.EventDriverStandingSlice{}
+		for _, r := range t.r.EventDriverStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SeasonID = o.ID // h2
+				rel.R.Season = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventDriverStandings = rel
+	}
+
+	if t.r.EventTeamStandings != nil {
+		rel := models.EventTeamStandingSlice{}
+		for _, r := range t.r.EventTeamStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SeasonID = o.ID // h2
+				rel.R.Season = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventTeamStandings = rel
+	}
+
 	if t.r.Events != nil {
 		rel := models.EventSlice{}
 		for _, r := range t.r.Events {
@@ -100,6 +149,32 @@ func (t SeasonTemplate) setModelRels(o *models.Season) {
 			rel = append(rel, related...)
 		}
 		o.R.Events = rel
+	}
+
+	if t.r.SeasonDriverStandings != nil {
+		rel := models.SeasonDriverStandingSlice{}
+		for _, r := range t.r.SeasonDriverStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SeasonID = o.ID // h2
+				rel.R.Season = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SeasonDriverStandings = rel
+	}
+
+	if t.r.SeasonTeamStandings != nil {
+		rel := models.SeasonTeamStandingSlice{}
+		for _, r := range t.r.SeasonTeamStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SeasonID = o.ID // h2
+				rel.R.Season = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SeasonTeamStandings = rel
 	}
 
 	if t.r.PointSystem != nil {
@@ -139,6 +214,10 @@ func (o SeasonTemplate) BuildSetter() *models.SeasonSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.SeriesID != nil {
 		val := o.SeriesID()
 		m.SeriesID = omit.From(val)
@@ -151,10 +230,6 @@ func (o SeasonTemplate) BuildSetter() *models.SeasonSetter {
 		val := o.Name()
 		m.Name = omit.From(val)
 	}
-	if o.ShortName != nil {
-		val := o.ShortName()
-		m.ShortName = omit.From(val)
-	}
 	if o.StartsAt != nil {
 		val := o.StartsAt()
 		m.StartsAt = omitnull.FromNull(val)
@@ -163,13 +238,21 @@ func (o SeasonTemplate) BuildSetter() *models.SeasonSetter {
 		val := o.EndsAt()
 		m.EndsAt = omitnull.FromNull(val)
 	}
+	if o.HasTeams != nil {
+		val := o.HasTeams()
+		m.HasTeams = omit.From(val)
+	}
+	if o.SkipEvents != nil {
+		val := o.SkipEvents()
+		m.SkipEvents = omit.From(val)
+	}
+	if o.TeamPointsTopN != nil {
+		val := o.TeamPointsTopN()
+		m.TeamPointsTopN = omitnull.FromNull(val)
+	}
 	if o.Status != nil {
 		val := o.Status()
 		m.Status = omit.From(val)
-	}
-	if o.IsActive != nil {
-		val := o.IsActive()
-		m.IsActive = omit.From(val)
 	}
 	if o.CreatedAt != nil {
 		val := o.CreatedAt()
@@ -212,6 +295,9 @@ func (o SeasonTemplate) Build() *models.Season {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.SeriesID != nil {
 		m.SeriesID = o.SeriesID()
 	}
@@ -221,20 +307,23 @@ func (o SeasonTemplate) Build() *models.Season {
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
-	if o.ShortName != nil {
-		m.ShortName = o.ShortName()
-	}
 	if o.StartsAt != nil {
 		m.StartsAt = o.StartsAt()
 	}
 	if o.EndsAt != nil {
 		m.EndsAt = o.EndsAt()
 	}
+	if o.HasTeams != nil {
+		m.HasTeams = o.HasTeams()
+	}
+	if o.SkipEvents != nil {
+		m.SkipEvents = o.SkipEvents()
+	}
+	if o.TeamPointsTopN != nil {
+		m.TeamPointsTopN = o.TeamPointsTopN()
+	}
 	if o.Status != nil {
 		m.Status = o.Status()
-	}
-	if o.IsActive != nil {
-		m.IsActive = o.IsActive()
 	}
 	if o.CreatedAt != nil {
 		m.CreatedAt = o.CreatedAt()
@@ -280,10 +369,6 @@ func ensureCreatableSeason(m *models.SeasonSetter) {
 		val := random_string(nil)
 		m.Name = omit.From(val)
 	}
-	if !(m.ShortName.IsValue()) {
-		val := random_string(nil)
-		m.ShortName = omit.From(val)
-	}
 }
 
 // insertOptRels creates and inserts any optional the relationships on *models.Season
@@ -292,6 +377,46 @@ func ensureCreatableSeason(m *models.SeasonSetter) {
 func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Season) error {
 	var err error
 
+	isEventDriverStandingsDone, _ := seasonRelEventDriverStandingsCtx.Value(ctx)
+	if !isEventDriverStandingsDone && o.r.EventDriverStandings != nil {
+		ctx = seasonRelEventDriverStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventDriverStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventDriverStandings = append(m.R.EventDriverStandings, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventDriverStandings(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventTeamStandingsDone, _ := seasonRelEventTeamStandingsCtx.Value(ctx)
+	if !isEventTeamStandingsDone && o.r.EventTeamStandings != nil {
+		ctx = seasonRelEventTeamStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventTeamStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventTeamStandings = append(m.R.EventTeamStandings, r.o.Build())
+			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventTeamStandings(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isEventsDone, _ := seasonRelEventsCtx.Value(ctx)
 	if !isEventsDone && o.r.Events != nil {
 		ctx = seasonRelEventsCtx.WithValue(ctx, true)
@@ -299,12 +424,52 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 			if r.o.alreadyPersisted {
 				m.R.Events = append(m.R.Events, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachEvents(ctx, exec, rel0...)
+				err = m.AttachEvents(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSeasonDriverStandingsDone, _ := seasonRelSeasonDriverStandingsCtx.Value(ctx)
+	if !isSeasonDriverStandingsDone && o.r.SeasonDriverStandings != nil {
+		ctx = seasonRelSeasonDriverStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.SeasonDriverStandings {
+			if r.o.alreadyPersisted {
+				m.R.SeasonDriverStandings = append(m.R.SeasonDriverStandings, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasonDriverStandings(ctx, exec, rel3...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSeasonTeamStandingsDone, _ := seasonRelSeasonTeamStandingsCtx.Value(ctx)
+	if !isSeasonTeamStandingsDone && o.r.SeasonTeamStandings != nil {
+		ctx = seasonRelSeasonTeamStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.SeasonTeamStandings {
+			if r.o.alreadyPersisted {
+				m.R.SeasonTeamStandings = append(m.R.SeasonTeamStandings, r.o.Build())
+			} else {
+				rel4, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasonTeamStandings(ctx, exec, rel4...)
 				if err != nil {
 					return err
 				}
@@ -319,12 +484,12 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 			if r.o.alreadyPersisted {
 				m.R.Teams = append(m.R.Teams, r.o.Build())
 			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				rel7, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachTeams(ctx, exec, rel3...)
+				err = m.AttachTeams(ctx, exec, rel7...)
 				if err != nil {
 					return err
 				}
@@ -346,43 +511,43 @@ func (o *SeasonTemplate) Create(ctx context.Context, exec bob.Executor) (*models
 		SeasonMods.WithNewPointSystem().Apply(ctx, o)
 	}
 
-	var rel1 *models.PointSystem
+	var rel5 *models.PointSystem
 
 	if o.r.PointSystem.o.alreadyPersisted {
-		rel1 = o.r.PointSystem.o.Build()
+		rel5 = o.r.PointSystem.o.Build()
 	} else {
-		rel1, err = o.r.PointSystem.o.Create(ctx, exec)
+		rel5, err = o.r.PointSystem.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.PointSystemID = omit.From(rel1.ID)
+	opt.PointSystemID = omit.From(rel5.ID)
 
 	if o.r.Series == nil {
 		SeasonMods.WithNewSeries().Apply(ctx, o)
 	}
 
-	var rel2 *models.Series
+	var rel6 *models.Series
 
 	if o.r.Series.o.alreadyPersisted {
-		rel2 = o.r.Series.o.Build()
+		rel6 = o.r.Series.o.Build()
 	} else {
-		rel2, err = o.r.Series.o.Create(ctx, exec)
+		rel6, err = o.r.Series.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.SeriesID = omit.From(rel2.ID)
+	opt.SeriesID = omit.From(rel6.ID)
 
 	m, err := models.Seasons.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.PointSystem = rel1
-	m.R.Series = rel2
+	m.R.PointSystem = rel5
+	m.R.Series = rel6
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -462,14 +627,16 @@ type seasonMods struct{}
 func (m seasonMods) RandomizeAllColumns(f *faker.Faker) SeasonMod {
 	return SeasonModSlice{
 		SeasonMods.RandomID(f),
+		SeasonMods.RandomFrontendID(f),
 		SeasonMods.RandomSeriesID(f),
 		SeasonMods.RandomPointSystemID(f),
 		SeasonMods.RandomName(f),
-		SeasonMods.RandomShortName(f),
 		SeasonMods.RandomStartsAt(f),
 		SeasonMods.RandomEndsAt(f),
+		SeasonMods.RandomHasTeams(f),
+		SeasonMods.RandomSkipEvents(f),
+		SeasonMods.RandomTeamPointsTopN(f),
 		SeasonMods.RandomStatus(f),
-		SeasonMods.RandomIsActive(f),
 		SeasonMods.RandomCreatedAt(f),
 		SeasonMods.RandomUpdatedAt(f),
 		SeasonMods.RandomCreatedBy(f),
@@ -504,6 +671,37 @@ func (m seasonMods) RandomID(f *faker.Faker) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) FrontendID(val uuid.UUID) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) FrontendIDFunc(f func() uuid.UUID) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetFrontendID() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomFrontendID(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -596,37 +794,6 @@ func (m seasonMods) UnsetName() SeasonMod {
 func (m seasonMods) RandomName(f *faker.Faker) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.Name = func() string {
-			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m seasonMods) ShortName(val string) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.ShortName = func() string { return val }
-	})
-}
-
-// Set the Column from the function
-func (m seasonMods) ShortNameFunc(f func() string) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.ShortName = f
-	})
-}
-
-// Clear any values for the column
-func (m seasonMods) UnsetShortName() SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.ShortName = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m seasonMods) RandomShortName(f *faker.Faker) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.ShortName = func() string {
 			return random_string(f)
 		}
 	})
@@ -739,6 +906,121 @@ func (m seasonMods) RandomEndsAtNotNull(f *faker.Faker) SeasonMod {
 }
 
 // Set the model columns to this value
+func (m seasonMods) HasTeams(val bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) HasTeamsFunc(f func() bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetHasTeams() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomHasTeams(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = func() bool {
+			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) SkipEvents(val int32) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.SkipEvents = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) SkipEventsFunc(f func() int32) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.SkipEvents = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetSkipEvents() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.SkipEvents = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomSkipEvents(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.SkipEvents = func() int32 {
+			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) TeamPointsTopN(val null.Val[int32]) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.TeamPointsTopN = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) TeamPointsTopNFunc(f func() null.Val[int32]) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.TeamPointsTopN = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetTeamPointsTopN() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.TeamPointsTopN = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m seasonMods) RandomTeamPointsTopN(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.TeamPointsTopN = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m seasonMods) RandomTeamPointsTopNNotNull(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.TeamPointsTopN = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
 func (m seasonMods) Status(val string) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.Status = func() string { return val }
@@ -765,37 +1047,6 @@ func (m seasonMods) RandomStatus(f *faker.Faker) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.Status = func() string {
 			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m seasonMods) IsActive(val bool) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.IsActive = func() bool { return val }
-	})
-}
-
-// Set the Column from the function
-func (m seasonMods) IsActiveFunc(f func() bool) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.IsActive = f
-	})
-}
-
-// Clear any values for the column
-func (m seasonMods) UnsetIsActive() SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.IsActive = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m seasonMods) RandomIsActive(f *faker.Faker) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.IsActive = func() bool {
-			return random_bool(f)
 		}
 	})
 }
@@ -1003,6 +1254,102 @@ func (m seasonMods) WithoutSeries() SeasonMod {
 	})
 }
 
+func (m seasonMods) WithEventDriverStandings(number int, related *EventDriverStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventDriverStandings = []*seasonREventDriverStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m seasonMods) WithNewEventDriverStandings(number int, mods ...EventDriverStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.WithEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddEventDriverStandings(number int, related *EventDriverStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventDriverStandings = append(o.r.EventDriverStandings, &seasonREventDriverStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m seasonMods) AddNewEventDriverStandings(number int, mods ...EventDriverStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewEventDriverStandingWithContext(ctx, mods...)
+		m.AddEventDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddExistingEventDriverStandings(existingModels ...*models.EventDriverStanding) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		for _, em := range existingModels {
+			o.r.EventDriverStandings = append(o.r.EventDriverStandings, &seasonREventDriverStandingsR{
+				o: o.f.FromExistingEventDriverStanding(em),
+			})
+		}
+	})
+}
+
+func (m seasonMods) WithoutEventDriverStandings() SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventDriverStandings = nil
+	})
+}
+
+func (m seasonMods) WithEventTeamStandings(number int, related *EventTeamStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventTeamStandings = []*seasonREventTeamStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m seasonMods) WithNewEventTeamStandings(number int, mods ...EventTeamStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.WithEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddEventTeamStandings(number int, related *EventTeamStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventTeamStandings = append(o.r.EventTeamStandings, &seasonREventTeamStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m seasonMods) AddNewEventTeamStandings(number int, mods ...EventTeamStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.AddEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddExistingEventTeamStandings(existingModels ...*models.EventTeamStanding) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		for _, em := range existingModels {
+			o.r.EventTeamStandings = append(o.r.EventTeamStandings, &seasonREventTeamStandingsR{
+				o: o.f.FromExistingEventTeamStanding(em),
+			})
+		}
+	})
+}
+
+func (m seasonMods) WithoutEventTeamStandings() SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.EventTeamStandings = nil
+	})
+}
+
 func (m seasonMods) WithEvents(number int, related *EventTemplate) SeasonMod {
 	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
 		o.r.Events = []*seasonREventsR{{
@@ -1048,6 +1395,102 @@ func (m seasonMods) AddExistingEvents(existingModels ...*models.Event) SeasonMod
 func (m seasonMods) WithoutEvents() SeasonMod {
 	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
 		o.r.Events = nil
+	})
+}
+
+func (m seasonMods) WithSeasonDriverStandings(number int, related *SeasonDriverStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonDriverStandings = []*seasonRSeasonDriverStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m seasonMods) WithNewSeasonDriverStandings(number int, mods ...SeasonDriverStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonDriverStandingWithContext(ctx, mods...)
+		m.WithSeasonDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddSeasonDriverStandings(number int, related *SeasonDriverStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonDriverStandings = append(o.r.SeasonDriverStandings, &seasonRSeasonDriverStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m seasonMods) AddNewSeasonDriverStandings(number int, mods ...SeasonDriverStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonDriverStandingWithContext(ctx, mods...)
+		m.AddSeasonDriverStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddExistingSeasonDriverStandings(existingModels ...*models.SeasonDriverStanding) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		for _, em := range existingModels {
+			o.r.SeasonDriverStandings = append(o.r.SeasonDriverStandings, &seasonRSeasonDriverStandingsR{
+				o: o.f.FromExistingSeasonDriverStanding(em),
+			})
+		}
+	})
+}
+
+func (m seasonMods) WithoutSeasonDriverStandings() SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonDriverStandings = nil
+	})
+}
+
+func (m seasonMods) WithSeasonTeamStandings(number int, related *SeasonTeamStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonTeamStandings = []*seasonRSeasonTeamStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m seasonMods) WithNewSeasonTeamStandings(number int, mods ...SeasonTeamStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonTeamStandingWithContext(ctx, mods...)
+		m.WithSeasonTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddSeasonTeamStandings(number int, related *SeasonTeamStandingTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonTeamStandings = append(o.r.SeasonTeamStandings, &seasonRSeasonTeamStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m seasonMods) AddNewSeasonTeamStandings(number int, mods ...SeasonTeamStandingMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonTeamStandingWithContext(ctx, mods...)
+		m.AddSeasonTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddExistingSeasonTeamStandings(existingModels ...*models.SeasonTeamStanding) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		for _, em := range existingModels {
+			o.r.SeasonTeamStandings = append(o.r.SeasonTeamStandings, &seasonRSeasonTeamStandingsR{
+				o: o.f.FromExistingSeasonTeamStanding(em),
+			})
+		}
+	})
+}
+
+func (m seasonMods) WithoutSeasonTeamStandings() SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonTeamStandings = nil
 	})
 }
 

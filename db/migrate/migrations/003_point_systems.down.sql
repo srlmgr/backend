@@ -1,5 +1,0 @@
-BEGIN;
-
-DROP TABLE IF EXISTS point_systems;
-
-COMMIT;

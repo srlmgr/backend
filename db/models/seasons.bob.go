@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -26,19 +27,21 @@ import (
 
 // Season is an object representing the database table.
 type Season struct {
-	ID            int32               `db:"id,pk" `
-	SeriesID      int32               `db:"series_id" `
-	PointSystemID int32               `db:"point_system_id" `
-	Name          string              `db:"name" `
-	ShortName     string              `db:"short_name" `
-	StartsAt      null.Val[time.Time] `db:"starts_at" `
-	EndsAt        null.Val[time.Time] `db:"ends_at" `
-	Status        string              `db:"status" `
-	IsActive      bool                `db:"is_active" `
-	CreatedAt     time.Time           `db:"created_at" `
-	UpdatedAt     time.Time           `db:"updated_at" `
-	CreatedBy     string              `db:"created_by" `
-	UpdatedBy     string              `db:"updated_by" `
+	ID             int32               `db:"id,pk" `
+	FrontendID     uuid.UUID           `db:"frontend_id" `
+	SeriesID       int32               `db:"series_id" `
+	PointSystemID  int32               `db:"point_system_id" `
+	Name           string              `db:"name" `
+	StartsAt       null.Val[time.Time] `db:"starts_at" `
+	EndsAt         null.Val[time.Time] `db:"ends_at" `
+	HasTeams       bool                `db:"has_teams" `
+	SkipEvents     int32               `db:"skip_events" `
+	TeamPointsTopN null.Val[int32]     `db:"team_points_top_n" `
+	Status         string              `db:"status" `
+	CreatedAt      time.Time           `db:"created_at" `
+	UpdatedAt      time.Time           `db:"updated_at" `
+	CreatedBy      string              `db:"created_by" `
+	UpdatedBy      string              `db:"updated_by" `
 
 	R seasonR `db:"-" `
 }
@@ -55,50 +58,58 @@ type SeasonsQuery = *psql.ViewQuery[*Season, SeasonSlice]
 
 // seasonR is where relationships are stored.
 type seasonR struct {
-	Events      EventSlice   // events.events_season_id_fk
-	PointSystem *PointSystem // seasons.seasons_point_system_id_fk
-	Series      *Series      // seasons.seasons_series_id_fk
-	Teams       TeamSlice    // teams.teams_season_id_fk
+	EventDriverStandings  EventDriverStandingSlice  // event_driver_standings.event_driver_standings_season_id_fk
+	EventTeamStandings    EventTeamStandingSlice    // event_team_standings.event_team_standings_season_id_fk
+	Events                EventSlice                // events.events_season_id_fk
+	SeasonDriverStandings SeasonDriverStandingSlice // season_driver_standings.season_driver_standings_season_id_fk
+	SeasonTeamStandings   SeasonTeamStandingSlice   // season_team_standings.season_team_standings_season_id_fk
+	PointSystem           *PointSystem              // seasons.seasons_point_system_id_fk
+	Series                *Series                   // seasons.seasons_series_id_fk
+	Teams                 TeamSlice                 // teams.teams_season_id_fk
 }
 
 func buildSeasonColumns(alias string) seasonColumns {
 	return seasonColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "series_id", "point_system_id", "name", "short_name", "starts_at", "ends_at", "status", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "series_id", "point_system_id", "name", "starts_at", "ends_at", "has_teams", "skip_events", "team_points_top_n", "status", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("seasons"),
-		tableAlias:    alias,
-		ID:            psql.Quote(alias, "id"),
-		SeriesID:      psql.Quote(alias, "series_id"),
-		PointSystemID: psql.Quote(alias, "point_system_id"),
-		Name:          psql.Quote(alias, "name"),
-		ShortName:     psql.Quote(alias, "short_name"),
-		StartsAt:      psql.Quote(alias, "starts_at"),
-		EndsAt:        psql.Quote(alias, "ends_at"),
-		Status:        psql.Quote(alias, "status"),
-		IsActive:      psql.Quote(alias, "is_active"),
-		CreatedAt:     psql.Quote(alias, "created_at"),
-		UpdatedAt:     psql.Quote(alias, "updated_at"),
-		CreatedBy:     psql.Quote(alias, "created_by"),
-		UpdatedBy:     psql.Quote(alias, "updated_by"),
+		tableAlias:     alias,
+		ID:             psql.Quote(alias, "id"),
+		FrontendID:     psql.Quote(alias, "frontend_id"),
+		SeriesID:       psql.Quote(alias, "series_id"),
+		PointSystemID:  psql.Quote(alias, "point_system_id"),
+		Name:           psql.Quote(alias, "name"),
+		StartsAt:       psql.Quote(alias, "starts_at"),
+		EndsAt:         psql.Quote(alias, "ends_at"),
+		HasTeams:       psql.Quote(alias, "has_teams"),
+		SkipEvents:     psql.Quote(alias, "skip_events"),
+		TeamPointsTopN: psql.Quote(alias, "team_points_top_n"),
+		Status:         psql.Quote(alias, "status"),
+		CreatedAt:      psql.Quote(alias, "created_at"),
+		UpdatedAt:      psql.Quote(alias, "updated_at"),
+		CreatedBy:      psql.Quote(alias, "created_by"),
+		UpdatedBy:      psql.Quote(alias, "updated_by"),
 	}
 }
 
 type seasonColumns struct {
 	expr.ColumnsExpr
-	tableAlias    string
-	ID            psql.Expression
-	SeriesID      psql.Expression
-	PointSystemID psql.Expression
-	Name          psql.Expression
-	ShortName     psql.Expression
-	StartsAt      psql.Expression
-	EndsAt        psql.Expression
-	Status        psql.Expression
-	IsActive      psql.Expression
-	CreatedAt     psql.Expression
-	UpdatedAt     psql.Expression
-	CreatedBy     psql.Expression
-	UpdatedBy     psql.Expression
+	tableAlias     string
+	ID             psql.Expression
+	FrontendID     psql.Expression
+	SeriesID       psql.Expression
+	PointSystemID  psql.Expression
+	Name           psql.Expression
+	StartsAt       psql.Expression
+	EndsAt         psql.Expression
+	HasTeams       psql.Expression
+	SkipEvents     psql.Expression
+	TeamPointsTopN psql.Expression
+	Status         psql.Expression
+	CreatedAt      psql.Expression
+	UpdatedAt      psql.Expression
+	CreatedBy      psql.Expression
+	UpdatedBy      psql.Expression
 }
 
 func (c seasonColumns) Alias() string {
@@ -113,25 +124,30 @@ func (seasonColumns) AliasedAs(alias string) seasonColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type SeasonSetter struct {
-	ID            omit.Val[int32]         `db:"id,pk" `
-	SeriesID      omit.Val[int32]         `db:"series_id" `
-	PointSystemID omit.Val[int32]         `db:"point_system_id" `
-	Name          omit.Val[string]        `db:"name" `
-	ShortName     omit.Val[string]        `db:"short_name" `
-	StartsAt      omitnull.Val[time.Time] `db:"starts_at" `
-	EndsAt        omitnull.Val[time.Time] `db:"ends_at" `
-	Status        omit.Val[string]        `db:"status" `
-	IsActive      omit.Val[bool]          `db:"is_active" `
-	CreatedAt     omit.Val[time.Time]     `db:"created_at" `
-	UpdatedAt     omit.Val[time.Time]     `db:"updated_at" `
-	CreatedBy     omit.Val[string]        `db:"created_by" `
-	UpdatedBy     omit.Val[string]        `db:"updated_by" `
+	ID             omit.Val[int32]         `db:"id,pk" `
+	FrontendID     omit.Val[uuid.UUID]     `db:"frontend_id" `
+	SeriesID       omit.Val[int32]         `db:"series_id" `
+	PointSystemID  omit.Val[int32]         `db:"point_system_id" `
+	Name           omit.Val[string]        `db:"name" `
+	StartsAt       omitnull.Val[time.Time] `db:"starts_at" `
+	EndsAt         omitnull.Val[time.Time] `db:"ends_at" `
+	HasTeams       omit.Val[bool]          `db:"has_teams" `
+	SkipEvents     omit.Val[int32]         `db:"skip_events" `
+	TeamPointsTopN omitnull.Val[int32]     `db:"team_points_top_n" `
+	Status         omit.Val[string]        `db:"status" `
+	CreatedAt      omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt      omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy      omit.Val[string]        `db:"created_by" `
+	UpdatedBy      omit.Val[string]        `db:"updated_by" `
 }
 
 func (s SeasonSetter) SetColumns() []string {
-	vals := make([]string, 0, 13)
+	vals := make([]string, 0, 15)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
+	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
 	}
 	if s.SeriesID.IsValue() {
 		vals = append(vals, "series_id")
@@ -142,20 +158,23 @@ func (s SeasonSetter) SetColumns() []string {
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
-	if s.ShortName.IsValue() {
-		vals = append(vals, "short_name")
-	}
 	if !s.StartsAt.IsUnset() {
 		vals = append(vals, "starts_at")
 	}
 	if !s.EndsAt.IsUnset() {
 		vals = append(vals, "ends_at")
 	}
+	if s.HasTeams.IsValue() {
+		vals = append(vals, "has_teams")
+	}
+	if s.SkipEvents.IsValue() {
+		vals = append(vals, "skip_events")
+	}
+	if !s.TeamPointsTopN.IsUnset() {
+		vals = append(vals, "team_points_top_n")
+	}
 	if s.Status.IsValue() {
 		vals = append(vals, "status")
-	}
-	if s.IsActive.IsValue() {
-		vals = append(vals, "is_active")
 	}
 	if s.CreatedAt.IsValue() {
 		vals = append(vals, "created_at")
@@ -176,6 +195,9 @@ func (s SeasonSetter) Overwrite(t *Season) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
 	if s.SeriesID.IsValue() {
 		t.SeriesID = s.SeriesID.MustGet()
 	}
@@ -185,20 +207,23 @@ func (s SeasonSetter) Overwrite(t *Season) {
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
-	if s.ShortName.IsValue() {
-		t.ShortName = s.ShortName.MustGet()
-	}
 	if !s.StartsAt.IsUnset() {
 		t.StartsAt = s.StartsAt.MustGetNull()
 	}
 	if !s.EndsAt.IsUnset() {
 		t.EndsAt = s.EndsAt.MustGetNull()
 	}
+	if s.HasTeams.IsValue() {
+		t.HasTeams = s.HasTeams.MustGet()
+	}
+	if s.SkipEvents.IsValue() {
+		t.SkipEvents = s.SkipEvents.MustGet()
+	}
+	if !s.TeamPointsTopN.IsUnset() {
+		t.TeamPointsTopN = s.TeamPointsTopN.MustGetNull()
+	}
 	if s.Status.IsValue() {
 		t.Status = s.Status.MustGet()
-	}
-	if s.IsActive.IsValue() {
-		t.IsActive = s.IsActive.MustGet()
 	}
 	if s.CreatedAt.IsValue() {
 		t.CreatedAt = s.CreatedAt.MustGet()
@@ -220,33 +245,33 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 13)
+		vals := make([]bob.Expression, 15)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.SeriesID.IsValue() {
-			vals[1] = psql.Arg(s.SeriesID.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.PointSystemID.IsValue() {
-			vals[2] = psql.Arg(s.PointSystemID.MustGet())
+		if s.SeriesID.IsValue() {
+			vals[2] = psql.Arg(s.SeriesID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[3] = psql.Arg(s.Name.MustGet())
+		if s.PointSystemID.IsValue() {
+			vals[3] = psql.Arg(s.PointSystemID.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.ShortName.IsValue() {
-			vals[4] = psql.Arg(s.ShortName.MustGet())
+		if s.Name.IsValue() {
+			vals[4] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
@@ -263,40 +288,52 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.Status.IsValue() {
-			vals[7] = psql.Arg(s.Status.MustGet())
+		if s.HasTeams.IsValue() {
+			vals[7] = psql.Arg(s.HasTeams.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsActive.IsValue() {
-			vals[8] = psql.Arg(s.IsActive.MustGet())
+		if s.SkipEvents.IsValue() {
+			vals[8] = psql.Arg(s.SkipEvents.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[9] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.TeamPointsTopN.IsUnset() {
+			vals[9] = psql.Arg(s.TeamPointsTopN.MustGetNull())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[10] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.Status.IsValue() {
+			vals[10] = psql.Arg(s.Status.MustGet())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[11] = psql.Arg(s.CreatedBy.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[11] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[12] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[12] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedBy.IsValue() {
+			vals[13] = psql.Arg(s.CreatedBy.MustGet())
+		} else {
+			vals[13] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[14] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[14] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -308,12 +345,19 @@ func (s SeasonSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 13)
+	exprs := make([]bob.Expression, 0, 15)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
+		}})
+	}
+
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
 		}})
 	}
 
@@ -338,13 +382,6 @@ func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.ShortName.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "short_name")...),
-			psql.Arg(s.ShortName),
-		}})
-	}
-
 	if !s.StartsAt.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "starts_at")...),
@@ -359,17 +396,31 @@ func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.HasTeams.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "has_teams")...),
+			psql.Arg(s.HasTeams),
+		}})
+	}
+
+	if s.SkipEvents.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "skip_events")...),
+			psql.Arg(s.SkipEvents),
+		}})
+	}
+
+	if !s.TeamPointsTopN.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "team_points_top_n")...),
+			psql.Arg(s.TeamPointsTopN),
+		}})
+	}
+
 	if s.Status.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "status")...),
 			psql.Arg(s.Status),
-		}})
-	}
-
-	if s.IsActive.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "is_active")...),
-			psql.Arg(s.IsActive),
 		}})
 	}
 
@@ -627,6 +678,54 @@ func (o SeasonSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// EventDriverStandings starts a query for related objects on event_driver_standings
+func (o *Season) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(EventDriverStandings.Columns.SeasonID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os SeasonSlice) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(psql.Group(EventDriverStandings.Columns.SeasonID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// EventTeamStandings starts a query for related objects on event_team_standings
+func (o *Season) EventTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventTeamStandingsQuery {
+	return EventTeamStandings.Query(append(mods,
+		sm.Where(EventTeamStandings.Columns.SeasonID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os SeasonSlice) EventTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventTeamStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventTeamStandings.Query(append(mods,
+		sm.Where(psql.Group(EventTeamStandings.Columns.SeasonID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Events starts a query for related objects on events
 func (o *Season) Events(mods ...bob.Mod[*dialect.SelectQuery]) EventsQuery {
 	return Events.Query(append(mods,
@@ -648,6 +747,54 @@ func (os SeasonSlice) Events(mods ...bob.Mod[*dialect.SelectQuery]) EventsQuery 
 
 	return Events.Query(append(mods,
 		sm.Where(psql.Group(Events.Columns.SeasonID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// SeasonDriverStandings starts a query for related objects on season_driver_standings
+func (o *Season) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriverStandingsQuery {
+	return SeasonDriverStandings.Query(append(mods,
+		sm.Where(SeasonDriverStandings.Columns.SeasonID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os SeasonSlice) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriverStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonDriverStandings.Query(append(mods,
+		sm.Where(psql.Group(SeasonDriverStandings.Columns.SeasonID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// SeasonTeamStandings starts a query for related objects on season_team_standings
+func (o *Season) SeasonTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonTeamStandingsQuery {
+	return SeasonTeamStandings.Query(append(mods,
+		sm.Where(SeasonTeamStandings.Columns.SeasonID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os SeasonSlice) SeasonTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonTeamStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonTeamStandings.Query(append(mods,
+		sm.Where(psql.Group(SeasonTeamStandings.Columns.SeasonID).OP("IN", PKArgExpr)),
 	)...)
 }
 
@@ -723,6 +870,142 @@ func (os SeasonSlice) Teams(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQuery {
 	)...)
 }
 
+func insertSeasonEventDriverStandings0(ctx context.Context, exec bob.Executor, eventDriverStandings1 []*EventDriverStandingSetter, season0 *Season) (EventDriverStandingSlice, error) {
+	for i := range eventDriverStandings1 {
+		eventDriverStandings1[i].SeasonID = omit.From(season0.ID)
+	}
+
+	ret, err := EventDriverStandings.Insert(bob.ToMods(eventDriverStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertSeasonEventDriverStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachSeasonEventDriverStandings0(ctx context.Context, exec bob.Executor, count int, eventDriverStandings1 EventDriverStandingSlice, season0 *Season) (EventDriverStandingSlice, error) {
+	setter := &EventDriverStandingSetter{
+		SeasonID: omit.From(season0.ID),
+	}
+
+	err := eventDriverStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachSeasonEventDriverStandings0: %w", err)
+	}
+
+	return eventDriverStandings1, nil
+}
+
+func (season0 *Season) InsertEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventDriverStandings1, err := insertSeasonEventDriverStandings0(ctx, exec, related, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.EventDriverStandings = append(season0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range eventDriverStandings1 {
+		rel.R.Season = season0
+	}
+	return nil
+}
+
+func (season0 *Season) AttachEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventDriverStandings1 := EventDriverStandingSlice(related)
+
+	_, err = attachSeasonEventDriverStandings0(ctx, exec, len(related), eventDriverStandings1, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.EventDriverStandings = append(season0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range related {
+		rel.R.Season = season0
+	}
+
+	return nil
+}
+
+func insertSeasonEventTeamStandings0(ctx context.Context, exec bob.Executor, eventTeamStandings1 []*EventTeamStandingSetter, season0 *Season) (EventTeamStandingSlice, error) {
+	for i := range eventTeamStandings1 {
+		eventTeamStandings1[i].SeasonID = omit.From(season0.ID)
+	}
+
+	ret, err := EventTeamStandings.Insert(bob.ToMods(eventTeamStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertSeasonEventTeamStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachSeasonEventTeamStandings0(ctx context.Context, exec bob.Executor, count int, eventTeamStandings1 EventTeamStandingSlice, season0 *Season) (EventTeamStandingSlice, error) {
+	setter := &EventTeamStandingSetter{
+		SeasonID: omit.From(season0.ID),
+	}
+
+	err := eventTeamStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachSeasonEventTeamStandings0: %w", err)
+	}
+
+	return eventTeamStandings1, nil
+}
+
+func (season0 *Season) InsertEventTeamStandings(ctx context.Context, exec bob.Executor, related ...*EventTeamStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventTeamStandings1, err := insertSeasonEventTeamStandings0(ctx, exec, related, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.EventTeamStandings = append(season0.R.EventTeamStandings, eventTeamStandings1...)
+
+	for _, rel := range eventTeamStandings1 {
+		rel.R.Season = season0
+	}
+	return nil
+}
+
+func (season0 *Season) AttachEventTeamStandings(ctx context.Context, exec bob.Executor, related ...*EventTeamStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventTeamStandings1 := EventTeamStandingSlice(related)
+
+	_, err = attachSeasonEventTeamStandings0(ctx, exec, len(related), eventTeamStandings1, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.EventTeamStandings = append(season0.R.EventTeamStandings, eventTeamStandings1...)
+
+	for _, rel := range related {
+		rel.R.Season = season0
+	}
+
+	return nil
+}
+
 func insertSeasonEvents0(ctx context.Context, exec bob.Executor, events1 []*EventSetter, season0 *Season) (EventSlice, error) {
 	for i := range events1 {
 		events1[i].SeasonID = omit.From(season0.ID)
@@ -783,6 +1066,142 @@ func (season0 *Season) AttachEvents(ctx context.Context, exec bob.Executor, rela
 	}
 
 	season0.R.Events = append(season0.R.Events, events1...)
+
+	for _, rel := range related {
+		rel.R.Season = season0
+	}
+
+	return nil
+}
+
+func insertSeasonSeasonDriverStandings0(ctx context.Context, exec bob.Executor, seasonDriverStandings1 []*SeasonDriverStandingSetter, season0 *Season) (SeasonDriverStandingSlice, error) {
+	for i := range seasonDriverStandings1 {
+		seasonDriverStandings1[i].SeasonID = omit.From(season0.ID)
+	}
+
+	ret, err := SeasonDriverStandings.Insert(bob.ToMods(seasonDriverStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertSeasonSeasonDriverStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachSeasonSeasonDriverStandings0(ctx context.Context, exec bob.Executor, count int, seasonDriverStandings1 SeasonDriverStandingSlice, season0 *Season) (SeasonDriverStandingSlice, error) {
+	setter := &SeasonDriverStandingSetter{
+		SeasonID: omit.From(season0.ID),
+	}
+
+	err := seasonDriverStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachSeasonSeasonDriverStandings0: %w", err)
+	}
+
+	return seasonDriverStandings1, nil
+}
+
+func (season0 *Season) InsertSeasonDriverStandings(ctx context.Context, exec bob.Executor, related ...*SeasonDriverStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonDriverStandings1, err := insertSeasonSeasonDriverStandings0(ctx, exec, related, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonDriverStandings = append(season0.R.SeasonDriverStandings, seasonDriverStandings1...)
+
+	for _, rel := range seasonDriverStandings1 {
+		rel.R.Season = season0
+	}
+	return nil
+}
+
+func (season0 *Season) AttachSeasonDriverStandings(ctx context.Context, exec bob.Executor, related ...*SeasonDriverStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonDriverStandings1 := SeasonDriverStandingSlice(related)
+
+	_, err = attachSeasonSeasonDriverStandings0(ctx, exec, len(related), seasonDriverStandings1, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonDriverStandings = append(season0.R.SeasonDriverStandings, seasonDriverStandings1...)
+
+	for _, rel := range related {
+		rel.R.Season = season0
+	}
+
+	return nil
+}
+
+func insertSeasonSeasonTeamStandings0(ctx context.Context, exec bob.Executor, seasonTeamStandings1 []*SeasonTeamStandingSetter, season0 *Season) (SeasonTeamStandingSlice, error) {
+	for i := range seasonTeamStandings1 {
+		seasonTeamStandings1[i].SeasonID = omit.From(season0.ID)
+	}
+
+	ret, err := SeasonTeamStandings.Insert(bob.ToMods(seasonTeamStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertSeasonSeasonTeamStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachSeasonSeasonTeamStandings0(ctx context.Context, exec bob.Executor, count int, seasonTeamStandings1 SeasonTeamStandingSlice, season0 *Season) (SeasonTeamStandingSlice, error) {
+	setter := &SeasonTeamStandingSetter{
+		SeasonID: omit.From(season0.ID),
+	}
+
+	err := seasonTeamStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachSeasonSeasonTeamStandings0: %w", err)
+	}
+
+	return seasonTeamStandings1, nil
+}
+
+func (season0 *Season) InsertSeasonTeamStandings(ctx context.Context, exec bob.Executor, related ...*SeasonTeamStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonTeamStandings1, err := insertSeasonSeasonTeamStandings0(ctx, exec, related, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonTeamStandings = append(season0.R.SeasonTeamStandings, seasonTeamStandings1...)
+
+	for _, rel := range seasonTeamStandings1 {
+		rel.R.Season = season0
+	}
+	return nil
+}
+
+func (season0 *Season) AttachSeasonTeamStandings(ctx context.Context, exec bob.Executor, related ...*SeasonTeamStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonTeamStandings1 := SeasonTeamStandingSlice(related)
+
+	_, err = attachSeasonSeasonTeamStandings0(ctx, exec, len(related), seasonTeamStandings1, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonTeamStandings = append(season0.R.SeasonTeamStandings, seasonTeamStandings1...)
 
 	for _, rel := range related {
 		rel.R.Season = season0
@@ -956,19 +1375,21 @@ func (season0 *Season) AttachTeams(ctx context.Context, exec bob.Executor, relat
 }
 
 type seasonWhere[Q psql.Filterable] struct {
-	ID            psql.WhereMod[Q, int32]
-	SeriesID      psql.WhereMod[Q, int32]
-	PointSystemID psql.WhereMod[Q, int32]
-	Name          psql.WhereMod[Q, string]
-	ShortName     psql.WhereMod[Q, string]
-	StartsAt      psql.WhereNullMod[Q, time.Time]
-	EndsAt        psql.WhereNullMod[Q, time.Time]
-	Status        psql.WhereMod[Q, string]
-	IsActive      psql.WhereMod[Q, bool]
-	CreatedAt     psql.WhereMod[Q, time.Time]
-	UpdatedAt     psql.WhereMod[Q, time.Time]
-	CreatedBy     psql.WhereMod[Q, string]
-	UpdatedBy     psql.WhereMod[Q, string]
+	ID             psql.WhereMod[Q, int32]
+	FrontendID     psql.WhereMod[Q, uuid.UUID]
+	SeriesID       psql.WhereMod[Q, int32]
+	PointSystemID  psql.WhereMod[Q, int32]
+	Name           psql.WhereMod[Q, string]
+	StartsAt       psql.WhereNullMod[Q, time.Time]
+	EndsAt         psql.WhereNullMod[Q, time.Time]
+	HasTeams       psql.WhereMod[Q, bool]
+	SkipEvents     psql.WhereMod[Q, int32]
+	TeamPointsTopN psql.WhereNullMod[Q, int32]
+	Status         psql.WhereMod[Q, string]
+	CreatedAt      psql.WhereMod[Q, time.Time]
+	UpdatedAt      psql.WhereMod[Q, time.Time]
+	CreatedBy      psql.WhereMod[Q, string]
+	UpdatedBy      psql.WhereMod[Q, string]
 }
 
 func (seasonWhere[Q]) AliasedAs(alias string) seasonWhere[Q] {
@@ -977,19 +1398,21 @@ func (seasonWhere[Q]) AliasedAs(alias string) seasonWhere[Q] {
 
 func buildSeasonWhere[Q psql.Filterable](cols seasonColumns) seasonWhere[Q] {
 	return seasonWhere[Q]{
-		ID:            psql.Where[Q, int32](cols.ID),
-		SeriesID:      psql.Where[Q, int32](cols.SeriesID),
-		PointSystemID: psql.Where[Q, int32](cols.PointSystemID),
-		Name:          psql.Where[Q, string](cols.Name),
-		ShortName:     psql.Where[Q, string](cols.ShortName),
-		StartsAt:      psql.WhereNull[Q, time.Time](cols.StartsAt),
-		EndsAt:        psql.WhereNull[Q, time.Time](cols.EndsAt),
-		Status:        psql.Where[Q, string](cols.Status),
-		IsActive:      psql.Where[Q, bool](cols.IsActive),
-		CreatedAt:     psql.Where[Q, time.Time](cols.CreatedAt),
-		UpdatedAt:     psql.Where[Q, time.Time](cols.UpdatedAt),
-		CreatedBy:     psql.Where[Q, string](cols.CreatedBy),
-		UpdatedBy:     psql.Where[Q, string](cols.UpdatedBy),
+		ID:             psql.Where[Q, int32](cols.ID),
+		FrontendID:     psql.Where[Q, uuid.UUID](cols.FrontendID),
+		SeriesID:       psql.Where[Q, int32](cols.SeriesID),
+		PointSystemID:  psql.Where[Q, int32](cols.PointSystemID),
+		Name:           psql.Where[Q, string](cols.Name),
+		StartsAt:       psql.WhereNull[Q, time.Time](cols.StartsAt),
+		EndsAt:         psql.WhereNull[Q, time.Time](cols.EndsAt),
+		HasTeams:       psql.Where[Q, bool](cols.HasTeams),
+		SkipEvents:     psql.Where[Q, int32](cols.SkipEvents),
+		TeamPointsTopN: psql.WhereNull[Q, int32](cols.TeamPointsTopN),
+		Status:         psql.Where[Q, string](cols.Status),
+		CreatedAt:      psql.Where[Q, time.Time](cols.CreatedAt),
+		UpdatedAt:      psql.Where[Q, time.Time](cols.UpdatedAt),
+		CreatedBy:      psql.Where[Q, string](cols.CreatedBy),
+		UpdatedBy:      psql.Where[Q, string](cols.UpdatedBy),
 	}
 }
 
@@ -999,6 +1422,34 @@ func (o *Season) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "EventDriverStandings":
+		rels, ok := retrieved.(EventDriverStandingSlice)
+		if !ok {
+			return fmt.Errorf("season cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventDriverStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Season = o
+			}
+		}
+		return nil
+	case "EventTeamStandings":
+		rels, ok := retrieved.(EventTeamStandingSlice)
+		if !ok {
+			return fmt.Errorf("season cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventTeamStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Season = o
+			}
+		}
+		return nil
 	case "Events":
 		rels, ok := retrieved.(EventSlice)
 		if !ok {
@@ -1006,6 +1457,34 @@ func (o *Season) Preload(name string, retrieved any) error {
 		}
 
 		o.R.Events = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Season = o
+			}
+		}
+		return nil
+	case "SeasonDriverStandings":
+		rels, ok := retrieved.(SeasonDriverStandingSlice)
+		if !ok {
+			return fmt.Errorf("season cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonDriverStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Season = o
+			}
+		}
+		return nil
+	case "SeasonTeamStandings":
+		rels, ok := retrieved.(SeasonTeamStandingSlice)
+		if !ok {
+			return fmt.Errorf("season cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonTeamStandings = rels
 
 		for _, rel := range rels {
 			if rel != nil {
@@ -1093,15 +1572,31 @@ func buildSeasonPreloader() seasonPreloader {
 }
 
 type seasonThenLoader[Q orm.Loadable] struct {
-	Events      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	PointSystem func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	Series      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	Teams       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventDriverStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventTeamStandings    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Events                func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonDriverStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonTeamStandings   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	PointSystem           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Series                func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Teams                 func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildSeasonThenLoader[Q orm.Loadable]() seasonThenLoader[Q] {
+	type EventDriverStandingsLoadInterface interface {
+		LoadEventDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type EventTeamStandingsLoadInterface interface {
+		LoadEventTeamStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type EventsLoadInterface interface {
 		LoadEvents(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonDriverStandingsLoadInterface interface {
+		LoadSeasonDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonTeamStandingsLoadInterface interface {
+		LoadSeasonTeamStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type PointSystemLoadInterface interface {
 		LoadPointSystem(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1114,10 +1609,34 @@ func buildSeasonThenLoader[Q orm.Loadable]() seasonThenLoader[Q] {
 	}
 
 	return seasonThenLoader[Q]{
+		EventDriverStandings: thenLoadBuilder[Q](
+			"EventDriverStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved EventDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventDriverStandings(ctx, exec, mods...)
+			},
+		),
+		EventTeamStandings: thenLoadBuilder[Q](
+			"EventTeamStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved EventTeamStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventTeamStandings(ctx, exec, mods...)
+			},
+		),
 		Events: thenLoadBuilder[Q](
 			"Events",
 			func(ctx context.Context, exec bob.Executor, retrieved EventsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadEvents(ctx, exec, mods...)
+			},
+		),
+		SeasonDriverStandings: thenLoadBuilder[Q](
+			"SeasonDriverStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonDriverStandings(ctx, exec, mods...)
+			},
+		),
+		SeasonTeamStandings: thenLoadBuilder[Q](
+			"SeasonTeamStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonTeamStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonTeamStandings(ctx, exec, mods...)
 			},
 		),
 		PointSystem: thenLoadBuilder[Q](
@@ -1139,6 +1658,128 @@ func buildSeasonThenLoader[Q orm.Loadable]() seasonThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadEventDriverStandings loads the season's EventDriverStandings into the .R struct
+func (o *Season) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventDriverStandings = nil
+
+	related, err := o.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Season = o
+	}
+
+	o.R.EventDriverStandings = related
+	return nil
+}
+
+// LoadEventDriverStandings loads the season's EventDriverStandings into the .R struct
+func (os SeasonSlice) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventDriverStandings, err := os.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventDriverStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventDriverStandings {
+
+			if !(o.ID == rel.SeasonID) {
+				continue
+			}
+
+			rel.R.Season = o
+
+			o.R.EventDriverStandings = append(o.R.EventDriverStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadEventTeamStandings loads the season's EventTeamStandings into the .R struct
+func (o *Season) LoadEventTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventTeamStandings = nil
+
+	related, err := o.EventTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Season = o
+	}
+
+	o.R.EventTeamStandings = related
+	return nil
+}
+
+// LoadEventTeamStandings loads the season's EventTeamStandings into the .R struct
+func (os SeasonSlice) LoadEventTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventTeamStandings, err := os.EventTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventTeamStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventTeamStandings {
+
+			if !(o.ID == rel.SeasonID) {
+				continue
+			}
+
+			rel.R.Season = o
+
+			o.R.EventTeamStandings = append(o.R.EventTeamStandings, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadEvents loads the season's Events into the .R struct
@@ -1196,6 +1837,128 @@ func (os SeasonSlice) LoadEvents(ctx context.Context, exec bob.Executor, mods ..
 			rel.R.Season = o
 
 			o.R.Events = append(o.R.Events, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadSeasonDriverStandings loads the season's SeasonDriverStandings into the .R struct
+func (o *Season) LoadSeasonDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonDriverStandings = nil
+
+	related, err := o.SeasonDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Season = o
+	}
+
+	o.R.SeasonDriverStandings = related
+	return nil
+}
+
+// LoadSeasonDriverStandings loads the season's SeasonDriverStandings into the .R struct
+func (os SeasonSlice) LoadSeasonDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonDriverStandings, err := os.SeasonDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonDriverStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasonDriverStandings {
+
+			if !(o.ID == rel.SeasonID) {
+				continue
+			}
+
+			rel.R.Season = o
+
+			o.R.SeasonDriverStandings = append(o.R.SeasonDriverStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadSeasonTeamStandings loads the season's SeasonTeamStandings into the .R struct
+func (o *Season) LoadSeasonTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonTeamStandings = nil
+
+	related, err := o.SeasonTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Season = o
+	}
+
+	o.R.SeasonTeamStandings = related
+	return nil
+}
+
+// LoadSeasonTeamStandings loads the season's SeasonTeamStandings into the .R struct
+func (os SeasonSlice) LoadSeasonTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonTeamStandings, err := os.SeasonTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonTeamStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasonTeamStandings {
+
+			if !(o.ID == rel.SeasonID) {
+				continue
+			}
+
+			rel.R.Season = o
+
+			o.R.SeasonTeamStandings = append(o.R.SeasonTeamStandings, rel)
 		}
 	}
 
@@ -1368,11 +2131,15 @@ func (os SeasonSlice) LoadTeams(ctx context.Context, exec bob.Executor, mods ...
 }
 
 type seasonJoins[Q dialect.Joinable] struct {
-	typ         string
-	Events      modAs[Q, eventColumns]
-	PointSystem modAs[Q, pointSystemColumns]
-	Series      modAs[Q, seriesColumns]
-	Teams       modAs[Q, teamColumns]
+	typ                   string
+	EventDriverStandings  modAs[Q, eventDriverStandingColumns]
+	EventTeamStandings    modAs[Q, eventTeamStandingColumns]
+	Events                modAs[Q, eventColumns]
+	SeasonDriverStandings modAs[Q, seasonDriverStandingColumns]
+	SeasonTeamStandings   modAs[Q, seasonTeamStandingColumns]
+	PointSystem           modAs[Q, pointSystemColumns]
+	Series                modAs[Q, seriesColumns]
+	Teams                 modAs[Q, teamColumns]
 }
 
 func (j seasonJoins[Q]) aliasedAs(alias string) seasonJoins[Q] {
@@ -1382,6 +2149,34 @@ func (j seasonJoins[Q]) aliasedAs(alias string) seasonJoins[Q] {
 func buildSeasonJoins[Q dialect.Joinable](cols seasonColumns, typ string) seasonJoins[Q] {
 	return seasonJoins[Q]{
 		typ: typ,
+		EventDriverStandings: modAs[Q, eventDriverStandingColumns]{
+			c: EventDriverStandings.Columns,
+			f: func(to eventDriverStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventDriverStandings.Name().As(to.Alias())).On(
+						to.SeasonID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		EventTeamStandings: modAs[Q, eventTeamStandingColumns]{
+			c: EventTeamStandings.Columns,
+			f: func(to eventTeamStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventTeamStandings.Name().As(to.Alias())).On(
+						to.SeasonID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		Events: modAs[Q, eventColumns]{
 			c: Events.Columns,
 			f: func(to eventColumns) bob.Mod[Q] {
@@ -1389,6 +2184,34 @@ func buildSeasonJoins[Q dialect.Joinable](cols seasonColumns, typ string) season
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, Events.Name().As(to.Alias())).On(
+						to.SeasonID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonDriverStandings: modAs[Q, seasonDriverStandingColumns]{
+			c: SeasonDriverStandings.Columns,
+			f: func(to seasonDriverStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonDriverStandings.Name().As(to.Alias())).On(
+						to.SeasonID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonTeamStandings: modAs[Q, seasonTeamStandingColumns]{
+			c: SeasonTeamStandings.Columns,
+			f: func(to seasonTeamStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonTeamStandings.Name().As(to.Alias())).On(
 						to.SeasonID.EQ(cols.ID),
 					))
 				}

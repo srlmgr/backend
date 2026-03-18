@@ -17,22 +17,62 @@ import (
 var Preload = getPreloaders()
 
 type preloaders struct {
-	Event       eventPreloader
-	PointSystem pointSystemPreloader
-	RacingSim   racingSimPreloader
-	Season      seasonPreloader
-	Series      seriesPreloader
-	Team        teamPreloader
+	BookingEntry               bookingEntryPreloader
+	CarBrand                   carBrandPreloader
+	CarManufacturer            carManufacturerPreloader
+	CarModel                   carModelPreloader
+	DriverSimulationID         driverSimulationIDPreloader
+	Driver                     driverPreloader
+	EventDriverStanding        eventDriverStandingPreloader
+	EventProcessingAudit       eventProcessingAuditPreloader
+	EventTeamStanding          eventTeamStandingPreloader
+	Event                      eventPreloader
+	ImportBatch                importBatchPreloader
+	PointRule                  pointRulePreloader
+	PointSystem                pointSystemPreloader
+	Race                       racePreloader
+	RacingSim                  racingSimPreloader
+	ResultEntry                resultEntryPreloader
+	SeasonDriverStanding       seasonDriverStandingPreloader
+	SeasonTeamStanding         seasonTeamStandingPreloader
+	Season                     seasonPreloader
+	Series                     seriesPreloader
+	SimulationCarAlias         simulationCarAliasPreloader
+	SimulationTrackLayoutAlias simulationTrackLayoutAliasPreloader
+	TeamDriver                 teamDriverPreloader
+	Team                       teamPreloader
+	TrackLayout                trackLayoutPreloader
+	Track                      trackPreloader
 }
 
 func getPreloaders() preloaders {
 	return preloaders{
-		Event:       buildEventPreloader(),
-		PointSystem: buildPointSystemPreloader(),
-		RacingSim:   buildRacingSimPreloader(),
-		Season:      buildSeasonPreloader(),
-		Series:      buildSeriesPreloader(),
-		Team:        buildTeamPreloader(),
+		BookingEntry:               buildBookingEntryPreloader(),
+		CarBrand:                   buildCarBrandPreloader(),
+		CarManufacturer:            buildCarManufacturerPreloader(),
+		CarModel:                   buildCarModelPreloader(),
+		DriverSimulationID:         buildDriverSimulationIDPreloader(),
+		Driver:                     buildDriverPreloader(),
+		EventDriverStanding:        buildEventDriverStandingPreloader(),
+		EventProcessingAudit:       buildEventProcessingAuditPreloader(),
+		EventTeamStanding:          buildEventTeamStandingPreloader(),
+		Event:                      buildEventPreloader(),
+		ImportBatch:                buildImportBatchPreloader(),
+		PointRule:                  buildPointRulePreloader(),
+		PointSystem:                buildPointSystemPreloader(),
+		Race:                       buildRacePreloader(),
+		RacingSim:                  buildRacingSimPreloader(),
+		ResultEntry:                buildResultEntryPreloader(),
+		SeasonDriverStanding:       buildSeasonDriverStandingPreloader(),
+		SeasonTeamStanding:         buildSeasonTeamStandingPreloader(),
+		Season:                     buildSeasonPreloader(),
+		Series:                     buildSeriesPreloader(),
+		SimulationCarAlias:         buildSimulationCarAliasPreloader(),
+		SimulationTrackLayoutAlias: buildSimulationTrackLayoutAliasPreloader(),
+		TeamDriver:                 buildTeamDriverPreloader(),
+		Team:                       buildTeamPreloader(),
+		TrackLayout:                buildTrackLayoutPreloader(),
+		Track:                      buildTrackPreloader(),
 	}
 }
 
@@ -43,22 +83,62 @@ var (
 )
 
 type thenLoaders[Q orm.Loadable] struct {
-	Event       eventThenLoader[Q]
-	PointSystem pointSystemThenLoader[Q]
-	RacingSim   racingSimThenLoader[Q]
-	Season      seasonThenLoader[Q]
-	Series      seriesThenLoader[Q]
-	Team        teamThenLoader[Q]
+	BookingEntry               bookingEntryThenLoader[Q]
+	CarBrand                   carBrandThenLoader[Q]
+	CarManufacturer            carManufacturerThenLoader[Q]
+	CarModel                   carModelThenLoader[Q]
+	DriverSimulationID         driverSimulationIDThenLoader[Q]
+	Driver                     driverThenLoader[Q]
+	EventDriverStanding        eventDriverStandingThenLoader[Q]
+	EventProcessingAudit       eventProcessingAuditThenLoader[Q]
+	EventTeamStanding          eventTeamStandingThenLoader[Q]
+	Event                      eventThenLoader[Q]
+	ImportBatch                importBatchThenLoader[Q]
+	PointRule                  pointRuleThenLoader[Q]
+	PointSystem                pointSystemThenLoader[Q]
+	Race                       raceThenLoader[Q]
+	RacingSim                  racingSimThenLoader[Q]
+	ResultEntry                resultEntryThenLoader[Q]
+	SeasonDriverStanding       seasonDriverStandingThenLoader[Q]
+	SeasonTeamStanding         seasonTeamStandingThenLoader[Q]
+	Season                     seasonThenLoader[Q]
+	Series                     seriesThenLoader[Q]
+	SimulationCarAlias         simulationCarAliasThenLoader[Q]
+	SimulationTrackLayoutAlias simulationTrackLayoutAliasThenLoader[Q]
+	TeamDriver                 teamDriverThenLoader[Q]
+	Team                       teamThenLoader[Q]
+	TrackLayout                trackLayoutThenLoader[Q]
+	Track                      trackThenLoader[Q]
 }
 
 func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 	return thenLoaders[Q]{
-		Event:       buildEventThenLoader[Q](),
-		PointSystem: buildPointSystemThenLoader[Q](),
-		RacingSim:   buildRacingSimThenLoader[Q](),
-		Season:      buildSeasonThenLoader[Q](),
-		Series:      buildSeriesThenLoader[Q](),
-		Team:        buildTeamThenLoader[Q](),
+		BookingEntry:               buildBookingEntryThenLoader[Q](),
+		CarBrand:                   buildCarBrandThenLoader[Q](),
+		CarManufacturer:            buildCarManufacturerThenLoader[Q](),
+		CarModel:                   buildCarModelThenLoader[Q](),
+		DriverSimulationID:         buildDriverSimulationIDThenLoader[Q](),
+		Driver:                     buildDriverThenLoader[Q](),
+		EventDriverStanding:        buildEventDriverStandingThenLoader[Q](),
+		EventProcessingAudit:       buildEventProcessingAuditThenLoader[Q](),
+		EventTeamStanding:          buildEventTeamStandingThenLoader[Q](),
+		Event:                      buildEventThenLoader[Q](),
+		ImportBatch:                buildImportBatchThenLoader[Q](),
+		PointRule:                  buildPointRuleThenLoader[Q](),
+		PointSystem:                buildPointSystemThenLoader[Q](),
+		Race:                       buildRaceThenLoader[Q](),
+		RacingSim:                  buildRacingSimThenLoader[Q](),
+		ResultEntry:                buildResultEntryThenLoader[Q](),
+		SeasonDriverStanding:       buildSeasonDriverStandingThenLoader[Q](),
+		SeasonTeamStanding:         buildSeasonTeamStandingThenLoader[Q](),
+		Season:                     buildSeasonThenLoader[Q](),
+		Series:                     buildSeriesThenLoader[Q](),
+		SimulationCarAlias:         buildSimulationCarAliasThenLoader[Q](),
+		SimulationTrackLayoutAlias: buildSimulationTrackLayoutAliasThenLoader[Q](),
+		TeamDriver:                 buildTeamDriverThenLoader[Q](),
+		Team:                       buildTeamThenLoader[Q](),
+		TrackLayout:                buildTrackLayoutThenLoader[Q](),
+		Track:                      buildTrackThenLoader[Q](),
 	}
 }
 

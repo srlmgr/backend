@@ -60,6 +60,24 @@ func TestDriverUniqueConstraintErrors(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:        "ErrUniqueDriversFrontendIdUnique",
+			expectedErr: DriverErrors.ErrUniqueDriversFrontendIdUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Driver) factory.DriverModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.DriverModSlice, 0, 1)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewDriverWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.DriverModSlice{
+					factory.DriverMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

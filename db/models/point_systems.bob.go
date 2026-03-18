@@ -5,7 +5,6 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -22,21 +22,20 @@ import (
 	"github.com/stephenafamo/bob/expr"
 	"github.com/stephenafamo/bob/mods"
 	"github.com/stephenafamo/bob/orm"
-	"github.com/stephenafamo/bob/types"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // PointSystem is an object representing the database table.
 type PointSystem struct {
-	ID             int32                       `db:"id,pk" `
-	Name           string                      `db:"name" `
-	Description    null.Val[string]            `db:"description" `
-	PositionPoints types.JSON[json.RawMessage] `db:"position_points" `
-	IsActive       bool                        `db:"is_active" `
-	CreatedAt      time.Time                   `db:"created_at" `
-	UpdatedAt      time.Time                   `db:"updated_at" `
-	CreatedBy      string                      `db:"created_by" `
-	UpdatedBy      string                      `db:"updated_by" `
+	ID          int32            `db:"id,pk" `
+	FrontendID  uuid.UUID        `db:"frontend_id" `
+	Name        string           `db:"name" `
+	Description null.Val[string] `db:"description" `
+	IsActive    bool             `db:"is_active" `
+	CreatedAt   time.Time        `db:"created_at" `
+	UpdatedAt   time.Time        `db:"updated_at" `
+	CreatedBy   string           `db:"created_by" `
+	UpdatedBy   string           `db:"updated_by" `
 
 	R pointSystemR `db:"-" `
 }
@@ -53,39 +52,40 @@ type PointSystemsQuery = *psql.ViewQuery[*PointSystem, PointSystemSlice]
 
 // pointSystemR is where relationships are stored.
 type pointSystemR struct {
-	Seasons SeasonSlice // seasons.seasons_point_system_id_fk
+	PointRules PointRuleSlice // point_rules.point_rules_point_system_id_fk
+	Seasons    SeasonSlice    // seasons.seasons_point_system_id_fk
 }
 
 func buildPointSystemColumns(alias string) pointSystemColumns {
 	return pointSystemColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "name", "description", "position_points", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "name", "description", "is_active", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("point_systems"),
-		tableAlias:     alias,
-		ID:             psql.Quote(alias, "id"),
-		Name:           psql.Quote(alias, "name"),
-		Description:    psql.Quote(alias, "description"),
-		PositionPoints: psql.Quote(alias, "position_points"),
-		IsActive:       psql.Quote(alias, "is_active"),
-		CreatedAt:      psql.Quote(alias, "created_at"),
-		UpdatedAt:      psql.Quote(alias, "updated_at"),
-		CreatedBy:      psql.Quote(alias, "created_by"),
-		UpdatedBy:      psql.Quote(alias, "updated_by"),
+		tableAlias:  alias,
+		ID:          psql.Quote(alias, "id"),
+		FrontendID:  psql.Quote(alias, "frontend_id"),
+		Name:        psql.Quote(alias, "name"),
+		Description: psql.Quote(alias, "description"),
+		IsActive:    psql.Quote(alias, "is_active"),
+		CreatedAt:   psql.Quote(alias, "created_at"),
+		UpdatedAt:   psql.Quote(alias, "updated_at"),
+		CreatedBy:   psql.Quote(alias, "created_by"),
+		UpdatedBy:   psql.Quote(alias, "updated_by"),
 	}
 }
 
 type pointSystemColumns struct {
 	expr.ColumnsExpr
-	tableAlias     string
-	ID             psql.Expression
-	Name           psql.Expression
-	Description    psql.Expression
-	PositionPoints psql.Expression
-	IsActive       psql.Expression
-	CreatedAt      psql.Expression
-	UpdatedAt      psql.Expression
-	CreatedBy      psql.Expression
-	UpdatedBy      psql.Expression
+	tableAlias  string
+	ID          psql.Expression
+	FrontendID  psql.Expression
+	Name        psql.Expression
+	Description psql.Expression
+	IsActive    psql.Expression
+	CreatedAt   psql.Expression
+	UpdatedAt   psql.Expression
+	CreatedBy   psql.Expression
+	UpdatedBy   psql.Expression
 }
 
 func (c pointSystemColumns) Alias() string {
@@ -100,15 +100,15 @@ func (pointSystemColumns) AliasedAs(alias string) pointSystemColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type PointSystemSetter struct {
-	ID             omit.Val[int32]                       `db:"id,pk" `
-	Name           omit.Val[string]                      `db:"name" `
-	Description    omitnull.Val[string]                  `db:"description" `
-	PositionPoints omit.Val[types.JSON[json.RawMessage]] `db:"position_points" `
-	IsActive       omit.Val[bool]                        `db:"is_active" `
-	CreatedAt      omit.Val[time.Time]                   `db:"created_at" `
-	UpdatedAt      omit.Val[time.Time]                   `db:"updated_at" `
-	CreatedBy      omit.Val[string]                      `db:"created_by" `
-	UpdatedBy      omit.Val[string]                      `db:"updated_by" `
+	ID          omit.Val[int32]      `db:"id,pk" `
+	FrontendID  omit.Val[uuid.UUID]  `db:"frontend_id" `
+	Name        omit.Val[string]     `db:"name" `
+	Description omitnull.Val[string] `db:"description" `
+	IsActive    omit.Val[bool]       `db:"is_active" `
+	CreatedAt   omit.Val[time.Time]  `db:"created_at" `
+	UpdatedAt   omit.Val[time.Time]  `db:"updated_at" `
+	CreatedBy   omit.Val[string]     `db:"created_by" `
+	UpdatedBy   omit.Val[string]     `db:"updated_by" `
 }
 
 func (s PointSystemSetter) SetColumns() []string {
@@ -116,14 +116,14 @@ func (s PointSystemSetter) SetColumns() []string {
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
+	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
 	if !s.Description.IsUnset() {
 		vals = append(vals, "description")
-	}
-	if s.PositionPoints.IsValue() {
-		vals = append(vals, "position_points")
 	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
@@ -147,14 +147,14 @@ func (s PointSystemSetter) Overwrite(t *PointSystem) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
 	if !s.Description.IsUnset() {
 		t.Description = s.Description.MustGetNull()
-	}
-	if s.PositionPoints.IsValue() {
-		t.PositionPoints = s.PositionPoints.MustGet()
 	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
@@ -186,20 +186,20 @@ func (s *PointSystemSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[1] = psql.Arg(s.Name.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Description.IsUnset() {
-			vals[2] = psql.Arg(s.Description.MustGetNull())
+		if s.Name.IsValue() {
+			vals[2] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.PositionPoints.IsValue() {
-			vals[3] = psql.Arg(s.PositionPoints.MustGet())
+		if !s.Description.IsUnset() {
+			vals[3] = psql.Arg(s.Description.MustGetNull())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
@@ -252,6 +252,13 @@ func (s PointSystemSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
+		}})
+	}
+
 	if s.Name.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "name")...),
@@ -263,13 +270,6 @@ func (s PointSystemSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "description")...),
 			psql.Arg(s.Description),
-		}})
-	}
-
-	if s.PositionPoints.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "position_points")...),
-			psql.Arg(s.PositionPoints),
 		}})
 	}
 
@@ -534,6 +534,30 @@ func (o PointSystemSlice) ReloadAll(ctx context.Context, exec bob.Executor) erro
 	return nil
 }
 
+// PointRules starts a query for related objects on point_rules
+func (o *PointSystem) PointRules(mods ...bob.Mod[*dialect.SelectQuery]) PointRulesQuery {
+	return PointRules.Query(append(mods,
+		sm.Where(PointRules.Columns.PointSystemID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os PointSystemSlice) PointRules(mods ...bob.Mod[*dialect.SelectQuery]) PointRulesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return PointRules.Query(append(mods,
+		sm.Where(psql.Group(PointRules.Columns.PointSystemID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Seasons starts a query for related objects on seasons
 func (o *PointSystem) Seasons(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery {
 	return Seasons.Query(append(mods,
@@ -556,6 +580,74 @@ func (os PointSystemSlice) Seasons(mods ...bob.Mod[*dialect.SelectQuery]) Season
 	return Seasons.Query(append(mods,
 		sm.Where(psql.Group(Seasons.Columns.PointSystemID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+func insertPointSystemPointRules0(ctx context.Context, exec bob.Executor, pointRules1 []*PointRuleSetter, pointSystem0 *PointSystem) (PointRuleSlice, error) {
+	for i := range pointRules1 {
+		pointRules1[i].PointSystemID = omit.From(pointSystem0.ID)
+	}
+
+	ret, err := PointRules.Insert(bob.ToMods(pointRules1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertPointSystemPointRules0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachPointSystemPointRules0(ctx context.Context, exec bob.Executor, count int, pointRules1 PointRuleSlice, pointSystem0 *PointSystem) (PointRuleSlice, error) {
+	setter := &PointRuleSetter{
+		PointSystemID: omit.From(pointSystem0.ID),
+	}
+
+	err := pointRules1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachPointSystemPointRules0: %w", err)
+	}
+
+	return pointRules1, nil
+}
+
+func (pointSystem0 *PointSystem) InsertPointRules(ctx context.Context, exec bob.Executor, related ...*PointRuleSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	pointRules1, err := insertPointSystemPointRules0(ctx, exec, related, pointSystem0)
+	if err != nil {
+		return err
+	}
+
+	pointSystem0.R.PointRules = append(pointSystem0.R.PointRules, pointRules1...)
+
+	for _, rel := range pointRules1 {
+		rel.R.PointSystem = pointSystem0
+	}
+	return nil
+}
+
+func (pointSystem0 *PointSystem) AttachPointRules(ctx context.Context, exec bob.Executor, related ...*PointRule) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	pointRules1 := PointRuleSlice(related)
+
+	_, err = attachPointSystemPointRules0(ctx, exec, len(related), pointRules1, pointSystem0)
+	if err != nil {
+		return err
+	}
+
+	pointSystem0.R.PointRules = append(pointSystem0.R.PointRules, pointRules1...)
+
+	for _, rel := range related {
+		rel.R.PointSystem = pointSystem0
+	}
+
+	return nil
 }
 
 func insertPointSystemSeasons0(ctx context.Context, exec bob.Executor, seasons1 []*SeasonSetter, pointSystem0 *PointSystem) (SeasonSlice, error) {
@@ -627,15 +719,15 @@ func (pointSystem0 *PointSystem) AttachSeasons(ctx context.Context, exec bob.Exe
 }
 
 type pointSystemWhere[Q psql.Filterable] struct {
-	ID             psql.WhereMod[Q, int32]
-	Name           psql.WhereMod[Q, string]
-	Description    psql.WhereNullMod[Q, string]
-	PositionPoints psql.WhereMod[Q, types.JSON[json.RawMessage]]
-	IsActive       psql.WhereMod[Q, bool]
-	CreatedAt      psql.WhereMod[Q, time.Time]
-	UpdatedAt      psql.WhereMod[Q, time.Time]
-	CreatedBy      psql.WhereMod[Q, string]
-	UpdatedBy      psql.WhereMod[Q, string]
+	ID          psql.WhereMod[Q, int32]
+	FrontendID  psql.WhereMod[Q, uuid.UUID]
+	Name        psql.WhereMod[Q, string]
+	Description psql.WhereNullMod[Q, string]
+	IsActive    psql.WhereMod[Q, bool]
+	CreatedAt   psql.WhereMod[Q, time.Time]
+	UpdatedAt   psql.WhereMod[Q, time.Time]
+	CreatedBy   psql.WhereMod[Q, string]
+	UpdatedBy   psql.WhereMod[Q, string]
 }
 
 func (pointSystemWhere[Q]) AliasedAs(alias string) pointSystemWhere[Q] {
@@ -644,15 +736,15 @@ func (pointSystemWhere[Q]) AliasedAs(alias string) pointSystemWhere[Q] {
 
 func buildPointSystemWhere[Q psql.Filterable](cols pointSystemColumns) pointSystemWhere[Q] {
 	return pointSystemWhere[Q]{
-		ID:             psql.Where[Q, int32](cols.ID),
-		Name:           psql.Where[Q, string](cols.Name),
-		Description:    psql.WhereNull[Q, string](cols.Description),
-		PositionPoints: psql.Where[Q, types.JSON[json.RawMessage]](cols.PositionPoints),
-		IsActive:       psql.Where[Q, bool](cols.IsActive),
-		CreatedAt:      psql.Where[Q, time.Time](cols.CreatedAt),
-		UpdatedAt:      psql.Where[Q, time.Time](cols.UpdatedAt),
-		CreatedBy:      psql.Where[Q, string](cols.CreatedBy),
-		UpdatedBy:      psql.Where[Q, string](cols.UpdatedBy),
+		ID:          psql.Where[Q, int32](cols.ID),
+		FrontendID:  psql.Where[Q, uuid.UUID](cols.FrontendID),
+		Name:        psql.Where[Q, string](cols.Name),
+		Description: psql.WhereNull[Q, string](cols.Description),
+		IsActive:    psql.Where[Q, bool](cols.IsActive),
+		CreatedAt:   psql.Where[Q, time.Time](cols.CreatedAt),
+		UpdatedAt:   psql.Where[Q, time.Time](cols.UpdatedAt),
+		CreatedBy:   psql.Where[Q, string](cols.CreatedBy),
+		UpdatedBy:   psql.Where[Q, string](cols.UpdatedBy),
 	}
 }
 
@@ -662,6 +754,20 @@ func (o *PointSystem) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "PointRules":
+		rels, ok := retrieved.(PointRuleSlice)
+		if !ok {
+			return fmt.Errorf("pointSystem cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.PointRules = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.PointSystem = o
+			}
+		}
+		return nil
 	case "Seasons":
 		rels, ok := retrieved.(SeasonSlice)
 		if !ok {
@@ -688,15 +794,25 @@ func buildPointSystemPreloader() pointSystemPreloader {
 }
 
 type pointSystemThenLoader[Q orm.Loadable] struct {
-	Seasons func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	PointRules func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Seasons    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildPointSystemThenLoader[Q orm.Loadable]() pointSystemThenLoader[Q] {
+	type PointRulesLoadInterface interface {
+		LoadPointRules(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type SeasonsLoadInterface interface {
 		LoadSeasons(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 
 	return pointSystemThenLoader[Q]{
+		PointRules: thenLoadBuilder[Q](
+			"PointRules",
+			func(ctx context.Context, exec bob.Executor, retrieved PointRulesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadPointRules(ctx, exec, mods...)
+			},
+		),
 		Seasons: thenLoadBuilder[Q](
 			"Seasons",
 			func(ctx context.Context, exec bob.Executor, retrieved SeasonsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -704,6 +820,67 @@ func buildPointSystemThenLoader[Q orm.Loadable]() pointSystemThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadPointRules loads the pointSystem's PointRules into the .R struct
+func (o *PointSystem) LoadPointRules(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.PointRules = nil
+
+	related, err := o.PointRules(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.PointSystem = o
+	}
+
+	o.R.PointRules = related
+	return nil
+}
+
+// LoadPointRules loads the pointSystem's PointRules into the .R struct
+func (os PointSystemSlice) LoadPointRules(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	pointRules, err := os.PointRules(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.PointRules = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range pointRules {
+
+			if !(o.ID == rel.PointSystemID) {
+				continue
+			}
+
+			rel.R.PointSystem = o
+
+			o.R.PointRules = append(o.R.PointRules, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadSeasons loads the pointSystem's Seasons into the .R struct
@@ -768,8 +945,9 @@ func (os PointSystemSlice) LoadSeasons(ctx context.Context, exec bob.Executor, m
 }
 
 type pointSystemJoins[Q dialect.Joinable] struct {
-	typ     string
-	Seasons modAs[Q, seasonColumns]
+	typ        string
+	PointRules modAs[Q, pointRuleColumns]
+	Seasons    modAs[Q, seasonColumns]
 }
 
 func (j pointSystemJoins[Q]) aliasedAs(alias string) pointSystemJoins[Q] {
@@ -779,6 +957,20 @@ func (j pointSystemJoins[Q]) aliasedAs(alias string) pointSystemJoins[Q] {
 func buildPointSystemJoins[Q dialect.Joinable](cols pointSystemColumns, typ string) pointSystemJoins[Q] {
 	return pointSystemJoins[Q]{
 		typ: typ,
+		PointRules: modAs[Q, pointRuleColumns]{
+			c: PointRules.Columns,
+			f: func(to pointRuleColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, PointRules.Name().As(to.Alias())).On(
+						to.PointSystemID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		Seasons: modAs[Q, seasonColumns]{
 			c: Seasons.Columns,
 			f: func(to seasonColumns) bob.Mod[Q] {

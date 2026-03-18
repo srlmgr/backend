@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -26,18 +27,19 @@ import (
 
 // Event is an object representing the database table.
 type Event struct {
-	ID          int32               `db:"id,pk" `
-	SeasonID    int32               `db:"season_id" `
-	Name        string              `db:"name" `
-	RoundNumber int32               `db:"round_number" `
-	Venue       null.Val[string]    `db:"venue" `
-	StartsAt    null.Val[time.Time] `db:"starts_at" `
-	EndsAt      null.Val[time.Time] `db:"ends_at" `
-	Status      string              `db:"status" `
-	CreatedAt   time.Time           `db:"created_at" `
-	UpdatedAt   time.Time           `db:"updated_at" `
-	CreatedBy   string              `db:"created_by" `
-	UpdatedBy   string              `db:"updated_by" `
+	ID              int32               `db:"id,pk" `
+	FrontendID      uuid.UUID           `db:"frontend_id" `
+	SeasonID        int32               `db:"season_id" `
+	TrackLayoutID   int32               `db:"track_layout_id" `
+	Name            string              `db:"name" `
+	EventDate       time.Time           `db:"event_date" `
+	Status          string              `db:"status" `
+	ProcessingState string              `db:"processing_state" `
+	FinalizedAt     null.Val[time.Time] `db:"finalized_at" `
+	CreatedAt       time.Time           `db:"created_at" `
+	UpdatedAt       time.Time           `db:"updated_at" `
+	CreatedBy       string              `db:"created_by" `
+	UpdatedBy       string              `db:"updated_by" `
 
 	R eventR `db:"-" `
 }
@@ -54,45 +56,54 @@ type EventsQuery = *psql.ViewQuery[*Event, EventSlice]
 
 // eventR is where relationships are stored.
 type eventR struct {
-	Season *Season // events.events_season_id_fk
+	BookingEntries        BookingEntrySlice         // booking_entries.booking_entries_event_id_fk
+	EventDriverStandings  EventDriverStandingSlice  // event_driver_standings.event_driver_standings_event_id_fk
+	EventProcessingAudits EventProcessingAuditSlice // event_processing_audit.event_processing_audit_event_id_fk
+	EventTeamStandings    EventTeamStandingSlice    // event_team_standings.event_team_standings_event_id_fk
+	Season                *Season                   // events.events_season_id_fk
+	TrackLayout           *TrackLayout              // events.events_track_layout_id_fk
+	ImportBatches         ImportBatchSlice          // import_batches.import_batches_event_id_fk
+	Races                 RaceSlice                 // races.races_event_id_fk
 }
 
 func buildEventColumns(alias string) eventColumns {
 	return eventColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "season_id", "name", "round_number", "venue", "starts_at", "ends_at", "status", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "season_id", "track_layout_id", "name", "event_date", "status", "processing_state", "finalized_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("events"),
-		tableAlias:  alias,
-		ID:          psql.Quote(alias, "id"),
-		SeasonID:    psql.Quote(alias, "season_id"),
-		Name:        psql.Quote(alias, "name"),
-		RoundNumber: psql.Quote(alias, "round_number"),
-		Venue:       psql.Quote(alias, "venue"),
-		StartsAt:    psql.Quote(alias, "starts_at"),
-		EndsAt:      psql.Quote(alias, "ends_at"),
-		Status:      psql.Quote(alias, "status"),
-		CreatedAt:   psql.Quote(alias, "created_at"),
-		UpdatedAt:   psql.Quote(alias, "updated_at"),
-		CreatedBy:   psql.Quote(alias, "created_by"),
-		UpdatedBy:   psql.Quote(alias, "updated_by"),
+		tableAlias:      alias,
+		ID:              psql.Quote(alias, "id"),
+		FrontendID:      psql.Quote(alias, "frontend_id"),
+		SeasonID:        psql.Quote(alias, "season_id"),
+		TrackLayoutID:   psql.Quote(alias, "track_layout_id"),
+		Name:            psql.Quote(alias, "name"),
+		EventDate:       psql.Quote(alias, "event_date"),
+		Status:          psql.Quote(alias, "status"),
+		ProcessingState: psql.Quote(alias, "processing_state"),
+		FinalizedAt:     psql.Quote(alias, "finalized_at"),
+		CreatedAt:       psql.Quote(alias, "created_at"),
+		UpdatedAt:       psql.Quote(alias, "updated_at"),
+		CreatedBy:       psql.Quote(alias, "created_by"),
+		UpdatedBy:       psql.Quote(alias, "updated_by"),
 	}
 }
 
 type eventColumns struct {
 	expr.ColumnsExpr
-	tableAlias  string
-	ID          psql.Expression
-	SeasonID    psql.Expression
-	Name        psql.Expression
-	RoundNumber psql.Expression
-	Venue       psql.Expression
-	StartsAt    psql.Expression
-	EndsAt      psql.Expression
-	Status      psql.Expression
-	CreatedAt   psql.Expression
-	UpdatedAt   psql.Expression
-	CreatedBy   psql.Expression
-	UpdatedBy   psql.Expression
+	tableAlias      string
+	ID              psql.Expression
+	FrontendID      psql.Expression
+	SeasonID        psql.Expression
+	TrackLayoutID   psql.Expression
+	Name            psql.Expression
+	EventDate       psql.Expression
+	Status          psql.Expression
+	ProcessingState psql.Expression
+	FinalizedAt     psql.Expression
+	CreatedAt       psql.Expression
+	UpdatedAt       psql.Expression
+	CreatedBy       psql.Expression
+	UpdatedBy       psql.Expression
 }
 
 func (c eventColumns) Alias() string {
@@ -107,45 +118,49 @@ func (eventColumns) AliasedAs(alias string) eventColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type EventSetter struct {
-	ID          omit.Val[int32]         `db:"id,pk" `
-	SeasonID    omit.Val[int32]         `db:"season_id" `
-	Name        omit.Val[string]        `db:"name" `
-	RoundNumber omit.Val[int32]         `db:"round_number" `
-	Venue       omitnull.Val[string]    `db:"venue" `
-	StartsAt    omitnull.Val[time.Time] `db:"starts_at" `
-	EndsAt      omitnull.Val[time.Time] `db:"ends_at" `
-	Status      omit.Val[string]        `db:"status" `
-	CreatedAt   omit.Val[time.Time]     `db:"created_at" `
-	UpdatedAt   omit.Val[time.Time]     `db:"updated_at" `
-	CreatedBy   omit.Val[string]        `db:"created_by" `
-	UpdatedBy   omit.Val[string]        `db:"updated_by" `
+	ID              omit.Val[int32]         `db:"id,pk" `
+	FrontendID      omit.Val[uuid.UUID]     `db:"frontend_id" `
+	SeasonID        omit.Val[int32]         `db:"season_id" `
+	TrackLayoutID   omit.Val[int32]         `db:"track_layout_id" `
+	Name            omit.Val[string]        `db:"name" `
+	EventDate       omit.Val[time.Time]     `db:"event_date" `
+	Status          omit.Val[string]        `db:"status" `
+	ProcessingState omit.Val[string]        `db:"processing_state" `
+	FinalizedAt     omitnull.Val[time.Time] `db:"finalized_at" `
+	CreatedAt       omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt       omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy       omit.Val[string]        `db:"created_by" `
+	UpdatedBy       omit.Val[string]        `db:"updated_by" `
 }
 
 func (s EventSetter) SetColumns() []string {
-	vals := make([]string, 0, 12)
+	vals := make([]string, 0, 13)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
+	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
 	}
 	if s.SeasonID.IsValue() {
 		vals = append(vals, "season_id")
 	}
+	if s.TrackLayoutID.IsValue() {
+		vals = append(vals, "track_layout_id")
+	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
-	if s.RoundNumber.IsValue() {
-		vals = append(vals, "round_number")
-	}
-	if !s.Venue.IsUnset() {
-		vals = append(vals, "venue")
-	}
-	if !s.StartsAt.IsUnset() {
-		vals = append(vals, "starts_at")
-	}
-	if !s.EndsAt.IsUnset() {
-		vals = append(vals, "ends_at")
+	if s.EventDate.IsValue() {
+		vals = append(vals, "event_date")
 	}
 	if s.Status.IsValue() {
 		vals = append(vals, "status")
+	}
+	if s.ProcessingState.IsValue() {
+		vals = append(vals, "processing_state")
+	}
+	if !s.FinalizedAt.IsUnset() {
+		vals = append(vals, "finalized_at")
 	}
 	if s.CreatedAt.IsValue() {
 		vals = append(vals, "created_at")
@@ -166,26 +181,29 @@ func (s EventSetter) Overwrite(t *Event) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
 	if s.SeasonID.IsValue() {
 		t.SeasonID = s.SeasonID.MustGet()
+	}
+	if s.TrackLayoutID.IsValue() {
+		t.TrackLayoutID = s.TrackLayoutID.MustGet()
 	}
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
-	if s.RoundNumber.IsValue() {
-		t.RoundNumber = s.RoundNumber.MustGet()
-	}
-	if !s.Venue.IsUnset() {
-		t.Venue = s.Venue.MustGetNull()
-	}
-	if !s.StartsAt.IsUnset() {
-		t.StartsAt = s.StartsAt.MustGetNull()
-	}
-	if !s.EndsAt.IsUnset() {
-		t.EndsAt = s.EndsAt.MustGetNull()
+	if s.EventDate.IsValue() {
+		t.EventDate = s.EventDate.MustGet()
 	}
 	if s.Status.IsValue() {
 		t.Status = s.Status.MustGet()
+	}
+	if s.ProcessingState.IsValue() {
+		t.ProcessingState = s.ProcessingState.MustGet()
+	}
+	if !s.FinalizedAt.IsUnset() {
+		t.FinalizedAt = s.FinalizedAt.MustGetNull()
 	}
 	if s.CreatedAt.IsValue() {
 		t.CreatedAt = s.CreatedAt.MustGet()
@@ -207,77 +225,83 @@ func (s *EventSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 12)
+		vals := make([]bob.Expression, 13)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.SeasonID.IsValue() {
-			vals[1] = psql.Arg(s.SeasonID.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[2] = psql.Arg(s.Name.MustGet())
+		if s.SeasonID.IsValue() {
+			vals[2] = psql.Arg(s.SeasonID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.RoundNumber.IsValue() {
-			vals[3] = psql.Arg(s.RoundNumber.MustGet())
+		if s.TrackLayoutID.IsValue() {
+			vals[3] = psql.Arg(s.TrackLayoutID.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Venue.IsUnset() {
-			vals[4] = psql.Arg(s.Venue.MustGetNull())
+		if s.Name.IsValue() {
+			vals[4] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartsAt.IsUnset() {
-			vals[5] = psql.Arg(s.StartsAt.MustGetNull())
+		if s.EventDate.IsValue() {
+			vals[5] = psql.Arg(s.EventDate.MustGet())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if !s.EndsAt.IsUnset() {
-			vals[6] = psql.Arg(s.EndsAt.MustGetNull())
+		if s.Status.IsValue() {
+			vals[6] = psql.Arg(s.Status.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.Status.IsValue() {
-			vals[7] = psql.Arg(s.Status.MustGet())
+		if s.ProcessingState.IsValue() {
+			vals[7] = psql.Arg(s.ProcessingState.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[8] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.FinalizedAt.IsUnset() {
+			vals[8] = psql.Arg(s.FinalizedAt.MustGetNull())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[9] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[9] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[10] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[10] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[11] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[11] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[12] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[12] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -289,12 +313,19 @@ func (s EventSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 12)
+	exprs := make([]bob.Expression, 0, 13)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
+		}})
+	}
+
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
 		}})
 	}
 
@@ -305,6 +336,13 @@ func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.TrackLayoutID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "track_layout_id")...),
+			psql.Arg(s.TrackLayoutID),
+		}})
+	}
+
 	if s.Name.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "name")...),
@@ -312,31 +350,10 @@ func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.RoundNumber.IsValue() {
+	if s.EventDate.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "round_number")...),
-			psql.Arg(s.RoundNumber),
-		}})
-	}
-
-	if !s.Venue.IsUnset() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "venue")...),
-			psql.Arg(s.Venue),
-		}})
-	}
-
-	if !s.StartsAt.IsUnset() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "starts_at")...),
-			psql.Arg(s.StartsAt),
-		}})
-	}
-
-	if !s.EndsAt.IsUnset() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "ends_at")...),
-			psql.Arg(s.EndsAt),
+			psql.Quote(append(prefix, "event_date")...),
+			psql.Arg(s.EventDate),
 		}})
 	}
 
@@ -344,6 +361,20 @@ func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "status")...),
 			psql.Arg(s.Status),
+		}})
+	}
+
+	if s.ProcessingState.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "processing_state")...),
+			psql.Arg(s.ProcessingState),
+		}})
+	}
+
+	if !s.FinalizedAt.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "finalized_at")...),
+			psql.Arg(s.FinalizedAt),
 		}})
 	}
 
@@ -601,6 +632,102 @@ func (o EventSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// BookingEntries starts a query for related objects on booking_entries
+func (o *Event) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	return BookingEntries.Query(append(mods,
+		sm.Where(BookingEntries.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return BookingEntries.Query(append(mods,
+		sm.Where(psql.Group(BookingEntries.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// EventDriverStandings starts a query for related objects on event_driver_standings
+func (o *Event) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(EventDriverStandings.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(psql.Group(EventDriverStandings.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// EventProcessingAudits starts a query for related objects on event_processing_audit
+func (o *Event) EventProcessingAudits(mods ...bob.Mod[*dialect.SelectQuery]) EventProcessingAuditsQuery {
+	return EventProcessingAudits.Query(append(mods,
+		sm.Where(EventProcessingAudits.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) EventProcessingAudits(mods ...bob.Mod[*dialect.SelectQuery]) EventProcessingAuditsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventProcessingAudits.Query(append(mods,
+		sm.Where(psql.Group(EventProcessingAudits.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// EventTeamStandings starts a query for related objects on event_team_standings
+func (o *Event) EventTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventTeamStandingsQuery {
+	return EventTeamStandings.Query(append(mods,
+		sm.Where(EventTeamStandings.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) EventTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventTeamStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventTeamStandings.Query(append(mods,
+		sm.Where(psql.Group(EventTeamStandings.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Season starts a query for related objects on seasons
 func (o *Event) Season(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery {
 	return Seasons.Query(append(mods,
@@ -623,6 +750,350 @@ func (os EventSlice) Season(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery 
 	return Seasons.Query(append(mods,
 		sm.Where(psql.Group(Seasons.Columns.ID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+// TrackLayout starts a query for related objects on track_layouts
+func (o *Event) TrackLayout(mods ...bob.Mod[*dialect.SelectQuery]) TrackLayoutsQuery {
+	return TrackLayouts.Query(append(mods,
+		sm.Where(TrackLayouts.Columns.ID.EQ(psql.Arg(o.TrackLayoutID))),
+	)...)
+}
+
+func (os EventSlice) TrackLayout(mods ...bob.Mod[*dialect.SelectQuery]) TrackLayoutsQuery {
+	pkTrackLayoutID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkTrackLayoutID = append(pkTrackLayoutID, o.TrackLayoutID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkTrackLayoutID), "integer[]")),
+	))
+
+	return TrackLayouts.Query(append(mods,
+		sm.Where(psql.Group(TrackLayouts.Columns.ID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// ImportBatches starts a query for related objects on import_batches
+func (o *Event) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
+	return ImportBatches.Query(append(mods,
+		sm.Where(ImportBatches.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return ImportBatches.Query(append(mods,
+		sm.Where(psql.Group(ImportBatches.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// Races starts a query for related objects on races
+func (o *Event) Races(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
+	return Races.Query(append(mods,
+		sm.Where(Races.Columns.EventID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os EventSlice) Races(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return Races.Query(append(mods,
+		sm.Where(psql.Group(Races.Columns.EventID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+func insertEventBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, event0 *Event) (BookingEntrySlice, error) {
+	for i := range bookingEntries1 {
+		bookingEntries1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventBookingEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, event0 *Event) (BookingEntrySlice, error) {
+	setter := &BookingEntrySetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventBookingEntries0: %w", err)
+	}
+
+	return bookingEntries1, nil
+}
+
+func (event0 *Event) InsertBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	bookingEntries1, err := insertEventBookingEntries0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.BookingEntries = append(event0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range bookingEntries1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	bookingEntries1 := BookingEntrySlice(related)
+
+	_, err = attachEventBookingEntries0(ctx, exec, len(related), bookingEntries1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.BookingEntries = append(event0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
+}
+
+func insertEventEventDriverStandings0(ctx context.Context, exec bob.Executor, eventDriverStandings1 []*EventDriverStandingSetter, event0 *Event) (EventDriverStandingSlice, error) {
+	for i := range eventDriverStandings1 {
+		eventDriverStandings1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := EventDriverStandings.Insert(bob.ToMods(eventDriverStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventEventDriverStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventEventDriverStandings0(ctx context.Context, exec bob.Executor, count int, eventDriverStandings1 EventDriverStandingSlice, event0 *Event) (EventDriverStandingSlice, error) {
+	setter := &EventDriverStandingSetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := eventDriverStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventEventDriverStandings0: %w", err)
+	}
+
+	return eventDriverStandings1, nil
+}
+
+func (event0 *Event) InsertEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventDriverStandings1, err := insertEventEventDriverStandings0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventDriverStandings = append(event0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range eventDriverStandings1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventDriverStandings1 := EventDriverStandingSlice(related)
+
+	_, err = attachEventEventDriverStandings0(ctx, exec, len(related), eventDriverStandings1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventDriverStandings = append(event0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
+}
+
+func insertEventEventProcessingAudits0(ctx context.Context, exec bob.Executor, eventProcessingAudits1 []*EventProcessingAuditSetter, event0 *Event) (EventProcessingAuditSlice, error) {
+	for i := range eventProcessingAudits1 {
+		eventProcessingAudits1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := EventProcessingAudits.Insert(bob.ToMods(eventProcessingAudits1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventEventProcessingAudits0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventEventProcessingAudits0(ctx context.Context, exec bob.Executor, count int, eventProcessingAudits1 EventProcessingAuditSlice, event0 *Event) (EventProcessingAuditSlice, error) {
+	setter := &EventProcessingAuditSetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := eventProcessingAudits1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventEventProcessingAudits0: %w", err)
+	}
+
+	return eventProcessingAudits1, nil
+}
+
+func (event0 *Event) InsertEventProcessingAudits(ctx context.Context, exec bob.Executor, related ...*EventProcessingAuditSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventProcessingAudits1, err := insertEventEventProcessingAudits0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventProcessingAudits = append(event0.R.EventProcessingAudits, eventProcessingAudits1...)
+
+	for _, rel := range eventProcessingAudits1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachEventProcessingAudits(ctx context.Context, exec bob.Executor, related ...*EventProcessingAudit) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventProcessingAudits1 := EventProcessingAuditSlice(related)
+
+	_, err = attachEventEventProcessingAudits0(ctx, exec, len(related), eventProcessingAudits1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventProcessingAudits = append(event0.R.EventProcessingAudits, eventProcessingAudits1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
+}
+
+func insertEventEventTeamStandings0(ctx context.Context, exec bob.Executor, eventTeamStandings1 []*EventTeamStandingSetter, event0 *Event) (EventTeamStandingSlice, error) {
+	for i := range eventTeamStandings1 {
+		eventTeamStandings1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := EventTeamStandings.Insert(bob.ToMods(eventTeamStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventEventTeamStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventEventTeamStandings0(ctx context.Context, exec bob.Executor, count int, eventTeamStandings1 EventTeamStandingSlice, event0 *Event) (EventTeamStandingSlice, error) {
+	setter := &EventTeamStandingSetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := eventTeamStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventEventTeamStandings0: %w", err)
+	}
+
+	return eventTeamStandings1, nil
+}
+
+func (event0 *Event) InsertEventTeamStandings(ctx context.Context, exec bob.Executor, related ...*EventTeamStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventTeamStandings1, err := insertEventEventTeamStandings0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventTeamStandings = append(event0.R.EventTeamStandings, eventTeamStandings1...)
+
+	for _, rel := range eventTeamStandings1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachEventTeamStandings(ctx context.Context, exec bob.Executor, related ...*EventTeamStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventTeamStandings1 := EventTeamStandingSlice(related)
+
+	_, err = attachEventEventTeamStandings0(ctx, exec, len(related), eventTeamStandings1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.EventTeamStandings = append(event0.R.EventTeamStandings, eventTeamStandings1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
 }
 
 func attachEventSeason0(ctx context.Context, exec bob.Executor, count int, event0 *Event, season1 *Season) (*Event, error) {
@@ -673,19 +1144,204 @@ func (event0 *Event) AttachSeason(ctx context.Context, exec bob.Executor, season
 	return nil
 }
 
+func attachEventTrackLayout0(ctx context.Context, exec bob.Executor, count int, event0 *Event, trackLayout1 *TrackLayout) (*Event, error) {
+	setter := &EventSetter{
+		TrackLayoutID: omit.From(trackLayout1.ID),
+	}
+
+	err := event0.Update(ctx, exec, setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventTrackLayout0: %w", err)
+	}
+
+	return event0, nil
+}
+
+func (event0 *Event) InsertTrackLayout(ctx context.Context, exec bob.Executor, related *TrackLayoutSetter) error {
+	var err error
+
+	trackLayout1, err := TrackLayouts.Insert(related).One(ctx, exec)
+	if err != nil {
+		return fmt.Errorf("inserting related objects: %w", err)
+	}
+
+	_, err = attachEventTrackLayout0(ctx, exec, 1, event0, trackLayout1)
+	if err != nil {
+		return err
+	}
+
+	event0.R.TrackLayout = trackLayout1
+
+	trackLayout1.R.Events = append(trackLayout1.R.Events, event0)
+
+	return nil
+}
+
+func (event0 *Event) AttachTrackLayout(ctx context.Context, exec bob.Executor, trackLayout1 *TrackLayout) error {
+	var err error
+
+	_, err = attachEventTrackLayout0(ctx, exec, 1, event0, trackLayout1)
+	if err != nil {
+		return err
+	}
+
+	event0.R.TrackLayout = trackLayout1
+
+	trackLayout1.R.Events = append(trackLayout1.R.Events, event0)
+
+	return nil
+}
+
+func insertEventImportBatches0(ctx context.Context, exec bob.Executor, importBatches1 []*ImportBatchSetter, event0 *Event) (ImportBatchSlice, error) {
+	for i := range importBatches1 {
+		importBatches1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := ImportBatches.Insert(bob.ToMods(importBatches1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventImportBatches0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventImportBatches0(ctx context.Context, exec bob.Executor, count int, importBatches1 ImportBatchSlice, event0 *Event) (ImportBatchSlice, error) {
+	setter := &ImportBatchSetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := importBatches1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventImportBatches0: %w", err)
+	}
+
+	return importBatches1, nil
+}
+
+func (event0 *Event) InsertImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatchSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	importBatches1, err := insertEventImportBatches0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.ImportBatches = append(event0.R.ImportBatches, importBatches1...)
+
+	for _, rel := range importBatches1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatch) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	importBatches1 := ImportBatchSlice(related)
+
+	_, err = attachEventImportBatches0(ctx, exec, len(related), importBatches1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.ImportBatches = append(event0.R.ImportBatches, importBatches1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
+}
+
+func insertEventRaces0(ctx context.Context, exec bob.Executor, races1 []*RaceSetter, event0 *Event) (RaceSlice, error) {
+	for i := range races1 {
+		races1[i].EventID = omit.From(event0.ID)
+	}
+
+	ret, err := Races.Insert(bob.ToMods(races1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertEventRaces0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachEventRaces0(ctx context.Context, exec bob.Executor, count int, races1 RaceSlice, event0 *Event) (RaceSlice, error) {
+	setter := &RaceSetter{
+		EventID: omit.From(event0.ID),
+	}
+
+	err := races1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachEventRaces0: %w", err)
+	}
+
+	return races1, nil
+}
+
+func (event0 *Event) InsertRaces(ctx context.Context, exec bob.Executor, related ...*RaceSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	races1, err := insertEventRaces0(ctx, exec, related, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.Races = append(event0.R.Races, races1...)
+
+	for _, rel := range races1 {
+		rel.R.Event = event0
+	}
+	return nil
+}
+
+func (event0 *Event) AttachRaces(ctx context.Context, exec bob.Executor, related ...*Race) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	races1 := RaceSlice(related)
+
+	_, err = attachEventRaces0(ctx, exec, len(related), races1, event0)
+	if err != nil {
+		return err
+	}
+
+	event0.R.Races = append(event0.R.Races, races1...)
+
+	for _, rel := range related {
+		rel.R.Event = event0
+	}
+
+	return nil
+}
+
 type eventWhere[Q psql.Filterable] struct {
-	ID          psql.WhereMod[Q, int32]
-	SeasonID    psql.WhereMod[Q, int32]
-	Name        psql.WhereMod[Q, string]
-	RoundNumber psql.WhereMod[Q, int32]
-	Venue       psql.WhereNullMod[Q, string]
-	StartsAt    psql.WhereNullMod[Q, time.Time]
-	EndsAt      psql.WhereNullMod[Q, time.Time]
-	Status      psql.WhereMod[Q, string]
-	CreatedAt   psql.WhereMod[Q, time.Time]
-	UpdatedAt   psql.WhereMod[Q, time.Time]
-	CreatedBy   psql.WhereMod[Q, string]
-	UpdatedBy   psql.WhereMod[Q, string]
+	ID              psql.WhereMod[Q, int32]
+	FrontendID      psql.WhereMod[Q, uuid.UUID]
+	SeasonID        psql.WhereMod[Q, int32]
+	TrackLayoutID   psql.WhereMod[Q, int32]
+	Name            psql.WhereMod[Q, string]
+	EventDate       psql.WhereMod[Q, time.Time]
+	Status          psql.WhereMod[Q, string]
+	ProcessingState psql.WhereMod[Q, string]
+	FinalizedAt     psql.WhereNullMod[Q, time.Time]
+	CreatedAt       psql.WhereMod[Q, time.Time]
+	UpdatedAt       psql.WhereMod[Q, time.Time]
+	CreatedBy       psql.WhereMod[Q, string]
+	UpdatedBy       psql.WhereMod[Q, string]
 }
 
 func (eventWhere[Q]) AliasedAs(alias string) eventWhere[Q] {
@@ -694,18 +1350,19 @@ func (eventWhere[Q]) AliasedAs(alias string) eventWhere[Q] {
 
 func buildEventWhere[Q psql.Filterable](cols eventColumns) eventWhere[Q] {
 	return eventWhere[Q]{
-		ID:          psql.Where[Q, int32](cols.ID),
-		SeasonID:    psql.Where[Q, int32](cols.SeasonID),
-		Name:        psql.Where[Q, string](cols.Name),
-		RoundNumber: psql.Where[Q, int32](cols.RoundNumber),
-		Venue:       psql.WhereNull[Q, string](cols.Venue),
-		StartsAt:    psql.WhereNull[Q, time.Time](cols.StartsAt),
-		EndsAt:      psql.WhereNull[Q, time.Time](cols.EndsAt),
-		Status:      psql.Where[Q, string](cols.Status),
-		CreatedAt:   psql.Where[Q, time.Time](cols.CreatedAt),
-		UpdatedAt:   psql.Where[Q, time.Time](cols.UpdatedAt),
-		CreatedBy:   psql.Where[Q, string](cols.CreatedBy),
-		UpdatedBy:   psql.Where[Q, string](cols.UpdatedBy),
+		ID:              psql.Where[Q, int32](cols.ID),
+		FrontendID:      psql.Where[Q, uuid.UUID](cols.FrontendID),
+		SeasonID:        psql.Where[Q, int32](cols.SeasonID),
+		TrackLayoutID:   psql.Where[Q, int32](cols.TrackLayoutID),
+		Name:            psql.Where[Q, string](cols.Name),
+		EventDate:       psql.Where[Q, time.Time](cols.EventDate),
+		Status:          psql.Where[Q, string](cols.Status),
+		ProcessingState: psql.Where[Q, string](cols.ProcessingState),
+		FinalizedAt:     psql.WhereNull[Q, time.Time](cols.FinalizedAt),
+		CreatedAt:       psql.Where[Q, time.Time](cols.CreatedAt),
+		UpdatedAt:       psql.Where[Q, time.Time](cols.UpdatedAt),
+		CreatedBy:       psql.Where[Q, string](cols.CreatedBy),
+		UpdatedBy:       psql.Where[Q, string](cols.UpdatedBy),
 	}
 }
 
@@ -715,6 +1372,62 @@ func (o *Event) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "BookingEntries":
+		rels, ok := retrieved.(BookingEntrySlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.BookingEntries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
+	case "EventDriverStandings":
+		rels, ok := retrieved.(EventDriverStandingSlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventDriverStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
+	case "EventProcessingAudits":
+		rels, ok := retrieved.(EventProcessingAuditSlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventProcessingAudits = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
+	case "EventTeamStandings":
+		rels, ok := retrieved.(EventTeamStandingSlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventTeamStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
 	case "Season":
 		rel, ok := retrieved.(*Season)
 		if !ok {
@@ -727,13 +1440,54 @@ func (o *Event) Preload(name string, retrieved any) error {
 			rel.R.Events = EventSlice{o}
 		}
 		return nil
+	case "TrackLayout":
+		rel, ok := retrieved.(*TrackLayout)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.TrackLayout = rel
+
+		if rel != nil {
+			rel.R.Events = EventSlice{o}
+		}
+		return nil
+	case "ImportBatches":
+		rels, ok := retrieved.(ImportBatchSlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.ImportBatches = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
+	case "Races":
+		rels, ok := retrieved.(RaceSlice)
+		if !ok {
+			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.Races = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Event = o
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("event has no relationship %q", name)
 	}
 }
 
 type eventPreloader struct {
-	Season func(...psql.PreloadOption) psql.Preloader
+	Season      func(...psql.PreloadOption) psql.Preloader
+	TrackLayout func(...psql.PreloadOption) psql.Preloader
 }
 
 func buildEventPreloader() eventPreloader {
@@ -751,26 +1505,353 @@ func buildEventPreloader() eventPreloader {
 				},
 			}, Seasons.Columns.Names(), opts...)
 		},
+		TrackLayout: func(opts ...psql.PreloadOption) psql.Preloader {
+			return psql.Preload[*TrackLayout, TrackLayoutSlice](psql.PreloadRel{
+				Name: "TrackLayout",
+				Sides: []psql.PreloadSide{
+					{
+						From:        Events,
+						To:          TrackLayouts,
+						FromColumns: []string{"track_layout_id"},
+						ToColumns:   []string{"id"},
+					},
+				},
+			}, TrackLayouts.Columns.Names(), opts...)
+		},
 	}
 }
 
 type eventThenLoader[Q orm.Loadable] struct {
-	Season func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventDriverStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventProcessingAudits func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventTeamStandings    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Season                func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	TrackLayout           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ImportBatches         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Races                 func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildEventThenLoader[Q orm.Loadable]() eventThenLoader[Q] {
+	type BookingEntriesLoadInterface interface {
+		LoadBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type EventDriverStandingsLoadInterface interface {
+		LoadEventDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type EventProcessingAuditsLoadInterface interface {
+		LoadEventProcessingAudits(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type EventTeamStandingsLoadInterface interface {
+		LoadEventTeamStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type SeasonLoadInterface interface {
 		LoadSeason(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
+	type TrackLayoutLoadInterface interface {
+		LoadTrackLayout(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type ImportBatchesLoadInterface interface {
+		LoadImportBatches(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type RacesLoadInterface interface {
+		LoadRaces(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 
 	return eventThenLoader[Q]{
+		BookingEntries: thenLoadBuilder[Q](
+			"BookingEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadBookingEntries(ctx, exec, mods...)
+			},
+		),
+		EventDriverStandings: thenLoadBuilder[Q](
+			"EventDriverStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved EventDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventDriverStandings(ctx, exec, mods...)
+			},
+		),
+		EventProcessingAudits: thenLoadBuilder[Q](
+			"EventProcessingAudits",
+			func(ctx context.Context, exec bob.Executor, retrieved EventProcessingAuditsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventProcessingAudits(ctx, exec, mods...)
+			},
+		),
+		EventTeamStandings: thenLoadBuilder[Q](
+			"EventTeamStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved EventTeamStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventTeamStandings(ctx, exec, mods...)
+			},
+		),
 		Season: thenLoadBuilder[Q](
 			"Season",
 			func(ctx context.Context, exec bob.Executor, retrieved SeasonLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadSeason(ctx, exec, mods...)
 			},
 		),
+		TrackLayout: thenLoadBuilder[Q](
+			"TrackLayout",
+			func(ctx context.Context, exec bob.Executor, retrieved TrackLayoutLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadTrackLayout(ctx, exec, mods...)
+			},
+		),
+		ImportBatches: thenLoadBuilder[Q](
+			"ImportBatches",
+			func(ctx context.Context, exec bob.Executor, retrieved ImportBatchesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadImportBatches(ctx, exec, mods...)
+			},
+		),
+		Races: thenLoadBuilder[Q](
+			"Races",
+			func(ctx context.Context, exec bob.Executor, retrieved RacesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadRaces(ctx, exec, mods...)
+			},
+		),
 	}
+}
+
+// LoadBookingEntries loads the event's BookingEntries into the .R struct
+func (o *Event) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.BookingEntries = nil
+
+	related, err := o.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.BookingEntries = related
+	return nil
+}
+
+// LoadBookingEntries loads the event's BookingEntries into the .R struct
+func (os EventSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	bookingEntries, err := os.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.BookingEntries = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range bookingEntries {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.BookingEntries = append(o.R.BookingEntries, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadEventDriverStandings loads the event's EventDriverStandings into the .R struct
+func (o *Event) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventDriverStandings = nil
+
+	related, err := o.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.EventDriverStandings = related
+	return nil
+}
+
+// LoadEventDriverStandings loads the event's EventDriverStandings into the .R struct
+func (os EventSlice) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventDriverStandings, err := os.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventDriverStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventDriverStandings {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.EventDriverStandings = append(o.R.EventDriverStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadEventProcessingAudits loads the event's EventProcessingAudits into the .R struct
+func (o *Event) LoadEventProcessingAudits(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventProcessingAudits = nil
+
+	related, err := o.EventProcessingAudits(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.EventProcessingAudits = related
+	return nil
+}
+
+// LoadEventProcessingAudits loads the event's EventProcessingAudits into the .R struct
+func (os EventSlice) LoadEventProcessingAudits(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventProcessingAudits, err := os.EventProcessingAudits(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventProcessingAudits = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventProcessingAudits {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.EventProcessingAudits = append(o.R.EventProcessingAudits, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadEventTeamStandings loads the event's EventTeamStandings into the .R struct
+func (o *Event) LoadEventTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventTeamStandings = nil
+
+	related, err := o.EventTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.EventTeamStandings = related
+	return nil
+}
+
+// LoadEventTeamStandings loads the event's EventTeamStandings into the .R struct
+func (os EventSlice) LoadEventTeamStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventTeamStandings, err := os.EventTeamStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventTeamStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventTeamStandings {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.EventTeamStandings = append(o.R.EventTeamStandings, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadSeason loads the event's Season into the .R struct
@@ -825,9 +1906,190 @@ func (os EventSlice) LoadSeason(ctx context.Context, exec bob.Executor, mods ...
 	return nil
 }
 
+// LoadTrackLayout loads the event's TrackLayout into the .R struct
+func (o *Event) LoadTrackLayout(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.TrackLayout = nil
+
+	related, err := o.TrackLayout(mods...).One(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	related.R.Events = EventSlice{o}
+
+	o.R.TrackLayout = related
+	return nil
+}
+
+// LoadTrackLayout loads the event's TrackLayout into the .R struct
+func (os EventSlice) LoadTrackLayout(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	trackLayouts, err := os.TrackLayout(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range trackLayouts {
+
+			if !(o.TrackLayoutID == rel.ID) {
+				continue
+			}
+
+			rel.R.Events = append(rel.R.Events, o)
+
+			o.R.TrackLayout = rel
+			break
+		}
+	}
+
+	return nil
+}
+
+// LoadImportBatches loads the event's ImportBatches into the .R struct
+func (o *Event) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.ImportBatches = nil
+
+	related, err := o.ImportBatches(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.ImportBatches = related
+	return nil
+}
+
+// LoadImportBatches loads the event's ImportBatches into the .R struct
+func (os EventSlice) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	importBatches, err := os.ImportBatches(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.ImportBatches = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range importBatches {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.ImportBatches = append(o.R.ImportBatches, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadRaces loads the event's Races into the .R struct
+func (o *Event) LoadRaces(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.Races = nil
+
+	related, err := o.Races(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Event = o
+	}
+
+	o.R.Races = related
+	return nil
+}
+
+// LoadRaces loads the event's Races into the .R struct
+func (os EventSlice) LoadRaces(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	races, err := os.Races(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.Races = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range races {
+
+			if !(o.ID == rel.EventID) {
+				continue
+			}
+
+			rel.R.Event = o
+
+			o.R.Races = append(o.R.Races, rel)
+		}
+	}
+
+	return nil
+}
+
 type eventJoins[Q dialect.Joinable] struct {
-	typ    string
-	Season modAs[Q, seasonColumns]
+	typ                   string
+	BookingEntries        modAs[Q, bookingEntryColumns]
+	EventDriverStandings  modAs[Q, eventDriverStandingColumns]
+	EventProcessingAudits modAs[Q, eventProcessingAuditColumns]
+	EventTeamStandings    modAs[Q, eventTeamStandingColumns]
+	Season                modAs[Q, seasonColumns]
+	TrackLayout           modAs[Q, trackLayoutColumns]
+	ImportBatches         modAs[Q, importBatchColumns]
+	Races                 modAs[Q, raceColumns]
 }
 
 func (j eventJoins[Q]) aliasedAs(alias string) eventJoins[Q] {
@@ -837,6 +2099,62 @@ func (j eventJoins[Q]) aliasedAs(alias string) eventJoins[Q] {
 func buildEventJoins[Q dialect.Joinable](cols eventColumns, typ string) eventJoins[Q] {
 	return eventJoins[Q]{
 		typ: typ,
+		BookingEntries: modAs[Q, bookingEntryColumns]{
+			c: BookingEntries.Columns,
+			f: func(to bookingEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		EventDriverStandings: modAs[Q, eventDriverStandingColumns]{
+			c: EventDriverStandings.Columns,
+			f: func(to eventDriverStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventDriverStandings.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		EventProcessingAudits: modAs[Q, eventProcessingAuditColumns]{
+			c: EventProcessingAudits.Columns,
+			f: func(to eventProcessingAuditColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventProcessingAudits.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		EventTeamStandings: modAs[Q, eventTeamStandingColumns]{
+			c: EventTeamStandings.Columns,
+			f: func(to eventTeamStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventTeamStandings.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		Season: modAs[Q, seasonColumns]{
 			c: Seasons.Columns,
 			f: func(to seasonColumns) bob.Mod[Q] {
@@ -845,6 +2163,48 @@ func buildEventJoins[Q dialect.Joinable](cols eventColumns, typ string) eventJoi
 				{
 					mods = append(mods, dialect.Join[Q](typ, Seasons.Name().As(to.Alias())).On(
 						to.ID.EQ(cols.SeasonID),
+					))
+				}
+
+				return mods
+			},
+		},
+		TrackLayout: modAs[Q, trackLayoutColumns]{
+			c: TrackLayouts.Columns,
+			f: func(to trackLayoutColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, TrackLayouts.Name().As(to.Alias())).On(
+						to.ID.EQ(cols.TrackLayoutID),
+					))
+				}
+
+				return mods
+			},
+		},
+		ImportBatches: modAs[Q, importBatchColumns]{
+			c: ImportBatches.Columns,
+			f: func(to importBatchColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, ImportBatches.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		Races: modAs[Q, raceColumns]{
+			c: Races.Columns,
+			f: func(to raceColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, Races.Name().As(to.Alias())).On(
+						to.EventID.EQ(cols.ID),
 					))
 				}
 

@@ -11,22 +11,259 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 	models "github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob/types"
 )
 
 type Factory struct {
-	baseDriverMods      DriverModSlice
-	baseEventMods       EventModSlice
-	basePointSystemMods PointSystemModSlice
-	baseRacingSimMods   RacingSimModSlice
-	baseSeasonMods      SeasonModSlice
-	baseSeriesMods      SeriesModSlice
-	baseTeamMods        TeamModSlice
+	baseBookingEntryMods               BookingEntryModSlice
+	baseCarBrandMods                   CarBrandModSlice
+	baseCarManufacturerMods            CarManufacturerModSlice
+	baseCarModelMods                   CarModelModSlice
+	baseDriverSimulationIDMods         DriverSimulationIDModSlice
+	baseDriverMods                     DriverModSlice
+	baseEventDriverStandingMods        EventDriverStandingModSlice
+	baseEventProcessingAuditMods       EventProcessingAuditModSlice
+	baseEventTeamStandingMods          EventTeamStandingModSlice
+	baseEventMods                      EventModSlice
+	baseImportBatchMods                ImportBatchModSlice
+	basePointRuleMods                  PointRuleModSlice
+	basePointSystemMods                PointSystemModSlice
+	baseRaceMods                       RaceModSlice
+	baseRacingSimMods                  RacingSimModSlice
+	baseResultEntryMods                ResultEntryModSlice
+	baseSeasonDriverStandingMods       SeasonDriverStandingModSlice
+	baseSeasonTeamStandingMods         SeasonTeamStandingModSlice
+	baseSeasonMods                     SeasonModSlice
+	baseSeriesMods                     SeriesModSlice
+	baseSimulationCarAliasMods         SimulationCarAliasModSlice
+	baseSimulationTrackLayoutAliasMods SimulationTrackLayoutAliasModSlice
+	baseTeamDriverMods                 TeamDriverModSlice
+	baseTeamMods                       TeamModSlice
+	baseTrackLayoutMods                TrackLayoutModSlice
+	baseTrackMods                      TrackModSlice
 }
 
 func New() *Factory {
 	return &Factory{}
+}
+
+func (f *Factory) NewBookingEntry(mods ...BookingEntryMod) *BookingEntryTemplate {
+	return f.NewBookingEntryWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewBookingEntryWithContext(ctx context.Context, mods ...BookingEntryMod) *BookingEntryTemplate {
+	o := &BookingEntryTemplate{f: f}
+
+	if f != nil {
+		f.baseBookingEntryMods.Apply(ctx, o)
+	}
+
+	BookingEntryModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntryTemplate {
+	o := &BookingEntryTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.EventID = func() int32 { return m.EventID }
+	o.SourceResultEntryID = func() null.Val[int32] { return m.SourceResultEntryID }
+	o.SourceBookingEntryID = func() null.Val[int32] { return m.SourceBookingEntryID }
+	o.TargetType = func() mytypes.TargetType { return m.TargetType }
+	o.DriverID = func() null.Val[int32] { return m.DriverID }
+	o.TeamID = func() null.Val[int32] { return m.TeamID }
+	o.SourceType = func() mytypes.SourceType { return m.SourceType }
+	o.Points = func() int32 { return m.Points }
+	o.Description = func() string { return m.Description }
+	o.IsManual = func() bool { return m.IsManual }
+	o.LockedAt = func() null.Val[time.Time] { return m.LockedAt }
+	o.MetadataJSON = func() types.JSON[json.RawMessage] { return m.MetadataJSON }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		BookingEntryMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.Event != nil {
+		BookingEntryMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if m.R.SourceBookingEntry != nil {
+		BookingEntryMods.WithExistingSourceBookingEntry(m.R.SourceBookingEntry).Apply(ctx, o)
+	}
+	if len(m.R.ReverseSourceBookingEntries) > 0 {
+		BookingEntryMods.AddExistingReverseSourceBookingEntries(m.R.ReverseSourceBookingEntries...).Apply(ctx, o)
+	}
+	if m.R.SourceResultEntryResultEntry != nil {
+		BookingEntryMods.WithExistingSourceResultEntryResultEntry(m.R.SourceResultEntryResultEntry).Apply(ctx, o)
+	}
+	if m.R.Team != nil {
+		BookingEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewCarBrand(mods ...CarBrandMod) *CarBrandTemplate {
+	return f.NewCarBrandWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewCarBrandWithContext(ctx context.Context, mods ...CarBrandMod) *CarBrandTemplate {
+	o := &CarBrandTemplate{f: f}
+
+	if f != nil {
+		f.baseCarBrandMods.Apply(ctx, o)
+	}
+
+	CarBrandModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingCarBrand(m *models.CarBrand) *CarBrandTemplate {
+	o := &CarBrandTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.ManufacturerID = func() int32 { return m.ManufacturerID }
+	o.Name = func() string { return m.Name }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.ManufacturerCarManufacturer != nil {
+		CarBrandMods.WithExistingManufacturerCarManufacturer(m.R.ManufacturerCarManufacturer).Apply(ctx, o)
+	}
+	if len(m.R.BrandCarModels) > 0 {
+		CarBrandMods.AddExistingBrandCarModels(m.R.BrandCarModels...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewCarManufacturer(mods ...CarManufacturerMod) *CarManufacturerTemplate {
+	return f.NewCarManufacturerWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewCarManufacturerWithContext(ctx context.Context, mods ...CarManufacturerMod) *CarManufacturerTemplate {
+	o := &CarManufacturerTemplate{f: f}
+
+	if f != nil {
+		f.baseCarManufacturerMods.Apply(ctx, o)
+	}
+
+	CarManufacturerModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingCarManufacturer(m *models.CarManufacturer) *CarManufacturerTemplate {
+	o := &CarManufacturerTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.Name = func() string { return m.Name }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.ManufacturerCarBrands) > 0 {
+		CarManufacturerMods.AddExistingManufacturerCarBrands(m.R.ManufacturerCarBrands...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewCarModel(mods ...CarModelMod) *CarModelTemplate {
+	return f.NewCarModelWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewCarModelWithContext(ctx context.Context, mods ...CarModelMod) *CarModelTemplate {
+	o := &CarModelTemplate{f: f}
+
+	if f != nil {
+		f.baseCarModelMods.Apply(ctx, o)
+	}
+
+	CarModelModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingCarModel(m *models.CarModel) *CarModelTemplate {
+	o := &CarModelTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.BrandID = func() int32 { return m.BrandID }
+	o.Name = func() string { return m.Name }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.BrandCarBrand != nil {
+		CarModelMods.WithExistingBrandCarBrand(m.R.BrandCarBrand).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		CarModelMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationCarAliases) > 0 {
+		CarModelMods.AddExistingSimulationCarAliases(m.R.SimulationCarAliases...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewDriverSimulationID(mods ...DriverSimulationIDMod) *DriverSimulationIDTemplate {
+	return f.NewDriverSimulationIDWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewDriverSimulationIDWithContext(ctx context.Context, mods ...DriverSimulationIDMod) *DriverSimulationIDTemplate {
+	o := &DriverSimulationIDTemplate{f: f}
+
+	if f != nil {
+		f.baseDriverSimulationIDMods.Apply(ctx, o)
+	}
+
+	DriverSimulationIDModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingDriverSimulationID(m *models.DriverSimulationID) *DriverSimulationIDTemplate {
+	o := &DriverSimulationIDTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.DriverID = func() int32 { return m.DriverID }
+	o.SimulationID = func() int32 { return m.SimulationID }
+	o.SimulationDriverID = func() string { return m.SimulationDriverID }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		DriverSimulationIDMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.SimulationRacingSim != nil {
+		DriverSimulationIDMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+
+	return o
 }
 
 func (f *Factory) NewDriver(mods ...DriverMod) *DriverTemplate {
@@ -52,14 +289,167 @@ func (f *Factory) FromExistingDriver(m *models.Driver) *DriverTemplate {
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.ExternalID = func() string { return m.ExternalID }
 	o.Name = func() string { return m.Name }
-	o.SimulationIds = func() types.JSON[json.RawMessage] { return m.SimulationIds }
 	o.IsActive = func() bool { return m.IsActive }
-	o.JoinedAt = func() time.Time { return m.JoinedAt }
 	o.LastImportedFrom = func() null.Val[string] { return m.LastImportedFrom }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		DriverMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
+	if len(m.R.DriverSimulationIds) > 0 {
+		DriverMods.AddExistingDriverSimulationIds(m.R.DriverSimulationIds...).Apply(ctx, o)
+	}
+	if len(m.R.EventDriverStandings) > 0 {
+		DriverMods.AddExistingEventDriverStandings(m.R.EventDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		DriverMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonDriverStandings) > 0 {
+		DriverMods.AddExistingSeasonDriverStandings(m.R.SeasonDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.TeamDrivers) > 0 {
+		DriverMods.AddExistingTeamDrivers(m.R.TeamDrivers...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewEventDriverStanding(mods ...EventDriverStandingMod) *EventDriverStandingTemplate {
+	return f.NewEventDriverStandingWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewEventDriverStandingWithContext(ctx context.Context, mods ...EventDriverStandingMod) *EventDriverStandingTemplate {
+	o := &EventDriverStandingTemplate{f: f}
+
+	if f != nil {
+		f.baseEventDriverStandingMods.Apply(ctx, o)
+	}
+
+	EventDriverStandingModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingEventDriverStanding(m *models.EventDriverStanding) *EventDriverStandingTemplate {
+	o := &EventDriverStandingTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.EventID = func() int32 { return m.EventID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.DriverID = func() int32 { return m.DriverID }
+	o.Position = func() int32 { return m.Position }
+	o.TotalPoints = func() int32 { return m.TotalPoints }
+	o.DroppedEventIds = func() pq.Int32Array { return m.DroppedEventIds }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		EventDriverStandingMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.Event != nil {
+		EventDriverStandingMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if m.R.Season != nil {
+		EventDriverStandingMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewEventProcessingAudit(mods ...EventProcessingAuditMod) *EventProcessingAuditTemplate {
+	return f.NewEventProcessingAuditWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewEventProcessingAuditWithContext(ctx context.Context, mods ...EventProcessingAuditMod) *EventProcessingAuditTemplate {
+	o := &EventProcessingAuditTemplate{f: f}
+
+	if f != nil {
+		f.baseEventProcessingAuditMods.Apply(ctx, o)
+	}
+
+	EventProcessingAuditModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingEventProcessingAudit(m *models.EventProcessingAudit) *EventProcessingAuditTemplate {
+	o := &EventProcessingAuditTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.EventID = func() int32 { return m.EventID }
+	o.ImportBatchID = func() null.Val[int32] { return m.ImportBatchID }
+	o.FromState = func() null.Val[string] { return m.FromState }
+	o.ToState = func() string { return m.ToState }
+	o.Action = func() string { return m.Action }
+	o.PayloadJSON = func() types.JSON[json.RawMessage] { return m.PayloadJSON }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Event != nil {
+		EventProcessingAuditMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if m.R.ImportBatch != nil {
+		EventProcessingAuditMods.WithExistingImportBatch(m.R.ImportBatch).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewEventTeamStanding(mods ...EventTeamStandingMod) *EventTeamStandingTemplate {
+	return f.NewEventTeamStandingWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewEventTeamStandingWithContext(ctx context.Context, mods ...EventTeamStandingMod) *EventTeamStandingTemplate {
+	o := &EventTeamStandingTemplate{f: f}
+
+	if f != nil {
+		f.baseEventTeamStandingMods.Apply(ctx, o)
+	}
+
+	EventTeamStandingModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingEventTeamStanding(m *models.EventTeamStanding) *EventTeamStandingTemplate {
+	o := &EventTeamStandingTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.EventID = func() int32 { return m.EventID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.TeamID = func() int32 { return m.TeamID }
+	o.Position = func() int32 { return m.Position }
+	o.TotalPoints = func() int32 { return m.TotalPoints }
+	o.DroppedEventIds = func() pq.Int32Array { return m.DroppedEventIds }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Event != nil {
+		EventTeamStandingMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if m.R.Season != nil {
+		EventTeamStandingMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+	if m.R.Team != nil {
+		EventTeamStandingMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
+	}
 
 	return o
 }
@@ -84,21 +474,129 @@ func (f *Factory) FromExistingEvent(m *models.Event) *EventTemplate {
 	o := &EventTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.SeasonID = func() int32 { return m.SeasonID }
+	o.TrackLayoutID = func() int32 { return m.TrackLayoutID }
 	o.Name = func() string { return m.Name }
-	o.RoundNumber = func() int32 { return m.RoundNumber }
-	o.Venue = func() null.Val[string] { return m.Venue }
-	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
-	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
+	o.EventDate = func() time.Time { return m.EventDate }
 	o.Status = func() string { return m.Status }
+	o.ProcessingState = func() string { return m.ProcessingState }
+	o.FinalizedAt = func() null.Val[time.Time] { return m.FinalizedAt }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		EventMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
+	if len(m.R.EventDriverStandings) > 0 {
+		EventMods.AddExistingEventDriverStandings(m.R.EventDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.EventProcessingAudits) > 0 {
+		EventMods.AddExistingEventProcessingAudits(m.R.EventProcessingAudits...).Apply(ctx, o)
+	}
+	if len(m.R.EventTeamStandings) > 0 {
+		EventMods.AddExistingEventTeamStandings(m.R.EventTeamStandings...).Apply(ctx, o)
+	}
 	if m.R.Season != nil {
 		EventMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+	if m.R.TrackLayout != nil {
+		EventMods.WithExistingTrackLayout(m.R.TrackLayout).Apply(ctx, o)
+	}
+	if len(m.R.ImportBatches) > 0 {
+		EventMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	}
+	if len(m.R.Races) > 0 {
+		EventMods.AddExistingRaces(m.R.Races...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewImportBatch(mods ...ImportBatchMod) *ImportBatchTemplate {
+	return f.NewImportBatchWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewImportBatchWithContext(ctx context.Context, mods ...ImportBatchMod) *ImportBatchTemplate {
+	o := &ImportBatchTemplate{f: f}
+
+	if f != nil {
+		f.baseImportBatchMods.Apply(ctx, o)
+	}
+
+	ImportBatchModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTemplate {
+	o := &ImportBatchTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.EventID = func() int32 { return m.EventID }
+	o.RaceID = func() int32 { return m.RaceID }
+	o.ImportFormat = func() mytypes.ImportFormat { return m.ImportFormat }
+	o.Payload = func() []byte { return m.Payload }
+	o.SourceFilename = func() null.Val[string] { return m.SourceFilename }
+	o.ProcessingState = func() string { return m.ProcessingState }
+	o.MetadataJSON = func() types.JSON[json.RawMessage] { return m.MetadataJSON }
+	o.ProcessedAt = func() null.Val[time.Time] { return m.ProcessedAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.EventProcessingAudits) > 0 {
+		ImportBatchMods.AddExistingEventProcessingAudits(m.R.EventProcessingAudits...).Apply(ctx, o)
+	}
+	if m.R.Event != nil {
+		ImportBatchMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if m.R.Race != nil {
+		ImportBatchMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		ImportBatchMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewPointRule(mods ...PointRuleMod) *PointRuleTemplate {
+	return f.NewPointRuleWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewPointRuleWithContext(ctx context.Context, mods ...PointRuleMod) *PointRuleTemplate {
+	o := &PointRuleTemplate{f: f}
+
+	if f != nil {
+		f.basePointRuleMods.Apply(ctx, o)
+	}
+
+	PointRuleModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingPointRule(m *models.PointRule) *PointRuleTemplate {
+	o := &PointRuleTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.PointSystemID = func() int32 { return m.PointSystemID }
+	o.MetadataJSON = func() types.JSON[json.RawMessage] { return m.MetadataJSON }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.PointSystem != nil {
+		PointRuleMods.WithExistingPointSystem(m.R.PointSystem).Apply(ctx, o)
 	}
 
 	return o
@@ -124,9 +622,9 @@ func (f *Factory) FromExistingPointSystem(m *models.PointSystem) *PointSystemTem
 	o := &PointSystemTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.Name = func() string { return m.Name }
 	o.Description = func() null.Val[string] { return m.Description }
-	o.PositionPoints = func() types.JSON[json.RawMessage] { return m.PositionPoints }
 	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
@@ -134,8 +632,54 @@ func (f *Factory) FromExistingPointSystem(m *models.PointSystem) *PointSystemTem
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.PointRules) > 0 {
+		PointSystemMods.AddExistingPointRules(m.R.PointRules...).Apply(ctx, o)
+	}
 	if len(m.R.Seasons) > 0 {
 		PointSystemMods.AddExistingSeasons(m.R.Seasons...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewRace(mods ...RaceMod) *RaceTemplate {
+	return f.NewRaceWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewRaceWithContext(ctx context.Context, mods ...RaceMod) *RaceTemplate {
+	o := &RaceTemplate{f: f}
+
+	if f != nil {
+		f.baseRaceMods.Apply(ctx, o)
+	}
+
+	RaceModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingRace(m *models.Race) *RaceTemplate {
+	o := &RaceTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.EventID = func() int32 { return m.EventID }
+	o.Name = func() string { return m.Name }
+	o.SessionType = func() string { return m.SessionType }
+	o.SequenceNo = func() int32 { return m.SequenceNo }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.ImportBatches) > 0 {
+		RaceMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	}
+	if m.R.Event != nil {
+		RaceMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		RaceMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
 	}
 
 	return o
@@ -161,9 +705,9 @@ func (f *Factory) FromExistingRacingSim(m *models.RacingSim) *RacingSimTemplate 
 	o := &RacingSimTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.Name = func() string { return m.Name }
 	o.SupportedImportFormats = func() pq.StringArray { return m.SupportedImportFormats }
-	o.DataMapping = func() types.JSON[json.RawMessage] { return m.DataMapping }
 	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
@@ -171,8 +715,164 @@ func (f *Factory) FromExistingRacingSim(m *models.RacingSim) *RacingSimTemplate 
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.SimulationDriverSimulationIds) > 0 {
+		RacingSimMods.AddExistingSimulationDriverSimulationIds(m.R.SimulationDriverSimulationIds...).Apply(ctx, o)
+	}
 	if len(m.R.SimulationSeries) > 0 {
 		RacingSimMods.AddExistingSimulationSeries(m.R.SimulationSeries...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationSimulationCarAliases) > 0 {
+		RacingSimMods.AddExistingSimulationSimulationCarAliases(m.R.SimulationSimulationCarAliases...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationSimulationTrackLayoutAliases) > 0 {
+		RacingSimMods.AddExistingSimulationSimulationTrackLayoutAliases(m.R.SimulationSimulationTrackLayoutAliases...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewResultEntry(mods ...ResultEntryMod) *ResultEntryTemplate {
+	return f.NewResultEntryWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewResultEntryWithContext(ctx context.Context, mods ...ResultEntryMod) *ResultEntryTemplate {
+	o := &ResultEntryTemplate{f: f}
+
+	if f != nil {
+		f.baseResultEntryMods.Apply(ctx, o)
+	}
+
+	ResultEntryModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTemplate {
+	o := &ResultEntryTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.ImportBatchID = func() int32 { return m.ImportBatchID }
+	o.RaceID = func() int32 { return m.RaceID }
+	o.DriverID = func() null.Val[int32] { return m.DriverID }
+	o.DriverName = func() string { return m.DriverName }
+	o.CarModelID = func() null.Val[int32] { return m.CarModelID }
+	o.CarName = func() null.Val[string] { return m.CarName }
+	o.FinishingPosition = func() int32 { return m.FinishingPosition }
+	o.CompletedLaps = func() int32 { return m.CompletedLaps }
+	o.FastestLapTimeMS = func() null.Val[int32] { return m.FastestLapTimeMS }
+	o.Incidents = func() null.Val[int32] { return m.Incidents }
+	o.State = func() string { return m.State }
+	o.SourceRowNumber = func() null.Val[int32] { return m.SourceRowNumber }
+	o.RawPayload = func() types.JSON[json.RawMessage] { return m.RawPayload }
+	o.AdminNotes = func() null.Val[string] { return m.AdminNotes }
+	o.LockedAt = func() null.Val[time.Time] { return m.LockedAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.SourceResultEntryBookingEntries) > 0 {
+		ResultEntryMods.AddExistingSourceResultEntryBookingEntries(m.R.SourceResultEntryBookingEntries...).Apply(ctx, o)
+	}
+	if m.R.CarModel != nil {
+		ResultEntryMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
+	}
+	if m.R.Driver != nil {
+		ResultEntryMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.ImportBatch != nil {
+		ResultEntryMods.WithExistingImportBatch(m.R.ImportBatch).Apply(ctx, o)
+	}
+	if m.R.Race != nil {
+		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeasonDriverStanding(mods ...SeasonDriverStandingMod) *SeasonDriverStandingTemplate {
+	return f.NewSeasonDriverStandingWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeasonDriverStandingWithContext(ctx context.Context, mods ...SeasonDriverStandingMod) *SeasonDriverStandingTemplate {
+	o := &SeasonDriverStandingTemplate{f: f}
+
+	if f != nil {
+		f.baseSeasonDriverStandingMods.Apply(ctx, o)
+	}
+
+	SeasonDriverStandingModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeasonDriverStanding(m *models.SeasonDriverStanding) *SeasonDriverStandingTemplate {
+	o := &SeasonDriverStandingTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.DriverID = func() int32 { return m.DriverID }
+	o.Position = func() int32 { return m.Position }
+	o.TotalPoints = func() int32 { return m.TotalPoints }
+	o.DroppedEventIds = func() pq.Int32Array { return m.DroppedEventIds }
+	o.LastRebuiltAt = func() time.Time { return m.LastRebuiltAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		SeasonDriverStandingMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.Season != nil {
+		SeasonDriverStandingMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeasonTeamStanding(mods ...SeasonTeamStandingMod) *SeasonTeamStandingTemplate {
+	return f.NewSeasonTeamStandingWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeasonTeamStandingWithContext(ctx context.Context, mods ...SeasonTeamStandingMod) *SeasonTeamStandingTemplate {
+	o := &SeasonTeamStandingTemplate{f: f}
+
+	if f != nil {
+		f.baseSeasonTeamStandingMods.Apply(ctx, o)
+	}
+
+	SeasonTeamStandingModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeasonTeamStanding(m *models.SeasonTeamStanding) *SeasonTeamStandingTemplate {
+	o := &SeasonTeamStandingTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.TeamID = func() int32 { return m.TeamID }
+	o.Position = func() int32 { return m.Position }
+	o.TotalPoints = func() int32 { return m.TotalPoints }
+	o.DroppedEventIds = func() pq.Int32Array { return m.DroppedEventIds }
+	o.LastRebuiltAt = func() time.Time { return m.LastRebuiltAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Season != nil {
+		SeasonTeamStandingMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+	if m.R.Team != nil {
+		SeasonTeamStandingMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
 	}
 
 	return o
@@ -198,22 +898,36 @@ func (f *Factory) FromExistingSeason(m *models.Season) *SeasonTemplate {
 	o := &SeasonTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.SeriesID = func() int32 { return m.SeriesID }
 	o.PointSystemID = func() int32 { return m.PointSystemID }
 	o.Name = func() string { return m.Name }
-	o.ShortName = func() string { return m.ShortName }
 	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
 	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
+	o.HasTeams = func() bool { return m.HasTeams }
+	o.SkipEvents = func() int32 { return m.SkipEvents }
+	o.TeamPointsTopN = func() null.Val[int32] { return m.TeamPointsTopN }
 	o.Status = func() string { return m.Status }
-	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.EventDriverStandings) > 0 {
+		SeasonMods.AddExistingEventDriverStandings(m.R.EventDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.EventTeamStandings) > 0 {
+		SeasonMods.AddExistingEventTeamStandings(m.R.EventTeamStandings...).Apply(ctx, o)
+	}
 	if len(m.R.Events) > 0 {
 		SeasonMods.AddExistingEvents(m.R.Events...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonDriverStandings) > 0 {
+		SeasonMods.AddExistingSeasonDriverStandings(m.R.SeasonDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonTeamStandings) > 0 {
+		SeasonMods.AddExistingSeasonTeamStandings(m.R.SeasonTeamStandings...).Apply(ctx, o)
 	}
 	if m.R.PointSystem != nil {
 		SeasonMods.WithExistingPointSystem(m.R.PointSystem).Apply(ctx, o)
@@ -248,9 +962,10 @@ func (f *Factory) FromExistingSeries(m *models.Series) *SeriesTemplate {
 	o := &SeriesTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.SimulationID = func() int32 { return m.SimulationID }
 	o.Name = func() string { return m.Name }
 	o.Description = func() null.Val[string] { return m.Description }
-	o.SimulationID = func() null.Val[int32] { return m.SimulationID }
 	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
@@ -263,6 +978,125 @@ func (f *Factory) FromExistingSeries(m *models.Series) *SeriesTemplate {
 	}
 	if m.R.SimulationRacingSim != nil {
 		SeriesMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSimulationCarAlias(mods ...SimulationCarAliasMod) *SimulationCarAliasTemplate {
+	return f.NewSimulationCarAliasWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSimulationCarAliasWithContext(ctx context.Context, mods ...SimulationCarAliasMod) *SimulationCarAliasTemplate {
+	o := &SimulationCarAliasTemplate{f: f}
+
+	if f != nil {
+		f.baseSimulationCarAliasMods.Apply(ctx, o)
+	}
+
+	SimulationCarAliasModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSimulationCarAlias(m *models.SimulationCarAlias) *SimulationCarAliasTemplate {
+	o := &SimulationCarAliasTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.CarModelID = func() int32 { return m.CarModelID }
+	o.SimulationID = func() int32 { return m.SimulationID }
+	o.ExternalName = func() string { return m.ExternalName }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.CarModel != nil {
+		SimulationCarAliasMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
+	}
+	if m.R.SimulationRacingSim != nil {
+		SimulationCarAliasMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSimulationTrackLayoutAlias(mods ...SimulationTrackLayoutAliasMod) *SimulationTrackLayoutAliasTemplate {
+	return f.NewSimulationTrackLayoutAliasWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSimulationTrackLayoutAliasWithContext(ctx context.Context, mods ...SimulationTrackLayoutAliasMod) *SimulationTrackLayoutAliasTemplate {
+	o := &SimulationTrackLayoutAliasTemplate{f: f}
+
+	if f != nil {
+		f.baseSimulationTrackLayoutAliasMods.Apply(ctx, o)
+	}
+
+	SimulationTrackLayoutAliasModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSimulationTrackLayoutAlias(m *models.SimulationTrackLayoutAlias) *SimulationTrackLayoutAliasTemplate {
+	o := &SimulationTrackLayoutAliasTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.TrackLayoutID = func() int32 { return m.TrackLayoutID }
+	o.SimulationID = func() int32 { return m.SimulationID }
+	o.ExternalName = func() string { return m.ExternalName }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.SimulationRacingSim != nil {
+		SimulationTrackLayoutAliasMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+	if m.R.TrackLayout != nil {
+		SimulationTrackLayoutAliasMods.WithExistingTrackLayout(m.R.TrackLayout).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewTeamDriver(mods ...TeamDriverMod) *TeamDriverTemplate {
+	return f.NewTeamDriverWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewTeamDriverWithContext(ctx context.Context, mods ...TeamDriverMod) *TeamDriverTemplate {
+	o := &TeamDriverTemplate{f: f}
+
+	if f != nil {
+		f.baseTeamDriverMods.Apply(ctx, o)
+	}
+
+	TeamDriverModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingTeamDriver(m *models.TeamDriver) *TeamDriverTemplate {
+	o := &TeamDriverTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
+	o.TeamID = func() int32 { return m.TeamID }
+	o.DriverID = func() int32 { return m.DriverID }
+	o.JoinedAt = func() time.Time { return m.JoinedAt }
+	o.LeftAt = func() null.Val[time.Time] { return m.LeftAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		TeamDriverMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.Team != nil {
+		TeamDriverMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
 	}
 
 	return o
@@ -288,9 +1122,9 @@ func (f *Factory) FromExistingTeam(m *models.Team) *TeamTemplate {
 	o := &TeamTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
+	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.SeasonID = func() int32 { return m.SeasonID }
 	o.Name = func() string { return m.Name }
-	o.ExternalID = func() null.Val[string] { return m.ExternalID }
 	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
@@ -298,11 +1132,146 @@ func (f *Factory) FromExistingTeam(m *models.Team) *TeamTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		TeamMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
+	if len(m.R.EventTeamStandings) > 0 {
+		TeamMods.AddExistingEventTeamStandings(m.R.EventTeamStandings...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonTeamStandings) > 0 {
+		TeamMods.AddExistingSeasonTeamStandings(m.R.SeasonTeamStandings...).Apply(ctx, o)
+	}
+	if len(m.R.TeamDrivers) > 0 {
+		TeamMods.AddExistingTeamDrivers(m.R.TeamDrivers...).Apply(ctx, o)
+	}
 	if m.R.Season != nil {
 		TeamMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
 	}
 
 	return o
+}
+
+func (f *Factory) NewTrackLayout(mods ...TrackLayoutMod) *TrackLayoutTemplate {
+	return f.NewTrackLayoutWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewTrackLayoutWithContext(ctx context.Context, mods ...TrackLayoutMod) *TrackLayoutTemplate {
+	o := &TrackLayoutTemplate{f: f}
+
+	if f != nil {
+		f.baseTrackLayoutMods.Apply(ctx, o)
+	}
+
+	TrackLayoutModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingTrackLayout(m *models.TrackLayout) *TrackLayoutTemplate {
+	o := &TrackLayoutTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.TrackID = func() int32 { return m.TrackID }
+	o.Name = func() string { return m.Name }
+	o.LengthMeters = func() null.Val[int32] { return m.LengthMeters }
+	o.LayoutImageURL = func() null.Val[string] { return m.LayoutImageURL }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.Events) > 0 {
+		TrackLayoutMods.AddExistingEvents(m.R.Events...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationTrackLayoutAliases) > 0 {
+		TrackLayoutMods.AddExistingSimulationTrackLayoutAliases(m.R.SimulationTrackLayoutAliases...).Apply(ctx, o)
+	}
+	if m.R.Track != nil {
+		TrackLayoutMods.WithExistingTrack(m.R.Track).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewTrack(mods ...TrackMod) *TrackTemplate {
+	return f.NewTrackWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewTrackWithContext(ctx context.Context, mods ...TrackMod) *TrackTemplate {
+	o := &TrackTemplate{f: f}
+
+	if f != nil {
+		f.baseTrackMods.Apply(ctx, o)
+	}
+
+	TrackModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingTrack(m *models.Track) *TrackTemplate {
+	o := &TrackTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.Name = func() string { return m.Name }
+	o.Country = func() null.Val[string] { return m.Country }
+	o.Latitude = func() null.Val[decimal.Decimal] { return m.Latitude }
+	o.Longitude = func() null.Val[decimal.Decimal] { return m.Longitude }
+	o.WebsiteURL = func() null.Val[string] { return m.WebsiteURL }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.TrackLayouts) > 0 {
+		TrackMods.AddExistingTrackLayouts(m.R.TrackLayouts...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) ClearBaseBookingEntryMods() {
+	f.baseBookingEntryMods = nil
+}
+
+func (f *Factory) AddBaseBookingEntryMod(mods ...BookingEntryMod) {
+	f.baseBookingEntryMods = append(f.baseBookingEntryMods, mods...)
+}
+
+func (f *Factory) ClearBaseCarBrandMods() {
+	f.baseCarBrandMods = nil
+}
+
+func (f *Factory) AddBaseCarBrandMod(mods ...CarBrandMod) {
+	f.baseCarBrandMods = append(f.baseCarBrandMods, mods...)
+}
+
+func (f *Factory) ClearBaseCarManufacturerMods() {
+	f.baseCarManufacturerMods = nil
+}
+
+func (f *Factory) AddBaseCarManufacturerMod(mods ...CarManufacturerMod) {
+	f.baseCarManufacturerMods = append(f.baseCarManufacturerMods, mods...)
+}
+
+func (f *Factory) ClearBaseCarModelMods() {
+	f.baseCarModelMods = nil
+}
+
+func (f *Factory) AddBaseCarModelMod(mods ...CarModelMod) {
+	f.baseCarModelMods = append(f.baseCarModelMods, mods...)
+}
+
+func (f *Factory) ClearBaseDriverSimulationIDMods() {
+	f.baseDriverSimulationIDMods = nil
+}
+
+func (f *Factory) AddBaseDriverSimulationIDMod(mods ...DriverSimulationIDMod) {
+	f.baseDriverSimulationIDMods = append(f.baseDriverSimulationIDMods, mods...)
 }
 
 func (f *Factory) ClearBaseDriverMods() {
@@ -313,12 +1282,52 @@ func (f *Factory) AddBaseDriverMod(mods ...DriverMod) {
 	f.baseDriverMods = append(f.baseDriverMods, mods...)
 }
 
+func (f *Factory) ClearBaseEventDriverStandingMods() {
+	f.baseEventDriverStandingMods = nil
+}
+
+func (f *Factory) AddBaseEventDriverStandingMod(mods ...EventDriverStandingMod) {
+	f.baseEventDriverStandingMods = append(f.baseEventDriverStandingMods, mods...)
+}
+
+func (f *Factory) ClearBaseEventProcessingAuditMods() {
+	f.baseEventProcessingAuditMods = nil
+}
+
+func (f *Factory) AddBaseEventProcessingAuditMod(mods ...EventProcessingAuditMod) {
+	f.baseEventProcessingAuditMods = append(f.baseEventProcessingAuditMods, mods...)
+}
+
+func (f *Factory) ClearBaseEventTeamStandingMods() {
+	f.baseEventTeamStandingMods = nil
+}
+
+func (f *Factory) AddBaseEventTeamStandingMod(mods ...EventTeamStandingMod) {
+	f.baseEventTeamStandingMods = append(f.baseEventTeamStandingMods, mods...)
+}
+
 func (f *Factory) ClearBaseEventMods() {
 	f.baseEventMods = nil
 }
 
 func (f *Factory) AddBaseEventMod(mods ...EventMod) {
 	f.baseEventMods = append(f.baseEventMods, mods...)
+}
+
+func (f *Factory) ClearBaseImportBatchMods() {
+	f.baseImportBatchMods = nil
+}
+
+func (f *Factory) AddBaseImportBatchMod(mods ...ImportBatchMod) {
+	f.baseImportBatchMods = append(f.baseImportBatchMods, mods...)
+}
+
+func (f *Factory) ClearBasePointRuleMods() {
+	f.basePointRuleMods = nil
+}
+
+func (f *Factory) AddBasePointRuleMod(mods ...PointRuleMod) {
+	f.basePointRuleMods = append(f.basePointRuleMods, mods...)
 }
 
 func (f *Factory) ClearBasePointSystemMods() {
@@ -329,12 +1338,44 @@ func (f *Factory) AddBasePointSystemMod(mods ...PointSystemMod) {
 	f.basePointSystemMods = append(f.basePointSystemMods, mods...)
 }
 
+func (f *Factory) ClearBaseRaceMods() {
+	f.baseRaceMods = nil
+}
+
+func (f *Factory) AddBaseRaceMod(mods ...RaceMod) {
+	f.baseRaceMods = append(f.baseRaceMods, mods...)
+}
+
 func (f *Factory) ClearBaseRacingSimMods() {
 	f.baseRacingSimMods = nil
 }
 
 func (f *Factory) AddBaseRacingSimMod(mods ...RacingSimMod) {
 	f.baseRacingSimMods = append(f.baseRacingSimMods, mods...)
+}
+
+func (f *Factory) ClearBaseResultEntryMods() {
+	f.baseResultEntryMods = nil
+}
+
+func (f *Factory) AddBaseResultEntryMod(mods ...ResultEntryMod) {
+	f.baseResultEntryMods = append(f.baseResultEntryMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeasonDriverStandingMods() {
+	f.baseSeasonDriverStandingMods = nil
+}
+
+func (f *Factory) AddBaseSeasonDriverStandingMod(mods ...SeasonDriverStandingMod) {
+	f.baseSeasonDriverStandingMods = append(f.baseSeasonDriverStandingMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeasonTeamStandingMods() {
+	f.baseSeasonTeamStandingMods = nil
+}
+
+func (f *Factory) AddBaseSeasonTeamStandingMod(mods ...SeasonTeamStandingMod) {
+	f.baseSeasonTeamStandingMods = append(f.baseSeasonTeamStandingMods, mods...)
 }
 
 func (f *Factory) ClearBaseSeasonMods() {
@@ -353,10 +1394,50 @@ func (f *Factory) AddBaseSeriesMod(mods ...SeriesMod) {
 	f.baseSeriesMods = append(f.baseSeriesMods, mods...)
 }
 
+func (f *Factory) ClearBaseSimulationCarAliasMods() {
+	f.baseSimulationCarAliasMods = nil
+}
+
+func (f *Factory) AddBaseSimulationCarAliasMod(mods ...SimulationCarAliasMod) {
+	f.baseSimulationCarAliasMods = append(f.baseSimulationCarAliasMods, mods...)
+}
+
+func (f *Factory) ClearBaseSimulationTrackLayoutAliasMods() {
+	f.baseSimulationTrackLayoutAliasMods = nil
+}
+
+func (f *Factory) AddBaseSimulationTrackLayoutAliasMod(mods ...SimulationTrackLayoutAliasMod) {
+	f.baseSimulationTrackLayoutAliasMods = append(f.baseSimulationTrackLayoutAliasMods, mods...)
+}
+
+func (f *Factory) ClearBaseTeamDriverMods() {
+	f.baseTeamDriverMods = nil
+}
+
+func (f *Factory) AddBaseTeamDriverMod(mods ...TeamDriverMod) {
+	f.baseTeamDriverMods = append(f.baseTeamDriverMods, mods...)
+}
+
 func (f *Factory) ClearBaseTeamMods() {
 	f.baseTeamMods = nil
 }
 
 func (f *Factory) AddBaseTeamMod(mods ...TeamMod) {
 	f.baseTeamMods = append(f.baseTeamMods, mods...)
+}
+
+func (f *Factory) ClearBaseTrackLayoutMods() {
+	f.baseTrackLayoutMods = nil
+}
+
+func (f *Factory) AddBaseTrackLayoutMod(mods ...TrackLayoutMod) {
+	f.baseTrackLayoutMods = append(f.baseTrackLayoutMods, mods...)
+}
+
+func (f *Factory) ClearBaseTrackMods() {
+	f.baseTrackMods = nil
+}
+
+func (f *Factory) AddBaseTrackMod(mods ...TrackMod) {
+	f.baseTrackMods = append(f.baseTrackMods, mods...)
 }

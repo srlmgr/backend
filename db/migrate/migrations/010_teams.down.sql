@@ -1,0 +1,6 @@
+BEGIN;
+
+DROP TABLE IF EXISTS team_drivers;
+DROP TABLE IF EXISTS teams;
+
+COMMIT;

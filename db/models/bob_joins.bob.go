@@ -32,12 +32,32 @@ func (j joinSet[Q]) AliasedAs(alias string) joinSet[Q] {
 }
 
 type joins[Q dialect.Joinable] struct {
-	Events       joinSet[eventJoins[Q]]
-	PointSystems joinSet[pointSystemJoins[Q]]
-	RacingSims   joinSet[racingSimJoins[Q]]
-	Seasons      joinSet[seasonJoins[Q]]
-	Serieses     joinSet[seriesJoins[Q]]
-	Teams        joinSet[teamJoins[Q]]
+	BookingEntries               joinSet[bookingEntryJoins[Q]]
+	CarBrands                    joinSet[carBrandJoins[Q]]
+	CarManufacturers             joinSet[carManufacturerJoins[Q]]
+	CarModels                    joinSet[carModelJoins[Q]]
+	DriverSimulationIds          joinSet[driverSimulationIDJoins[Q]]
+	Drivers                      joinSet[driverJoins[Q]]
+	EventDriverStandings         joinSet[eventDriverStandingJoins[Q]]
+	EventProcessingAudits        joinSet[eventProcessingAuditJoins[Q]]
+	EventTeamStandings           joinSet[eventTeamStandingJoins[Q]]
+	Events                       joinSet[eventJoins[Q]]
+	ImportBatches                joinSet[importBatchJoins[Q]]
+	PointRules                   joinSet[pointRuleJoins[Q]]
+	PointSystems                 joinSet[pointSystemJoins[Q]]
+	Races                        joinSet[raceJoins[Q]]
+	RacingSims                   joinSet[racingSimJoins[Q]]
+	ResultEntries                joinSet[resultEntryJoins[Q]]
+	SeasonDriverStandings        joinSet[seasonDriverStandingJoins[Q]]
+	SeasonTeamStandings          joinSet[seasonTeamStandingJoins[Q]]
+	Seasons                      joinSet[seasonJoins[Q]]
+	Serieses                     joinSet[seriesJoins[Q]]
+	SimulationCarAliases         joinSet[simulationCarAliasJoins[Q]]
+	SimulationTrackLayoutAliases joinSet[simulationTrackLayoutAliasJoins[Q]]
+	TeamDrivers                  joinSet[teamDriverJoins[Q]]
+	Teams                        joinSet[teamJoins[Q]]
+	TrackLayouts                 joinSet[trackLayoutJoins[Q]]
+	Tracks                       joinSet[trackJoins[Q]]
 }
 
 func buildJoinSet[Q interface{ aliasedAs(string) Q }, C any, F func(C, string) Q](c C, f F) joinSet[Q] {
@@ -50,12 +70,32 @@ func buildJoinSet[Q interface{ aliasedAs(string) Q }, C any, F func(C, string) Q
 
 func getJoins[Q dialect.Joinable]() joins[Q] {
 	return joins[Q]{
-		Events:       buildJoinSet[eventJoins[Q]](Events.Columns, buildEventJoins),
-		PointSystems: buildJoinSet[pointSystemJoins[Q]](PointSystems.Columns, buildPointSystemJoins),
-		RacingSims:   buildJoinSet[racingSimJoins[Q]](RacingSims.Columns, buildRacingSimJoins),
-		Seasons:      buildJoinSet[seasonJoins[Q]](Seasons.Columns, buildSeasonJoins),
-		Serieses:     buildJoinSet[seriesJoins[Q]](Serieses.Columns, buildSeriesJoins),
-		Teams:        buildJoinSet[teamJoins[Q]](Teams.Columns, buildTeamJoins),
+		BookingEntries:               buildJoinSet[bookingEntryJoins[Q]](BookingEntries.Columns, buildBookingEntryJoins),
+		CarBrands:                    buildJoinSet[carBrandJoins[Q]](CarBrands.Columns, buildCarBrandJoins),
+		CarManufacturers:             buildJoinSet[carManufacturerJoins[Q]](CarManufacturers.Columns, buildCarManufacturerJoins),
+		CarModels:                    buildJoinSet[carModelJoins[Q]](CarModels.Columns, buildCarModelJoins),
+		DriverSimulationIds:          buildJoinSet[driverSimulationIDJoins[Q]](DriverSimulationIds.Columns, buildDriverSimulationIDJoins),
+		Drivers:                      buildJoinSet[driverJoins[Q]](Drivers.Columns, buildDriverJoins),
+		EventDriverStandings:         buildJoinSet[eventDriverStandingJoins[Q]](EventDriverStandings.Columns, buildEventDriverStandingJoins),
+		EventProcessingAudits:        buildJoinSet[eventProcessingAuditJoins[Q]](EventProcessingAudits.Columns, buildEventProcessingAuditJoins),
+		EventTeamStandings:           buildJoinSet[eventTeamStandingJoins[Q]](EventTeamStandings.Columns, buildEventTeamStandingJoins),
+		Events:                       buildJoinSet[eventJoins[Q]](Events.Columns, buildEventJoins),
+		ImportBatches:                buildJoinSet[importBatchJoins[Q]](ImportBatches.Columns, buildImportBatchJoins),
+		PointRules:                   buildJoinSet[pointRuleJoins[Q]](PointRules.Columns, buildPointRuleJoins),
+		PointSystems:                 buildJoinSet[pointSystemJoins[Q]](PointSystems.Columns, buildPointSystemJoins),
+		Races:                        buildJoinSet[raceJoins[Q]](Races.Columns, buildRaceJoins),
+		RacingSims:                   buildJoinSet[racingSimJoins[Q]](RacingSims.Columns, buildRacingSimJoins),
+		ResultEntries:                buildJoinSet[resultEntryJoins[Q]](ResultEntries.Columns, buildResultEntryJoins),
+		SeasonDriverStandings:        buildJoinSet[seasonDriverStandingJoins[Q]](SeasonDriverStandings.Columns, buildSeasonDriverStandingJoins),
+		SeasonTeamStandings:          buildJoinSet[seasonTeamStandingJoins[Q]](SeasonTeamStandings.Columns, buildSeasonTeamStandingJoins),
+		Seasons:                      buildJoinSet[seasonJoins[Q]](Seasons.Columns, buildSeasonJoins),
+		Serieses:                     buildJoinSet[seriesJoins[Q]](Serieses.Columns, buildSeriesJoins),
+		SimulationCarAliases:         buildJoinSet[simulationCarAliasJoins[Q]](SimulationCarAliases.Columns, buildSimulationCarAliasJoins),
+		SimulationTrackLayoutAliases: buildJoinSet[simulationTrackLayoutAliasJoins[Q]](SimulationTrackLayoutAliases.Columns, buildSimulationTrackLayoutAliasJoins),
+		TeamDrivers:                  buildJoinSet[teamDriverJoins[Q]](TeamDrivers.Columns, buildTeamDriverJoins),
+		Teams:                        buildJoinSet[teamJoins[Q]](Teams.Columns, buildTeamJoins),
+		TrackLayouts:                 buildJoinSet[trackLayoutJoins[Q]](TrackLayouts.Columns, buildTrackLayoutJoins),
+		Tracks:                       buildJoinSet[trackJoins[Q]](Tracks.Columns, buildTrackJoins),
 	}
 }
 
