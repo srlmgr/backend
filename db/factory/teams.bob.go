@@ -10,7 +10,7 @@ import (
 
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -38,9 +38,9 @@ func (mods TeamModSlice) Apply(ctx context.Context, n *TeamTemplate) {
 // all columns are optional and should be set by mods
 type TeamTemplate struct {
 	ID         func() int32
+	FrontendID func() uuid.UUID
 	SeasonID   func() int32
 	Name       func() string
-	ExternalID func() null.Val[string]
 	IsActive   func() bool
 	CreatedAt  func() time.Time
 	UpdatedAt  func() time.Time
@@ -54,9 +54,29 @@ type TeamTemplate struct {
 }
 
 type teamR struct {
-	Season *teamRSeasonR
+	BookingEntries      []*teamRBookingEntriesR
+	EventTeamStandings  []*teamREventTeamStandingsR
+	SeasonTeamStandings []*teamRSeasonTeamStandingsR
+	TeamDrivers         []*teamRTeamDriversR
+	Season              *teamRSeasonR
 }
 
+type teamRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
+type teamREventTeamStandingsR struct {
+	number int
+	o      *EventTeamStandingTemplate
+}
+type teamRSeasonTeamStandingsR struct {
+	number int
+	o      *SeasonTeamStandingTemplate
+}
+type teamRTeamDriversR struct {
+	number int
+	o      *TeamDriverTemplate
+}
 type teamRSeasonR struct {
 	o *SeasonTemplate
 }
@@ -71,6 +91,58 @@ func (o *TeamTemplate) Apply(ctx context.Context, mods ...TeamMod) {
 // setModelRels creates and sets the relationships on *models.Team
 // according to the relationships in the template. Nothing is inserted into the db
 func (t TeamTemplate) setModelRels(o *models.Team) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.TeamID = null.From(o.ID) // h2
+				rel.R.Team = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+	}
+
+	if t.r.EventTeamStandings != nil {
+		rel := models.EventTeamStandingSlice{}
+		for _, r := range t.r.EventTeamStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.TeamID = o.ID // h2
+				rel.R.Team = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.EventTeamStandings = rel
+	}
+
+	if t.r.SeasonTeamStandings != nil {
+		rel := models.SeasonTeamStandingSlice{}
+		for _, r := range t.r.SeasonTeamStandings {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.TeamID = o.ID // h2
+				rel.R.Team = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SeasonTeamStandings = rel
+	}
+
+	if t.r.TeamDrivers != nil {
+		rel := models.TeamDriverSlice{}
+		for _, r := range t.r.TeamDrivers {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.TeamID = o.ID // h2
+				rel.R.Team = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.TeamDrivers = rel
+	}
+
 	if t.r.Season != nil {
 		rel := t.r.Season.o.Build()
 		rel.R.Teams = append(rel.R.Teams, o)
@@ -88,6 +160,10 @@ func (o TeamTemplate) BuildSetter() *models.TeamSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.SeasonID != nil {
 		val := o.SeasonID()
 		m.SeasonID = omit.From(val)
@@ -95,10 +171,6 @@ func (o TeamTemplate) BuildSetter() *models.TeamSetter {
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
-	}
-	if o.ExternalID != nil {
-		val := o.ExternalID()
-		m.ExternalID = omitnull.FromNull(val)
 	}
 	if o.IsActive != nil {
 		val := o.IsActive()
@@ -145,14 +217,14 @@ func (o TeamTemplate) Build() *models.Team {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.SeasonID != nil {
 		m.SeasonID = o.SeasonID()
 	}
 	if o.Name != nil {
 		m.Name = o.Name()
-	}
-	if o.ExternalID != nil {
-		m.ExternalID = o.ExternalID()
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
@@ -205,6 +277,86 @@ func ensureCreatableTeam(m *models.TeamSetter) {
 func (o *TeamTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Team) error {
 	var err error
 
+	isBookingEntriesDone, _ := teamRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = teamRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isEventTeamStandingsDone, _ := teamRelEventTeamStandingsCtx.Value(ctx)
+	if !isEventTeamStandingsDone && o.r.EventTeamStandings != nil {
+		ctx = teamRelEventTeamStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.EventTeamStandings {
+			if r.o.alreadyPersisted {
+				m.R.EventTeamStandings = append(m.R.EventTeamStandings, r.o.Build())
+			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachEventTeamStandings(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSeasonTeamStandingsDone, _ := teamRelSeasonTeamStandingsCtx.Value(ctx)
+	if !isSeasonTeamStandingsDone && o.r.SeasonTeamStandings != nil {
+		ctx = teamRelSeasonTeamStandingsCtx.WithValue(ctx, true)
+		for _, r := range o.r.SeasonTeamStandings {
+			if r.o.alreadyPersisted {
+				m.R.SeasonTeamStandings = append(m.R.SeasonTeamStandings, r.o.Build())
+			} else {
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasonTeamStandings(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isTeamDriversDone, _ := teamRelTeamDriversCtx.Value(ctx)
+	if !isTeamDriversDone && o.r.TeamDrivers != nil {
+		ctx = teamRelTeamDriversCtx.WithValue(ctx, true)
+		for _, r := range o.r.TeamDrivers {
+			if r.o.alreadyPersisted {
+				m.R.TeamDrivers = append(m.R.TeamDrivers, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachTeamDrivers(ctx, exec, rel3...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	return err
 }
 
@@ -219,25 +371,25 @@ func (o *TeamTemplate) Create(ctx context.Context, exec bob.Executor) (*models.T
 		TeamMods.WithNewSeason().Apply(ctx, o)
 	}
 
-	var rel0 *models.Season
+	var rel4 *models.Season
 
 	if o.r.Season.o.alreadyPersisted {
-		rel0 = o.r.Season.o.Build()
+		rel4 = o.r.Season.o.Build()
 	} else {
-		rel0, err = o.r.Season.o.Create(ctx, exec)
+		rel4, err = o.r.Season.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.SeasonID = omit.From(rel0.ID)
+	opt.SeasonID = omit.From(rel4.ID)
 
 	m, err := models.Teams.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Season = rel0
+	m.R.Season = rel4
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -317,9 +469,9 @@ type teamMods struct{}
 func (m teamMods) RandomizeAllColumns(f *faker.Faker) TeamMod {
 	return TeamModSlice{
 		TeamMods.RandomID(f),
+		TeamMods.RandomFrontendID(f),
 		TeamMods.RandomSeasonID(f),
 		TeamMods.RandomName(f),
-		TeamMods.RandomExternalID(f),
 		TeamMods.RandomIsActive(f),
 		TeamMods.RandomCreatedAt(f),
 		TeamMods.RandomUpdatedAt(f),
@@ -355,6 +507,37 @@ func (m teamMods) RandomID(f *faker.Faker) TeamMod {
 	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m teamMods) FrontendID(val uuid.UUID) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m teamMods) FrontendIDFunc(f func() uuid.UUID) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m teamMods) UnsetFrontendID() TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m teamMods) RandomFrontendID(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -417,59 +600,6 @@ func (m teamMods) RandomName(f *faker.Faker) TeamMod {
 	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
 		o.Name = func() string {
 			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m teamMods) ExternalID(val null.Val[string]) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.ExternalID = func() null.Val[string] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m teamMods) ExternalIDFunc(f func() null.Val[string]) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.ExternalID = f
-	})
-}
-
-// Clear any values for the column
-func (m teamMods) UnsetExternalID() TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.ExternalID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m teamMods) RandomExternalID(f *faker.Faker) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.ExternalID = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m teamMods) RandomExternalIDNotNull(f *faker.Faker) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.ExternalID = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f)
-			return null.From(val)
 		}
 	})
 }
@@ -670,5 +800,197 @@ func (m teamMods) WithExistingSeason(em *models.Season) TeamMod {
 func (m teamMods) WithoutSeason() TeamMod {
 	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
 		o.r.Season = nil
+	})
+}
+
+func (m teamMods) WithBookingEntries(number int, related *BookingEntryTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.BookingEntries = []*teamRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m teamMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddBookingEntries(number int, related *BookingEntryTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &teamRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m teamMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &teamRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
+			})
+		}
+	})
+}
+
+func (m teamMods) WithoutBookingEntries() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.BookingEntries = nil
+	})
+}
+
+func (m teamMods) WithEventTeamStandings(number int, related *EventTeamStandingTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.EventTeamStandings = []*teamREventTeamStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m teamMods) WithNewEventTeamStandings(number int, mods ...EventTeamStandingMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.WithEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddEventTeamStandings(number int, related *EventTeamStandingTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.EventTeamStandings = append(o.r.EventTeamStandings, &teamREventTeamStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m teamMods) AddNewEventTeamStandings(number int, mods ...EventTeamStandingMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewEventTeamStandingWithContext(ctx, mods...)
+		m.AddEventTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddExistingEventTeamStandings(existingModels ...*models.EventTeamStanding) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		for _, em := range existingModels {
+			o.r.EventTeamStandings = append(o.r.EventTeamStandings, &teamREventTeamStandingsR{
+				o: o.f.FromExistingEventTeamStanding(em),
+			})
+		}
+	})
+}
+
+func (m teamMods) WithoutEventTeamStandings() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.EventTeamStandings = nil
+	})
+}
+
+func (m teamMods) WithSeasonTeamStandings(number int, related *SeasonTeamStandingTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.SeasonTeamStandings = []*teamRSeasonTeamStandingsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m teamMods) WithNewSeasonTeamStandings(number int, mods ...SeasonTeamStandingMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewSeasonTeamStandingWithContext(ctx, mods...)
+		m.WithSeasonTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddSeasonTeamStandings(number int, related *SeasonTeamStandingTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.SeasonTeamStandings = append(o.r.SeasonTeamStandings, &teamRSeasonTeamStandingsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m teamMods) AddNewSeasonTeamStandings(number int, mods ...SeasonTeamStandingMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewSeasonTeamStandingWithContext(ctx, mods...)
+		m.AddSeasonTeamStandings(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddExistingSeasonTeamStandings(existingModels ...*models.SeasonTeamStanding) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		for _, em := range existingModels {
+			o.r.SeasonTeamStandings = append(o.r.SeasonTeamStandings, &teamRSeasonTeamStandingsR{
+				o: o.f.FromExistingSeasonTeamStanding(em),
+			})
+		}
+	})
+}
+
+func (m teamMods) WithoutSeasonTeamStandings() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.SeasonTeamStandings = nil
+	})
+}
+
+func (m teamMods) WithTeamDrivers(number int, related *TeamDriverTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.TeamDrivers = []*teamRTeamDriversR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m teamMods) WithNewTeamDrivers(number int, mods ...TeamDriverMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewTeamDriverWithContext(ctx, mods...)
+		m.WithTeamDrivers(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddTeamDrivers(number int, related *TeamDriverTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.TeamDrivers = append(o.r.TeamDrivers, &teamRTeamDriversR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m teamMods) AddNewTeamDrivers(number int, mods ...TeamDriverMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewTeamDriverWithContext(ctx, mods...)
+		m.AddTeamDrivers(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddExistingTeamDrivers(existingModels ...*models.TeamDriver) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		for _, em := range existingModels {
+			o.r.TeamDrivers = append(o.r.TeamDrivers, &teamRTeamDriversR{
+				o: o.f.FromExistingTeamDriver(em),
+			})
+		}
+	})
+}
+
+func (m teamMods) WithoutTeamDrivers() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.TeamDrivers = nil
 	})
 }

@@ -24,6 +24,15 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		SeriesID: column{
 			Name:      "series_id",
 			DBType:    "integer",
@@ -51,15 +60,6 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		ShortName: column{
-			Name:      "short_name",
-			DBType:    "text",
-			Default:   "",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		StartsAt: column{
 			Name:      "starts_at",
 			DBType:    "timestamp with time zone",
@@ -78,19 +78,37 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		Status: column{
-			Name:      "status",
-			DBType:    "text",
-			Default:   "'draft'::text",
+		HasTeams: column{
+			Name:      "has_teams",
+			DBType:    "boolean",
+			Default:   "false",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},
-		IsActive: column{
-			Name:      "is_active",
-			DBType:    "boolean",
-			Default:   "true",
+		SkipEvents: column{
+			Name:      "skip_events",
+			DBType:    "integer",
+			Default:   "0",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		TeamPointsTopN: column{
+			Name:      "team_points_top_n",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		Status: column{
+			Name:      "status",
+			DBType:    "text",
+			Default:   "'planned'::text",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -145,23 +163,6 @@ var Seasons = Table[
 				},
 			},
 			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		IdxSeasonsIsActive: index{
-			Type: "btree",
-			Name: "idx_seasons_is_active",
-			Columns: []indexColumn{
-				{
-					Name:         "is_active",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
 			Comment:       "",
 			NullsFirst:    []bool{false},
 			NullsDistinct: false,
@@ -236,6 +237,23 @@ var Seasons = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		SeasonsFrontendIDUnique: index{
+			Type: "btree",
+			Name: "seasons_frontend_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "frontend_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
 		SeasonsSeriesIDNameUnique: index{
 			Type: "btree",
 			Name: "seasons_series_id_name_unique",
@@ -247,28 +265,6 @@ var Seasons = Table[
 				},
 				{
 					Name:         "name",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false, false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		SeasonsSeriesIDShortNameUnique: index{
-			Type: "btree",
-			Name: "seasons_series_id_short_name_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "series_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-				{
-					Name:         "short_name",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -307,14 +303,14 @@ var Seasons = Table[
 		},
 	},
 	Uniques: seasonUniques{
+		SeasonsFrontendIDUnique: constraint{
+			Name:    "seasons_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
 		SeasonsSeriesIDNameUnique: constraint{
 			Name:    "seasons_series_id_name_unique",
 			Columns: []string{"series_id", "name"},
-			Comment: "",
-		},
-		SeasonsSeriesIDShortNameUnique: constraint{
-			Name:    "seasons_series_id_short_name_unique",
-			Columns: []string{"series_id", "short_name"},
 			Comment: "",
 		},
 	},
@@ -327,54 +323,71 @@ var Seasons = Table[
 			},
 			Expression: "((ends_at IS NULL) OR (starts_at IS NULL) OR (ends_at >= starts_at))",
 		},
+		SeasonsSkipEventsCheck: check{
+			constraint: constraint{
+				Name:    "seasons_skip_events_check",
+				Columns: []string{"skip_events"},
+				Comment: "",
+			},
+			Expression: "(skip_events >= 0)",
+		},
 		SeasonsStatusCheck: check{
 			constraint: constraint{
 				Name:    "seasons_status_check",
 				Columns: []string{"status"},
 				Comment: "",
 			},
-			Expression: "(status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'active'::text, 'completed'::text, 'cancelled'::text, 'archived'::text]))",
+			Expression: "(status = ANY (ARRAY['planned'::text, 'active'::text, 'completed'::text, 'cancelled'::text]))",
+		},
+		SeasonsTeamPointsTopNCheck: check{
+			constraint: constraint{
+				Name:    "seasons_team_points_top_n_check",
+				Columns: []string{"team_points_top_n"},
+				Comment: "",
+			},
+			Expression: "((team_points_top_n IS NULL) OR (team_points_top_n > 0))",
 		},
 	},
 	Comment: "",
 }
 
 type seasonColumns struct {
-	ID            column
-	SeriesID      column
-	PointSystemID column
-	Name          column
-	ShortName     column
-	StartsAt      column
-	EndsAt        column
-	Status        column
-	IsActive      column
-	CreatedAt     column
-	UpdatedAt     column
-	CreatedBy     column
-	UpdatedBy     column
+	ID             column
+	FrontendID     column
+	SeriesID       column
+	PointSystemID  column
+	Name           column
+	StartsAt       column
+	EndsAt         column
+	HasTeams       column
+	SkipEvents     column
+	TeamPointsTopN column
+	Status         column
+	CreatedAt      column
+	UpdatedAt      column
+	CreatedBy      column
+	UpdatedBy      column
 }
 
 func (c seasonColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.SeriesID, c.PointSystemID, c.Name, c.ShortName, c.StartsAt, c.EndsAt, c.Status, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeriesID, c.PointSystemID, c.Name, c.StartsAt, c.EndsAt, c.HasTeams, c.SkipEvents, c.TeamPointsTopN, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type seasonIndexes struct {
-	SeasonsPkey                    index
-	IdxSeasonsIsActive             index
-	IdxSeasonsPointSystemID        index
-	IdxSeasonsSeriesID             index
-	IdxSeasonsStartsAt             index
-	IdxSeasonsStatus               index
-	SeasonsSeriesIDNameUnique      index
-	SeasonsSeriesIDShortNameUnique index
+	SeasonsPkey               index
+	IdxSeasonsPointSystemID   index
+	IdxSeasonsSeriesID        index
+	IdxSeasonsStartsAt        index
+	IdxSeasonsStatus          index
+	SeasonsFrontendIDUnique   index
+	SeasonsSeriesIDNameUnique index
 }
 
 func (i seasonIndexes) AsSlice() []index {
 	return []index{
-		i.SeasonsPkey, i.IdxSeasonsIsActive, i.IdxSeasonsPointSystemID, i.IdxSeasonsSeriesID, i.IdxSeasonsStartsAt, i.IdxSeasonsStatus, i.SeasonsSeriesIDNameUnique, i.SeasonsSeriesIDShortNameUnique,
+		i.SeasonsPkey, i.IdxSeasonsPointSystemID, i.IdxSeasonsSeriesID, i.IdxSeasonsStartsAt, i.IdxSeasonsStatus, i.SeasonsFrontendIDUnique, i.SeasonsSeriesIDNameUnique,
 	}
 }
 
@@ -390,23 +403,25 @@ func (f seasonForeignKeys) AsSlice() []foreignKey {
 }
 
 type seasonUniques struct {
-	SeasonsSeriesIDNameUnique      constraint
-	SeasonsSeriesIDShortNameUnique constraint
+	SeasonsFrontendIDUnique   constraint
+	SeasonsSeriesIDNameUnique constraint
 }
 
 func (u seasonUniques) AsSlice() []constraint {
 	return []constraint{
-		u.SeasonsSeriesIDNameUnique, u.SeasonsSeriesIDShortNameUnique,
+		u.SeasonsFrontendIDUnique, u.SeasonsSeriesIDNameUnique,
 	}
 }
 
 type seasonChecks struct {
-	SeasonsDateOrderCheck check
-	SeasonsStatusCheck    check
+	SeasonsDateOrderCheck      check
+	SeasonsSkipEventsCheck     check
+	SeasonsStatusCheck         check
+	SeasonsTeamPointsTopNCheck check
 }
 
 func (c seasonChecks) AsSlice() []check {
 	return []check{
-		c.SeasonsDateOrderCheck, c.SeasonsStatusCheck,
+		c.SeasonsDateOrderCheck, c.SeasonsSkipEventsCheck, c.SeasonsStatusCheck, c.SeasonsTeamPointsTopNCheck,
 	}
 }

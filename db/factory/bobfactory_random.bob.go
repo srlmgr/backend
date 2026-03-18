@@ -14,10 +14,20 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob/types"
 )
 
 var defaultFaker = faker.New()
+
+func random___byte(f *faker.Faker, limits ...string) []byte {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return []byte(random_string(f, limits...))
+}
 
 func random_bool(f *faker.Faker, limits ...string) bool {
 	if f == nil {
@@ -27,12 +37,79 @@ func random_bool(f *faker.Faker, limits ...string) bool {
 	return f.Bool()
 }
 
+func random_decimal_Decimal(f *faker.Faker, limits ...string) decimal.Decimal {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	var precision int64 = 7
+	var scale int64 = 3
+
+	if len(limits) > 0 {
+		precision, _ = strconv.ParseInt(limits[0], 10, 32)
+	}
+
+	if len(limits) > 1 {
+		scale, _ = strconv.ParseInt(limits[1], 10, 32)
+	}
+
+	baseVal := f.Float32(10, -1, 1)
+	for baseVal == -1 || baseVal == 0 || baseVal == 1 {
+		baseVal = f.Float32(10, -1, 1)
+	}
+
+	precisionDecimal, _ := decimal.NewFromInt(10).PowInt32(int32(precision))
+	val := decimal.
+		NewFromFloat32(baseVal).
+		Mul(precisionDecimal).
+		Shift(int32(-1 * scale)).
+		RoundDown(int32(scale))
+
+	return val
+}
+
 func random_int32(f *faker.Faker, limits ...string) int32 {
 	if f == nil {
 		f = &defaultFaker
 	}
 
 	return f.Int32()
+}
+
+func random_mytypes_ImportFormat(f *faker.Faker, limits ...string) mytypes.ImportFormat {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return "json"
+}
+
+func random_mytypes_SourceType(f *faker.Faker, limits ...string) mytypes.SourceType {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return "position"
+}
+
+func random_mytypes_TargetType(f *faker.Faker, limits ...string) mytypes.TargetType {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return "driver"
+}
+
+func random_pq_Int32Array(f *faker.Faker, limits ...string) pq.Int32Array {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	arr := make(pq.Int32Array, f.IntBetween(1, 5))
+	for i := range arr {
+		arr[i] = random_int32(f, limits...)
+	}
+	return arr
 }
 
 func random_pq_StringArray(f *faker.Faker, limits ...string) pq.StringArray {

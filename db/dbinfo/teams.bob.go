@@ -24,6 +24,15 @@ var Teams = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		FrontendID: column{
+			Name:      "frontend_id",
+			DBType:    "uuid",
+			Default:   "uuid_generate_v4()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		SeasonID: column{
 			Name:      "season_id",
 			DBType:    "integer",
@@ -39,15 +48,6 @@ var Teams = Table[
 			Default:   "",
 			Comment:   "",
 			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		ExternalID: column{
-			Name:      "external_id",
-			DBType:    "text",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -149,26 +149,21 @@ var Teams = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxTeamsSeasonIDExternalIDUnique: index{
+		TeamsFrontendIDUnique: index{
 			Type: "btree",
-			Name: "idx_teams_season_id_external_id_unique",
+			Name: "teams_frontend_id_unique",
 			Columns: []indexColumn{
 				{
-					Name:         "season_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-				{
-					Name:         "external_id",
+					Name:         "frontend_id",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
 			},
 			Unique:        true,
 			Comment:       "",
-			NullsFirst:    []bool{false, false},
+			NullsFirst:    []bool{false},
 			NullsDistinct: false,
-			Where:         "(external_id IS NOT NULL)",
+			Where:         "",
 			Include:       []string{},
 		},
 		TeamsSeasonIDNameUnique: index{
@@ -211,6 +206,11 @@ var Teams = Table[
 		},
 	},
 	Uniques: teamUniques{
+		TeamsFrontendIDUnique: constraint{
+			Name:    "teams_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
 		TeamsSeasonIDNameUnique: constraint{
 			Name:    "teams_season_id_name_unique",
 			Columns: []string{"season_id", "name"},
@@ -223,9 +223,9 @@ var Teams = Table[
 
 type teamColumns struct {
 	ID         column
+	FrontendID column
 	SeasonID   column
 	Name       column
-	ExternalID column
 	IsActive   column
 	CreatedAt  column
 	UpdatedAt  column
@@ -235,21 +235,21 @@ type teamColumns struct {
 
 func (c teamColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.SeasonID, c.Name, c.ExternalID, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeasonID, c.Name, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type teamIndexes struct {
-	TeamsPkey                        index
-	IdxTeamsIsActive                 index
-	IdxTeamsSeasonID                 index
-	IdxTeamsSeasonIDExternalIDUnique index
-	TeamsSeasonIDNameUnique          index
+	TeamsPkey               index
+	IdxTeamsIsActive        index
+	IdxTeamsSeasonID        index
+	TeamsFrontendIDUnique   index
+	TeamsSeasonIDNameUnique index
 }
 
 func (i teamIndexes) AsSlice() []index {
 	return []index{
-		i.TeamsPkey, i.IdxTeamsIsActive, i.IdxTeamsSeasonID, i.IdxTeamsSeasonIDExternalIDUnique, i.TeamsSeasonIDNameUnique,
+		i.TeamsPkey, i.IdxTeamsIsActive, i.IdxTeamsSeasonID, i.TeamsFrontendIDUnique, i.TeamsSeasonIDNameUnique,
 	}
 }
 
@@ -264,12 +264,13 @@ func (f teamForeignKeys) AsSlice() []foreignKey {
 }
 
 type teamUniques struct {
+	TeamsFrontendIDUnique   constraint
 	TeamsSeasonIDNameUnique constraint
 }
 
 func (u teamUniques) AsSlice() []constraint {
 	return []constraint{
-		u.TeamsSeasonIDNameUnique,
+		u.TeamsFrontendIDUnique, u.TeamsSeasonIDNameUnique,
 	}
 }
 

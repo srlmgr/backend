@@ -10,6 +10,8 @@ import (
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/types"
 )
@@ -17,17 +19,59 @@ import (
 // Set the testDB to enable tests that use the database
 var testDB bob.Transactor[bob.Tx]
 
+// Make sure the type BookingEntry runs hooks after queries
+var _ bob.HookableType = &BookingEntry{}
+
+// Make sure the type CarBrand runs hooks after queries
+var _ bob.HookableType = &CarBrand{}
+
+// Make sure the type CarManufacturer runs hooks after queries
+var _ bob.HookableType = &CarManufacturer{}
+
+// Make sure the type CarModel runs hooks after queries
+var _ bob.HookableType = &CarModel{}
+
+// Make sure the type DriverSimulationID runs hooks after queries
+var _ bob.HookableType = &DriverSimulationID{}
+
 // Make sure the type Driver runs hooks after queries
 var _ bob.HookableType = &Driver{}
+
+// Make sure the type EventDriverStanding runs hooks after queries
+var _ bob.HookableType = &EventDriverStanding{}
+
+// Make sure the type EventProcessingAudit runs hooks after queries
+var _ bob.HookableType = &EventProcessingAudit{}
+
+// Make sure the type EventTeamStanding runs hooks after queries
+var _ bob.HookableType = &EventTeamStanding{}
 
 // Make sure the type Event runs hooks after queries
 var _ bob.HookableType = &Event{}
 
+// Make sure the type ImportBatch runs hooks after queries
+var _ bob.HookableType = &ImportBatch{}
+
+// Make sure the type PointRule runs hooks after queries
+var _ bob.HookableType = &PointRule{}
+
 // Make sure the type PointSystem runs hooks after queries
 var _ bob.HookableType = &PointSystem{}
 
+// Make sure the type Race runs hooks after queries
+var _ bob.HookableType = &Race{}
+
 // Make sure the type RacingSim runs hooks after queries
 var _ bob.HookableType = &RacingSim{}
+
+// Make sure the type ResultEntry runs hooks after queries
+var _ bob.HookableType = &ResultEntry{}
+
+// Make sure the type SeasonDriverStanding runs hooks after queries
+var _ bob.HookableType = &SeasonDriverStanding{}
+
+// Make sure the type SeasonTeamStanding runs hooks after queries
+var _ bob.HookableType = &SeasonTeamStanding{}
 
 // Make sure the type Season runs hooks after queries
 var _ bob.HookableType = &Season{}
@@ -35,8 +79,23 @@ var _ bob.HookableType = &Season{}
 // Make sure the type Series runs hooks after queries
 var _ bob.HookableType = &Series{}
 
+// Make sure the type SimulationCarAlias runs hooks after queries
+var _ bob.HookableType = &SimulationCarAlias{}
+
+// Make sure the type SimulationTrackLayoutAlias runs hooks after queries
+var _ bob.HookableType = &SimulationTrackLayoutAlias{}
+
+// Make sure the type TeamDriver runs hooks after queries
+var _ bob.HookableType = &TeamDriver{}
+
 // Make sure the type Team runs hooks after queries
 var _ bob.HookableType = &Team{}
+
+// Make sure the type TrackLayout runs hooks after queries
+var _ bob.HookableType = &TrackLayout{}
+
+// Make sure the type Track runs hooks after queries
+var _ bob.HookableType = &Track{}
 
 // Make sure the type uuid.UUID satisfies database/sql.Scanner
 var _ sql.Scanner = (*uuid.UUID)(nil)
@@ -44,14 +103,44 @@ var _ sql.Scanner = (*uuid.UUID)(nil)
 // Make sure the type uuid.UUID satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(uuid.UUID)
 
+// Make sure the type mytypes.TargetType satisfies database/sql.Scanner
+var _ sql.Scanner = (*mytypes.TargetType)(nil)
+
+// Make sure the type mytypes.TargetType satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(mytypes.TargetType)
+
+// Make sure the type mytypes.SourceType satisfies database/sql.Scanner
+var _ sql.Scanner = (*mytypes.SourceType)(nil)
+
+// Make sure the type mytypes.SourceType satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(mytypes.SourceType)
+
 // Make sure the type types.JSON[json.RawMessage] satisfies database/sql.Scanner
 var _ sql.Scanner = (*types.JSON[json.RawMessage])(nil)
 
 // Make sure the type types.JSON[json.RawMessage] satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(types.JSON[json.RawMessage])
 
+// Make sure the type pq.Int32Array satisfies database/sql.Scanner
+var _ sql.Scanner = (*pq.Int32Array)(nil)
+
+// Make sure the type pq.Int32Array satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(pq.Int32Array)
+
+// Make sure the type mytypes.ImportFormat satisfies database/sql.Scanner
+var _ sql.Scanner = (*mytypes.ImportFormat)(nil)
+
+// Make sure the type mytypes.ImportFormat satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(mytypes.ImportFormat)
+
 // Make sure the type pq.StringArray satisfies database/sql.Scanner
 var _ sql.Scanner = (*pq.StringArray)(nil)
 
 // Make sure the type pq.StringArray satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(pq.StringArray)
+
+// Make sure the type decimal.Decimal satisfies database/sql.Scanner
+var _ sql.Scanner = (*decimal.Decimal)(nil)
+
+// Make sure the type decimal.Decimal satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(decimal.Decimal)

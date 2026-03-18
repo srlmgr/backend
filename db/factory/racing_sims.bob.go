@@ -5,17 +5,15 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
-	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	"github.com/lib/pq"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/types"
 )
 
 type RacingSimMod interface {
@@ -40,9 +38,9 @@ func (mods RacingSimModSlice) Apply(ctx context.Context, n *RacingSimTemplate) {
 // all columns are optional and should be set by mods
 type RacingSimTemplate struct {
 	ID                     func() int32
+	FrontendID             func() uuid.UUID
 	Name                   func() string
 	SupportedImportFormats func() pq.StringArray
-	DataMapping            func() types.JSON[json.RawMessage]
 	IsActive               func() bool
 	CreatedAt              func() time.Time
 	UpdatedAt              func() time.Time
@@ -56,12 +54,27 @@ type RacingSimTemplate struct {
 }
 
 type racingSimR struct {
-	SimulationSeries []*racingSimRSimulationSeriesR
+	SimulationDriverSimulationIds          []*racingSimRSimulationDriverSimulationIdsR
+	SimulationSeries                       []*racingSimRSimulationSeriesR
+	SimulationSimulationCarAliases         []*racingSimRSimulationSimulationCarAliasesR
+	SimulationSimulationTrackLayoutAliases []*racingSimRSimulationSimulationTrackLayoutAliasesR
 }
 
+type racingSimRSimulationDriverSimulationIdsR struct {
+	number int
+	o      *DriverSimulationIDTemplate
+}
 type racingSimRSimulationSeriesR struct {
 	number int
 	o      *SeriesTemplate
+}
+type racingSimRSimulationSimulationCarAliasesR struct {
+	number int
+	o      *SimulationCarAliasTemplate
+}
+type racingSimRSimulationSimulationTrackLayoutAliasesR struct {
+	number int
+	o      *SimulationTrackLayoutAliasTemplate
 }
 
 // Apply mods to the RacingSimTemplate
@@ -74,17 +87,56 @@ func (o *RacingSimTemplate) Apply(ctx context.Context, mods ...RacingSimMod) {
 // setModelRels creates and sets the relationships on *models.RacingSim
 // according to the relationships in the template. Nothing is inserted into the db
 func (t RacingSimTemplate) setModelRels(o *models.RacingSim) {
+	if t.r.SimulationDriverSimulationIds != nil {
+		rel := models.DriverSimulationIDSlice{}
+		for _, r := range t.r.SimulationDriverSimulationIds {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SimulationID = o.ID // h2
+				rel.R.SimulationRacingSim = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SimulationDriverSimulationIds = rel
+	}
+
 	if t.r.SimulationSeries != nil {
 		rel := models.SeriesSlice{}
 		for _, r := range t.r.SimulationSeries {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
-				rel.SimulationID = null.From(o.ID) // h2
+				rel.SimulationID = o.ID // h2
 				rel.R.SimulationRacingSim = o
 			}
 			rel = append(rel, related...)
 		}
 		o.R.SimulationSeries = rel
+	}
+
+	if t.r.SimulationSimulationCarAliases != nil {
+		rel := models.SimulationCarAliasSlice{}
+		for _, r := range t.r.SimulationSimulationCarAliases {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SimulationID = o.ID // h2
+				rel.R.SimulationRacingSim = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SimulationSimulationCarAliases = rel
+	}
+
+	if t.r.SimulationSimulationTrackLayoutAliases != nil {
+		rel := models.SimulationTrackLayoutAliasSlice{}
+		for _, r := range t.r.SimulationSimulationTrackLayoutAliases {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SimulationID = o.ID // h2
+				rel.R.SimulationRacingSim = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SimulationSimulationTrackLayoutAliases = rel
 	}
 }
 
@@ -97,6 +149,10 @@ func (o RacingSimTemplate) BuildSetter() *models.RacingSimSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
+	if o.FrontendID != nil {
+		val := o.FrontendID()
+		m.FrontendID = omit.From(val)
+	}
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
@@ -104,10 +160,6 @@ func (o RacingSimTemplate) BuildSetter() *models.RacingSimSetter {
 	if o.SupportedImportFormats != nil {
 		val := o.SupportedImportFormats()
 		m.SupportedImportFormats = omit.From(val)
-	}
-	if o.DataMapping != nil {
-		val := o.DataMapping()
-		m.DataMapping = omit.From(val)
 	}
 	if o.IsActive != nil {
 		val := o.IsActive()
@@ -154,14 +206,14 @@ func (o RacingSimTemplate) Build() *models.RacingSim {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
+	if o.FrontendID != nil {
+		m.FrontendID = o.FrontendID()
+	}
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
 	if o.SupportedImportFormats != nil {
 		m.SupportedImportFormats = o.SupportedImportFormats()
-	}
-	if o.DataMapping != nil {
-		m.DataMapping = o.DataMapping()
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
@@ -210,6 +262,26 @@ func ensureCreatableRacingSim(m *models.RacingSimSetter) {
 func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.RacingSim) error {
 	var err error
 
+	isSimulationDriverSimulationIdsDone, _ := racingSimRelSimulationDriverSimulationIdsCtx.Value(ctx)
+	if !isSimulationDriverSimulationIdsDone && o.r.SimulationDriverSimulationIds != nil {
+		ctx = racingSimRelSimulationDriverSimulationIdsCtx.WithValue(ctx, true)
+		for _, r := range o.r.SimulationDriverSimulationIds {
+			if r.o.alreadyPersisted {
+				m.R.SimulationDriverSimulationIds = append(m.R.SimulationDriverSimulationIds, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSimulationDriverSimulationIds(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isSimulationSeriesDone, _ := racingSimRelSimulationSeriesCtx.Value(ctx)
 	if !isSimulationSeriesDone && o.r.SimulationSeries != nil {
 		ctx = racingSimRelSimulationSeriesCtx.WithValue(ctx, true)
@@ -217,12 +289,52 @@ func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor
 			if r.o.alreadyPersisted {
 				m.R.SimulationSeries = append(m.R.SimulationSeries, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSimulationSeries(ctx, exec, rel0...)
+				err = m.AttachSimulationSeries(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSimulationSimulationCarAliasesDone, _ := racingSimRelSimulationSimulationCarAliasesCtx.Value(ctx)
+	if !isSimulationSimulationCarAliasesDone && o.r.SimulationSimulationCarAliases != nil {
+		ctx = racingSimRelSimulationSimulationCarAliasesCtx.WithValue(ctx, true)
+		for _, r := range o.r.SimulationSimulationCarAliases {
+			if r.o.alreadyPersisted {
+				m.R.SimulationSimulationCarAliases = append(m.R.SimulationSimulationCarAliases, r.o.Build())
+			} else {
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSimulationSimulationCarAliases(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSimulationSimulationTrackLayoutAliasesDone, _ := racingSimRelSimulationSimulationTrackLayoutAliasesCtx.Value(ctx)
+	if !isSimulationSimulationTrackLayoutAliasesDone && o.r.SimulationSimulationTrackLayoutAliases != nil {
+		ctx = racingSimRelSimulationSimulationTrackLayoutAliasesCtx.WithValue(ctx, true)
+		for _, r := range o.r.SimulationSimulationTrackLayoutAliases {
+			if r.o.alreadyPersisted {
+				m.R.SimulationSimulationTrackLayoutAliases = append(m.R.SimulationSimulationTrackLayoutAliases, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSimulationSimulationTrackLayoutAliases(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -323,9 +435,9 @@ type racingSimMods struct{}
 func (m racingSimMods) RandomizeAllColumns(f *faker.Faker) RacingSimMod {
 	return RacingSimModSlice{
 		RacingSimMods.RandomID(f),
+		RacingSimMods.RandomFrontendID(f),
 		RacingSimMods.RandomName(f),
 		RacingSimMods.RandomSupportedImportFormats(f),
-		RacingSimMods.RandomDataMapping(f),
 		RacingSimMods.RandomIsActive(f),
 		RacingSimMods.RandomCreatedAt(f),
 		RacingSimMods.RandomUpdatedAt(f),
@@ -361,6 +473,37 @@ func (m racingSimMods) RandomID(f *faker.Faker) RacingSimMod {
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m racingSimMods) FrontendID(val uuid.UUID) RacingSimMod {
+	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
+		o.FrontendID = func() uuid.UUID { return val }
+	})
+}
+
+// Set the Column from the function
+func (m racingSimMods) FrontendIDFunc(f func() uuid.UUID) RacingSimMod {
+	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
+		o.FrontendID = f
+	})
+}
+
+// Clear any values for the column
+func (m racingSimMods) UnsetFrontendID() RacingSimMod {
+	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
+		o.FrontendID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m racingSimMods) RandomFrontendID(f *faker.Faker) RacingSimMod {
+	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
+		o.FrontendID = func() uuid.UUID {
+			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -423,37 +566,6 @@ func (m racingSimMods) RandomSupportedImportFormats(f *faker.Faker) RacingSimMod
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
 		o.SupportedImportFormats = func() pq.StringArray {
 			return random_pq_StringArray(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m racingSimMods) DataMapping(val types.JSON[json.RawMessage]) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.DataMapping = func() types.JSON[json.RawMessage] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m racingSimMods) DataMappingFunc(f func() types.JSON[json.RawMessage]) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.DataMapping = f
-	})
-}
-
-// Clear any values for the column
-func (m racingSimMods) UnsetDataMapping() RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.DataMapping = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m racingSimMods) RandomDataMapping(f *faker.Faker) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.DataMapping = func() types.JSON[json.RawMessage] {
-			return random_types_JSON_json_RawMessage_(f)
 		}
 	})
 }
@@ -622,6 +734,54 @@ func (m racingSimMods) WithParentsCascading() RacingSimMod {
 	})
 }
 
+func (m racingSimMods) WithSimulationDriverSimulationIds(number int, related *DriverSimulationIDTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationDriverSimulationIds = []*racingSimRSimulationDriverSimulationIdsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m racingSimMods) WithNewSimulationDriverSimulationIds(number int, mods ...DriverSimulationIDMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
+		m.WithSimulationDriverSimulationIds(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddSimulationDriverSimulationIds(number int, related *DriverSimulationIDTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationDriverSimulationIds = append(o.r.SimulationDriverSimulationIds, &racingSimRSimulationDriverSimulationIdsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m racingSimMods) AddNewSimulationDriverSimulationIds(number int, mods ...DriverSimulationIDMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
+		m.AddSimulationDriverSimulationIds(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddExistingSimulationDriverSimulationIds(existingModels ...*models.DriverSimulationID) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		for _, em := range existingModels {
+			o.r.SimulationDriverSimulationIds = append(o.r.SimulationDriverSimulationIds, &racingSimRSimulationDriverSimulationIdsR{
+				o: o.f.FromExistingDriverSimulationID(em),
+			})
+		}
+	})
+}
+
+func (m racingSimMods) WithoutSimulationDriverSimulationIds() RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationDriverSimulationIds = nil
+	})
+}
+
 func (m racingSimMods) WithSimulationSeries(number int, related *SeriesTemplate) RacingSimMod {
 	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
 		o.r.SimulationSeries = []*racingSimRSimulationSeriesR{{
@@ -667,5 +827,101 @@ func (m racingSimMods) AddExistingSimulationSeries(existingModels ...*models.Ser
 func (m racingSimMods) WithoutSimulationSeries() RacingSimMod {
 	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
 		o.r.SimulationSeries = nil
+	})
+}
+
+func (m racingSimMods) WithSimulationSimulationCarAliases(number int, related *SimulationCarAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationCarAliases = []*racingSimRSimulationSimulationCarAliasesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m racingSimMods) WithNewSimulationSimulationCarAliases(number int, mods ...SimulationCarAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationCarAliasWithContext(ctx, mods...)
+		m.WithSimulationSimulationCarAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddSimulationSimulationCarAliases(number int, related *SimulationCarAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationCarAliases = append(o.r.SimulationSimulationCarAliases, &racingSimRSimulationSimulationCarAliasesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m racingSimMods) AddNewSimulationSimulationCarAliases(number int, mods ...SimulationCarAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationCarAliasWithContext(ctx, mods...)
+		m.AddSimulationSimulationCarAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddExistingSimulationSimulationCarAliases(existingModels ...*models.SimulationCarAlias) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		for _, em := range existingModels {
+			o.r.SimulationSimulationCarAliases = append(o.r.SimulationSimulationCarAliases, &racingSimRSimulationSimulationCarAliasesR{
+				o: o.f.FromExistingSimulationCarAlias(em),
+			})
+		}
+	})
+}
+
+func (m racingSimMods) WithoutSimulationSimulationCarAliases() RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationCarAliases = nil
+	})
+}
+
+func (m racingSimMods) WithSimulationSimulationTrackLayoutAliases(number int, related *SimulationTrackLayoutAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationTrackLayoutAliases = []*racingSimRSimulationSimulationTrackLayoutAliasesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m racingSimMods) WithNewSimulationSimulationTrackLayoutAliases(number int, mods ...SimulationTrackLayoutAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationTrackLayoutAliasWithContext(ctx, mods...)
+		m.WithSimulationSimulationTrackLayoutAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddSimulationSimulationTrackLayoutAliases(number int, related *SimulationTrackLayoutAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationTrackLayoutAliases = append(o.r.SimulationSimulationTrackLayoutAliases, &racingSimRSimulationSimulationTrackLayoutAliasesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m racingSimMods) AddNewSimulationSimulationTrackLayoutAliases(number int, mods ...SimulationTrackLayoutAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationTrackLayoutAliasWithContext(ctx, mods...)
+		m.AddSimulationSimulationTrackLayoutAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddExistingSimulationSimulationTrackLayoutAliases(existingModels ...*models.SimulationTrackLayoutAlias) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		for _, em := range existingModels {
+			o.r.SimulationSimulationTrackLayoutAliases = append(o.r.SimulationSimulationTrackLayoutAliases, &racingSimRSimulationSimulationTrackLayoutAliasesR{
+				o: o.f.FromExistingSimulationTrackLayoutAlias(em),
+			})
+		}
+	})
+}
+
+func (m racingSimMods) WithoutSimulationSimulationTrackLayoutAliases() RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationTrackLayoutAliases = nil
 	})
 }

@@ -28,7 +28,7 @@ var Drivers = Table[
 			Name:      "frontend_id",
 			DBType:    "uuid",
 			Default:   "uuid_generate_v4()",
-			Comment:   "id used to reference in frontend",
+			Comment:   "",
 			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
@@ -51,28 +51,10 @@ var Drivers = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		SimulationIds: column{
-			Name:      "simulation_ids",
-			DBType:    "jsonb",
-			Default:   "'{}'::jsonb",
-			Comment:   "map by simID to array of sim specific driver IDs",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		IsActive: column{
 			Name:      "is_active",
 			DBType:    "boolean",
 			Default:   "true",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		JoinedAt: column{
-			Name:      "joined_at",
-			DBType:    "timestamp with time zone",
-			Default:   "now()",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -159,6 +141,23 @@ var Drivers = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		DriversFrontendIDUnique: index{
+			Type: "btree",
+			Name: "drivers_frontend_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "frontend_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
 		IdxDriversIsActive: index{
 			Type: "btree",
 			Name: "idx_drivers_is_active",
@@ -206,6 +205,11 @@ var Drivers = Table[
 			Columns: []string{"external_id"},
 			Comment: "",
 		},
+		DriversFrontendIDUnique: constraint{
+			Name:    "drivers_frontend_id_unique",
+			Columns: []string{"frontend_id"},
+			Comment: "",
+		},
 	},
 
 	Comment: "",
@@ -216,9 +220,7 @@ type driverColumns struct {
 	FrontendID       column
 	ExternalID       column
 	Name             column
-	SimulationIds    column
 	IsActive         column
-	JoinedAt         column
 	LastImportedFrom column
 	CreatedAt        column
 	UpdatedAt        column
@@ -228,20 +230,21 @@ type driverColumns struct {
 
 func (c driverColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.ExternalID, c.Name, c.SimulationIds, c.IsActive, c.JoinedAt, c.LastImportedFrom, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.ExternalID, c.Name, c.IsActive, c.LastImportedFrom, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type driverIndexes struct {
 	DriversPkey             index
 	DriversExternalIDUnique index
+	DriversFrontendIDUnique index
 	IdxDriversIsActive      index
 	IdxDriversName          index
 }
 
 func (i driverIndexes) AsSlice() []index {
 	return []index{
-		i.DriversPkey, i.DriversExternalIDUnique, i.IdxDriversIsActive, i.IdxDriversName,
+		i.DriversPkey, i.DriversExternalIDUnique, i.DriversFrontendIDUnique, i.IdxDriversIsActive, i.IdxDriversName,
 	}
 }
 
@@ -253,11 +256,12 @@ func (f driverForeignKeys) AsSlice() []foreignKey {
 
 type driverUniques struct {
 	DriversExternalIDUnique constraint
+	DriversFrontendIDUnique constraint
 }
 
 func (u driverUniques) AsSlice() []constraint {
 	return []constraint{
-		u.DriversExternalIDUnique,
+		u.DriversExternalIDUnique, u.DriversFrontendIDUnique,
 	}
 }
 

@@ -11,6 +11,13 @@ var RacingSimErrors = &racingSimErrors{
 		s:       "racing_sims_pkey",
 	},
 
+	ErrUniqueRacingSimsFrontendIdUnique: &UniqueConstraintError{
+		schema:  "",
+		table:   "racing_sims",
+		columns: []string{"frontend_id"},
+		s:       "racing_sims_frontend_id_unique",
+	},
+
 	ErrUniqueRacingSimsNameUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "racing_sims",
@@ -21,6 +28,8 @@ var RacingSimErrors = &racingSimErrors{
 
 type racingSimErrors struct {
 	ErrUniqueRacingSimsPkey *UniqueConstraintError
+
+	ErrUniqueRacingSimsFrontendIdUnique *UniqueConstraintError
 
 	ErrUniqueRacingSimsNameUnique *UniqueConstraintError
 }

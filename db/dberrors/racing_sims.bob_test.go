@@ -43,6 +43,24 @@ func TestRacingSimUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
+			name:        "ErrUniqueRacingSimsFrontendIdUnique",
+			expectedErr: RacingSimErrors.ErrUniqueRacingSimsFrontendIdUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.RacingSim) factory.RacingSimModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.RacingSimModSlice, 0, 1)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewRacingSimWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.RacingSimModSlice{
+					factory.RacingSimMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
+		{
 			name:        "ErrUniqueRacingSimsNameUnique",
 			expectedErr: RacingSimErrors.ErrUniqueRacingSimsNameUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.RacingSim) factory.RacingSimModSlice {

@@ -43,8 +43,26 @@ func TestEventUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ErrUniqueEventsSeasonIdRoundNumberUnique",
-			expectedErr: EventErrors.ErrUniqueEventsSeasonIdRoundNumberUnique,
+			name:        "ErrUniqueEventsFrontendIdUnique",
+			expectedErr: EventErrors.ErrUniqueEventsFrontendIdUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Event) factory.EventModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.EventModSlice, 0, 1)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewEventWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.EventModSlice{
+					factory.EventMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
+		{
+			name:        "ErrUniqueEventsSeasonIdNameUnique",
+			expectedErr: EventErrors.ErrUniqueEventsSeasonIdNameUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Event) factory.EventModSlice {
 				shouldUpdate := false
 				updateMods := make(factory.EventModSlice, 0, 2)
@@ -57,7 +75,7 @@ func TestEventUniqueConstraintErrors(t *testing.T) {
 
 				return factory.EventModSlice{
 					factory.EventMods.SeasonID(obj.SeasonID),
-					factory.EventMods.RoundNumber(obj.RoundNumber),
+					factory.EventMods.Name(obj.Name),
 				}
 			},
 		},

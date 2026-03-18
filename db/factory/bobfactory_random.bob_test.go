@@ -14,6 +14,28 @@ import (
 // Set the testDB to enable tests that use the database
 var testDB bob.Transactor[bob.Tx]
 
+func TestRandom___byte(t *testing.T) {
+	t.Parallel()
+
+	val1 := random___byte(nil)
+	val2 := random___byte(nil)
+
+	if bytes.Equal(val1, val2) {
+		t.Fatalf("random___byte() returned the same value twice: %v", val1)
+	}
+}
+
+func TestRandom_decimal_Decimal(t *testing.T) {
+	t.Parallel()
+
+	val1 := random_decimal_Decimal(nil)
+	val2 := random_decimal_Decimal(nil)
+
+	if val1.Equal(val2) {
+		t.Fatalf("random_decimal_Decimal() returned the same value twice: %v", val1)
+	}
+}
+
 func TestRandom_int32(t *testing.T) {
 	t.Parallel()
 
@@ -22,6 +44,17 @@ func TestRandom_int32(t *testing.T) {
 
 	if val1 == val2 {
 		t.Fatalf("random_int32() returned the same value twice: %v", val1)
+	}
+}
+
+func TestRandom_pq_Int32Array(t *testing.T) {
+	t.Parallel()
+
+	val1 := random_pq_Int32Array(nil)
+	val2 := random_pq_Int32Array(nil)
+
+	if slices.Equal(val1, val2) {
+		t.Fatalf("random_pq_Int32Array() returned the same value twice: %v", val1)
 	}
 }
 

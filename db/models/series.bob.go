@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -27,9 +28,10 @@ import (
 // Series is an object representing the database table.
 type Series struct {
 	ID           int32            `db:"id,pk" `
+	FrontendID   uuid.UUID        `db:"frontend_id" `
+	SimulationID int32            `db:"simulation_id" `
 	Name         string           `db:"name" `
 	Description  null.Val[string] `db:"description" `
-	SimulationID null.Val[int32]  `db:"simulation_id" `
 	IsActive     bool             `db:"is_active" `
 	CreatedAt    time.Time        `db:"created_at" `
 	UpdatedAt    time.Time        `db:"updated_at" `
@@ -58,13 +60,14 @@ type seriesR struct {
 func buildSeriesColumns(alias string) seriesColumns {
 	return seriesColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "name", "description", "simulation_id", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "simulation_id", "name", "description", "is_active", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("series"),
 		tableAlias:   alias,
 		ID:           psql.Quote(alias, "id"),
+		FrontendID:   psql.Quote(alias, "frontend_id"),
+		SimulationID: psql.Quote(alias, "simulation_id"),
 		Name:         psql.Quote(alias, "name"),
 		Description:  psql.Quote(alias, "description"),
-		SimulationID: psql.Quote(alias, "simulation_id"),
 		IsActive:     psql.Quote(alias, "is_active"),
 		CreatedAt:    psql.Quote(alias, "created_at"),
 		UpdatedAt:    psql.Quote(alias, "updated_at"),
@@ -77,9 +80,10 @@ type seriesColumns struct {
 	expr.ColumnsExpr
 	tableAlias   string
 	ID           psql.Expression
+	FrontendID   psql.Expression
+	SimulationID psql.Expression
 	Name         psql.Expression
 	Description  psql.Expression
-	SimulationID psql.Expression
 	IsActive     psql.Expression
 	CreatedAt    psql.Expression
 	UpdatedAt    psql.Expression
@@ -100,9 +104,10 @@ func (seriesColumns) AliasedAs(alias string) seriesColumns {
 // Generated columns are not included
 type SeriesSetter struct {
 	ID           omit.Val[int32]      `db:"id,pk" `
+	FrontendID   omit.Val[uuid.UUID]  `db:"frontend_id" `
+	SimulationID omit.Val[int32]      `db:"simulation_id" `
 	Name         omit.Val[string]     `db:"name" `
 	Description  omitnull.Val[string] `db:"description" `
-	SimulationID omitnull.Val[int32]  `db:"simulation_id" `
 	IsActive     omit.Val[bool]       `db:"is_active" `
 	CreatedAt    omit.Val[time.Time]  `db:"created_at" `
 	UpdatedAt    omit.Val[time.Time]  `db:"updated_at" `
@@ -111,18 +116,21 @@ type SeriesSetter struct {
 }
 
 func (s SeriesSetter) SetColumns() []string {
-	vals := make([]string, 0, 9)
+	vals := make([]string, 0, 10)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
+	}
+	if s.FrontendID.IsValue() {
+		vals = append(vals, "frontend_id")
+	}
+	if s.SimulationID.IsValue() {
+		vals = append(vals, "simulation_id")
 	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
 	if !s.Description.IsUnset() {
 		vals = append(vals, "description")
-	}
-	if !s.SimulationID.IsUnset() {
-		vals = append(vals, "simulation_id")
 	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
@@ -146,14 +154,17 @@ func (s SeriesSetter) Overwrite(t *Series) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
+	if s.FrontendID.IsValue() {
+		t.FrontendID = s.FrontendID.MustGet()
+	}
+	if s.SimulationID.IsValue() {
+		t.SimulationID = s.SimulationID.MustGet()
+	}
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
 	if !s.Description.IsUnset() {
 		t.Description = s.Description.MustGetNull()
-	}
-	if !s.SimulationID.IsUnset() {
-		t.SimulationID = s.SimulationID.MustGetNull()
 	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
@@ -178,59 +189,65 @@ func (s *SeriesSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 9)
+		vals := make([]bob.Expression, 10)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[1] = psql.Arg(s.Name.MustGet())
+		if s.FrontendID.IsValue() {
+			vals[1] = psql.Arg(s.FrontendID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Description.IsUnset() {
-			vals[2] = psql.Arg(s.Description.MustGetNull())
+		if s.SimulationID.IsValue() {
+			vals[2] = psql.Arg(s.SimulationID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if !s.SimulationID.IsUnset() {
-			vals[3] = psql.Arg(s.SimulationID.MustGetNull())
+		if s.Name.IsValue() {
+			vals[3] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsActive.IsValue() {
-			vals[4] = psql.Arg(s.IsActive.MustGet())
+		if !s.Description.IsUnset() {
+			vals[4] = psql.Arg(s.Description.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[5] = psql.Arg(s.CreatedAt.MustGet())
+		if s.IsActive.IsValue() {
+			vals[5] = psql.Arg(s.IsActive.MustGet())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[6] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[6] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[7] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[7] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[8] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[8] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[9] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[9] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -242,12 +259,26 @@ func (s SeriesSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeriesSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 9)
+	exprs := make([]bob.Expression, 0, 10)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
+		}})
+	}
+
+	if s.FrontendID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "frontend_id")...),
+			psql.Arg(s.FrontendID),
+		}})
+	}
+
+	if s.SimulationID.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "simulation_id")...),
+			psql.Arg(s.SimulationID),
 		}})
 	}
 
@@ -262,13 +293,6 @@ func (s SeriesSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "description")...),
 			psql.Arg(s.Description),
-		}})
-	}
-
-	if !s.SimulationID.IsUnset() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "simulation_id")...),
-			psql.Arg(s.SimulationID),
 		}})
 	}
 
@@ -565,7 +589,7 @@ func (o *Series) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) Raci
 }
 
 func (os SeriesSlice) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) RacingSimsQuery {
-	pkSimulationID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	pkSimulationID := make(pgtypes.Array[int32], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -651,7 +675,7 @@ func (series0 *Series) AttachSeasons(ctx context.Context, exec bob.Executor, rel
 
 func attachSeriesSimulationRacingSim0(ctx context.Context, exec bob.Executor, count int, series0 *Series, racingSim1 *RacingSim) (*Series, error) {
 	setter := &SeriesSetter{
-		SimulationID: omitnull.From(racingSim1.ID),
+		SimulationID: omit.From(racingSim1.ID),
 	}
 
 	err := series0.Update(ctx, exec, setter)
@@ -699,9 +723,10 @@ func (series0 *Series) AttachSimulationRacingSim(ctx context.Context, exec bob.E
 
 type seriesWhere[Q psql.Filterable] struct {
 	ID           psql.WhereMod[Q, int32]
+	FrontendID   psql.WhereMod[Q, uuid.UUID]
+	SimulationID psql.WhereMod[Q, int32]
 	Name         psql.WhereMod[Q, string]
 	Description  psql.WhereNullMod[Q, string]
-	SimulationID psql.WhereNullMod[Q, int32]
 	IsActive     psql.WhereMod[Q, bool]
 	CreatedAt    psql.WhereMod[Q, time.Time]
 	UpdatedAt    psql.WhereMod[Q, time.Time]
@@ -716,9 +741,10 @@ func (seriesWhere[Q]) AliasedAs(alias string) seriesWhere[Q] {
 func buildSeriesWhere[Q psql.Filterable](cols seriesColumns) seriesWhere[Q] {
 	return seriesWhere[Q]{
 		ID:           psql.Where[Q, int32](cols.ID),
+		FrontendID:   psql.Where[Q, uuid.UUID](cols.FrontendID),
+		SimulationID: psql.Where[Q, int32](cols.SimulationID),
 		Name:         psql.Where[Q, string](cols.Name),
 		Description:  psql.WhereNull[Q, string](cols.Description),
-		SimulationID: psql.WhereNull[Q, int32](cols.SimulationID),
 		IsActive:     psql.Where[Q, bool](cols.IsActive),
 		CreatedAt:    psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:    psql.Where[Q, time.Time](cols.UpdatedAt),
@@ -913,11 +939,8 @@ func (os SeriesSlice) LoadSimulationRacingSim(ctx context.Context, exec bob.Exec
 		}
 
 		for _, rel := range racingSims {
-			if !o.SimulationID.IsValue() {
-				continue
-			}
 
-			if !(o.SimulationID.IsValue() && o.SimulationID.MustGet() == rel.ID) {
+			if !(o.SimulationID == rel.ID) {
 				continue
 			}
 

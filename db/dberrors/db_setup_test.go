@@ -5,16 +5,22 @@
 package dberrors
 
 import (
+	"os"
+	"testing"
+
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/stephenafamo/bob"
 
 	"github.com/srlmgr/backend/testsupport/testdb"
 )
 
-func init() {
+func TestMain(m *testing.M) {
 	pool, err := testdb.InitTestDB()
 	if err != nil {
 		panic("Failed to connect to test database: " + err.Error())
 	}
 	testDB = bob.NewDB(stdlib.OpenDBFromPool(pool))
+	code := m.Run()
+
+	os.Exit(code)
 }

@@ -11,16 +11,25 @@ var EventErrors = &eventErrors{
 		s:       "events_pkey",
 	},
 
-	ErrUniqueEventsSeasonIdRoundNumberUnique: &UniqueConstraintError{
+	ErrUniqueEventsFrontendIdUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "events",
-		columns: []string{"season_id", "round_number"},
-		s:       "events_season_id_round_number_unique",
+		columns: []string{"frontend_id"},
+		s:       "events_frontend_id_unique",
+	},
+
+	ErrUniqueEventsSeasonIdNameUnique: &UniqueConstraintError{
+		schema:  "",
+		table:   "events",
+		columns: []string{"season_id", "name"},
+		s:       "events_season_id_name_unique",
 	},
 }
 
 type eventErrors struct {
 	ErrUniqueEventsPkey *UniqueConstraintError
 
-	ErrUniqueEventsSeasonIdRoundNumberUnique *UniqueConstraintError
+	ErrUniqueEventsFrontendIdUnique *UniqueConstraintError
+
+	ErrUniqueEventsSeasonIdNameUnique *UniqueConstraintError
 }

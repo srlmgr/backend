@@ -33,8 +33,40 @@ aliases:
     up_singular: "Series"
     down_plural: "serieses"
     down_singular: "series"
+
+replacements:
+  - tables: ["booking_entries"]
+    match:
+      name: "source_type"
+    replace: "mytypes.SourceType"
+  - tables: ["booking_entries"]
+    match:
+      name: "target_type"
+    replace: "mytypes.TargetType"
+  - tables: ["import_batches"]
+    match:
+      name: "import_format"
+    replace: "mytypes.ImportFormat"
+
+types:
+  "mytypes.SourceType":
+    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    no_randomization_test: true
+    random_expr: |
+      return "position"
+  "mytypes.TargetType":
+    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    no_randomization_test: true
+    random_expr: |
+      return "driver"
+  "mytypes.ImportFormat":
+    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    no_randomization_test: true
+    random_expr: |
+      return "json"
+
 psql:
-  dsn: "postgres://docker:docker@localhost:5532/srlmgr?sslmode=disable"
+  # The DSN is read from the PSQL_DSN environment variable, so it is not hardcoded here.
   driver: github.com/jackc/pgx/v5/stdlib
   except:
     "schema_migrations":

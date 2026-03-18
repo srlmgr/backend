@@ -5,7 +5,7 @@ package models
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -20,25 +20,25 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 	"github.com/stephenafamo/bob/dialect/psql/um"
 	"github.com/stephenafamo/bob/expr"
-	"github.com/stephenafamo/bob/types"
+	"github.com/stephenafamo/bob/mods"
+	"github.com/stephenafamo/bob/orm"
+	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // Driver is an object representing the database table.
 type Driver struct {
-	ID int32 `db:"id,pk" `
-	// id used to reference in frontend
-	FrontendID uuid.UUID `db:"frontend_id" `
-	ExternalID string    `db:"external_id" `
-	Name       string    `db:"name" `
-	// map by simID to array of sim specific driver IDs
-	SimulationIds    types.JSON[json.RawMessage] `db:"simulation_ids" `
-	IsActive         bool                        `db:"is_active" `
-	JoinedAt         time.Time                   `db:"joined_at" `
-	LastImportedFrom null.Val[string]            `db:"last_imported_from" `
-	CreatedAt        time.Time                   `db:"created_at" `
-	UpdatedAt        time.Time                   `db:"updated_at" `
-	CreatedBy        string                      `db:"created_by" `
-	UpdatedBy        string                      `db:"updated_by" `
+	ID               int32            `db:"id,pk" `
+	FrontendID       uuid.UUID        `db:"frontend_id" `
+	ExternalID       string           `db:"external_id" `
+	Name             string           `db:"name" `
+	IsActive         bool             `db:"is_active" `
+	LastImportedFrom null.Val[string] `db:"last_imported_from" `
+	CreatedAt        time.Time        `db:"created_at" `
+	UpdatedAt        time.Time        `db:"updated_at" `
+	CreatedBy        string           `db:"created_by" `
+	UpdatedBy        string           `db:"updated_by" `
+
+	R driverR `db:"-" `
 }
 
 // DriverSlice is an alias for a slice of pointers to Driver.
@@ -51,19 +51,27 @@ var Drivers = psql.NewTablex[*Driver, DriverSlice, *DriverSetter]("", "drivers",
 // DriversQuery is a query on the drivers table
 type DriversQuery = *psql.ViewQuery[*Driver, DriverSlice]
 
+// driverR is where relationships are stored.
+type driverR struct {
+	BookingEntries        BookingEntrySlice         // booking_entries.booking_entries_driver_id_fk
+	DriverSimulationIds   DriverSimulationIDSlice   // driver_simulation_ids.driver_simulation_ids_driver_id_fk
+	EventDriverStandings  EventDriverStandingSlice  // event_driver_standings.event_driver_standings_driver_id_fk
+	ResultEntries         ResultEntrySlice          // result_entries.result_entries_driver_id_fk
+	SeasonDriverStandings SeasonDriverStandingSlice // season_driver_standings.season_driver_standings_driver_id_fk
+	TeamDrivers           TeamDriverSlice           // team_drivers.team_drivers_driver_id_fk
+}
+
 func buildDriverColumns(alias string) driverColumns {
 	return driverColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "external_id", "name", "simulation_ids", "is_active", "joined_at", "last_imported_from", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "external_id", "name", "is_active", "last_imported_from", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("drivers"),
 		tableAlias:       alias,
 		ID:               psql.Quote(alias, "id"),
 		FrontendID:       psql.Quote(alias, "frontend_id"),
 		ExternalID:       psql.Quote(alias, "external_id"),
 		Name:             psql.Quote(alias, "name"),
-		SimulationIds:    psql.Quote(alias, "simulation_ids"),
 		IsActive:         psql.Quote(alias, "is_active"),
-		JoinedAt:         psql.Quote(alias, "joined_at"),
 		LastImportedFrom: psql.Quote(alias, "last_imported_from"),
 		CreatedAt:        psql.Quote(alias, "created_at"),
 		UpdatedAt:        psql.Quote(alias, "updated_at"),
@@ -79,9 +87,7 @@ type driverColumns struct {
 	FrontendID       psql.Expression
 	ExternalID       psql.Expression
 	Name             psql.Expression
-	SimulationIds    psql.Expression
 	IsActive         psql.Expression
-	JoinedAt         psql.Expression
 	LastImportedFrom psql.Expression
 	CreatedAt        psql.Expression
 	UpdatedAt        psql.Expression
@@ -101,22 +107,20 @@ func (driverColumns) AliasedAs(alias string) driverColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type DriverSetter struct {
-	ID               omit.Val[int32]                       `db:"id,pk" `
-	FrontendID       omit.Val[uuid.UUID]                   `db:"frontend_id" `
-	ExternalID       omit.Val[string]                      `db:"external_id" `
-	Name             omit.Val[string]                      `db:"name" `
-	SimulationIds    omit.Val[types.JSON[json.RawMessage]] `db:"simulation_ids" `
-	IsActive         omit.Val[bool]                        `db:"is_active" `
-	JoinedAt         omit.Val[time.Time]                   `db:"joined_at" `
-	LastImportedFrom omitnull.Val[string]                  `db:"last_imported_from" `
-	CreatedAt        omit.Val[time.Time]                   `db:"created_at" `
-	UpdatedAt        omit.Val[time.Time]                   `db:"updated_at" `
-	CreatedBy        omit.Val[string]                      `db:"created_by" `
-	UpdatedBy        omit.Val[string]                      `db:"updated_by" `
+	ID               omit.Val[int32]      `db:"id,pk" `
+	FrontendID       omit.Val[uuid.UUID]  `db:"frontend_id" `
+	ExternalID       omit.Val[string]     `db:"external_id" `
+	Name             omit.Val[string]     `db:"name" `
+	IsActive         omit.Val[bool]       `db:"is_active" `
+	LastImportedFrom omitnull.Val[string] `db:"last_imported_from" `
+	CreatedAt        omit.Val[time.Time]  `db:"created_at" `
+	UpdatedAt        omit.Val[time.Time]  `db:"updated_at" `
+	CreatedBy        omit.Val[string]     `db:"created_by" `
+	UpdatedBy        omit.Val[string]     `db:"updated_by" `
 }
 
 func (s DriverSetter) SetColumns() []string {
-	vals := make([]string, 0, 12)
+	vals := make([]string, 0, 10)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -129,14 +133,8 @@ func (s DriverSetter) SetColumns() []string {
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
 	}
-	if s.SimulationIds.IsValue() {
-		vals = append(vals, "simulation_ids")
-	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
-	}
-	if s.JoinedAt.IsValue() {
-		vals = append(vals, "joined_at")
 	}
 	if !s.LastImportedFrom.IsUnset() {
 		vals = append(vals, "last_imported_from")
@@ -169,14 +167,8 @@ func (s DriverSetter) Overwrite(t *Driver) {
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
-	if s.SimulationIds.IsValue() {
-		t.SimulationIds = s.SimulationIds.MustGet()
-	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
-	}
-	if s.JoinedAt.IsValue() {
-		t.JoinedAt = s.JoinedAt.MustGet()
 	}
 	if !s.LastImportedFrom.IsUnset() {
 		t.LastImportedFrom = s.LastImportedFrom.MustGetNull()
@@ -201,7 +193,7 @@ func (s *DriverSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 12)
+		vals := make([]bob.Expression, 10)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -226,52 +218,40 @@ func (s *DriverSetter) Apply(q *dialect.InsertQuery) {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.SimulationIds.IsValue() {
-			vals[4] = psql.Arg(s.SimulationIds.MustGet())
+		if s.IsActive.IsValue() {
+			vals[4] = psql.Arg(s.IsActive.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsActive.IsValue() {
-			vals[5] = psql.Arg(s.IsActive.MustGet())
+		if !s.LastImportedFrom.IsUnset() {
+			vals[5] = psql.Arg(s.LastImportedFrom.MustGetNull())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.JoinedAt.IsValue() {
-			vals[6] = psql.Arg(s.JoinedAt.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[6] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LastImportedFrom.IsUnset() {
-			vals[7] = psql.Arg(s.LastImportedFrom.MustGetNull())
+		if s.UpdatedAt.IsValue() {
+			vals[7] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[8] = psql.Arg(s.CreatedAt.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[8] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[9] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.UpdatedBy.IsValue() {
+			vals[9] = psql.Arg(s.UpdatedBy.MustGet())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
-		}
-
-		if s.CreatedBy.IsValue() {
-			vals[10] = psql.Arg(s.CreatedBy.MustGet())
-		} else {
-			vals[10] = psql.Raw("DEFAULT")
-		}
-
-		if s.UpdatedBy.IsValue() {
-			vals[11] = psql.Arg(s.UpdatedBy.MustGet())
-		} else {
-			vals[11] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -283,7 +263,7 @@ func (s DriverSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s DriverSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 12)
+	exprs := make([]bob.Expression, 0, 10)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -313,24 +293,10 @@ func (s DriverSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.SimulationIds.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "simulation_ids")...),
-			psql.Arg(s.SimulationIds),
-		}})
-	}
-
 	if s.IsActive.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "is_active")...),
 			psql.Arg(s.IsActive),
-		}})
-	}
-
-	if s.JoinedAt.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "joined_at")...),
-			psql.Arg(s.JoinedAt),
 		}})
 	}
 
@@ -430,6 +396,7 @@ func (o *Driver) Update(ctx context.Context, exec bob.Executor, s *DriverSetter)
 		return err
 	}
 
+	o.R = v.R
 	*o = *v
 
 	return nil
@@ -449,7 +416,7 @@ func (o *Driver) Reload(ctx context.Context, exec bob.Executor) error {
 	if err != nil {
 		return err
 	}
-
+	o2.R = o.R
 	*o = *o2
 
 	return nil
@@ -496,7 +463,7 @@ func (o DriverSlice) copyMatchingRows(from ...*Driver) {
 			if new.ID != old.ID {
 				continue
 			}
-
+			new.R = old.R
 			o[i] = new
 			break
 		}
@@ -594,14 +561,564 @@ func (o DriverSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// BookingEntries starts a query for related objects on booking_entries
+func (o *Driver) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	return BookingEntries.Query(append(mods,
+		sm.Where(BookingEntries.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return BookingEntries.Query(append(mods,
+		sm.Where(psql.Group(BookingEntries.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// DriverSimulationIds starts a query for related objects on driver_simulation_ids
+func (o *Driver) DriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
+	return DriverSimulationIds.Query(append(mods,
+		sm.Where(DriverSimulationIds.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) DriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return DriverSimulationIds.Query(append(mods,
+		sm.Where(psql.Group(DriverSimulationIds.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// EventDriverStandings starts a query for related objects on event_driver_standings
+func (o *Driver) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(EventDriverStandings.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return EventDriverStandings.Query(append(mods,
+		sm.Where(psql.Group(EventDriverStandings.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// ResultEntries starts a query for related objects on result_entries
+func (o *Driver) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) ResultEntriesQuery {
+	return ResultEntries.Query(append(mods,
+		sm.Where(ResultEntries.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) ResultEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return ResultEntries.Query(append(mods,
+		sm.Where(psql.Group(ResultEntries.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// SeasonDriverStandings starts a query for related objects on season_driver_standings
+func (o *Driver) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriverStandingsQuery {
+	return SeasonDriverStandings.Query(append(mods,
+		sm.Where(SeasonDriverStandings.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriverStandingsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonDriverStandings.Query(append(mods,
+		sm.Where(psql.Group(SeasonDriverStandings.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// TeamDrivers starts a query for related objects on team_drivers
+func (o *Driver) TeamDrivers(mods ...bob.Mod[*dialect.SelectQuery]) TeamDriversQuery {
+	return TeamDrivers.Query(append(mods,
+		sm.Where(TeamDrivers.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) TeamDrivers(mods ...bob.Mod[*dialect.SelectQuery]) TeamDriversQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return TeamDrivers.Query(append(mods,
+		sm.Where(psql.Group(TeamDrivers.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+func insertDriverBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, driver0 *Driver) (BookingEntrySlice, error) {
+	for i := range bookingEntries1 {
+		bookingEntries1[i].DriverID = omitnull.From(driver0.ID)
+	}
+
+	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverBookingEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, driver0 *Driver) (BookingEntrySlice, error) {
+	setter := &BookingEntrySetter{
+		DriverID: omitnull.From(driver0.ID),
+	}
+
+	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverBookingEntries0: %w", err)
+	}
+
+	return bookingEntries1, nil
+}
+
+func (driver0 *Driver) InsertBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	bookingEntries1, err := insertDriverBookingEntries0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.BookingEntries = append(driver0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range bookingEntries1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	bookingEntries1 := BookingEntrySlice(related)
+
+	_, err = attachDriverBookingEntries0(ctx, exec, len(related), bookingEntries1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.BookingEntries = append(driver0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
+func insertDriverDriverSimulationIds0(ctx context.Context, exec bob.Executor, driverSimulationIds1 []*DriverSimulationIDSetter, driver0 *Driver) (DriverSimulationIDSlice, error) {
+	for i := range driverSimulationIds1 {
+		driverSimulationIds1[i].DriverID = omit.From(driver0.ID)
+	}
+
+	ret, err := DriverSimulationIds.Insert(bob.ToMods(driverSimulationIds1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverDriverSimulationIds0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverDriverSimulationIds0(ctx context.Context, exec bob.Executor, count int, driverSimulationIds1 DriverSimulationIDSlice, driver0 *Driver) (DriverSimulationIDSlice, error) {
+	setter := &DriverSimulationIDSetter{
+		DriverID: omit.From(driver0.ID),
+	}
+
+	err := driverSimulationIds1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverDriverSimulationIds0: %w", err)
+	}
+
+	return driverSimulationIds1, nil
+}
+
+func (driver0 *Driver) InsertDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationIDSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	driverSimulationIds1, err := insertDriverDriverSimulationIds0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.DriverSimulationIds = append(driver0.R.DriverSimulationIds, driverSimulationIds1...)
+
+	for _, rel := range driverSimulationIds1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationID) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	driverSimulationIds1 := DriverSimulationIDSlice(related)
+
+	_, err = attachDriverDriverSimulationIds0(ctx, exec, len(related), driverSimulationIds1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.DriverSimulationIds = append(driver0.R.DriverSimulationIds, driverSimulationIds1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
+func insertDriverEventDriverStandings0(ctx context.Context, exec bob.Executor, eventDriverStandings1 []*EventDriverStandingSetter, driver0 *Driver) (EventDriverStandingSlice, error) {
+	for i := range eventDriverStandings1 {
+		eventDriverStandings1[i].DriverID = omit.From(driver0.ID)
+	}
+
+	ret, err := EventDriverStandings.Insert(bob.ToMods(eventDriverStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverEventDriverStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverEventDriverStandings0(ctx context.Context, exec bob.Executor, count int, eventDriverStandings1 EventDriverStandingSlice, driver0 *Driver) (EventDriverStandingSlice, error) {
+	setter := &EventDriverStandingSetter{
+		DriverID: omit.From(driver0.ID),
+	}
+
+	err := eventDriverStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverEventDriverStandings0: %w", err)
+	}
+
+	return eventDriverStandings1, nil
+}
+
+func (driver0 *Driver) InsertEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	eventDriverStandings1, err := insertDriverEventDriverStandings0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.EventDriverStandings = append(driver0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range eventDriverStandings1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachEventDriverStandings(ctx context.Context, exec bob.Executor, related ...*EventDriverStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	eventDriverStandings1 := EventDriverStandingSlice(related)
+
+	_, err = attachDriverEventDriverStandings0(ctx, exec, len(related), eventDriverStandings1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.EventDriverStandings = append(driver0.R.EventDriverStandings, eventDriverStandings1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
+func insertDriverResultEntries0(ctx context.Context, exec bob.Executor, resultEntries1 []*ResultEntrySetter, driver0 *Driver) (ResultEntrySlice, error) {
+	for i := range resultEntries1 {
+		resultEntries1[i].DriverID = omitnull.From(driver0.ID)
+	}
+
+	ret, err := ResultEntries.Insert(bob.ToMods(resultEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverResultEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverResultEntries0(ctx context.Context, exec bob.Executor, count int, resultEntries1 ResultEntrySlice, driver0 *Driver) (ResultEntrySlice, error) {
+	setter := &ResultEntrySetter{
+		DriverID: omitnull.From(driver0.ID),
+	}
+
+	err := resultEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverResultEntries0: %w", err)
+	}
+
+	return resultEntries1, nil
+}
+
+func (driver0 *Driver) InsertResultEntries(ctx context.Context, exec bob.Executor, related ...*ResultEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	resultEntries1, err := insertDriverResultEntries0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.ResultEntries = append(driver0.R.ResultEntries, resultEntries1...)
+
+	for _, rel := range resultEntries1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachResultEntries(ctx context.Context, exec bob.Executor, related ...*ResultEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	resultEntries1 := ResultEntrySlice(related)
+
+	_, err = attachDriverResultEntries0(ctx, exec, len(related), resultEntries1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.ResultEntries = append(driver0.R.ResultEntries, resultEntries1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
+func insertDriverSeasonDriverStandings0(ctx context.Context, exec bob.Executor, seasonDriverStandings1 []*SeasonDriverStandingSetter, driver0 *Driver) (SeasonDriverStandingSlice, error) {
+	for i := range seasonDriverStandings1 {
+		seasonDriverStandings1[i].DriverID = omit.From(driver0.ID)
+	}
+
+	ret, err := SeasonDriverStandings.Insert(bob.ToMods(seasonDriverStandings1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverSeasonDriverStandings0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverSeasonDriverStandings0(ctx context.Context, exec bob.Executor, count int, seasonDriverStandings1 SeasonDriverStandingSlice, driver0 *Driver) (SeasonDriverStandingSlice, error) {
+	setter := &SeasonDriverStandingSetter{
+		DriverID: omit.From(driver0.ID),
+	}
+
+	err := seasonDriverStandings1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverSeasonDriverStandings0: %w", err)
+	}
+
+	return seasonDriverStandings1, nil
+}
+
+func (driver0 *Driver) InsertSeasonDriverStandings(ctx context.Context, exec bob.Executor, related ...*SeasonDriverStandingSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonDriverStandings1, err := insertDriverSeasonDriverStandings0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.SeasonDriverStandings = append(driver0.R.SeasonDriverStandings, seasonDriverStandings1...)
+
+	for _, rel := range seasonDriverStandings1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachSeasonDriverStandings(ctx context.Context, exec bob.Executor, related ...*SeasonDriverStanding) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonDriverStandings1 := SeasonDriverStandingSlice(related)
+
+	_, err = attachDriverSeasonDriverStandings0(ctx, exec, len(related), seasonDriverStandings1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.SeasonDriverStandings = append(driver0.R.SeasonDriverStandings, seasonDriverStandings1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
+func insertDriverTeamDrivers0(ctx context.Context, exec bob.Executor, teamDrivers1 []*TeamDriverSetter, driver0 *Driver) (TeamDriverSlice, error) {
+	for i := range teamDrivers1 {
+		teamDrivers1[i].DriverID = omit.From(driver0.ID)
+	}
+
+	ret, err := TeamDrivers.Insert(bob.ToMods(teamDrivers1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverTeamDrivers0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverTeamDrivers0(ctx context.Context, exec bob.Executor, count int, teamDrivers1 TeamDriverSlice, driver0 *Driver) (TeamDriverSlice, error) {
+	setter := &TeamDriverSetter{
+		DriverID: omit.From(driver0.ID),
+	}
+
+	err := teamDrivers1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverTeamDrivers0: %w", err)
+	}
+
+	return teamDrivers1, nil
+}
+
+func (driver0 *Driver) InsertTeamDrivers(ctx context.Context, exec bob.Executor, related ...*TeamDriverSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	teamDrivers1, err := insertDriverTeamDrivers0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.TeamDrivers = append(driver0.R.TeamDrivers, teamDrivers1...)
+
+	for _, rel := range teamDrivers1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachTeamDrivers(ctx context.Context, exec bob.Executor, related ...*TeamDriver) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	teamDrivers1 := TeamDriverSlice(related)
+
+	_, err = attachDriverTeamDrivers0(ctx, exec, len(related), teamDrivers1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.TeamDrivers = append(driver0.R.TeamDrivers, teamDrivers1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
 type driverWhere[Q psql.Filterable] struct {
 	ID               psql.WhereMod[Q, int32]
 	FrontendID       psql.WhereMod[Q, uuid.UUID]
 	ExternalID       psql.WhereMod[Q, string]
 	Name             psql.WhereMod[Q, string]
-	SimulationIds    psql.WhereMod[Q, types.JSON[json.RawMessage]]
 	IsActive         psql.WhereMod[Q, bool]
-	JoinedAt         psql.WhereMod[Q, time.Time]
 	LastImportedFrom psql.WhereNullMod[Q, string]
 	CreatedAt        psql.WhereMod[Q, time.Time]
 	UpdatedAt        psql.WhereMod[Q, time.Time]
@@ -619,13 +1136,657 @@ func buildDriverWhere[Q psql.Filterable](cols driverColumns) driverWhere[Q] {
 		FrontendID:       psql.Where[Q, uuid.UUID](cols.FrontendID),
 		ExternalID:       psql.Where[Q, string](cols.ExternalID),
 		Name:             psql.Where[Q, string](cols.Name),
-		SimulationIds:    psql.Where[Q, types.JSON[json.RawMessage]](cols.SimulationIds),
 		IsActive:         psql.Where[Q, bool](cols.IsActive),
-		JoinedAt:         psql.Where[Q, time.Time](cols.JoinedAt),
 		LastImportedFrom: psql.WhereNull[Q, string](cols.LastImportedFrom),
 		CreatedAt:        psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:        psql.Where[Q, time.Time](cols.UpdatedAt),
 		CreatedBy:        psql.Where[Q, string](cols.CreatedBy),
 		UpdatedBy:        psql.Where[Q, string](cols.UpdatedBy),
+	}
+}
+
+func (o *Driver) Preload(name string, retrieved any) error {
+	if o == nil {
+		return nil
+	}
+
+	switch name {
+	case "BookingEntries":
+		rels, ok := retrieved.(BookingEntrySlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.BookingEntries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	case "DriverSimulationIds":
+		rels, ok := retrieved.(DriverSimulationIDSlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.DriverSimulationIds = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	case "EventDriverStandings":
+		rels, ok := retrieved.(EventDriverStandingSlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.EventDriverStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	case "ResultEntries":
+		rels, ok := retrieved.(ResultEntrySlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.ResultEntries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	case "SeasonDriverStandings":
+		rels, ok := retrieved.(SeasonDriverStandingSlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonDriverStandings = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	case "TeamDrivers":
+		rels, ok := retrieved.(TeamDriverSlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.TeamDrivers = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("driver has no relationship %q", name)
+	}
+}
+
+type driverPreloader struct{}
+
+func buildDriverPreloader() driverPreloader {
+	return driverPreloader{}
+}
+
+type driverThenLoader[Q orm.Loadable] struct {
+	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	DriverSimulationIds   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventDriverStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonDriverStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	TeamDrivers           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+}
+
+func buildDriverThenLoader[Q orm.Loadable]() driverThenLoader[Q] {
+	type BookingEntriesLoadInterface interface {
+		LoadBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type DriverSimulationIdsLoadInterface interface {
+		LoadDriverSimulationIds(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type EventDriverStandingsLoadInterface interface {
+		LoadEventDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type ResultEntriesLoadInterface interface {
+		LoadResultEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonDriverStandingsLoadInterface interface {
+		LoadSeasonDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type TeamDriversLoadInterface interface {
+		LoadTeamDrivers(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+
+	return driverThenLoader[Q]{
+		BookingEntries: thenLoadBuilder[Q](
+			"BookingEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadBookingEntries(ctx, exec, mods...)
+			},
+		),
+		DriverSimulationIds: thenLoadBuilder[Q](
+			"DriverSimulationIds",
+			func(ctx context.Context, exec bob.Executor, retrieved DriverSimulationIdsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadDriverSimulationIds(ctx, exec, mods...)
+			},
+		),
+		EventDriverStandings: thenLoadBuilder[Q](
+			"EventDriverStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved EventDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadEventDriverStandings(ctx, exec, mods...)
+			},
+		),
+		ResultEntries: thenLoadBuilder[Q](
+			"ResultEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved ResultEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadResultEntries(ctx, exec, mods...)
+			},
+		),
+		SeasonDriverStandings: thenLoadBuilder[Q](
+			"SeasonDriverStandings",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonDriverStandings(ctx, exec, mods...)
+			},
+		),
+		TeamDrivers: thenLoadBuilder[Q](
+			"TeamDrivers",
+			func(ctx context.Context, exec bob.Executor, retrieved TeamDriversLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadTeamDrivers(ctx, exec, mods...)
+			},
+		),
+	}
+}
+
+// LoadBookingEntries loads the driver's BookingEntries into the .R struct
+func (o *Driver) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.BookingEntries = nil
+
+	related, err := o.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.BookingEntries = related
+	return nil
+}
+
+// LoadBookingEntries loads the driver's BookingEntries into the .R struct
+func (os DriverSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	bookingEntries, err := os.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.BookingEntries = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range bookingEntries {
+
+			if !rel.DriverID.IsValue() {
+				continue
+			}
+			if !(rel.DriverID.IsValue() && o.ID == rel.DriverID.MustGet()) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.BookingEntries = append(o.R.BookingEntries, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadDriverSimulationIds loads the driver's DriverSimulationIds into the .R struct
+func (o *Driver) LoadDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.DriverSimulationIds = nil
+
+	related, err := o.DriverSimulationIds(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.DriverSimulationIds = related
+	return nil
+}
+
+// LoadDriverSimulationIds loads the driver's DriverSimulationIds into the .R struct
+func (os DriverSlice) LoadDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	driverSimulationIds, err := os.DriverSimulationIds(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.DriverSimulationIds = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range driverSimulationIds {
+
+			if !(o.ID == rel.DriverID) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.DriverSimulationIds = append(o.R.DriverSimulationIds, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadEventDriverStandings loads the driver's EventDriverStandings into the .R struct
+func (o *Driver) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.EventDriverStandings = nil
+
+	related, err := o.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.EventDriverStandings = related
+	return nil
+}
+
+// LoadEventDriverStandings loads the driver's EventDriverStandings into the .R struct
+func (os DriverSlice) LoadEventDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	eventDriverStandings, err := os.EventDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.EventDriverStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range eventDriverStandings {
+
+			if !(o.ID == rel.DriverID) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.EventDriverStandings = append(o.R.EventDriverStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadResultEntries loads the driver's ResultEntries into the .R struct
+func (o *Driver) LoadResultEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.ResultEntries = nil
+
+	related, err := o.ResultEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.ResultEntries = related
+	return nil
+}
+
+// LoadResultEntries loads the driver's ResultEntries into the .R struct
+func (os DriverSlice) LoadResultEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	resultEntries, err := os.ResultEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.ResultEntries = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range resultEntries {
+
+			if !rel.DriverID.IsValue() {
+				continue
+			}
+			if !(rel.DriverID.IsValue() && o.ID == rel.DriverID.MustGet()) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.ResultEntries = append(o.R.ResultEntries, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadSeasonDriverStandings loads the driver's SeasonDriverStandings into the .R struct
+func (o *Driver) LoadSeasonDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonDriverStandings = nil
+
+	related, err := o.SeasonDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.SeasonDriverStandings = related
+	return nil
+}
+
+// LoadSeasonDriverStandings loads the driver's SeasonDriverStandings into the .R struct
+func (os DriverSlice) LoadSeasonDriverStandings(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonDriverStandings, err := os.SeasonDriverStandings(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonDriverStandings = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasonDriverStandings {
+
+			if !(o.ID == rel.DriverID) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.SeasonDriverStandings = append(o.R.SeasonDriverStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadTeamDrivers loads the driver's TeamDrivers into the .R struct
+func (o *Driver) LoadTeamDrivers(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.TeamDrivers = nil
+
+	related, err := o.TeamDrivers(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.TeamDrivers = related
+	return nil
+}
+
+// LoadTeamDrivers loads the driver's TeamDrivers into the .R struct
+func (os DriverSlice) LoadTeamDrivers(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	teamDrivers, err := os.TeamDrivers(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.TeamDrivers = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range teamDrivers {
+
+			if !(o.ID == rel.DriverID) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.TeamDrivers = append(o.R.TeamDrivers, rel)
+		}
+	}
+
+	return nil
+}
+
+type driverJoins[Q dialect.Joinable] struct {
+	typ                   string
+	BookingEntries        modAs[Q, bookingEntryColumns]
+	DriverSimulationIds   modAs[Q, driverSimulationIDColumns]
+	EventDriverStandings  modAs[Q, eventDriverStandingColumns]
+	ResultEntries         modAs[Q, resultEntryColumns]
+	SeasonDriverStandings modAs[Q, seasonDriverStandingColumns]
+	TeamDrivers           modAs[Q, teamDriverColumns]
+}
+
+func (j driverJoins[Q]) aliasedAs(alias string) driverJoins[Q] {
+	return buildDriverJoins[Q](buildDriverColumns(alias), j.typ)
+}
+
+func buildDriverJoins[Q dialect.Joinable](cols driverColumns, typ string) driverJoins[Q] {
+	return driverJoins[Q]{
+		typ: typ,
+		BookingEntries: modAs[Q, bookingEntryColumns]{
+			c: BookingEntries.Columns,
+			f: func(to bookingEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		DriverSimulationIds: modAs[Q, driverSimulationIDColumns]{
+			c: DriverSimulationIds.Columns,
+			f: func(to driverSimulationIDColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, DriverSimulationIds.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		EventDriverStandings: modAs[Q, eventDriverStandingColumns]{
+			c: EventDriverStandings.Columns,
+			f: func(to eventDriverStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, EventDriverStandings.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		ResultEntries: modAs[Q, resultEntryColumns]{
+			c: ResultEntries.Columns,
+			f: func(to resultEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, ResultEntries.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonDriverStandings: modAs[Q, seasonDriverStandingColumns]{
+			c: SeasonDriverStandings.Columns,
+			f: func(to seasonDriverStandingColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonDriverStandings.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		TeamDrivers: modAs[Q, teamDriverColumns]{
+			c: TeamDrivers.Columns,
+			f: func(to teamDriverColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, TeamDrivers.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 	}
 }

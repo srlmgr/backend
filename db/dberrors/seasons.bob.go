@@ -11,25 +11,25 @@ var SeasonErrors = &seasonErrors{
 		s:       "seasons_pkey",
 	},
 
+	ErrUniqueSeasonsFrontendIdUnique: &UniqueConstraintError{
+		schema:  "",
+		table:   "seasons",
+		columns: []string{"frontend_id"},
+		s:       "seasons_frontend_id_unique",
+	},
+
 	ErrUniqueSeasonsSeriesIdNameUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "seasons",
 		columns: []string{"series_id", "name"},
 		s:       "seasons_series_id_name_unique",
 	},
-
-	ErrUniqueSeasonsSeriesIdShortNameUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "seasons",
-		columns: []string{"series_id", "short_name"},
-		s:       "seasons_series_id_short_name_unique",
-	},
 }
 
 type seasonErrors struct {
 	ErrUniqueSeasonsPkey *UniqueConstraintError
 
-	ErrUniqueSeasonsSeriesIdNameUnique *UniqueConstraintError
+	ErrUniqueSeasonsFrontendIdUnique *UniqueConstraintError
 
-	ErrUniqueSeasonsSeriesIdShortNameUnique *UniqueConstraintError
+	ErrUniqueSeasonsSeriesIdNameUnique *UniqueConstraintError
 }

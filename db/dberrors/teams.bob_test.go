@@ -43,6 +43,24 @@ func TestTeamUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
+			name:        "ErrUniqueTeamsFrontendIdUnique",
+			expectedErr: TeamErrors.ErrUniqueTeamsFrontendIdUnique,
+			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Team) factory.TeamModSlice {
+				shouldUpdate := false
+				updateMods := make(factory.TeamModSlice, 0, 1)
+
+				if shouldUpdate {
+					if err := obj.Update(ctx, exec, f.NewTeamWithContext(ctx, updateMods...).BuildSetter()); err != nil {
+						t.Fatalf("Error updating object: %v", err)
+					}
+				}
+
+				return factory.TeamModSlice{
+					factory.TeamMods.FrontendID(obj.FrontendID),
+				}
+			},
+		},
+		{
 			name:        "ErrUniqueTeamsSeasonIdNameUnique",
 			expectedErr: TeamErrors.ErrUniqueTeamsSeasonIdNameUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.Team) factory.TeamModSlice {
