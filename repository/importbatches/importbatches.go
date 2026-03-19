@@ -1,0 +1,97 @@
+// Package importbatches provides repositories for the import_batches migration group.
+//
+//nolint:lll,whitespace // repository implementations can be verbose
+package importbatches
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/dm"
+	"github.com/stephenafamo/bob/dialect/psql/sm"
+
+	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/repository/pgbob"
+	"github.com/srlmgr/backend/repository/repoerrors"
+)
+
+// ImportBatchesRepository defines persistence operations for ImportBatch entities.
+type ImportBatchesRepository interface {
+	LoadByID(ctx context.Context, id int32) (*models.ImportBatch, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(ctx context.Context, input *models.ImportBatchSetter) (*models.ImportBatch, error)
+	Update(
+		ctx context.Context,
+		id int32,
+		input *models.ImportBatchSetter,
+	) (*models.ImportBatch, error)
+}
+
+// Repository exposes repositories for the import_batches migration group.
+type Repository interface {
+	ImportBatches() ImportBatchesRepository
+}
+
+type (
+	repository              struct{ importBatches ImportBatchesRepository }
+	importBatchesRepository struct{ exec *pgbob.Executor }
+)
+
+// New returns a postgres-backed Repository.
+func New(pool *pgxpool.Pool) Repository {
+	return &repository{importBatches: &importBatchesRepository{exec: pgbob.New(pool)}}
+}
+
+func (r *repository) ImportBatches() ImportBatchesRepository { return r.importBatches }
+
+func (r *importBatchesRepository) LoadByID(
+	ctx context.Context,
+	id int32,
+) (*models.ImportBatch, error) {
+	entity, err := models.ImportBatches.Query(sm.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("import batch %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *importBatchesRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.ImportBatches.Delete(dm.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *importBatchesRepository) Create(
+	ctx context.Context,
+	input *models.ImportBatchSetter,
+) (*models.ImportBatch, error) {
+	return models.ImportBatches.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *importBatchesRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.ImportBatchSetter,
+) (*models.ImportBatch, error) {
+	entity, err := r.LoadByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
+func (r *importBatchesRepository) getExecutor(ctx context.Context) bob.Executor {
+	if executor := pgbob.FromContext(ctx); executor != nil {
+		return executor
+	}
+	return r.exec
+}
