@@ -4,27 +4,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	connect "connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/log"
 )
 
-func newConnectHandlerOptions(logger *log.Logger) ([]connect.HandlerOption, error) {
+//nolint:whitespace //editor/linter issue
+func newConnectHandlerOptions(
+	logger *log.Logger,
+	authnr *authn.Authenticator,
+) ([]connect.HandlerOption, error) {
 	telemetryInterceptor, err := otelconnect.NewInterceptor()
 	if err != nil {
 		return nil, fmt.Errorf("create connect telemetry interceptor: %w", err)
 	}
 
+	interceptors := []connect.Interceptor{
+		newConnectLoggingInterceptor(logger.Named("rpc")),
+		telemetryInterceptor,
+		newConnectTraceIDInterceptor(),
+	}
+	if authnr != nil {
+		interceptors = slices.Insert(interceptors, 0, authnr.NewInterceptor())
+	}
+
 	return []connect.HandlerOption{
-		connect.WithInterceptors(
-			newConnectLoggingInterceptor(logger.Named("rpc")),
-			telemetryInterceptor,
-			newConnectTraceIDInterceptor(),
-		),
+		connect.WithInterceptors(interceptors...),
 	}, nil
 }
 

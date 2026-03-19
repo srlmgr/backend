@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/db/postgres"
 	"github.com/srlmgr/backend/log"
 	adminservice "github.com/srlmgr/backend/services/admin"
@@ -28,8 +29,9 @@ const shutdownTimeout = 10 * time.Second
 
 // Config configures the Connect server.
 type Config struct {
-	Address string
-	DBURI   string
+	Address     string
+	DBURI       string
+	AuthnConfig authn.Config
 }
 
 // Run starts the Connect server and blocks until shutdown completes.
@@ -63,7 +65,16 @@ func newHTTPServer(
 	pool *pgxpool.Pool,
 	logger *log.Logger,
 ) (*http.Server, error) {
-	handlerOptions, err := newConnectHandlerOptions(logger)
+	var authnr *authn.Authenticator
+	if cfg.AuthnConfig.JWT.JWKSUrl != "" || cfg.AuthnConfig.APIToken.FilePath != "" {
+		var err error
+		authnr, err = authn.NewAuthenticator(ctx, cfg.AuthnConfig, logger.Named("authn"))
+		if err != nil {
+			return nil, fmt.Errorf("create authenticator: %w", err)
+		}
+	}
+
+	handlerOptions, err := newConnectHandlerOptions(logger, authnr)
 	if err != nil {
 		return nil, err
 	}
