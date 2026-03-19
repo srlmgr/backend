@@ -8,12 +8,31 @@ import (
 
 	connect "connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/authz"
 	"github.com/srlmgr/backend/log"
 )
 
-func newConnectHandlerOptions(logger *log.Logger) ([]connect.HandlerOption, error) {
+//nolint:whitespace // multiline signature for line-length compliance
+func newConnectHandlerOptions(
+	ctx context.Context,
+	cfg *Config,
+	pool *pgxpool.Pool,
+	logger *log.Logger,
+) ([]connect.HandlerOption, error) {
+	authnInterceptor, err := authn.NewInterceptor(ctx, cfg.Authn, logger)
+	if err != nil {
+		return nil, fmt.Errorf("create authentication interceptor: %w", err)
+	}
+
+	authzInterceptor, err := authz.NewInterceptor(ctx, cfg.Authz, pool, logger)
+	if err != nil {
+		return nil, fmt.Errorf("create authorization interceptor: %w", err)
+	}
+
 	telemetryInterceptor, err := otelconnect.NewInterceptor()
 	if err != nil {
 		return nil, fmt.Errorf("create connect telemetry interceptor: %w", err)
@@ -21,6 +40,8 @@ func newConnectHandlerOptions(logger *log.Logger) ([]connect.HandlerOption, erro
 
 	return []connect.HandlerOption{
 		connect.WithInterceptors(
+			authnInterceptor,
+			authzInterceptor,
 			newConnectLoggingInterceptor(logger.Named("rpc")),
 			telemetryInterceptor,
 			newConnectTraceIDInterceptor(),

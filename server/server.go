@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	adminv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/admin/v1/adminv1connect"
@@ -16,6 +17,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/authz"
 	"github.com/srlmgr/backend/db/postgres"
 	"github.com/srlmgr/backend/log"
 	adminservice "github.com/srlmgr/backend/services/admin"
@@ -30,11 +33,17 @@ const shutdownTimeout = 10 * time.Second
 type Config struct {
 	Address string
 	DBURI   string
+	Authn   authn.Config
+	Authz   authz.Config
 }
 
 // Run starts the Connect server and blocks until shutdown completes.
-func Run(ctx context.Context, cfg Config) error {
+func Run(ctx context.Context, cfg *Config) error {
 	logger := getLogger(ctx)
+
+	if err := validateSecurityConfig(cfg); err != nil {
+		return err
+	}
 
 	pool := postgres.InitWithURL(cfg.DBURI, postgres.WithTracer(postgres.NewOtlpTracer()))
 	defer pool.Close()
@@ -59,11 +68,11 @@ func getLogger(ctx context.Context) *log.Logger {
 //nolint:whitespace //editor/linter issue
 func newHTTPServer(
 	ctx context.Context,
-	cfg Config,
+	cfg *Config,
 	pool *pgxpool.Pool,
 	logger *log.Logger,
 ) (*http.Server, error) {
-	handlerOptions, err := newConnectHandlerOptions(logger)
+	handlerOptions, err := newConnectHandlerOptions(ctx, cfg, pool, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +91,31 @@ func newHTTPServer(
 			return ctx
 		},
 	}, nil
+}
+
+func validateSecurityConfig(cfg *Config) error {
+	if !cfg.Authn.Enabled {
+		return nil
+	}
+
+	jwtEnabled := cfg.Authn.JWT.Enabled
+	apiTokenEnabled := strings.TrimSpace(cfg.Authn.APIToken.FilePath) != ""
+	if !jwtEnabled && !apiTokenEnabled {
+		return fmt.Errorf(
+			"authentication is enabled but both JWT and api-token validators are disabled",
+		)
+	}
+
+	if jwtEnabled {
+		if strings.TrimSpace(cfg.Authn.JWT.Issuer) == "" ||
+			strings.TrimSpace(cfg.Authn.JWT.Audience) == "" ||
+			strings.TrimSpace(cfg.Authn.JWT.JWKSURL) == "" {
+
+			return fmt.Errorf("jwt authn requires issuer, audience and jwks-url")
+		}
+	}
+
+	return nil
 }
 
 //nolint:whitespace //editor/linter issue

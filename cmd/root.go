@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -114,6 +115,7 @@ func init() {
 		"log-config",
 		"",
 		"configures the logger")
+	registerSecurityFlags(rootCmd)
 	rootCmd.PersistentFlags().BoolVar(&useZap, "use-zap",
 		true,
 		"if true, use output from configured zap logger")
@@ -124,6 +126,65 @@ func init() {
 	// add commands here
 	rootCmd.AddCommand(migratecmd.NewMigrateCmd())
 	rootCmd.AddCommand(servercmd.NewServerCmd())
+}
+
+func registerSecurityFlags(cmd *cobra.Command) {
+	registerAuthnFlags(cmd)
+	registerAuthzFlags(cmd)
+}
+
+func registerAuthnFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVar(&config.AuthnEnabled,
+		"authn-enabled",
+		true,
+		"enable request authentication")
+	cmd.PersistentFlags().BoolVar(&config.AuthnJWTEnabled,
+		"authn-jwt-enabled",
+		true,
+		"enable JWT authentication")
+	cmd.PersistentFlags().StringVar(&config.AuthnJWTIssuer,
+		"authn-jwt-issuer",
+		"",
+		"expected JWT issuer")
+	cmd.PersistentFlags().StringVar(&config.AuthnJWTAudience,
+		"authn-jwt-audience",
+		"",
+		"expected JWT audience")
+	cmd.PersistentFlags().StringVar(&config.AuthnJWTJWKSURL,
+		"authn-jwt-jwks-url",
+		"",
+		"remote JWKS URL used to validate JWT signatures")
+	cmd.PersistentFlags().DurationVar(&config.AuthnJWTClockSkew,
+		"authn-jwt-clock-skew",
+		30*time.Second,
+		"accepted clock skew for JWT time claims")
+	cmd.PersistentFlags().DurationVar(&config.AuthnJWTRefreshInterval,
+		"authn-jwt-refresh-interval",
+		5*time.Minute,
+		"JWKS refresh interval")
+	cmd.PersistentFlags().StringVar(&config.AuthnAPITokenFilePath,
+		"authn-api-token-file",
+		"",
+		"filesystem path to the api-token trust file")
+	cmd.PersistentFlags().DurationVar(&config.AuthnAPITokenRefreshWindow,
+		"authn-api-token-refresh-interval",
+		30*time.Second,
+		"reload interval for filesystem api-token trust file")
+}
+
+func registerAuthzFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVar(&config.AuthzEnabled,
+		"authz-enabled",
+		true,
+		"enable authorization checks")
+	cmd.PersistentFlags().StringVar(&config.AuthzPolicyPath,
+		"authz-policy-path",
+		"",
+		"path to a Rego policy file; when empty, bundled default policy is used")
+	cmd.PersistentFlags().DurationVar(&config.AuthzDecisionCacheTTL,
+		"authz-decision-cache-ttl",
+		30*time.Second,
+		"TTL for in-memory authorization decision cache")
 }
 
 // initConfig reads in config file and ENV variables if set.
