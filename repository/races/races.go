@@ -20,30 +20,20 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// RacesRepository defines persistence operations for Race entities.
-type RacesRepository interface {
+// Repository defines persistence operations for Race entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.Race, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.RaceSetter) (*models.Race, error)
 	Update(ctx context.Context, id int32, input *models.RaceSetter) (*models.Race, error)
 }
 
-// Repository exposes repositories for the races migration group.
-type Repository interface {
-	Races() RacesRepository
-}
-
-type (
-	repository      struct{ races RacesRepository }
-	racesRepository struct{ exec *pgbob.Executor }
-)
+type racesRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{races: &racesRepository{exec: pgbob.New(pool)}}
+	return &racesRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) Races() RacesRepository { return r.races }
 
 func (r *racesRepository) LoadByID(ctx context.Context, id int32) (*models.Race, error) {
 	entity, err := models.Races.Query(sm.Where(models.Races.Columns.ID.EQ(psql.Arg(id)))).

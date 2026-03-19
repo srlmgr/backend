@@ -6,6 +6,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -83,6 +84,24 @@ func (r *mapEntityRepo[M, S]) LoadByID(_ context.Context, id int32) (*M, error) 
 	}
 
 	return cloneModel(entity), nil
+}
+
+func (r *mapEntityRepo[M, S]) LoadAll(_ context.Context) ([]*M, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	ids := make([]int32, 0, len(r.data))
+	for id := range r.data {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+
+	items := make([]*M, 0, len(ids))
+	for _, id := range ids {
+		items = append(items, cloneModel(r.data[id]))
+	}
+
+	return items, nil
 }
 
 func (r *mapEntityRepo[M, S]) DeleteByID(_ context.Context, id int32) error {
@@ -226,12 +245,6 @@ type eventTeamStandingsEntityRepo struct {
 	*mapEntityRepo[models.EventTeamStanding, models.EventTeamStandingSetter]
 }
 
-type racingSimsGroup struct {
-	repo racingsims.RacingSimsRepository
-}
-
-func (g *racingSimsGroup) RacingSims() racingsims.RacingSimsRepository { return g.repo }
-
 type pointSystemsGroup struct {
 	pointSystems pointsystems.PointSystemsRepository
 	pointRules   pointsystems.PointRulesRepository
@@ -277,22 +290,6 @@ func (g *carsGroup) SimulationCarAliases() cars.SimulationCarAliasesRepository {
 	return g.simulationCarAliases
 }
 
-type seriesGroup struct{ repo series.SeriesRepository }
-
-func (g *seriesGroup) Series() series.SeriesRepository { return g.repo }
-
-type seasonsGroup struct{ repo seasons.SeasonsRepository }
-
-func (g *seasonsGroup) Seasons() seasons.SeasonsRepository { return g.repo }
-
-type eventsGroup struct{ repo events.EventsRepository }
-
-func (g *eventsGroup) Events() events.EventsRepository { return g.repo }
-
-type racesGroup struct{ repo races.RacesRepository }
-
-func (g *racesGroup) Races() races.RacesRepository { return g.repo }
-
 type teamsGroup struct {
 	teams       teams.TeamsRepository
 	teamDrivers teams.TeamDriversRepository
@@ -300,32 +297,6 @@ type teamsGroup struct {
 
 func (g *teamsGroup) Teams() teams.TeamsRepository             { return g.teams }
 func (g *teamsGroup) TeamDrivers() teams.TeamDriversRepository { return g.teamDrivers }
-
-type importBatchesGroup struct {
-	repo importbatches.ImportBatchesRepository
-}
-
-func (g *importBatchesGroup) ImportBatches() importbatches.ImportBatchesRepository { return g.repo }
-
-type resultEntriesGroup struct {
-	repo resultentries.ResultEntriesRepository
-}
-
-func (g *resultEntriesGroup) ResultEntries() resultentries.ResultEntriesRepository { return g.repo }
-
-type bookingEntriesGroup struct {
-	repo bookingentries.BookingEntriesRepository
-}
-
-func (g *bookingEntriesGroup) BookingEntries() bookingentries.BookingEntriesRepository { return g.repo }
-
-type eventProcessingAuditGroup struct {
-	repo eventprocessingaudit.EventProcessingAuditRepository
-}
-
-func (g *eventProcessingAuditGroup) EventProcessingAudit() eventprocessingaudit.EventProcessingAuditRepository {
-	return g.repo
-}
 
 type standingsGroup struct {
 	seasonDriver standings.SeasonDriverStandingsRepository
@@ -855,7 +826,7 @@ func New() rootrepo.Repository {
 	}
 
 	return &repository{
-		racingSims: &racingSimsGroup{repo: racingSimRepo},
+		racingSims: racingSimRepo,
 		pointSystems: &pointSystemsGroup{
 			pointSystems: pointSystemRepo,
 			pointRules:   pointRuleRepo,
@@ -875,15 +846,15 @@ func New() rootrepo.Repository {
 			carModels:            carModelRepo,
 			simulationCarAliases: simulationCarAliasRepo,
 		},
-		series:               &seriesGroup{repo: seriesRepo},
-		seasons:              &seasonsGroup{repo: seasonsRepo},
-		events:               &eventsGroup{repo: eventsRepo},
-		races:                &racesGroup{repo: racesRepo},
+		series:               seriesRepo,
+		seasons:              seasonsRepo,
+		events:               eventsRepo,
+		races:                racesRepo,
 		teams:                &teamsGroup{teams: teamsRepo, teamDrivers: teamDriversRepo},
-		importBatches:        &importBatchesGroup{repo: importBatchesRepo},
-		resultEntries:        &resultEntriesGroup{repo: resultEntriesRepo},
-		bookingEntries:       &bookingEntriesGroup{repo: bookingEntriesRepo},
-		eventProcessingAudit: &eventProcessingAuditGroup{repo: auditRepo},
+		importBatches:        importBatchesRepo,
+		resultEntries:        resultEntriesRepo,
+		bookingEntries:       bookingEntriesRepo,
+		eventProcessingAudit: auditRepo,
 		standings: &standingsGroup{
 			seasonDriver: seasonDriverStandingsRepo,
 			seasonTeam:   seasonTeamStandingsRepo,

@@ -16,14 +16,20 @@ import (
 )
 
 type (
-	Level  = zapcore.Level
-	Field  = zap.Field
+	Level = zapcore.Level
+	Field = zap.Field
+	// note: if ctx is set it will be added as a log.Field for all log calls
+	// the use case is to add the span context to the log,
+	//  so that the traceID is included in the log output
+	// for example:
+	// log.Ctx(spanCtx).Debug("message") will add the span context to the log entry
 	Logger struct {
 		l             *zap.Logger // zap ensure that zap.Logger is safe for concurrent use
 		level         Level
 		zapConfig     *zap.Config
 		loggerConfigs map[string]string
 		myCfg         *loggerConfig
+		ctx           context.Context
 	}
 	LevelEnablerFunc func(lvl Level) bool
 
@@ -182,36 +188,55 @@ func (l *Logger) Level() Level {
 	return l.level
 }
 
+func (l *Logger) WithCtx(ctx context.Context) *Logger {
+	ret := &Logger{
+		l:             l.l,
+		level:         l.level,
+		zapConfig:     l.zapConfig,
+		loggerConfigs: l.loggerConfigs,
+		myCfg:         l.myCfg,
+		ctx:           ctx,
+	}
+	return ret
+}
+
 func (l *Logger) Debug(msg string, fields ...Field) {
-	l.l.Debug(msg, fields...)
+	l.l.Debug(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Info(msg string, fields ...Field) {
-	l.l.Info(msg, fields...)
+	l.l.Info(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Warn(msg string, fields ...Field) {
-	l.l.Warn(msg, fields...)
+	l.l.Warn(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Error(msg string, fields ...Field) {
-	l.l.Error(msg, fields...)
+	l.l.Error(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) DPanic(msg string, fields ...Field) {
-	l.l.DPanic(msg, fields...)
+	l.l.DPanic(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Panic(msg string, fields ...Field) {
-	l.l.Panic(msg, fields...)
+	l.l.Panic(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Fatal(msg string, fields ...Field) {
-	l.l.Fatal(msg, fields...)
+	l.l.Fatal(msg, l.addContext(fields)...)
 }
 
 func (l *Logger) Log(lvl Level, msg string, fields ...Field) {
-	l.l.Log(lvl, msg, fields...)
+	l.l.Log(lvl, msg, l.addContext(fields)...)
+}
+
+func (l *Logger) addContext(fields []Field) []Field {
+	if l.ctx == nil {
+		return fields
+	}
+	return append(fields, zap.Any("context", l.ctx))
 }
 
 func (l *Logger) Named(name string) *Logger {
@@ -257,7 +282,7 @@ func (c *contextIgnoringCore) With(fields []zapcore.Field) zapcore.Core {
 	return &contextIgnoringCore{Core: c.Core.With(fields)}
 }
 
-//nolint:gocritic // interface implementation
+//nolint:gocritic // external interface
 func (c *contextIgnoringCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 	cleanedFields := make([]zapcore.Field, 0, len(fields))
 	for i := range fields {
@@ -270,7 +295,7 @@ func (c *contextIgnoringCore) Write(ent zapcore.Entry, fields []zapcore.Field) e
 	return c.Core.Write(ent, cleanedFields)
 }
 
-//nolint:gocritic // interface implementation
+//nolint:gocritic // editor/linter issue
 func (c *contextIgnoringCore) Check(
 	ent zapcore.Entry,
 	ce *zapcore.CheckedEntry,

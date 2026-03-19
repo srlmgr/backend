@@ -125,6 +125,7 @@ func newConnectLoggingInterceptor(logger *log.Logger) connect.Interceptor {
 		) {
 			start := time.Now()
 			resp, err := next(ctx, req)
+			l := logger.WithCtx(ctx)
 
 			fields := []log.Field{
 				log.String("procedure", req.Spec().Procedure),
@@ -136,11 +137,11 @@ func newConnectLoggingInterceptor(logger *log.Logger) connect.Interceptor {
 			}
 
 			if err != nil {
-				logger.Error("rpc failed", append(fields, log.ErrorField(err))...)
+				l.Error("rpc failed", append(fields, log.ErrorField(err))...)
 				return resp, err
 			}
 
-			logger.Info("rpc completed", fields...)
+			l.Info("rpc completed", fields...)
 			return resp, nil
 		}
 	})

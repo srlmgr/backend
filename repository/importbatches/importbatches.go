@@ -20,8 +20,8 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// ImportBatchesRepository defines persistence operations for ImportBatch entities.
-type ImportBatchesRepository interface {
+// Repository defines persistence operations for ImportBatch entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.ImportBatch, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.ImportBatchSetter) (*models.ImportBatch, error)
@@ -32,22 +32,12 @@ type ImportBatchesRepository interface {
 	) (*models.ImportBatch, error)
 }
 
-// Repository exposes repositories for the import_batches migration group.
-type Repository interface {
-	ImportBatches() ImportBatchesRepository
-}
-
-type (
-	repository              struct{ importBatches ImportBatchesRepository }
-	importBatchesRepository struct{ exec *pgbob.Executor }
-)
+type importBatchesRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{importBatches: &importBatchesRepository{exec: pgbob.New(pool)}}
+	return &importBatchesRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) ImportBatches() ImportBatchesRepository { return r.importBatches }
 
 func (r *importBatchesRepository) LoadByID(
 	ctx context.Context,

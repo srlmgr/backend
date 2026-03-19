@@ -21,37 +21,28 @@ import (
 )
 
 // RacingSimsRepository defines persistence operations for RacingSim entities.
-type RacingSimsRepository interface {
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.RacingSim, error)
+	LoadAll(ctx context.Context) ([]*models.RacingSim, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.RacingSimSetter) (*models.RacingSim, error)
 	Update(ctx context.Context, id int32, input *models.RacingSimSetter) (*models.RacingSim, error)
-}
-
-// Repository exposes repositories for the racing_sims migration group.
-type Repository interface {
-	RacingSims() RacingSimsRepository
-}
-
-type repository struct {
-	racingSims RacingSimsRepository
 }
 
 type racingSimsRepository struct {
 	exec *pgbob.Executor
 }
 
+var _ Repository = (*racingSimsRepository)(nil)
+
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{racingSims: &racingSimsRepository{exec: pgbob.New(pool)}}
-}
-
-func (r *repository) RacingSims() RacingSimsRepository {
-	return r.racingSims
+	return &racingSimsRepository{exec: pgbob.New(pool)}
 }
 
 func (r *racingSimsRepository) LoadByID(ctx context.Context, id int32) (*models.RacingSim, error) {
-	entity, err := models.RacingSims.Query(sm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+	entity, err := models.RacingSims.Query(
+		sm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("racing sim %d: %w", id, repoerrors.ErrNotFound)
@@ -59,8 +50,13 @@ func (r *racingSimsRepository) LoadByID(ctx context.Context, id int32) (*models.
 	return entity, err
 }
 
+func (r *racingSimsRepository) LoadAll(ctx context.Context) ([]*models.RacingSim, error) {
+	return models.RacingSims.Query().All(ctx, r.getExecutor(ctx))
+}
+
 func (r *racingSimsRepository) DeleteByID(ctx context.Context, id int32) error {
-	_, err := models.RacingSims.Delete(dm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+	_, err := models.RacingSims.Delete(
+		dm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

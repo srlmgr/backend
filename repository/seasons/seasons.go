@@ -20,30 +20,20 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// SeasonsRepository defines persistence operations for Season entities.
-type SeasonsRepository interface {
+// Repository defines persistence operations for Season entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.Season, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeasonSetter) (*models.Season, error)
 	Update(ctx context.Context, id int32, input *models.SeasonSetter) (*models.Season, error)
 }
 
-// Repository exposes repositories for the seasons migration group.
-type Repository interface {
-	Seasons() SeasonsRepository
-}
-
-type (
-	repository        struct{ seasons SeasonsRepository }
-	seasonsRepository struct{ exec *pgbob.Executor }
-)
+type seasonsRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{seasons: &seasonsRepository{exec: pgbob.New(pool)}}
+	return &seasonsRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) Seasons() SeasonsRepository { return r.seasons }
 
 func (r *seasonsRepository) LoadByID(ctx context.Context, id int32) (*models.Season, error) {
 	entity, err := models.Seasons.Query(sm.Where(models.Seasons.Columns.ID.EQ(psql.Arg(id)))).

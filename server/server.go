@@ -14,6 +14,8 @@ import (
 	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/import/v1/importv1connect"
 	queryv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/query/v1/queryv1connect"
 	connect "connectrpc.com/connect"
+	"connectrpc.com/grpchealth"
+	"connectrpc.com/grpcreflect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -21,6 +23,8 @@ import (
 	"github.com/srlmgr/backend/authz"
 	"github.com/srlmgr/backend/db/postgres"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/repository"
+	pgRepos "github.com/srlmgr/backend/repository/postgres"
 	adminservice "github.com/srlmgr/backend/services/admin"
 	commandservice "github.com/srlmgr/backend/services/command"
 	importservice "github.com/srlmgr/backend/services/importsvc"
@@ -79,6 +83,8 @@ func newHTTPServer(
 
 	mux := http.NewServeMux()
 	registerConnectHandlers(mux, pool, logger, handlerOptions...)
+	registerHealthServer(mux)
+	registerReflectionServer(mux)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -173,20 +179,22 @@ func registerConnectHandlers(
 	logger *log.Logger,
 	opts ...connect.HandlerOption,
 ) {
+	txManager := repository.NewBobTransactionFromPool(pool)
+	repo := pgRepos.New(pool)
 	adminPath, adminHandler := adminv1connect.NewAdminServiceHandler(
-		adminservice.New(pool, logger.Named("services.admin")),
+		adminservice.New(repo, txManager, logger.Named("services.admin")),
 		opts...,
 	)
 	commandPath, commandHandler := commandv1connect.NewCommandServiceHandler(
-		commandservice.New(pool, logger.Named("services.command")),
+		commandservice.New(repo, txManager, logger.Named("services.command")),
 		opts...,
 	)
 	importPath, importHandler := importv1connect.NewImportServiceHandler(
-		importservice.New(pool, logger.Named("services.import")),
+		importservice.New(repo, txManager, logger.Named("services.import")),
 		opts...,
 	)
 	queryPath, queryHandler := queryv1connect.NewQueryServiceHandler(
-		queryservice.New(pool, logger.Named("services.query")),
+		queryservice.New(repo, txManager, logger.Named("services.query")),
 		opts...,
 	)
 
@@ -194,4 +202,15 @@ func registerConnectHandlers(
 	mux.Handle(commandPath, commandHandler)
 	mux.Handle(importPath, importHandler)
 	mux.Handle(queryPath, queryHandler)
+}
+
+func registerHealthServer(mux *http.ServeMux) {
+	checker := grpchealth.NewStaticChecker()
+	mux.Handle(grpchealth.NewHandler(checker))
+}
+
+func registerReflectionServer(mux *http.ServeMux) {
+	checker := grpcreflect.NewStaticReflector()
+	mux.Handle(grpcreflect.NewHandlerV1(checker))
+	mux.Handle(grpcreflect.NewHandlerV1Alpha(checker))
 }
