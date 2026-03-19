@@ -16,6 +16,7 @@ import (
 
 	"github.com/srlmgr/backend/cmd/config"
 	migratecmd "github.com/srlmgr/backend/cmd/migrate"
+	servercmd "github.com/srlmgr/backend/cmd/server"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/otel"
 	"github.com/srlmgr/backend/version"
@@ -122,6 +123,7 @@ func init() {
 
 	// add commands here
 	rootCmd.AddCommand(migratecmd.NewMigrateCmd())
+	rootCmd.AddCommand(servercmd.NewServerCmd())
 }
 
 // initConfig reads in config file and ENV variables if set.
