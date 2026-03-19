@@ -1,0 +1,95 @@
+// Package racingsims provides repositories for the racing_sims migration group.
+//
+//nolint:lll,whitespace // repository implementations can be verbose
+package racingsims
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/dm"
+	"github.com/stephenafamo/bob/dialect/psql/sm"
+
+	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/repository/pgbob"
+	"github.com/srlmgr/backend/repository/repoerrors"
+)
+
+// RacingSimsRepository defines persistence operations for RacingSim entities.
+type RacingSimsRepository interface {
+	LoadByID(ctx context.Context, id int32) (*models.RacingSim, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(ctx context.Context, input *models.RacingSimSetter) (*models.RacingSim, error)
+	Update(ctx context.Context, id int32, input *models.RacingSimSetter) (*models.RacingSim, error)
+}
+
+// Repository exposes repositories for the racing_sims migration group.
+type Repository interface {
+	RacingSims() RacingSimsRepository
+}
+
+type repository struct {
+	racingSims RacingSimsRepository
+}
+
+type racingSimsRepository struct {
+	exec *pgbob.Executor
+}
+
+// New returns a postgres-backed Repository.
+func New(pool *pgxpool.Pool) Repository {
+	return &repository{racingSims: &racingSimsRepository{exec: pgbob.New(pool)}}
+}
+
+func (r *repository) RacingSims() RacingSimsRepository {
+	return r.racingSims
+}
+
+func (r *racingSimsRepository) LoadByID(ctx context.Context, id int32) (*models.RacingSim, error) {
+	entity, err := models.RacingSims.Query(sm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("racing sim %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *racingSimsRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.RacingSims.Delete(dm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *racingSimsRepository) Create(
+	ctx context.Context,
+	input *models.RacingSimSetter,
+) (*models.RacingSim, error) {
+	return models.RacingSims.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *racingSimsRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.RacingSimSetter,
+) (*models.RacingSim, error) {
+	entity, err := r.LoadByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
+func (r *racingSimsRepository) getExecutor(ctx context.Context) bob.Executor {
+	if executor := pgbob.FromContext(ctx); executor != nil {
+		return executor
+	}
+	return r.exec
+}

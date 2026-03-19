@@ -1,0 +1,90 @@
+// Package series provides repositories for the series migration group.
+//
+//nolint:lll,whitespace // repository implementations can be verbose
+package series
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/dm"
+	"github.com/stephenafamo/bob/dialect/psql/sm"
+
+	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/repository/pgbob"
+	"github.com/srlmgr/backend/repository/repoerrors"
+)
+
+// SeriesRepository defines persistence operations for Series entities.
+type SeriesRepository interface {
+	LoadByID(ctx context.Context, id int32) (*models.Series, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(ctx context.Context, input *models.SeriesSetter) (*models.Series, error)
+	Update(ctx context.Context, id int32, input *models.SeriesSetter) (*models.Series, error)
+}
+
+// Repository exposes repositories for the series migration group.
+type Repository interface {
+	Series() SeriesRepository
+}
+
+type (
+	repository       struct{ series SeriesRepository }
+	seriesRepository struct{ exec *pgbob.Executor }
+)
+
+// New returns a postgres-backed Repository.
+func New(pool *pgxpool.Pool) Repository {
+	return &repository{series: &seriesRepository{exec: pgbob.New(pool)}}
+}
+
+func (r *repository) Series() SeriesRepository { return r.series }
+
+func (r *seriesRepository) LoadByID(ctx context.Context, id int32) (*models.Series, error) {
+	entity, err := models.Serieses.Query(sm.Where(models.Serieses.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("series %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *seriesRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.Serieses.Delete(dm.Where(models.Serieses.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *seriesRepository) Create(
+	ctx context.Context,
+	input *models.SeriesSetter,
+) (*models.Series, error) {
+	return models.Serieses.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *seriesRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.SeriesSetter,
+) (*models.Series, error) {
+	entity, err := r.LoadByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
+func (r *seriesRepository) getExecutor(ctx context.Context) bob.Executor {
+	if executor := pgbob.FromContext(ctx); executor != nil {
+		return executor
+	}
+	return r.exec
+}

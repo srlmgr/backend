@@ -5,15 +5,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/srlmgr/backend/log"
+	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/repository/postgres"
 )
 
 type service struct {
 	importv1connect.UnimplementedImportServiceHandler
-	pool   *pgxpool.Pool
+
 	logger *log.Logger
+	repo   rootrepo.Repository
 }
 
 // New creates the import service handler.
 func New(pool *pgxpool.Pool, logger *log.Logger) importv1connect.ImportServiceHandler {
-	return &service{pool: pool, logger: logger}
+	return NewWithRepository(postgres.New(pool), logger)
+}
+
+// NewWithRepository creates the import service handler with an
+// injected repository aggregate.
+//
+//nolint:whitespace // editor/linter issue
+func NewWithRepository(
+	repo rootrepo.Repository,
+	logger *log.Logger,
+) importv1connect.ImportServiceHandler {
+	return &service{logger: logger, repo: repo}
 }
