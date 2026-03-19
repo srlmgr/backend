@@ -20,30 +20,20 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// SeriesRepository defines persistence operations for Series entities.
-type SeriesRepository interface {
+// Repository defines persistence operations for Series entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.Series, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeriesSetter) (*models.Series, error)
 	Update(ctx context.Context, id int32, input *models.SeriesSetter) (*models.Series, error)
 }
 
-// Repository exposes repositories for the series migration group.
-type Repository interface {
-	Series() SeriesRepository
-}
-
-type (
-	repository       struct{ series SeriesRepository }
-	seriesRepository struct{ exec *pgbob.Executor }
-)
+type seriesRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{series: &seriesRepository{exec: pgbob.New(pool)}}
+	return &seriesRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) Series() SeriesRepository { return r.series }
 
 func (r *seriesRepository) LoadByID(ctx context.Context, id int32) (*models.Series, error) {
 	entity, err := models.Serieses.Query(sm.Where(models.Serieses.Columns.ID.EQ(psql.Arg(id)))).

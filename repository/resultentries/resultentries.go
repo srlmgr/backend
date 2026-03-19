@@ -20,8 +20,8 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// ResultEntriesRepository defines persistence operations for ResultEntry entities.
-type ResultEntriesRepository interface {
+// Repository defines persistence operations for ResultEntry entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
@@ -32,22 +32,12 @@ type ResultEntriesRepository interface {
 	) (*models.ResultEntry, error)
 }
 
-// Repository exposes repositories for the result_entries migration group.
-type Repository interface {
-	ResultEntries() ResultEntriesRepository
-}
-
-type (
-	repository              struct{ resultEntries ResultEntriesRepository }
-	resultEntriesRepository struct{ exec *pgbob.Executor }
-)
+type resultEntriesRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{resultEntries: &resultEntriesRepository{exec: pgbob.New(pool)}}
+	return &resultEntriesRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) ResultEntries() ResultEntriesRepository { return r.resultEntries }
 
 func (r *resultEntriesRepository) LoadByID(
 	ctx context.Context,

@@ -27,6 +27,7 @@ type apiTokenRecord struct {
 	Token  string         `json:"token"`
 	Active bool           `json:"active"`
 	ID     string         `json:"id"`
+	Name   string         `json:"name"`
 	Tenant string         `json:"tenant"`
 	Roles  []string       `json:"roles"`
 	Scope  apiTokenScopes `json:"scope"`
@@ -126,6 +127,7 @@ func (s *apiTokenStore) reload() error {
 
 		next[record.Token] = Principal{
 			ID:            record.ID,
+			Name:          record.Name,
 			Tenant:        record.Tenant,
 			Roles:         append([]string(nil), record.Roles...),
 			SimulationIDs: append([]string(nil), record.Scope.SimulationIDs...),

@@ -69,14 +69,25 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 	commandService := commandServiceName
 	for _, method := range []string{
 		"CreateSeason",
+		"UpdateSeason",
+		"DeleteSeason",
 		"CreateEvent",
+		"UpdateEvent",
+		"DeleteEvent",
 		"CreateRace",
+		"UpdateRace",
+		"DeleteRace",
 		"CreateDriver",
+		"UpdateDriver",
+		"DeleteDriver",
 		"UpsertDriverSimulationIdentity",
 		"CreateTeam",
+		"UpdateTeam",
+		"DeleteTeam",
 		"AddDriverToTeam",
 		"CreatePointSystem",
 		"UpdatePointSystem",
+		"DeletePointSystem",
 	} {
 		policies[procedure(commandService, method)] = ProcedurePolicy{
 			Capability: "season.write",
@@ -89,6 +100,8 @@ func addSimulationScopedCommandPolicies(policies map[string]ProcedurePolicy) {
 	commandService := commandServiceName
 	for _, method := range []string{
 		"CreateSimulation",
+		"UpdateSimulation",
+		"DeleteSimulation",
 		"UpsertSimulationTrackLayoutAlias",
 		"UpsertSimulationCarAlias",
 	} {
@@ -100,6 +113,8 @@ func addSimulationScopedCommandPolicies(policies map[string]ProcedurePolicy) {
 
 	for _, method := range []string{
 		"CreateSeries",
+		"UpdateSeries",
+		"DeleteSeries",
 	} {
 		policies[procedure(commandService, method)] = ProcedurePolicy{
 			Capability: "series.write",
@@ -112,9 +127,20 @@ func addMasterDataCommandPolicies(policies map[string]ProcedurePolicy) {
 	commandService := commandServiceName
 	for _, method := range []string{
 		"CreateTrack",
+		"UpdateTrack",
+		"DeleteTrack",
 		"CreateTrackLayout",
+		"UpdateTrackLayout",
+		"DeleteTrackLayout",
 		"CreateCarManufacturer",
+		"UpdateCarManufacturer",
+		"DeleteCarManufacturer",
+		"CreateCarBrand",
+		"UpdateCarBrand",
+		"DeleteCarBrand",
 		"CreateCarModel",
+		"UpdateCarModel",
+		"DeleteCarModel",
 	} {
 		policies[procedure(commandService, method)] = ProcedurePolicy{
 			Capability: "master_data.write",

@@ -20,30 +20,20 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// EventsRepository defines persistence operations for Event entities.
-type EventsRepository interface {
+// Repository defines persistence operations for Event entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.Event, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.EventSetter) (*models.Event, error)
 	Update(ctx context.Context, id int32, input *models.EventSetter) (*models.Event, error)
 }
 
-// Repository exposes repositories for the events migration group.
-type Repository interface {
-	Events() EventsRepository
-}
-
-type (
-	repository       struct{ events EventsRepository }
-	eventsRepository struct{ exec *pgbob.Executor }
-)
+type eventsRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{events: &eventsRepository{exec: pgbob.New(pool)}}
+	return &eventsRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) Events() EventsRepository { return r.events }
 
 func (r *eventsRepository) LoadByID(ctx context.Context, id int32) (*models.Event, error) {
 	entity, err := models.Events.Query(sm.Where(models.Events.Columns.ID.EQ(psql.Arg(id)))).

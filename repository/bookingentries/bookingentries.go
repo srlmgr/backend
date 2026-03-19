@@ -20,8 +20,8 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// BookingEntriesRepository defines persistence operations for BookingEntry entities.
-type BookingEntriesRepository interface {
+// Repository defines persistence operations for BookingEntry entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
@@ -32,22 +32,12 @@ type BookingEntriesRepository interface {
 	) (*models.BookingEntry, error)
 }
 
-// Repository exposes repositories for the booking_entries migration group.
-type Repository interface {
-	BookingEntries() BookingEntriesRepository
-}
-
-type (
-	repository               struct{ bookingEntries BookingEntriesRepository }
-	bookingEntriesRepository struct{ exec *pgbob.Executor }
-)
+type bookingEntriesRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{bookingEntries: &bookingEntriesRepository{exec: pgbob.New(pool)}}
+	return &bookingEntriesRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) BookingEntries() BookingEntriesRepository { return r.bookingEntries }
 
 func (r *bookingEntriesRepository) LoadByID(
 	ctx context.Context,

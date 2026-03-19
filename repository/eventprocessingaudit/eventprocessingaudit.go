@@ -20,8 +20,8 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// EventProcessingAuditRepository defines persistence operations for EventProcessingAudit entities.
-type EventProcessingAuditRepository interface {
+// Repository defines persistence operations for EventProcessingAudit entities.
+type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.EventProcessingAudit, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
@@ -35,22 +35,12 @@ type EventProcessingAuditRepository interface {
 	) (*models.EventProcessingAudit, error)
 }
 
-// Repository exposes repositories for the event_processing_audit migration group.
-type Repository interface {
-	EventProcessingAudit() EventProcessingAuditRepository
-}
-
-type repository struct {
-	audit EventProcessingAuditRepository
-}
 type auditRepository struct{ exec *pgbob.Executor }
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &repository{audit: &auditRepository{exec: pgbob.New(pool)}}
+	return &auditRepository{exec: pgbob.New(pool)}
 }
-
-func (r *repository) EventProcessingAudit() EventProcessingAuditRepository { return r.audit }
 
 func (r *auditRepository) LoadByID(
 	ctx context.Context,
