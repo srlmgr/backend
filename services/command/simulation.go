@@ -1,3 +1,4 @@
+//nolint:dupl // crud operations are very similar across entities
 package command
 
 import (
