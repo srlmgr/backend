@@ -23,6 +23,7 @@ import (
 // PointSystemsRepository defines persistence operations for PointSystem entities.
 type PointSystemsRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.PointSystem, error)
+	LoadAll(ctx context.Context) ([]*models.PointSystem, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.PointSystemSetter) (*models.PointSystem, error)
 	Update(
@@ -90,6 +91,10 @@ func (r *pointSystemsRepository) Create(
 	input *models.PointSystemSetter,
 ) (*models.PointSystem, error) {
 	return models.PointSystems.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *pointSystemsRepository) LoadAll(ctx context.Context) ([]*models.PointSystem, error) {
+	return models.PointSystems.Query().All(ctx, r.getExecutor(ctx))
 }
 
 func (r *pointSystemsRepository) Update(
