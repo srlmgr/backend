@@ -22,6 +22,7 @@ import (
 
 // CarManufacturersRepository defines persistence operations for CarManufacturer entities.
 type CarManufacturersRepository interface {
+	LoadAll(ctx context.Context) ([]*models.CarManufacturer, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarManufacturer, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
@@ -37,6 +38,8 @@ type CarManufacturersRepository interface {
 
 // CarBrandsRepository defines persistence operations for CarBrand entities.
 type CarBrandsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.CarBrand, error)
+	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarBrand, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarBrand, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarBrandSetter) (*models.CarBrand, error)
@@ -45,6 +48,8 @@ type CarBrandsRepository interface {
 
 // CarModelsRepository defines persistence operations for CarModel entities.
 type CarModelsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.CarModel, error)
+	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarModel, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarModel, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarModelSetter) (*models.CarModel, error)
@@ -105,6 +110,10 @@ func (r *repository) SimulationCarAliases() SimulationCarAliasesRepository {
 	return r.simulationCarAliases
 }
 
+func (r *carManufacturersRepository) LoadAll(ctx context.Context) ([]*models.CarManufacturer, error) {
+	return models.CarManufacturers.Query().All(ctx, r.getExecutor(ctx))
+}
+
 func (r *carManufacturersRepository) LoadByID(
 	ctx context.Context,
 	id int32,
@@ -145,6 +154,19 @@ func (r *carManufacturersRepository) Update(
 	return entity, nil
 }
 
+func (r *carBrandsRepository) LoadAll(ctx context.Context) ([]*models.CarBrand, error) {
+	return models.CarBrands.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carBrandsRepository) LoadByManufacturerID(
+	ctx context.Context,
+	manufacturerID int32,
+) ([]*models.CarBrand, error) {
+	return models.CarBrands.Query(
+		sm.Where(models.CarBrands.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
 func (r *carBrandsRepository) LoadByID(ctx context.Context, id int32) (*models.CarBrand, error) {
 	entity, err := models.CarBrands.Query(sm.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
@@ -180,6 +202,27 @@ func (r *carBrandsRepository) Update(
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (r *carModelsRepository) LoadAll(ctx context.Context) ([]*models.CarModel, error) {
+	return models.CarModels.Query().All(ctx, r.getExecutor(ctx))
+}
+
+// LoadByManufacturerID returns all car models belonging to brands of the given manufacturer.
+// It uses a subquery to filter by brand_id IN (SELECT id FROM car_brands WHERE manufacturer_id = ?).
+func (r *carModelsRepository) LoadByManufacturerID(
+	ctx context.Context,
+	manufacturerID int32,
+) ([]*models.CarModel, error) {
+	return models.CarModels.Query(
+		sm.Where(models.CarModels.Columns.BrandID.In(
+			psql.Select(
+				sm.Columns(models.CarBrands.Columns.ID),
+				sm.From(models.CarBrands.Name()),
+				sm.Where(models.CarBrands.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
+			),
+		)),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *carModelsRepository) LoadByID(ctx context.Context, id int32) (*models.CarModel, error) {
