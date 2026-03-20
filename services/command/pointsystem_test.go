@@ -25,7 +25,9 @@ func TestPointSystemSetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.Name.IsValue() || setter.Name.MustGet() != "Formula Points" {
 		t.Fatalf("unexpected name setter value: %+v", setter.Name)
 	}
-	if !setter.Description.IsValue() || setter.Description.MustGet() != "Standard formula points system" {
+	if !setter.Description.IsValue() ||
+		setter.Description.MustGet() != "Standard formula points system" {
+
 		t.Fatalf("unexpected description setter value: %+v", setter.Description)
 	}
 }
@@ -58,7 +60,10 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 		t.Fatalf("unexpected point system name: %q", resp.Msg.GetPointSystem().GetName())
 	}
 	if resp.Msg.GetPointSystem().GetDescription() != "Points for sprint races" {
-		t.Fatalf("unexpected point system description: %q", resp.Msg.GetPointSystem().GetDescription())
+		t.Fatalf(
+			"unexpected point system description: %q",
+			resp.Msg.GetPointSystem().GetDescription(),
+		)
 	}
 
 	id := int32(resp.Msg.GetPointSystem().GetId())

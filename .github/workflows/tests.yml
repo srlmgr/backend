@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - '**'
+      - "**"
   pull_request:
-    types: [ opened, reopened ]
+    types: [opened, reopened]
 
 jobs:
   tests:
     strategy:
       matrix:
-        go-version: [ 1.26.x ]
-        os: [ ubuntu-latest ]
+        go-version: [1.26.x]
+        os: [ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -30,4 +30,6 @@ jobs:
         run: go mod download
 
       - name: Test
-        run: go test ./... -race -coverprofile=coverage.txt -covermode=atomic -gcflags=-l
+        # due to database tests we need to run tests sequentially, so we set -p 1 to disable parallel test execution
+        # may be changed if we decide to split tests into multiple packages and run them in parallel
+        run: go test ./... -p 1 -race -coverprofile=coverage.txt -covermode=atomic -gcflags=-l

@@ -1,3 +1,4 @@
+//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -91,10 +92,8 @@ func newDBBackedTestService(t *testing.T) (*service, rootrepo.Repository) {
 func resetTestTables(t *testing.T) {
 	t.Helper()
 
-	if _, err := testPool.Exec(
-		context.Background(),
-		"TRUNCATE TABLE car_models, car_brands, car_manufacturers, racing_sims, point_systems RESTART IDENTITY CASCADE",
-	); err != nil {
+	err := testdb.ClearAllTables(testPool)
+	if err != nil {
 		t.Fatalf("failed to reset test tables: %v", err)
 	}
 }
@@ -135,11 +134,13 @@ func seedPointSystem(
 	t.Helper()
 
 	var err error
-	ps, err = repo.PointSystems().PointSystems().Create(context.Background(), &models.PointSystemSetter{
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	ps, err = repo.PointSystems().
+		PointSystems().
+		Create(context.Background(), &models.PointSystemSetter{
+			Name:      omit.From(name),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed point system %q: %v", name, err)
 	}
@@ -158,12 +159,14 @@ func seedCarManufacturer(
 	t.Helper()
 
 	var err error
-	cm, err = repo.Cars().CarManufacturers().Create(context.Background(), &models.CarManufacturerSetter{
-		Name:      omit.From(name),
-		IsActive:  omit.From(true),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	cm, err = repo.Cars().
+		CarManufacturers().
+		Create(context.Background(), &models.CarManufacturerSetter{
+			Name:      omit.From(name),
+			IsActive:  omit.From(true),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed car manufacturer %q: %v", name, err)
 	}

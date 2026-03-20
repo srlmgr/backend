@@ -85,6 +85,8 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 }
 
 // PointSystemToPointSystem converts a PointSystem model to a PointSystem message.
+//
+//nolint:lll // readability
 func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.PointSystem {
 	if model == nil {
 		return nil
@@ -98,7 +100,8 @@ func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.
 }
 
 // PointRuleToPointRule converts a PointRule model to a PointRule message.
-// The full conversion from MetadataJSON to proto fields is deferred to a follow-up issue.
+// The full conversion from MetadataJSON to proto fields is deferred to
+// a follow-up issue.
 func (s *Service) PointRuleToPointRule(_ *models.PointRule) *commonv1.PointRule {
 	return &commonv1.PointRule{}
 }
@@ -137,8 +140,13 @@ func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1
 	return out
 }
 
-// CarManufacturerToCarManufacturer converts a CarManufacturer model to a CarManufacturer message.
-func (s *Service) CarManufacturerToCarManufacturer(model *models.CarManufacturer) *commonv1.CarManufacturer {
+// CarManufacturerToCarManufacturer converts a CarManufacturer model to a
+// CarManufacturer message.
+//
+//nolint:whitespace // editor/linter issue
+func (s *Service) CarManufacturerToCarManufacturer(
+	model *models.CarManufacturer,
+) *commonv1.CarManufacturer {
 	if model == nil {
 		return nil
 	}

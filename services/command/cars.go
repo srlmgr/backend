@@ -33,7 +33,10 @@ type carManufacturerSetter = models.CarManufacturerSetter
 
 type carManufacturerSetterBuilder struct{}
 
-func (b carManufacturerSetterBuilder) Build(msg carManufacturerRequest) *carManufacturerSetter {
+//nolint:whitespace // multiline signature style
+func (b carManufacturerSetterBuilder) Build(
+	msg carManufacturerRequest,
+) *carManufacturerSetter {
 	setter := &carManufacturerSetter{}
 
 	if name := msg.GetName(); name != "" {
@@ -47,7 +50,10 @@ type carBrandSetter = models.CarBrandSetter
 
 type carBrandSetterBuilder struct{}
 
-func (b carBrandSetterBuilder) Build(msg carBrandRequest) *carBrandSetter {
+//nolint:whitespace // multiline signature style
+func (b carBrandSetterBuilder) Build(
+	msg carBrandRequest,
+) *carBrandSetter {
 	setter := &carBrandSetter{}
 
 	if manufacturerID := msg.GetManufacturerId(); manufacturerID != 0 {
@@ -65,7 +71,10 @@ type carModelSetter = models.CarModelSetter
 
 type carModelSetterBuilder struct{}
 
-func (b carModelSetterBuilder) Build(msg carModelRequest) *carModelSetter {
+//nolint:whitespace // multiline signature style
+func (b carModelSetterBuilder) Build(
+	msg carModelRequest,
+) *carModelSetter {
 	setter := &carModelSetter{}
 
 	if brandID := msg.GetBrandId(); brandID != 0 {
