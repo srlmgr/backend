@@ -6,6 +6,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
+	"github.com/shopspring/decimal"
 
 	"github.com/srlmgr/backend/db/dberrors"
 	"github.com/srlmgr/backend/db/models"
@@ -140,6 +141,39 @@ func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1
 	return out
 }
 
+// TrackToTrack converts a Track model to a Track message.
+func (s *Service) TrackToTrack(model *models.Track) *commonv1.Track {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Track{
+		Id:         uint32(model.ID),
+		Name:       model.Name,
+		Country:    model.Country.GetOr(""),
+		Latitude:   model.Latitude.GetOr(decimal.Zero).InexactFloat64(),
+		Longitude:  model.Longitude.GetOr(decimal.Zero).InexactFloat64(),
+		WebsiteUrl: model.WebsiteURL.GetOr(""),
+	}
+}
+
+// TrackLayoutToTrackLayout converts a TrackLayout model to a TrackLayout message.
+//
+//nolint:lll // readability
+func (s *Service) TrackLayoutToTrackLayout(model *models.TrackLayout) *commonv1.TrackLayout {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.TrackLayout{
+		Id:             uint32(model.ID),
+		TrackId:        uint32(model.TrackID),
+		Name:           model.Name,
+		LengthMeters:   model.LengthMeters.GetOr(0),
+		LayoutImageUrl: model.LayoutImageURL.GetOr(""),
+	}
+}
+
 // CarManufacturerToCarManufacturer converts a CarManufacturer model to a
 // CarManufacturer message.
 //
@@ -204,6 +238,12 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.CarModelErrors.ErrUniqueCarModelsBrandIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.TrackErrors.ErrUniqueTracksNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.TrackLayoutErrors.ErrUniqueTrackLayoutsTrackIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
