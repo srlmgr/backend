@@ -6,15 +6,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarondl/opt/omit"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
+	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
 	rootrepo "github.com/srlmgr/backend/repository"
 )
 
-func seedEvent(t *testing.T, repo rootrepo.Repository, seasonID, trackLayoutID int32, name string) *models.Event {
+//nolint:whitespace // editor/linter issue
+func seedEvent(
+	t *testing.T,
+	repo rootrepo.Repository,
+	seasonID, trackLayoutID int32,
+	name string,
+) *models.Event {
 	t.Helper()
 	event, err := repo.Events().Create(context.Background(), &models.EventSetter{
 		SeasonID:      omit.From(seasonID),

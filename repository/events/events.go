@@ -41,7 +41,10 @@ func (r *eventsRepository) LoadAll(ctx context.Context) ([]*models.Event, error)
 	return models.Events.Query().All(ctx, r.getExecutor(ctx))
 }
 
-func (r *eventsRepository) LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Event, error) {
+func (r *eventsRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.Event, error) {
 	return models.Events.Query(
 		sm.Where(models.Events.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 	).All(ctx, r.getExecutor(ctx))

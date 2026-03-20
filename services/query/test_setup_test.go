@@ -65,6 +65,7 @@ func resetTestTables(t *testing.T) {
 	}
 }
 
+//nolint:unparam // caller may use with different parameters in the future
 func seedSimulation(t *testing.T, repo rootrepo.Repository, name string) *models.RacingSim {
 	t.Helper()
 
