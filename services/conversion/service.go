@@ -3,6 +3,7 @@ package conversion
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
@@ -232,6 +233,23 @@ func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel 
 		Id:      uint32(model.ID),
 		BrandId: uint32(model.BrandID),
 		Name:    model.Name,
+	}
+}
+
+// DriverToDriver converts a Driver model to a Driver message.
+func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
+	if model == nil {
+		return nil
+	}
+
+	// ExternalID is stored as a decimal string; parse best-effort (0 if invalid).
+	externalID, _ := strconv.ParseUint(model.ExternalID, 10, 32)
+
+	return &commonv1.Driver{
+		Id:         uint32(model.ID),
+		ExternalId: uint32(externalID),
+		Name:       model.Name,
+		IsActive:   model.IsActive,
 	}
 }
 

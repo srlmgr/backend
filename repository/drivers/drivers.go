@@ -22,6 +22,7 @@ import (
 
 // DriversRepository defines persistence operations for Driver entities.
 type DriversRepository interface {
+	LoadAll(ctx context.Context) ([]*models.Driver, error)
 	LoadByID(ctx context.Context, id int32) (*models.Driver, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.DriverSetter) (*models.Driver, error)
@@ -70,6 +71,10 @@ func New(pool *pgxpool.Pool) Repository {
 func (r *repository) Drivers() DriversRepository { return r.drivers }
 func (r *repository) DriverSimulationIDs() DriverSimulationIDsRepository {
 	return r.driverSimulationIDs
+}
+
+func (r *driversRepository) LoadAll(ctx context.Context) ([]*models.Driver, error) {
+	return models.Drivers.Query().All(ctx, r.getExecutor(ctx))
 }
 
 func (r *driversRepository) LoadByID(ctx context.Context, id int32) (*models.Driver, error) {
