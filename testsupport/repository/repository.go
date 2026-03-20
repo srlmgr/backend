@@ -187,6 +187,27 @@ type tracksEntityRepo struct {
 type trackLayoutsEntityRepo struct {
 	*mapEntityRepo[models.TrackLayout, models.TrackLayoutSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *trackLayoutsEntityRepo) LoadByTrackID(
+	ctx context.Context,
+	trackID int32,
+) ([]*models.TrackLayout, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.TrackLayout, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.TrackID != trackID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
 type simulationTrackLayoutAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationTrackLayoutAlias, models.SimulationTrackLayoutAliasSetter]
 }
