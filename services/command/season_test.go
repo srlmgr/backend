@@ -1,4 +1,4 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
 package command
 
 import (

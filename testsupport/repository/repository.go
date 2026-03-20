@@ -307,6 +307,28 @@ func (r *carModelsEntityRepo) LoadByManufacturerID(
 type seasonsEntityRepo struct {
 	*mapEntityRepo[models.Season, models.SeasonSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *seasonsEntityRepo) LoadBySeriesID(
+	ctx context.Context,
+	seriesID int32,
+) ([]*models.Season, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.Season, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SeriesID != seriesID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type eventsEntityRepo struct {
 	*mapEntityRepo[models.Event, models.EventSetter]
 }

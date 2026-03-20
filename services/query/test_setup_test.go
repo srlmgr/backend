@@ -1,4 +1,4 @@
-//nolint:lll,unused // test files can have some duplication and long lines for test data setup
+//nolint:lll // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -103,16 +103,20 @@ func seedSeason(
 	t *testing.T,
 	repo rootrepo.Repository,
 	seriesID int32,
+	pointSystemID int32,
 	name string,
 ) *models.Season {
 	t.Helper()
 
 	season, err := repo.Seasons().Create(context.Background(), &models.SeasonSetter{
-		SeriesID:  omit.From(seriesID),
-		Name:      omit.From(name),
-		Status:    omit.From("draft"),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
+		SeriesID:      omit.From(seriesID),
+		PointSystemID: omit.From(pointSystemID),
+		Name:          omit.From(name),
+		HasTeams:      omit.From(false),
+		SkipEvents:    omit.From(int32(0)),
+		Status:        omit.From("active"),
+		CreatedBy:     omit.From(testUserSeed),
+		UpdatedBy:     omit.From(testUserSeed),
 	})
 	if err != nil {
 		t.Fatalf("failed to seed season %q: %v", name, err)
