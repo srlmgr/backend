@@ -22,6 +22,7 @@ import (
 
 // TracksRepository defines persistence operations for Track entities.
 type TracksRepository interface {
+	LoadAll(ctx context.Context) ([]*models.Track, error)
 	LoadByID(ctx context.Context, id int32) (*models.Track, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TrackSetter) (*models.Track, error)
@@ -30,6 +31,8 @@ type TracksRepository interface {
 
 // TrackLayoutsRepository defines persistence operations for TrackLayout entities.
 type TrackLayoutsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.TrackLayout, error)
+	LoadByTrackID(ctx context.Context, trackID int32) ([]*models.TrackLayout, error)
 	LoadByID(ctx context.Context, id int32) (*models.TrackLayout, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TrackLayoutSetter) (*models.TrackLayout, error)
@@ -91,6 +94,10 @@ func (r *repository) SimulationTrackLayoutAliases() SimulationTrackLayoutAliases
 	return r.simulationTrackLayoutAliases
 }
 
+func (r *tracksRepository) LoadAll(ctx context.Context) ([]*models.Track, error) {
+	return models.Tracks.Query().All(ctx, r.getExecutor(ctx))
+}
+
 func (r *tracksRepository) LoadByID(ctx context.Context, id int32) (*models.Track, error) {
 	entity, err := models.Tracks.Query(sm.Where(models.Tracks.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
@@ -126,6 +133,19 @@ func (r *tracksRepository) Update(
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (r *trackLayoutsRepository) LoadAll(ctx context.Context) ([]*models.TrackLayout, error) {
+	return models.TrackLayouts.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *trackLayoutsRepository) LoadByTrackID(
+	ctx context.Context,
+	trackID int32,
+) ([]*models.TrackLayout, error) {
+	return models.TrackLayouts.Query(
+		sm.Where(models.TrackLayouts.Columns.TrackID.EQ(psql.Arg(trackID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *trackLayoutsRepository) LoadByID(

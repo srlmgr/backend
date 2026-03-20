@@ -1,6 +1,6 @@
 // Package cars provides repositories for the cars migration group.
 //
-//nolint:lll,whitespace // repository implementations can be verbose
+//nolint:lll,dupl,whitespace // repository implementations can be verbose
 package cars
 
 import (
@@ -110,7 +110,9 @@ func (r *repository) SimulationCarAliases() SimulationCarAliasesRepository {
 	return r.simulationCarAliases
 }
 
-func (r *carManufacturersRepository) LoadAll(ctx context.Context) ([]*models.CarManufacturer, error) {
+func (r *carManufacturersRepository) LoadAll(
+	ctx context.Context,
+) ([]*models.CarManufacturer, error) {
 	return models.CarManufacturers.Query().All(ctx, r.getExecutor(ctx))
 }
 

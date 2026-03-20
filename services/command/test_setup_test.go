@@ -262,13 +262,15 @@ func seedTrackLayout(
 	t.Helper()
 
 	var err error
-	layout, err = repo.Tracks().TrackLayouts().Create(context.Background(), &models.TrackLayoutSetter{
-		TrackID:   omit.From(trackID),
-		Name:      omit.From(name),
-		IsActive:  omit.From(true),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	layout, err = repo.Tracks().
+		TrackLayouts().
+		Create(context.Background(), &models.TrackLayoutSetter{
+			TrackID:   omit.From(trackID),
+			Name:      omit.From(name),
+			IsActive:  omit.From(true),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed track layout %q: %v", name, err)
 	}

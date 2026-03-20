@@ -1,4 +1,4 @@
-//nolint:lll // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -14,20 +14,33 @@ import (
 	rootrepo "github.com/srlmgr/backend/repository"
 )
 
-func seedCarManufacturer(t *testing.T, repo rootrepo.Repository, name string) *models.CarManufacturer {
+//nolint:whitespace // multiline signature style
+func seedCarManufacturer(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) *models.CarManufacturer {
 	t.Helper()
-	m, err := repo.Cars().CarManufacturers().Create(context.Background(), &models.CarManufacturerSetter{
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	m, err := repo.Cars().
+		CarManufacturers().
+		Create(context.Background(), &models.CarManufacturerSetter{
+			Name:      omit.From(name),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed car manufacturer %q: %v", name, err)
 	}
 	return m
 }
 
-func seedCarBrand(t *testing.T, repo rootrepo.Repository, manufacturerID int32, name string) *models.CarBrand {
+//nolint:whitespace // multiline signature style
+func seedCarBrand(
+	t *testing.T,
+	repo rootrepo.Repository,
+	manufacturerID int32,
+	name string,
+) *models.CarBrand {
 	t.Helper()
 	b, err := repo.Cars().CarBrands().Create(context.Background(), &models.CarBrandSetter{
 		ManufacturerID: omit.From(manufacturerID),
@@ -41,7 +54,13 @@ func seedCarBrand(t *testing.T, repo rootrepo.Repository, manufacturerID int32, 
 	return b
 }
 
-func seedCarModel(t *testing.T, repo rootrepo.Repository, brandID int32, name string) *models.CarModel {
+//nolint:whitespace // multiline signature style
+func seedCarModel(
+	t *testing.T,
+	repo rootrepo.Repository,
+	brandID int32,
+	name string,
+) *models.CarModel {
 	t.Helper()
 	cm, err := repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
 		BrandID:   omit.From(brandID),
@@ -121,7 +140,11 @@ func TestGetCarManufacturerSuccess(t *testing.T) {
 		t.Errorf("expected id %d, got %d", m.ID, resp.Msg.GetCarManufacturer().GetId())
 	}
 	if resp.Msg.GetCarManufacturer().GetName() != "Apex Motorsports" {
-		t.Errorf("expected name %q, got %q", "Apex Motorsports", resp.Msg.GetCarManufacturer().GetName())
+		t.Errorf(
+			"expected name %q, got %q",
+			"Apex Motorsports",
+			resp.Msg.GetCarManufacturer().GetName(),
+		)
 	}
 }
 
@@ -245,7 +268,11 @@ func TestGetCarBrandSuccess(t *testing.T) {
 		t.Errorf("expected id %d, got %d", brand.ID, resp.Msg.GetCarBrand().GetId())
 	}
 	if resp.Msg.GetCarBrand().GetManufacturerId() != uint32(mfr.ID) {
-		t.Errorf("expected manufacturer id %d, got %d", mfr.ID, resp.Msg.GetCarBrand().GetManufacturerId())
+		t.Errorf(
+			"expected manufacturer id %d, got %d",
+			mfr.ID,
+			resp.Msg.GetCarBrand().GetManufacturerId(),
+		)
 	}
 	if resp.Msg.GetCarBrand().GetName() != "Test Brand" {
 		t.Errorf("expected name %q, got %q", "Test Brand", resp.Msg.GetCarBrand().GetName())

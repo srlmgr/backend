@@ -1,3 +1,4 @@
+//nolint:dupl // some operations are very similar across entities
 package query
 
 import (
@@ -15,7 +16,7 @@ import (
 
 // ListCarManufacturers returns a list of all car manufacturers.
 //
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,lll // editor/linter issue, readability
 func (s *service) ListCarManufacturers(
 	ctx context.Context,
 	req *connect.Request[queryv1.ListCarManufacturersRequest],

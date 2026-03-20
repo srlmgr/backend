@@ -97,7 +97,8 @@ func TestTrackLayoutSetterBuilderBuildSuccess(t *testing.T) {
 	if setter.LayoutImageURL.IsUnset() {
 		t.Fatal("expected layout_image_url to be set")
 	}
-	if url := setter.LayoutImageURL.MustGetNull().GetOr(""); url != "https://example.com/spa-gp.png" {
+	if url := setter.LayoutImageURL.MustGetNull().
+		GetOr(""); url != "https://example.com/spa-gp.png" {
 		t.Fatalf("unexpected layout_image_url setter value: %q", url)
 	}
 }
