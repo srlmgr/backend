@@ -1,4 +1,3 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -30,8 +29,9 @@ func TestListSeasonsReturnsAll(t *testing.T) {
 
 	sim := seedSimulation(t, repo, "iRacing")
 	series := seedSeries(t, repo, sim.ID, "GT3 Series")
-	season1 := seedSeason(t, repo, series.ID, "2024 Season")
-	season2 := seedSeason(t, repo, series.ID, "2025 Season")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season1 := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
+	season2 := seedSeason(t, repo, series.ID, pointSystem.ID, "2025 Season")
 
 	resp, err := svc.ListSeasons(
 		context.Background(),
@@ -68,8 +68,9 @@ func TestListSeasonsBySeriesID(t *testing.T) {
 	sim := seedSimulation(t, repo, "iRacing")
 	series1 := seedSeries(t, repo, sim.ID, "GT3 Series")
 	series2 := seedSeries(t, repo, sim.ID, "GTE Series")
-	season1 := seedSeason(t, repo, series1.ID, "GT3 2024")
-	seedSeason(t, repo, series2.ID, "GTE 2024")
+	pointSystem := seedPointSystem(t, repo, "Series Points")
+	season1 := seedSeason(t, repo, series1.ID, pointSystem.ID, "GT3 2024")
+	seedSeason(t, repo, series2.ID, pointSystem.ID, "GTE 2024")
 
 	resp, err := svc.ListSeasons(
 		context.Background(),
@@ -98,7 +99,8 @@ func TestGetSeasonSuccess(t *testing.T) {
 
 	sim := seedSimulation(t, repo, "iRacing")
 	series := seedSeries(t, repo, sim.ID, "GT3 Series")
-	season := seedSeason(t, repo, series.ID, "2024 Season")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 
 	resp, err := svc.GetSeason(
 		context.Background(),
