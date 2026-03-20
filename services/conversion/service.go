@@ -3,6 +3,7 @@ package conversion
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
@@ -235,6 +236,25 @@ func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel 
 	}
 }
 
+// DriverToDriver converts a Driver model to a Driver message.
+func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
+	if model == nil {
+		return nil
+	}
+
+	var externalID uint32
+	if parsed, err := strconv.ParseUint(model.ExternalID, 10, 32); err == nil {
+		externalID = uint32(parsed) // TODO: define validation policy for non-numeric external IDs
+	}
+
+	return &commonv1.Driver{
+		Id:         uint32(model.ID),
+		ExternalId: externalID,
+		Name:       model.Name,
+		IsActive:   model.IsActive,
+	}
+}
+
 // EventToEvent converts an Event model to an Event message.
 func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 	if model == nil {
@@ -285,6 +305,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.EventErrors.ErrUniqueEventsSeasonIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.DriverErrors.ErrUniqueDriversExternalIdUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
