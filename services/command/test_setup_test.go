@@ -93,7 +93,7 @@ func resetTestTables(t *testing.T) {
 
 	if _, err := testPool.Exec(
 		context.Background(),
-		"TRUNCATE TABLE racing_sims, point_systems RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE car_models, car_brands, car_manufacturers, racing_sims, point_systems RESTART IDENTITY CASCADE",
 	); err != nil {
 		t.Fatalf("failed to reset test tables: %v", err)
 	}
@@ -145,4 +145,80 @@ func seedPointSystem(
 	}
 
 	return ps
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarManufacturer(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) (
+	cm *models.CarManufacturer,
+) {
+	t.Helper()
+
+	var err error
+	cm, err = repo.Cars().CarManufacturers().Create(context.Background(), &models.CarManufacturerSetter{
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car manufacturer %q: %v", name, err)
+	}
+
+	return cm
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarBrand(
+	t *testing.T,
+	repo rootrepo.Repository,
+	manufacturerID int32,
+	name string,
+) (
+	cb *models.CarBrand,
+) {
+	t.Helper()
+
+	var err error
+	cb, err = repo.Cars().CarBrands().Create(context.Background(), &models.CarBrandSetter{
+		ManufacturerID: omit.From(manufacturerID),
+		Name:           omit.From(name),
+		IsActive:       omit.From(true),
+		CreatedBy:      omit.From(testUserSeed),
+		UpdatedBy:      omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car brand %q: %v", name, err)
+	}
+
+	return cb
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarModel(
+	t *testing.T,
+	repo rootrepo.Repository,
+	brandID int32,
+	name string,
+) (
+	cmod *models.CarModel,
+) {
+	t.Helper()
+
+	var err error
+	cmod, err = repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
+		BrandID:   omit.From(brandID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car model %q: %v", name, err)
+	}
+
+	return cmod
 }
