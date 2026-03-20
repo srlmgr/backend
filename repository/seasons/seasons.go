@@ -22,6 +22,8 @@ import (
 
 // Repository defines persistence operations for Season entities.
 type Repository interface {
+	LoadAll(ctx context.Context) ([]*models.Season, error)
+	LoadBySeriesID(ctx context.Context, seriesID int32) ([]*models.Season, error)
 	LoadByID(ctx context.Context, id int32) (*models.Season, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeasonSetter) (*models.Season, error)
@@ -33,6 +35,19 @@ type seasonsRepository struct{ exec *pgbob.Executor }
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
 	return &seasonsRepository{exec: pgbob.New(pool)}
+}
+
+func (r *seasonsRepository) LoadAll(ctx context.Context) ([]*models.Season, error) {
+	return models.Seasons.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *seasonsRepository) LoadBySeriesID(
+	ctx context.Context,
+	seriesID int32,
+) ([]*models.Season, error) {
+	return models.Seasons.Query(
+		sm.Where(models.Seasons.Columns.SeriesID.EQ(psql.Arg(seriesID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *seasonsRepository) LoadByID(ctx context.Context, id int32) (*models.Season, error) {
