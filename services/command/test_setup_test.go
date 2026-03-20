@@ -307,3 +307,29 @@ func seedSeason(
 
 	return season
 }
+
+//nolint:whitespace // multiline signature style
+func seedDriver(
+	t *testing.T,
+	repo rootrepo.Repository,
+	externalID string,
+	name string,
+) (
+	driver *models.Driver,
+) {
+	t.Helper()
+
+	var err error
+	driver, err = repo.Drivers().Drivers().Create(context.Background(), &models.DriverSetter{
+		ExternalID: omit.From(externalID),
+		Name:       omit.From(name),
+		IsActive:   omit.From(true),
+		CreatedBy:  omit.From(testUserSeed),
+		UpdatedBy:  omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed driver %q: %v", name, err)
+	}
+
+	return driver
+}
