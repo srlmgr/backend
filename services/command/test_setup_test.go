@@ -225,3 +225,53 @@ func seedCarModel(
 
 	return cmod
 }
+
+//nolint:whitespace // multiline signature style
+func seedTrack(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) (
+	track *models.Track,
+) {
+	t.Helper()
+
+	var err error
+	track, err = repo.Tracks().Tracks().Create(context.Background(), &models.TrackSetter{
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed track %q: %v", name, err)
+	}
+
+	return track
+}
+
+//nolint:whitespace // multiline signature style
+func seedTrackLayout(
+	t *testing.T,
+	repo rootrepo.Repository,
+	trackID int32,
+	name string,
+) (
+	layout *models.TrackLayout,
+) {
+	t.Helper()
+
+	var err error
+	layout, err = repo.Tracks().TrackLayouts().Create(context.Background(), &models.TrackLayoutSetter{
+		TrackID:   omit.From(trackID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed track layout %q: %v", name, err)
+	}
+
+	return layout
+}
