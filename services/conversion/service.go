@@ -84,6 +84,21 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 	}
 }
 
+// SeriesToSeries converts a Series model to a Series message.
+func (s *Service) SeriesToSeries(model *models.Series) *commonv1.Series {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Series{
+		Id:           uint32(model.ID),
+		SimulationId: uint32(model.SimulationID),
+		Name:         model.Name,
+		Description:  model.Description.GetOr(""),
+		IsActive:     model.IsActive,
+	}
+}
+
 // RacingSimsToSimulations converts RacingSim models to Simulation messages.
 //
 //nolint:lll // readability
@@ -104,14 +119,18 @@ func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1
 }
 
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
+	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
 		return connect.CodeNotFound
 	}
 	if errors.Is(dberrors.RacingSimErrors.ErrUniqueRacingSimsNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
+	if errors.Is(dberrors.SeriesErrors.ErrUniqueSeriesSimulationIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
 
-	// Map specific error types to gRPC codes here.
-	// For now, return Internal for all errors.
+	// If we haven't mapped the error to a specific gRPC code,
+	// return Internal for all errors.
 	return connect.CodeInternal
 }

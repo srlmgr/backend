@@ -205,6 +205,28 @@ type simulationCarAliasesEntityRepo struct {
 type seriesEntityRepo struct {
 	*mapEntityRepo[models.Series, models.SeriesSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *seriesEntityRepo) LoadBySimulationID(
+	ctx context.Context,
+	simulationID int32,
+) ([]*models.Series, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.Series, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SimulationID != simulationID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type seasonsEntityRepo struct {
 	*mapEntityRepo[models.Season, models.SeasonSetter]
 }

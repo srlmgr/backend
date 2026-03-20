@@ -4,99 +4,16 @@ package command
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
-	"github.com/aarondl/opt/omit"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
 
 	"github.com/srlmgr/backend/authn"
-	"github.com/srlmgr/backend/db/models"
-	"github.com/srlmgr/backend/log"
-	rootrepo "github.com/srlmgr/backend/repository"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
-	"github.com/srlmgr/backend/services/conversion"
-	"github.com/srlmgr/backend/testsupport/testdb"
 )
-
-var testPool *pgxpool.Pool
-
-func TestMain(m *testing.M) {
-	pool, err := testdb.InitTestDB()
-	if err != nil {
-		panic("failed to connect to test database: " + err.Error())
-	}
-	testPool = pool
-	code := m.Run()
-	testPool.Close()
-	os.Exit(code)
-}
-
-type txManagerStub struct {
-	runInTx func(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-func (t txManagerStub) RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	if t.runInTx != nil {
-		return t.runInTx(ctx, fn)
-	}
-	return fn(ctx)
-}
-
-func newTestService(repo rootrepo.Repository, txMgr rootrepo.TransactionManager) *service {
-	return &service{
-		logger:     log.New(),
-		repo:       repo,
-		txMgr:      txMgr,
-		conversion: conversion.New(),
-	}
-}
-
-func newDBBackedTestService(t *testing.T) (*service, rootrepo.Repository) {
-	t.Helper()
-	resetRacingSimsTable(t)
-	t.Cleanup(func() {
-		resetRacingSimsTable(t)
-	})
-
-	repo := postgresrepo.New(testPool)
-	txMgr := rootrepo.NewBobTransactionFromPool(testPool)
-
-	return newTestService(repo, txMgr), repo
-}
-
-func resetRacingSimsTable(t *testing.T) {
-	t.Helper()
-
-	if _, err := testPool.Exec(
-		context.Background(),
-		"TRUNCATE TABLE racing_sims RESTART IDENTITY CASCADE",
-	); err != nil {
-		t.Fatalf("failed to reset racing_sims table: %v", err)
-	}
-}
-
-func seedSimulation(t *testing.T, repo rootrepo.Repository, name string) *models.RacingSim {
-	t.Helper()
-
-	sim, err := repo.RacingSims().Create(context.Background(), &models.RacingSimSetter{
-		Name:                   omit.From(name),
-		IsActive:               omit.From(true),
-		SupportedImportFormats: omit.From(pq.StringArray{"json"}),
-		CreatedBy:              omit.From("seed"),
-		UpdatedBy:              omit.From("seed"),
-	})
-	if err != nil {
-		t.Fatalf("failed to seed simulation %q: %v", name, err)
-	}
-
-	return sim
-}
 
 func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
@@ -141,7 +58,7 @@ func TestRacingSimSetterBuilderBuildFailureInvalidFormat(t *testing.T) {
 
 func TestCreateSimulationSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
-	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: "tester"})
+	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateSimulation(ctx, connect.NewRequest(&v1.CreateSimulationRequest{
 		Name:             "rFactor 2",
@@ -160,7 +77,7 @@ func TestCreateSimulationSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load created simulation: %v", err)
 	}
-	if stored.CreatedBy != "tester" || stored.UpdatedBy != "tester" {
+	if stored.CreatedBy != testUserTester || stored.UpdatedBy != testUserTester {
 		t.Fatalf(
 			"unexpected created/updated by values: %q / %q",
 			stored.CreatedBy,
@@ -223,7 +140,7 @@ func TestCreateSimulationFailureDuplicateName(t *testing.T) {
 
 func TestCreateSimulationFailureTransactionError(t *testing.T) {
 	repo := postgresrepo.New(testPool)
-	txErr := errors.New("transaction failed")
+	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
 			return txErr
@@ -249,7 +166,7 @@ func TestCreateSimulationFailureTransactionError(t *testing.T) {
 
 func TestUpdateSimulationSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
-	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: "editor"})
+	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
 	initial := seedSimulation(t, repo, "iRacing")
 	before, err := repo.RacingSims().LoadByID(context.Background(), initial.ID)
@@ -274,8 +191,8 @@ func TestUpdateSimulationSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load updated simulation: %v", err)
 	}
-	if after.UpdatedBy != "editor" {
-		t.Fatalf("unexpected UpdatedBy: got %q want %q", after.UpdatedBy, "editor")
+	if after.UpdatedBy != testUserEditor {
+		t.Fatalf("unexpected UpdatedBy: got %q want %q", after.UpdatedBy, testUserEditor)
 	}
 	if !after.UpdatedAt.After(before.UpdatedAt) {
 		t.Fatalf(
@@ -383,7 +300,7 @@ func TestDeleteSimulationSuccess(t *testing.T) {
 
 func TestDeleteSimulationFailureTransactionError(t *testing.T) {
 	repo := postgresrepo.New(testPool)
-	txErr := errors.New("transaction failed")
+	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
 			return txErr

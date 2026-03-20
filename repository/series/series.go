@@ -22,6 +22,8 @@ import (
 
 // Repository defines persistence operations for Series entities.
 type Repository interface {
+	LoadAll(ctx context.Context) ([]*models.Series, error)
+	LoadBySimulationID(ctx context.Context, simulationID int32) ([]*models.Series, error)
 	LoadByID(ctx context.Context, id int32) (*models.Series, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeriesSetter) (*models.Series, error)
@@ -33,6 +35,19 @@ type seriesRepository struct{ exec *pgbob.Executor }
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
 	return &seriesRepository{exec: pgbob.New(pool)}
+}
+
+func (r *seriesRepository) LoadAll(ctx context.Context) ([]*models.Series, error) {
+	return models.Serieses.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *seriesRepository) LoadBySimulationID(
+	ctx context.Context,
+	simulationID int32,
+) ([]*models.Series, error) {
+	return models.Serieses.Query(
+		sm.Where(models.Serieses.Columns.SimulationID.EQ(psql.Arg(simulationID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *seriesRepository) LoadByID(ctx context.Context, id int32) (*models.Series, error) {
