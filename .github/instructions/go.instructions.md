@@ -1,6 +1,6 @@
 ---
-description: 'Instructions for writing Go code following idiomatic Go practices and community standards'
-applyTo: '**/*.go,**/go.mod,**/go.sum'
+description: "Instructions for writing Go code following idiomatic Go practices and community standards"
+applyTo: "**/*.go,**/go.mod,**/go.sum"
 ---
 
 # Go Development Instructions
@@ -35,19 +35,20 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Package names should be singular, not plural
 
 #### Package Declaration Rules (CRITICAL):
+
 - **NEVER duplicate `package` declarations** - each Go file must have exactly ONE `package` line
 - When editing an existing `.go` file:
-  - **PRESERVE** the existing `package` declaration - do not add another one
-  - If you need to replace the entire file content, start with the existing package name
+    - **PRESERVE** the existing `package` declaration - do not add another one
+    - If you need to replace the entire file content, start with the existing package name
 - When creating a new `.go` file:
-  - **BEFORE writing any code**, check what package name other `.go` files in the same directory use
-  - Use the SAME package name as existing files in that directory
-  - If it's a new directory, use the directory name as the package name
-  - Write **exactly one** `package <name>` line at the very top of the file
+    - **BEFORE writing any code**, check what package name other `.go` files in the same directory use
+    - Use the SAME package name as existing files in that directory
+    - If it's a new directory, use the directory name as the package name
+    - Write **exactly one** `package <name>` line at the very top of the file
 - When using file creation or replacement tools:
-  - **ALWAYS verify** the target file doesn't already have a `package` declaration before adding one
-  - If replacing file content, include only ONE `package` declaration in the new content
-  - **NEVER** create files with multiple `package` lines or duplicate declarations
+    - **ALWAYS verify** the target file doesn't already have a `package` declaration before adding one
+    - If replacing file content, include only ONE `package` declaration in the new content
+    - **NEVER** create files with multiple `package` lines or duplicate declarations
 
 ### Variables and Functions
 
@@ -79,6 +80,18 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Use `goimports` to manage imports automatically
 - Keep line length reasonable (no hard limit, but consider readability)
 - Add blank lines to separate logical groups of code
+- When encountering whitespace messages on multi-line function definitions, you can't make both the editor and the linter happy.
+  Just add a `//nolint:whitespace // editor/linter issue' to the function definition to. For example:
+
+```go
+//nolint:whitespace // editor/linter issue
+func MyFunction(
+	param1 string,
+	param2 int)
+	error {
+	// function body
+}
+```
 
 ### Comments
 
@@ -175,14 +188,14 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Choose between channels and mutexes based on the use case: use channels for communication, mutexes for protecting state
 - Use `sync.Once` for one-time initialization
 - WaitGroup usage by Go version:
-	- If `go >= 1.25` in `go.mod`, use the new `WaitGroup.Go` method ([documentation](https://pkg.go.dev/sync#WaitGroup)):
-		```go
-		var wg sync.WaitGroup
-		wg.Go(task1)
-		wg.Go(task2)
-		wg.Wait()
-		```
-	- If `go < 1.25`, use the classic `Add`/`Done` pattern
+    - If `go >= 1.25` in `go.mod`, use the new `WaitGroup.Go` method ([documentation](https://pkg.go.dev/sync#WaitGroup)):
+        ```go
+        var wg sync.WaitGroup
+        wg.Go(task1)
+        wg.Go(task2)
+        wg.Wait()
+        ```
+    - If `go < 1.25`, use the classic `Add`/`Done` pattern
 
 ## Error Handling Patterns
 
@@ -211,8 +224,8 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Set appropriate status codes and headers
 - Handle errors gracefully and return appropriate error responses
 - Router usage by Go version:
-	- If `go >= 1.22`, prefer the enhanced `net/http` `ServeMux` with pattern-based routing and method matching
-	- If `go < 1.22`, use the classic `ServeMux` and handle methods/paths manually (or use a third-party router when justified)
+    - If `go >= 1.22`, prefer the enhanced `net/http` `ServeMux` with pattern-based routing and method matching
+    - If `go < 1.22`, use the classic `ServeMux` and handle methods/paths manually (or use a third-party router when justified)
 
 ### JSON APIs
 
@@ -245,28 +258,28 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 
 - Most `io.Reader` streams are consumable once; reading advances state. Do not assume a reader can be re-read without special handling
 - If you must read data multiple times, buffer it once and recreate readers on demand:
-	- Use `io.ReadAll` (or a limited read) to obtain `[]byte`, then create fresh readers via `bytes.NewReader(buf)` or `bytes.NewBuffer(buf)` for each reuse
-	- For strings, use `strings.NewReader(s)`; you can `Seek(0, io.SeekStart)` on `*bytes.Reader` to rewind
+    - Use `io.ReadAll` (or a limited read) to obtain `[]byte`, then create fresh readers via `bytes.NewReader(buf)` or `bytes.NewBuffer(buf)` for each reuse
+    - For strings, use `strings.NewReader(s)`; you can `Seek(0, io.SeekStart)` on `*bytes.Reader` to rewind
 - For HTTP requests, do not reuse a consumed `req.Body`. Instead:
-	- Keep the original payload as `[]byte` and set `req.Body = io.NopCloser(bytes.NewReader(buf))` before each send
-	- Prefer configuring `req.GetBody` so the transport can recreate the body for redirects/retries: `req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(buf)), nil }`
+    - Keep the original payload as `[]byte` and set `req.Body = io.NopCloser(bytes.NewReader(buf))` before each send
+    - Prefer configuring `req.GetBody` so the transport can recreate the body for redirects/retries: `req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(buf)), nil }`
 - To duplicate a stream while reading, use `io.TeeReader` (copy to a buffer while passing through) or write to multiple sinks with `io.MultiWriter`
 - Reusing buffered readers: call `(*bufio.Reader).Reset(r)` to attach to a new underlying reader; do not expect it to “rewind” unless the source supports seeking
 - For large payloads, avoid unbounded buffering; consider streaming, `io.LimitReader`, or on-disk temporary storage to control memory
 
 - Use `io.Pipe` to stream without buffering the whole payload:
-	- Write to `*io.PipeWriter` in a separate goroutine while the reader consumes
-	- Always close the writer; use `CloseWithError(err)` on failures
-	- `io.Pipe` is for streaming, not rewinding or making readers reusable
+    - Write to `*io.PipeWriter` in a separate goroutine while the reader consumes
+    - Always close the writer; use `CloseWithError(err)` on failures
+    - `io.Pipe` is for streaming, not rewinding or making readers reusable
 
 - **Warning:** When using `io.Pipe` (especially with multipart writers), all writes must be performed in strict, sequential order. Do not write concurrently or out of order—multipart boundaries and chunk order must be preserved. Out-of-order or parallel writes can corrupt the stream and result in errors.
 
 - Streaming multipart/form-data with `io.Pipe`:
-	- `pr, pw := io.Pipe()`; `mw := multipart.NewWriter(pw)`; use `pr` as the HTTP request body
-	- Set `Content-Type` to `mw.FormDataContentType()`
-	- In a goroutine: write all parts to `mw` in the correct order; on error `pw.CloseWithError(err)`; on success `mw.Close()` then `pw.Close()`
-	- Do not store request/in-flight form state on a long-lived client; build per call
-	- Streamed bodies are not rewindable; for retries/redirects, buffer small payloads or provide `GetBody`
+    - `pr, pw := io.Pipe()`; `mw := multipart.NewWriter(pw)`; use `pr` as the HTTP request body
+    - Set `Content-Type` to `mw.FormDataContentType()`
+    - In a goroutine: write all parts to `mw` in the correct order; on error `pw.CloseWithError(err)`; on success `mw.Close()` then `pw.Close()`
+    - Do not store request/in-flight form state on a long-lived client; build per call
+    - Streamed bodies are not rewindable; for retries/redirects, buffer small payloads or provide `GetBody`
 
 ### Profiling
 
@@ -371,3 +384,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Over-using unconstrained types (e.g., `any`); prefer specific types or generic type parameters with constraints. If an unconstrained type is required, use `any` rather than `interface{}`
 - Not considering the zero value of types
 - **Creating duplicate `package` declarations** - this is a compile error; always check existing files before adding package declarations
+
+```
+
+```
