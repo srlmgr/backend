@@ -1,3 +1,4 @@
+//nolint:dupl // some operations are very similar across entities
 package query
 
 import (

@@ -139,7 +139,10 @@ func (r *trackLayoutsRepository) LoadAll(ctx context.Context) ([]*models.TrackLa
 	return models.TrackLayouts.Query().All(ctx, r.getExecutor(ctx))
 }
 
-func (r *trackLayoutsRepository) LoadByTrackID(ctx context.Context, trackID int32) ([]*models.TrackLayout, error) {
+func (r *trackLayoutsRepository) LoadByTrackID(
+	ctx context.Context,
+	trackID int32,
+) ([]*models.TrackLayout, error) {
 	return models.TrackLayouts.Query(
 		sm.Where(models.TrackLayouts.Columns.TrackID.EQ(psql.Arg(trackID))),
 	).All(ctx, r.getExecutor(ctx))

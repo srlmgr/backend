@@ -208,6 +208,7 @@ func (r *trackLayoutsEntityRepo) LoadByTrackID(
 
 	return filtered, nil
 }
+
 type simulationTrackLayoutAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationTrackLayoutAlias, models.SimulationTrackLayoutAliasSetter]
 }
