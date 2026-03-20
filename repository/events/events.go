@@ -22,6 +22,8 @@ import (
 
 // Repository defines persistence operations for Event entities.
 type Repository interface {
+	LoadAll(ctx context.Context) ([]*models.Event, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Event, error)
 	LoadByID(ctx context.Context, id int32) (*models.Event, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.EventSetter) (*models.Event, error)
@@ -33,6 +35,16 @@ type eventsRepository struct{ exec *pgbob.Executor }
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
 	return &eventsRepository{exec: pgbob.New(pool)}
+}
+
+func (r *eventsRepository) LoadAll(ctx context.Context) ([]*models.Event, error) {
+	return models.Events.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *eventsRepository) LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Event, error) {
+	return models.Events.Query(
+		sm.Where(models.Events.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *eventsRepository) LoadByID(ctx context.Context, id int32) (*models.Event, error) {
