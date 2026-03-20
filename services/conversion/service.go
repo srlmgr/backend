@@ -7,6 +7,7 @@ import (
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
 	"github.com/shopspring/decimal"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/dberrors"
 	"github.com/srlmgr/backend/db/models"
@@ -234,6 +235,23 @@ func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel 
 	}
 }
 
+// EventToEvent converts an Event model to an Event message.
+func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Event{
+		Id:              uint32(model.ID),
+		SeasonId:        uint32(model.SeasonID),
+		TrackLayoutId:   uint32(model.TrackLayoutID),
+		Name:            model.Name,
+		EventDate:       timestamppb.New(model.EventDate),
+		Status:          model.Status,
+		ProcessingState: model.ProcessingState,
+	}
+}
+
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
@@ -264,6 +282,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.SeasonErrors.ErrUniqueSeasonsSeriesIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.EventErrors.ErrUniqueEventsSeasonIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
