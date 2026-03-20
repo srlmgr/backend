@@ -2,9 +2,9 @@ package authn
 
 import "context"
 
-type principalContextKey string
+type principalContextKey struct{}
 
-const principalKey principalContextKey = "authn-principal"
+var principalKey = principalContextKey{}
 
 // AddPrincipal adds the normalized principal to context.
 func AddPrincipal(ctx context.Context, principal *Principal) context.Context {

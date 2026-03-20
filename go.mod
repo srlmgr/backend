@@ -3,7 +3,7 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260319170418-1ca59dfcb14f.2
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260320080906-96c05bd1b7bd.2
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
@@ -43,7 +43,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260319170418-1ca59dfcb14f.1 // indirect
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260320080906-96c05bd1b7bd.1 // indirect
 	connectrpc.com/grpchealth v1.4.0 // indirect
 	connectrpc.com/grpcreflect v1.3.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
