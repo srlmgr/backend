@@ -1,3 +1,4 @@
+//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -91,10 +92,8 @@ func newDBBackedTestService(t *testing.T) (*service, rootrepo.Repository) {
 func resetTestTables(t *testing.T) {
 	t.Helper()
 
-	if _, err := testPool.Exec(
-		context.Background(),
-		"TRUNCATE TABLE racing_sims, point_systems RESTART IDENTITY CASCADE",
-	); err != nil {
+	err := testdb.ClearAllTables(testPool)
+	if err != nil {
 		t.Fatalf("failed to reset test tables: %v", err)
 	}
 }
@@ -135,14 +134,94 @@ func seedPointSystem(
 	t.Helper()
 
 	var err error
-	ps, err = repo.PointSystems().PointSystems().Create(context.Background(), &models.PointSystemSetter{
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	ps, err = repo.PointSystems().
+		PointSystems().
+		Create(context.Background(), &models.PointSystemSetter{
+			Name:      omit.From(name),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed point system %q: %v", name, err)
 	}
 
 	return ps
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarManufacturer(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) (
+	cm *models.CarManufacturer,
+) {
+	t.Helper()
+
+	var err error
+	cm, err = repo.Cars().
+		CarManufacturers().
+		Create(context.Background(), &models.CarManufacturerSetter{
+			Name:      omit.From(name),
+			IsActive:  omit.From(true),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed car manufacturer %q: %v", name, err)
+	}
+
+	return cm
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarBrand(
+	t *testing.T,
+	repo rootrepo.Repository,
+	manufacturerID int32,
+	name string,
+) (
+	cb *models.CarBrand,
+) {
+	t.Helper()
+
+	var err error
+	cb, err = repo.Cars().CarBrands().Create(context.Background(), &models.CarBrandSetter{
+		ManufacturerID: omit.From(manufacturerID),
+		Name:           omit.From(name),
+		IsActive:       omit.From(true),
+		CreatedBy:      omit.From(testUserSeed),
+		UpdatedBy:      omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car brand %q: %v", name, err)
+	}
+
+	return cb
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarModel(
+	t *testing.T,
+	repo rootrepo.Repository,
+	brandID int32,
+	name string,
+) (
+	cmod *models.CarModel,
+) {
+	t.Helper()
+
+	var err error
+	cmod, err = repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
+		BrandID:   omit.From(brandID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car model %q: %v", name, err)
+	}
+
+	return cmod
 }

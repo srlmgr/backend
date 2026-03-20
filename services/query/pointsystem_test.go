@@ -1,3 +1,4 @@
+//nolint:lll // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -15,11 +16,13 @@ import (
 
 func seedPointSystem(t *testing.T, repo rootrepo.Repository, name string) *models.PointSystem {
 	t.Helper()
-	ps, err := repo.PointSystems().PointSystems().Create(context.Background(), &models.PointSystemSetter{
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	ps, err := repo.PointSystems().
+		PointSystems().
+		Create(context.Background(), &models.PointSystemSetter{
+			Name:      omit.From(name),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed point system %q: %v", name, err)
 	}
@@ -29,7 +32,10 @@ func seedPointSystem(t *testing.T, repo rootrepo.Repository, name string) *model
 func TestListPointSystemsEmpty(t *testing.T) {
 	svc, _ := newDBBackedQueryService(t)
 
-	resp, err := svc.ListPointSystems(context.Background(), connect.NewRequest(&queryv1.ListPointSystemsRequest{}))
+	resp, err := svc.ListPointSystems(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListPointSystemsRequest{}),
+	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -44,7 +50,10 @@ func TestListPointSystemsReturnsAll(t *testing.T) {
 	alpha := seedPointSystem(t, repo, "Alpha Points")
 	beta := seedPointSystem(t, repo, "Beta Points")
 
-	resp, err := svc.ListPointSystems(context.Background(), connect.NewRequest(&queryv1.ListPointSystemsRequest{}))
+	resp, err := svc.ListPointSystems(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListPointSystemsRequest{}),
+	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,9 +81,12 @@ func TestGetPointSystemSuccess(t *testing.T) {
 
 	ps := seedPointSystem(t, repo, "Sprint Points")
 
-	resp, err := svc.GetPointSystem(context.Background(), connect.NewRequest(&queryv1.GetPointSystemRequest{
-		Id: uint32(ps.ID),
-	}))
+	resp, err := svc.GetPointSystem(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetPointSystemRequest{
+			Id: uint32(ps.ID),
+		}),
+	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -90,9 +102,12 @@ func TestGetPointSystemSuccess(t *testing.T) {
 func TestGetPointSystemNotFound(t *testing.T) {
 	svc, _ := newDBBackedQueryService(t)
 
-	_, err := svc.GetPointSystem(context.Background(), connect.NewRequest(&queryv1.GetPointSystemRequest{
-		Id: 99999,
-	}))
+	_, err := svc.GetPointSystem(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetPointSystemRequest{
+			Id: 99999,
+		}),
+	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

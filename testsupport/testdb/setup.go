@@ -23,11 +23,14 @@ func InitTestDB() (*pgxpool.Pool, error) {
 		return nil, setupErr
 	}
 	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
-		tcpg.ClearAllTables(pool)
-		return nil
+		return tcpg.ClearAllTables(pool)
 	}); err != nil {
 		log.Fatalf("initTestDb: %v\n", err)
 	}
 
 	return pool, nil
+}
+
+func ClearAllTables(pool *pgxpool.Pool) error {
+	return tcpg.ClearAllTables(pool)
 }

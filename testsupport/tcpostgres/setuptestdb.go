@@ -1,4 +1,3 @@
-//nolint:errcheck // testsetup
 package tcpostgres
 
 import (
@@ -6,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/go-connections/nat"
@@ -62,66 +62,48 @@ func SetupExternalTestDB() (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func ClearEventTable(pool *pgxpool.Pool) {
-	if _, err := pool.Exec(context.Background(),
-		"delete from event"); err != nil {
-		log.Fatalf("ClearEventTable: %v\n", err)
-	}
-}
-
-func ClearCarTable(pool *pgxpool.Pool) {
-	if _, err := pool.Exec(context.Background(),
-		"delete from car_state_proto"); err != nil {
-		log.Fatalf("ClearCarStateProtoTable: %v\n", err)
-	}
-}
-
-func ClearTrackTable(pool *pgxpool.Pool) {
-	pool.Exec(context.Background(), "delete from track")
-}
-
-func ClearDriverTable(pool *pgxpool.Pool) {
-	pool.Exec(context.Background(), "delete from driver")
-}
-
-func ClearSpeedmapTable(pool *pgxpool.Pool) {
-	if _, err := pool.Exec(context.Background(),
-		"delete from speedmap_proto"); err != nil {
-		log.Fatalf("ClearSpeedmapProtoTable: %v\n", err)
-	}
-}
-
-func ClearAnalysisTable(pool *pgxpool.Pool) {
-	pool.Exec(context.Background(), "delete from analysis")
-}
-
-func ClearStateDataTable(pool *pgxpool.Pool) {
-	if _, err := pool.Exec(context.Background(),
-		"delete from race_state_proto"); err != nil {
-		log.Fatalf("ClearStateDataTable: %v\n", err)
-	}
-}
-
 func clearTables(pool *pgxpool.Pool, tables []string) error {
 	err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
-		for _, table := range tables {
-			if _, err := tx.Exec(context.Background(), "delete from "+table); err != nil {
-				return err
-			}
+		if _, err := tx.Exec(
+			context.Background(),
+			fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY ",
+				strings.Join(tables, ", "))); err != nil {
+			return err
 		}
 		return nil
 	})
 	return err
 }
 
-func ClearAllTables(pool *pgxpool.Pool) {
+func ClearAllTables(pool *pgxpool.Pool) error {
 	tables := []string{
-		"drivers",
-		"point_systems",
+		"booking_entries",
+		"result_entries",
+		"event_processing_audit",
+		"import_batches",
+		"event_team_standings",
+		"event_driver_standings",
+		"season_team_standings",
+		"races",
+		"team_drivers",
+		"events",
+		"season_driver_standings",
+		"teams",
+		"simulation_car_aliases",
+		"seasons",
+		"simulation_track_layout_aliases",
+		"car_models",
+		"driver_simulation_ids",
+		"series",
+		"track_layouts",
+		"car_brands",
+		"point_rules",
 		"racing_sims",
+		"point_systems",
+		"tracks",
+		"car_manufacturers",
+		"drivers",
 	}
 	err := clearTables(pool, tables)
-	if err != nil {
-		log.Fatalf("ClearAllTables: %v\n", err)
-	}
+	return err
 }

@@ -1,3 +1,4 @@
+//nolint:lll,unused // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -97,7 +98,13 @@ func seedSeries(t *testing.T, repo rootrepo.Repository, simID int32, name string
 	return s
 }
 
-func seedSeason(t *testing.T, repo rootrepo.Repository, seriesID int32, name string) *models.Season {
+//nolint:whitespace // multiline signature style
+func seedSeason(
+	t *testing.T,
+	repo rootrepo.Repository,
+	seriesID int32,
+	name string,
+) *models.Season {
 	t.Helper()
 
 	season, err := repo.Seasons().Create(context.Background(), &models.SeasonSetter{
@@ -129,15 +136,23 @@ func seedTrack(t *testing.T, repo rootrepo.Repository, name string) *models.Trac
 	return track
 }
 
-func seedTrackLayout(t *testing.T, repo rootrepo.Repository, trackID int32, name string) *models.TrackLayout {
+//nolint:whitespace // multiline signature style
+func seedTrackLayout(
+	t *testing.T,
+	repo rootrepo.Repository,
+	trackID int32,
+	name string,
+) *models.TrackLayout {
 	t.Helper()
 
-	layout, err := repo.Tracks().TrackLayouts().Create(context.Background(), &models.TrackLayoutSetter{
-		TrackID:   omit.From(trackID),
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	layout, err := repo.Tracks().
+		TrackLayouts().
+		Create(context.Background(), &models.TrackLayoutSetter{
+			TrackID:   omit.From(trackID),
+			Name:      omit.From(name),
+			CreatedBy: omit.From(testUserSeed),
+			UpdatedBy: omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed track layout %q: %v", name, err)
 	}

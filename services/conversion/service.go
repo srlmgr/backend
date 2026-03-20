@@ -85,6 +85,8 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 }
 
 // PointSystemToPointSystem converts a PointSystem model to a PointSystem message.
+//
+//nolint:lll // readability
 func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.PointSystem {
 	if model == nil {
 		return nil
@@ -98,7 +100,8 @@ func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.
 }
 
 // PointRuleToPointRule converts a PointRule model to a PointRule message.
-// The full conversion from MetadataJSON to proto fields is deferred to a follow-up issue.
+// The full conversion from MetadataJSON to proto fields is deferred to
+// a follow-up issue.
 func (s *Service) PointRuleToPointRule(_ *models.PointRule) *commonv1.PointRule {
 	return &commonv1.PointRule{}
 }
@@ -137,6 +140,49 @@ func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1
 	return out
 }
 
+// CarManufacturerToCarManufacturer converts a CarManufacturer model to a
+// CarManufacturer message.
+//
+//nolint:whitespace // editor/linter issue
+func (s *Service) CarManufacturerToCarManufacturer(
+	model *models.CarManufacturer,
+) *commonv1.CarManufacturer {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.CarManufacturer{
+		Id:   uint32(model.ID),
+		Name: model.Name,
+	}
+}
+
+// CarBrandToCarBrand converts a CarBrand model to a CarBrand message.
+func (s *Service) CarBrandToCarBrand(model *models.CarBrand) *commonv1.CarBrand {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.CarBrand{
+		Id:             uint32(model.ID),
+		ManufacturerId: uint32(model.ManufacturerID),
+		Name:           model.Name,
+	}
+}
+
+// CarModelToCarModel converts a CarModel model to a CarModel message.
+func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.CarModel{
+		Id:      uint32(model.ID),
+		BrandId: uint32(model.BrandID),
+		Name:    model.Name,
+	}
+}
+
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
@@ -149,6 +195,15 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.PointSystemErrors.ErrUniquePointSystemsNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.CarManufacturerErrors.ErrUniqueCarManufacturersNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.CarBrandErrors.ErrUniqueCarBrandsManufacturerIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.CarModelErrors.ErrUniqueCarModelsBrandIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
