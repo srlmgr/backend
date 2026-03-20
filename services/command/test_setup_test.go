@@ -277,3 +277,33 @@ func seedTrackLayout(
 
 	return layout
 }
+
+//nolint:whitespace // multiline signature style
+func seedSeason(
+	t *testing.T,
+	repo rootrepo.Repository,
+	seriesID int32,
+	pointSystemID int32,
+	name string,
+) (
+	season *models.Season,
+) {
+	t.Helper()
+
+	var err error
+	season, err = repo.Seasons().Create(context.Background(), &models.SeasonSetter{
+		SeriesID:      omit.From(seriesID),
+		PointSystemID: omit.From(pointSystemID),
+		Name:          omit.From(name),
+		HasTeams:      omit.From(false),
+		SkipEvents:    omit.From(int32(0)),
+		Status:        omit.From("active"),
+		CreatedBy:     omit.From(testUserSeed),
+		UpdatedBy:     omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed season %q: %v", name, err)
+	}
+
+	return season
+}
