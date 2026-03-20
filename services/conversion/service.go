@@ -122,6 +122,23 @@ func (s *Service) SeriesToSeries(model *models.Series) *commonv1.Series {
 	}
 }
 
+// SeasonToSeason converts a Season model to a Season message.
+func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Season{
+		Id:            uint32(model.ID),
+		SeriesId:      uint32(model.SeriesID),
+		Name:          model.Name,
+		PointSystemId: uint32(model.PointSystemID),
+		HasTeams:      model.HasTeams,
+		SkipEvents:    model.SkipEvents,
+		Status:        model.Status,
+	}
+}
+
 // RacingSimsToSimulations converts RacingSim models to Simulation messages.
 //
 //nolint:lll // readability
@@ -244,6 +261,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.TrackLayoutErrors.ErrUniqueTrackLayoutsTrackIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.SeasonErrors.ErrUniqueSeasonsSeriesIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
