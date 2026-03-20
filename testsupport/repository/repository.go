@@ -198,6 +198,7 @@ type carBrandsEntityRepo struct {
 }
 type carModelsEntityRepo struct {
 	*mapEntityRepo[models.CarModel, models.CarModelSetter]
+	brands *carBrandsEntityRepo
 }
 type simulationCarAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationCarAlias, models.SimulationCarAliasSetter]
@@ -219,6 +220,60 @@ func (r *seriesEntityRepo) LoadBySimulationID(
 	filtered := make([]*models.Series, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.SimulationID != simulationID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *carBrandsEntityRepo) LoadByManufacturerID(
+	ctx context.Context,
+	manufacturerID int32,
+) ([]*models.CarBrand, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.CarBrand, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.ManufacturerID != manufacturerID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *carModelsEntityRepo) LoadByManufacturerID(
+	ctx context.Context,
+	manufacturerID int32,
+) ([]*models.CarModel, error) {
+	brands, err := r.brands.LoadByManufacturerID(ctx, manufacturerID)
+	if err != nil {
+		return nil, err
+	}
+
+	brandIDs := make(map[int32]bool, len(brands))
+	for _, b := range brands {
+		if b != nil {
+			brandIDs[b.ID] = true
+		}
+	}
+
+	allModels, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.CarModel, 0, len(allModels))
+	for _, item := range allModels {
+		if item == nil || !brandIDs[item.BrandID] {
 			continue
 		}
 		filtered = append(filtered, item)
@@ -535,7 +590,7 @@ func New() rootrepo.Repository {
 		),
 	}
 	carModelRepo := &carModelsEntityRepo{
-		newMapEntityRepo(
+		mapEntityRepo: newMapEntityRepo(
 			func(m *models.CarModel) int32 { return m.ID },
 			func(m *models.CarModel, id int32) { m.ID = id },
 			func(m *models.CarModel, s *models.CarModelSetter) { s.Overwrite(m) },
@@ -550,6 +605,7 @@ func New() rootrepo.Repository {
 				UpdatedBy: creator,
 			},
 		),
+		brands: carBrandRepo,
 	}
 	simulationCarAliasRepo := &simulationCarAliasesEntityRepo{
 		newMapEntityRepo(
