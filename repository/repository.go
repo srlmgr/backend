@@ -3,6 +3,8 @@ package repository
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -69,9 +71,44 @@ func NewBobTransactionFromPool(pool *pgxpool.Pool) TransactionManager {
 // the contract with the repositories is:
 // we put the current executor into the context, the repository should first look
 // in the context for an executor and then use it to execute queries
+// the code is borrowd from bob's RunInTx implementation,
+// but here we return the original error of the executing function
 //
 //nolint:whitespace //editor/linter issue
 func (b *bobTransaction) RunInTx(
+	ctx context.Context,
+	fn func(ctx context.Context) error,
+) error {
+	tx, err := b.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx = pgbob.NewContext(ctx, tx)
+	// if an error occurs we want to return the original bob error
+	// because we may want to check for specific error types
+	// (e.g. unique constraint violation) in the service layer
+	if err := fn(ctx); err != nil {
+		txErr := fmt.Errorf("call: %w", err)
+
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+			return errors.Join(txErr, rollbackErr)
+		}
+
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	return nil
+}
+
+//nolint:whitespace //keep it as a reference
+func (b *bobTransaction) RunInTxOld(
 	ctx context.Context,
 	fn func(ctx context.Context) error,
 ) error {
