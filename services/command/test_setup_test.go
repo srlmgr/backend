@@ -93,7 +93,7 @@ func resetTestTables(t *testing.T) {
 
 	if _, err := testPool.Exec(
 		context.Background(),
-		"TRUNCATE TABLE racing_sims RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE racing_sims, point_systems RESTART IDENTITY CASCADE",
 	); err != nil {
 		t.Fatalf("failed to reset test tables: %v", err)
 	}
@@ -122,4 +122,27 @@ func seedSimulation(
 	}
 
 	return sim
+}
+
+//nolint:whitespace // multiline signature style
+func seedPointSystem(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) (
+	ps *models.PointSystem,
+) {
+	t.Helper()
+
+	var err error
+	ps, err = repo.PointSystems().PointSystems().Create(context.Background(), &models.PointSystemSetter{
+		Name:      omit.From(name),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed point system %q: %v", name, err)
+	}
+
+	return ps
 }

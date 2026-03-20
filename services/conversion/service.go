@@ -84,6 +84,25 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 	}
 }
 
+// PointSystemToPointSystem converts a PointSystem model to a PointSystem message.
+func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.PointSystem {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.PointSystem{
+		Id:          uint32(model.ID),
+		Name:        model.Name,
+		Description: model.Description.GetOr(""),
+	}
+}
+
+// PointRuleToPointRule converts a PointRule model to a PointRule message.
+// The full conversion from MetadataJSON to proto fields is deferred to a follow-up issue.
+func (s *Service) PointRuleToPointRule(_ *models.PointRule) *commonv1.PointRule {
+	return &commonv1.PointRule{}
+}
+
 // SeriesToSeries converts a Series model to a Series message.
 func (s *Service) SeriesToSeries(model *models.Series) *commonv1.Series {
 	if model == nil {
@@ -127,6 +146,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.SeriesErrors.ErrUniqueSeriesSimulationIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.PointSystemErrors.ErrUniquePointSystemsNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
