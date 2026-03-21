@@ -1,9 +1,9 @@
+//nolint:dupl // test files can have some duplication for test data setup
 package query
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
@@ -18,12 +18,12 @@ import (
 func seedDriver(
 	t *testing.T,
 	repo rootrepo.Repository,
-	externalID int,
+	externalID string,
 	name string,
 ) *models.Driver {
 	t.Helper()
 	d, err := repo.Drivers().Drivers().Create(context.Background(), &models.DriverSetter{
-		ExternalID: omit.From(fmt.Sprintf("%d", externalID)),
+		ExternalID: omit.From(externalID),
 		Name:       omit.From(name),
 		IsActive:   omit.From(true),
 		CreatedBy:  omit.From(testUserSeed),
@@ -53,8 +53,8 @@ func TestListDriversEmpty(t *testing.T) {
 func TestListDriversReturnsAll(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	alpha := seedDriver(t, repo, 1001, "Alpha Driver")
-	beta := seedDriver(t, repo, 1002, "Beta Driver")
+	alpha := seedDriver(t, repo, "1001", "Alpha Driver")
+	beta := seedDriver(t, repo, "1002", "Beta Driver")
 
 	resp, err := svc.ListDrivers(
 		context.Background(),
@@ -85,7 +85,7 @@ func TestListDriversReturnsAll(t *testing.T) {
 func TestGetDriverSuccess(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	d := seedDriver(t, repo, 2001, "Test Driver")
+	d := seedDriver(t, repo, "2001", "Test Driver")
 
 	resp, err := svc.GetDriver(
 		context.Background(),
@@ -101,8 +101,8 @@ func TestGetDriverSuccess(t *testing.T) {
 	if got.GetId() != uint32(d.ID) {
 		t.Errorf("expected id %d, got %d", d.ID, got.GetId())
 	}
-	if got.GetExternalId() != 2001 {
-		t.Errorf("expected external_id 2001, got %d", got.GetExternalId())
+	if got.GetExternalId() != "2001" {
+		t.Errorf("expected external_id %q, got %q", "2001", got.GetExternalId())
 	}
 	if got.GetName() != "Test Driver" {
 		t.Errorf("expected name %q, got %q", "Test Driver", got.GetName())

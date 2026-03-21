@@ -3,7 +3,6 @@ package command
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
@@ -17,7 +16,7 @@ import (
 )
 
 type driverRequest interface {
-	GetExternalId() uint32
+	GetExternalId() string
 	GetName() string
 	GetIsActive() bool
 }
@@ -29,8 +28,8 @@ type driverSetterBuilder struct{}
 func (b driverSetterBuilder) Build(msg driverRequest) *driverSetter {
 	setter := &driverSetter{}
 
-	if externalID := msg.GetExternalId(); externalID != 0 {
-		setter.ExternalID = omit.From(strconv.FormatUint(uint64(externalID), 10))
+	if externalID := msg.GetExternalId(); externalID != "" {
+		setter.ExternalID = omit.From(externalID)
 	}
 
 	if name := msg.GetName(); name != "" {
