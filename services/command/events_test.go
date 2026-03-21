@@ -55,7 +55,7 @@ func TestEventSetterBuilderBuildSuccess(t *testing.T) {
 	eventDate := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 	ts := timestamppb.New(eventDate)
 
-	setter := (eventSetterBuilder{}).Build(&v1.CreateEventRequest{
+	setter, err := (eventSetterBuilder{}).Build(&v1.CreateEventRequest{
 		SeasonId:        10,
 		TrackLayoutId:   20,
 		Name:            "Round 1",
@@ -63,6 +63,9 @@ func TestEventSetterBuilderBuildSuccess(t *testing.T) {
 		Status:          "planned",
 		ProcessingState: "idle",
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if !setter.SeasonID.IsValue() || setter.SeasonID.MustGet() != 10 {
 		t.Fatalf("unexpected season_id setter value: %+v", setter.SeasonID)
@@ -90,12 +93,15 @@ func TestEventSetterBuilderBuildSuccess(t *testing.T) {
 func TestEventSetterBuilderBuildNilEventDate(t *testing.T) {
 	t.Parallel()
 
-	setter := (eventSetterBuilder{}).Build(&v1.CreateEventRequest{
+	setter, err := (eventSetterBuilder{}).Build(&v1.CreateEventRequest{
 		SeasonId:      10,
 		TrackLayoutId: 20,
 		Name:          "Round 2",
 		EventDate:     nil,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if setter.EventDate.IsValue() {
 		t.Fatalf("expected event_date to be unset, got: %+v", setter.EventDate)
