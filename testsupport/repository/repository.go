@@ -482,6 +482,27 @@ type resultEntriesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.ResultEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ResultEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
 func (r *resultEntriesEntityRepo) LoadByImportBatchID(
 	ctx context.Context,
 	importBatchID int32,
@@ -503,9 +524,9 @@ func (r *resultEntriesEntityRepo) LoadByImportBatchID(
 }
 
 //nolint:whitespace // multiline signature style
-func (r *resultEntriesEntityRepo) LoadByRaceID(
+func (r *resultEntriesEntityRepo) LoadByState(
 	ctx context.Context,
-	raceID int32,
+	state string,
 ) ([]*models.ResultEntry, error) {
 	items, err := r.LoadAll(ctx)
 	if err != nil {
@@ -514,7 +535,7 @@ func (r *resultEntriesEntityRepo) LoadByRaceID(
 
 	filtered := make([]*models.ResultEntry, 0, len(items))
 	for _, item := range items {
-		if item == nil || item.RaceID != raceID {
+		if item == nil || item.State != state {
 			continue
 		}
 		filtered = append(filtered, item)
