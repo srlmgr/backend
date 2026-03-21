@@ -75,6 +75,7 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 	return setter
 }
 
+//nolint:exhaustive // by design
 func resultStateToString(state commonv1.ResultState) string {
 	switch state {
 	case commonv1.ResultState_RESULT_STATE_NORMAL:

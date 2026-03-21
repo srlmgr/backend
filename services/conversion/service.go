@@ -361,6 +361,8 @@ func isKnownEventProcessingState(processingState string) bool {
 }
 
 // ResultEntryToResultEntry converts a ResultEntry model to a ResultEntry message.
+//
+//nolint:lll // readability
 func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.ResultEntry {
 	if model == nil {
 		return nil
@@ -470,7 +472,8 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdSequenceNoUnique, err) {
 		return connect.CodeAlreadyExists
 	}
-	if errors.Is(dberrors.ErrUniqueResultEntriesRaceIdDriverIdUnique, err) {
+	//nolint:staticcheck // by design
+	if errors.Is(dberrors.ErrUniqueResultEntriesRaceIDDriverIDUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 

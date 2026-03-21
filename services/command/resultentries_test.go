@@ -18,6 +18,7 @@ import (
 	testsupportrepo "github.com/srlmgr/backend/testsupport/repository"
 )
 
+//nolint:gocyclo // much to do
 func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -143,7 +144,10 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 		t.Fatalf("unexpected race_id: got %d want 1", resp.Msg.GetResultEntry().GetRaceId())
 	}
 	if resp.Msg.GetResultEntry().GetFinishingPosition() != 2 {
-		t.Fatalf("unexpected finishing_position: got %d want 2", resp.Msg.GetResultEntry().GetFinishingPosition())
+		t.Fatalf(
+			"unexpected finishing_position: got %d want 2",
+			resp.Msg.GetResultEntry().GetFinishingPosition(),
+		)
 	}
 	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultState_RESULT_STATE_NORMAL {
 		t.Fatalf("unexpected state: got %v", resp.Msg.GetResultEntry().GetState())

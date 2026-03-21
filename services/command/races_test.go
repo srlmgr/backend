@@ -19,7 +19,7 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-//nolint:unparam,whitespace // currently just using one value
+//nolint:whitespace // editor/linter issue
 func seedRace(
 	t *testing.T,
 	repo rootrepo.Repository,
