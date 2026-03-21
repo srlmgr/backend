@@ -360,6 +360,12 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	if errors.Is(dberrors.TeamErrors.ErrUniqueTeamsSeasonIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
+	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdSequenceNoUnique, err) {
+		return connect.CodeAlreadyExists
+	}
 
 	// If we haven't mapped the error to a specific gRPC code,
 	// return Internal for all errors.
