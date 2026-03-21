@@ -51,7 +51,6 @@ func (s *service) ApplyResultEdits(
 	}
 
 	fromState := batch.ProcessingState
-	//nolint:goconst // by design
 	toState := "preprocessed"
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}

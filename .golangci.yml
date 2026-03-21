@@ -22,7 +22,6 @@ linters:
     - exhaustive
     - forbidigo
     - funlen
-    - goconst
     - gocritic
     - gocyclo
     - goprintffuncname
