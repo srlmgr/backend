@@ -1,4 +1,3 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package query
 
 import (

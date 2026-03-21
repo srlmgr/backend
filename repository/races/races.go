@@ -41,7 +41,10 @@ func (r *racesRepository) LoadAll(ctx context.Context) ([]*models.Race, error) {
 	return models.Races.Query().All(ctx, r.getExecutor(ctx))
 }
 
-func (r *racesRepository) LoadByEventID(ctx context.Context, eventID int32) ([]*models.Race, error) {
+func (r *racesRepository) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.Race, error) {
 	return models.Races.Query(
 		sm.Where(models.Races.Columns.EventID.EQ(psql.Arg(eventID))),
 	).All(ctx, r.getExecutor(ctx))

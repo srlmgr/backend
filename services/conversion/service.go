@@ -319,6 +319,7 @@ func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 	}
 }
 
+//nolint:gocyclo,funlen // many different error types to check for
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
