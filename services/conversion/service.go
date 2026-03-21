@@ -242,23 +242,15 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 		return nil
 	}
 
-<<<<<<< copilot/implement-query-service-drivers
-	// ExternalID is stored as a decimal string; parse best-effort (0 if invalid).
-	externalID, _ := strconv.ParseUint(model.ExternalID, 10, 32)
-
-	return &commonv1.Driver{
-		Id:         uint32(model.ID),
-		ExternalId: uint32(externalID),
-=======
 	var externalID uint32
 	if parsed, err := strconv.ParseUint(model.ExternalID, 10, 32); err == nil {
-		externalID = uint32(parsed) // TODO: define validation policy for non-numeric external IDs
+		// TODO: define validation policy for non-numeric external IDs
+		externalID = uint32(parsed)
 	}
 
 	return &commonv1.Driver{
 		Id:         uint32(model.ID),
 		ExternalId: externalID,
->>>>>>> main
 		Name:       model.Name,
 		IsActive:   model.IsActive,
 	}

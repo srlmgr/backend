@@ -1,4 +1,3 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
 package query
 
 import (
@@ -15,7 +14,13 @@ import (
 	rootrepo "github.com/srlmgr/backend/repository"
 )
 
-func seedDriver(t *testing.T, repo rootrepo.Repository, externalID int, name string) *models.Driver {
+//nolint:whitespace // editor/linter issue
+func seedDriver(
+	t *testing.T,
+	repo rootrepo.Repository,
+	externalID int,
+	name string,
+) *models.Driver {
 	t.Helper()
 	d, err := repo.Drivers().Drivers().Create(context.Background(), &models.DriverSetter{
 		ExternalID: omit.From(fmt.Sprintf("%d", externalID)),
