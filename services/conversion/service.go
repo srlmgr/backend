@@ -280,6 +280,34 @@ func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 	}
 }
 
+// RaceToRace converts a Race model to a Race message.
+func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Race{
+		Id:          uint32(model.ID),
+		EventId:     uint32(model.EventID),
+		Name:        model.Name,
+		SessionType: raceSessionTypeFromString(model.SessionType),
+		SequenceNo:  model.SequenceNo,
+	}
+}
+
+func raceSessionTypeFromString(s string) commonv1.RaceSessionType {
+	switch s {
+	case "qualifying":
+		return commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
+	case "heat":
+		return commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
+	case "race":
+		return commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
+	default:
+		return commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED
+	}
+}
+
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
@@ -319,6 +347,12 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.TeamErrors.ErrUniqueTeamsSeasonIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdSequenceNoUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
