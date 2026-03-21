@@ -333,3 +333,29 @@ func seedDriver(
 
 	return driver
 }
+
+//nolint:whitespace // multiline signature style
+func seedTeam(
+	t *testing.T,
+	repo rootrepo.Repository,
+	seasonID int32,
+	name string,
+) (
+	team *models.Team,
+) {
+	t.Helper()
+
+	var err error
+	team, err = repo.Teams().Teams().Create(context.Background(), &models.TeamSetter{
+		SeasonID:  omit.From(seasonID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed team %q: %v", name, err)
+	}
+
+	return team
+}
