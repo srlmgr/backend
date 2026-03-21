@@ -12,15 +12,15 @@ require (
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
 	github.com/docker/go-connections v0.6.0
 	github.com/exaring/otelpgx v0.10.0
-	github.com/gofrs/uuid/v5 v5.0.0
+	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx-gofrs-uuid v0.0.0-20230224015001-1d428863c2e2
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jaswdr/faker/v2 v2.9.1
-	github.com/lestrrat-go/httprc/v3 v3.0.2
+	github.com/lestrrat-go/httprc/v3 v3.0.4
 	github.com/lestrrat-go/jwx/v3 v3.0.13
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.12.0
 	github.com/open-policy-agent/opa v1.14.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cobra v1.10.2
@@ -30,7 +30,7 @@ require (
 	github.com/stephenafamo/scan v0.7.0
 	github.com/testcontainers/testcontainers-go v0.41.0
 	go.opentelemetry.io/contrib/bridges/otelzap v0.17.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
 	go.opentelemetry.io/contrib/processors/minsev v0.15.0
 	go.opentelemetry.io/otel v1.42.0
@@ -46,7 +46,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.42.0
 	go.opentelemetry.io/otel/trace v1.42.0
 	go.uber.org/zap v1.27.1
-	google.golang.org/grpc v1.79.2
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
