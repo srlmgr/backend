@@ -244,7 +244,8 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 
 	var externalID uint32
 	if parsed, err := strconv.ParseUint(model.ExternalID, 10, 32); err == nil {
-		externalID = uint32(parsed) // TODO: define validation policy for non-numeric external IDs
+		// TODO: define validation policy for non-numeric external IDs
+		externalID = uint32(parsed)
 	}
 
 	return &commonv1.Driver{

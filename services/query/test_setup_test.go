@@ -59,7 +59,7 @@ func resetTestTables(t *testing.T) {
 
 	if _, err := testPool.Exec(
 		context.Background(),
-		"TRUNCATE TABLE racing_sims, series, point_systems, seasons, tracks, track_layouts, events, car_manufacturers, car_brands, car_models RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE racing_sims, series, point_systems, seasons, tracks, track_layouts, events, car_manufacturers, car_brands, car_models, drivers RESTART IDENTITY CASCADE",
 	); err != nil {
 		t.Fatalf("failed to reset test tables: %v", err)
 	}
