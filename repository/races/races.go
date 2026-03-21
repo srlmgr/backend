@@ -22,6 +22,8 @@ import (
 
 // Repository defines persistence operations for Race entities.
 type Repository interface {
+	LoadAll(ctx context.Context) ([]*models.Race, error)
+	LoadByEventID(ctx context.Context, eventID int32) ([]*models.Race, error)
 	LoadByID(ctx context.Context, id int32) (*models.Race, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.RaceSetter) (*models.Race, error)
@@ -33,6 +35,16 @@ type racesRepository struct{ exec *pgbob.Executor }
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
 	return &racesRepository{exec: pgbob.New(pool)}
+}
+
+func (r *racesRepository) LoadAll(ctx context.Context) ([]*models.Race, error) {
+	return models.Races.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *racesRepository) LoadByEventID(ctx context.Context, eventID int32) ([]*models.Race, error) {
+	return models.Races.Query(
+		sm.Where(models.Races.Columns.EventID.EQ(psql.Arg(eventID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *racesRepository) LoadByID(ctx context.Context, id int32) (*models.Race, error) {
