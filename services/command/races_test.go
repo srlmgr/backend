@@ -19,7 +19,14 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-func seedRace(t *testing.T, repo rootrepo.Repository, eventID int32, name, sessionType string, sequenceNo int32) *models.Race {
+//nolint:unparam,whitespace // currently just using one value
+func seedRace(
+	t *testing.T,
+	repo rootrepo.Repository,
+	eventID int32,
+	name, sessionType string,
+	sequenceNo int32,
+) *models.Race {
 	t.Helper()
 	race, err := repo.Races().Create(context.Background(), &models.RaceSetter{
 		EventID:     omit.From(eventID),
@@ -124,7 +131,10 @@ func TestCreateRaceSuccess(t *testing.T) {
 	if resp.Msg.GetRace().GetEventId() != uint32(event.ID) {
 		t.Fatalf("unexpected event_id: got %d want %d", resp.Msg.GetRace().GetEventId(), event.ID)
 	}
-	if resp.Msg.GetRace().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING {
+	if resp.Msg.GetRace().
+		GetSessionType() !=
+		commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING {
+
 		t.Fatalf("unexpected session_type: got %v", resp.Msg.GetRace().GetSessionType())
 	}
 	if resp.Msg.GetRace().GetSequenceNo() != 1 {
@@ -137,7 +147,11 @@ func TestCreateRaceSuccess(t *testing.T) {
 		t.Fatalf("failed to load created race: %v", err)
 	}
 	if stored.CreatedBy != testUserTester || stored.UpdatedBy != testUserTester {
-		t.Fatalf("unexpected created/updated by values: %q / %q", stored.CreatedBy, stored.UpdatedBy)
+		t.Fatalf(
+			"unexpected created/updated by values: %q / %q",
+			stored.CreatedBy,
+			stored.UpdatedBy,
+		)
 	}
 	if stored.EventID != event.ID {
 		t.Fatalf("unexpected stored event_id: got %d want %d", stored.EventID, event.ID)
@@ -305,13 +319,21 @@ func TestUpdateRaceSuccess(t *testing.T) {
 		t.Fatalf("unexpected UpdatedBy: got %q want %q", after.UpdatedBy, testUserEditor)
 	}
 	if !after.UpdatedAt.After(before.UpdatedAt) {
-		t.Fatalf("expected UpdatedAt to move forward: before=%s after=%s", before.UpdatedAt, after.UpdatedAt)
+		t.Fatalf(
+			"expected UpdatedAt to move forward: before=%s after=%s",
+			before.UpdatedAt,
+			after.UpdatedAt,
+		)
 	}
 	if after.Name != "Heat 1 Updated" {
 		t.Fatalf("unexpected name after update: got %q want %q", after.Name, "Heat 1 Updated")
 	}
 	if after.SessionType != sessionTypeRace {
-		t.Fatalf("unexpected session_type after update: got %q want %q", after.SessionType, sessionTypeRace)
+		t.Fatalf(
+			"unexpected session_type after update: got %q want %q",
+			after.SessionType,
+			sessionTypeRace,
+		)
 	}
 	if after.SequenceNo != 2 {
 		t.Fatalf("unexpected sequence_no after update: got %d want 2", after.SequenceNo)
@@ -367,7 +389,11 @@ func TestUpdateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 		t.Fatalf("failed to load race after duplicate update: %v", loadErr)
 	}
 	if stored.Name != "Race 2" {
-		t.Fatalf("unexpected name after failed duplicate update: got %q want %q", stored.Name, "Race 2")
+		t.Fatalf(
+			"unexpected name after failed duplicate update: got %q want %q",
+			stored.Name,
+			"Race 2",
+		)
 	}
 }
 

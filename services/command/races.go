@@ -45,6 +45,7 @@ func (b raceSetterBuilder) Build(msg raceRequest) (*raceSetter, error) {
 		setter.Name = omit.From(name)
 	}
 
+	//nolint:lll // readability
 	if st := msg.GetSessionType(); st != commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED {
 		dbStr, err := raceSessionTypeToString(st)
 		if err != nil {
@@ -61,6 +62,7 @@ func (b raceSetterBuilder) Build(msg raceRequest) (*raceSetter, error) {
 }
 
 func raceSessionTypeToString(st commonv1.RaceSessionType) (string, error) {
+	//nolint:exhaustive // we want to return an error for unsupported types
 	switch st {
 	case commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING:
 		return sessionTypeQualifying, nil

@@ -357,6 +357,28 @@ func (r *eventsEntityRepo) LoadBySeasonID(
 type racesEntityRepo struct {
 	*mapEntityRepo[models.Race, models.RaceSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *racesEntityRepo) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.Race, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.Race, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.EventID != eventID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type teamsEntityRepo struct {
 	*mapEntityRepo[models.Team, models.TeamSetter]
 }

@@ -11,20 +11,27 @@ import (
 
 	"github.com/srlmgr/backend/db/dberrors"
 	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
 const (
 	importFormatJSON = "json"
 	importFormatCSV  = "csv"
+
+	raceSessionTypeQualifying = "qualifying"
+	raceSessionTypeHeat       = "heat"
+	raceSessionTypeRace       = "race"
 )
 
 // Service converts database models to gRPC messages.
-type Service struct{}
+type Service struct {
+	logger *log.Logger
+}
 
 // New creates a new conversion service.
 func New() *Service {
-	return &Service{}
+	return &Service{logger: log.New()}
 }
 
 // ImportFormatsToProto converts persisted import format strings to protobuf enums.
@@ -281,33 +288,38 @@ func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 }
 
 // RaceToRace converts a Race model to a Race message.
+// Unknown session_type strings map to UNSPECIFIED and emit a warning log.
 func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 	if model == nil {
 		return nil
+	}
+
+	var sessionType commonv1.RaceSessionType
+	switch model.SessionType {
+	case raceSessionTypeQualifying:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
+	case raceSessionTypeHeat:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
+	case raceSessionTypeRace:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
+	default:
+		s.logger.Warn("unknown race session_type, mapping to UNSPECIFIED",
+			log.String("session_type", model.SessionType),
+			log.Int32("race_id", model.ID),
+		)
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED
 	}
 
 	return &commonv1.Race{
 		Id:          uint32(model.ID),
 		EventId:     uint32(model.EventID),
 		Name:        model.Name,
-		SessionType: raceSessionTypeFromString(model.SessionType),
+		SessionType: sessionType,
 		SequenceNo:  model.SequenceNo,
 	}
 }
 
-func raceSessionTypeFromString(s string) commonv1.RaceSessionType {
-	switch s {
-	case "qualifying":
-		return commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
-	case "heat":
-		return commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
-	case "race":
-		return commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
-	default:
-		return commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED
-	}
-}
-
+//nolint:gocyclo,funlen // many different error types to check for
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
