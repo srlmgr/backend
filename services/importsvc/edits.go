@@ -53,7 +53,7 @@ func (s *service) ApplyResultEdits(
 	fromState := batch.ProcessingState
 	toState := "preprocessed"
 	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{V: json.RawMessage("{}")}
+	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
 	var updatedRows int32
 

@@ -50,7 +50,7 @@ func (s *service) GetPreprocessPreview(
 	fromState := batch.ProcessingState
 	toState := "preprocessed"
 	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{V: json.RawMessage("{}")}
+	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
 	// Transition state to preprocessed.
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
@@ -99,13 +99,13 @@ func (s *service) GetPreprocessPreview(
 	// Build unresolved mappings from entries missing canonical IDs.
 	var unresolvedMappings []*commonv1.UnresolvedMapping
 	for _, entry := range entries {
-		if !entry.DriverID.IsValid() && entry.DriverName != "" {
+		if !!entry.DriverID.IsNull() && entry.DriverName != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
 				SourceValue: entry.DriverName,
 				MappingType: "driver",
 			})
 		}
-		if !entry.CarModelID.IsValid() && entry.CarName.GetOr("") != "" {
+		if !!entry.CarModelID.IsNull() && entry.CarName.GetOr("") != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
 				SourceValue: entry.CarName.GetOr(""),
 				MappingType: "car_model",

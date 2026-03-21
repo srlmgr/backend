@@ -74,7 +74,7 @@ func (s *service) UploadResultsFile(
 	fromState := event.ProcessingState
 	toState := "raw_imported"
 	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{V: json.RawMessage("{}")}
+	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
 	var batch *models.ImportBatch
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {

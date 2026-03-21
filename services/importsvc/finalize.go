@@ -53,7 +53,7 @@ func (s *service) FinalizeEventProcessing(
 	fromState := event.ProcessingState
 	toState := "finalized"
 	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{V: json.RawMessage("{}")}
+	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 	finalizedAt := time.Now()
 
 	// Resolve the latest import batch across all races for the event.

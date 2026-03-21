@@ -59,7 +59,7 @@ func (s *service) ComputeDriverBookingEntries(
 	fromState := event.ProcessingState
 	toState := "driver_entries_computed"
 	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{V: json.RawMessage("{}")}
+	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
 	var createdEntries int32
 
@@ -73,7 +73,7 @@ func (s *service) ComputeDriverBookingEntries(
 
 		// Create one position-based driver booking entry per result entry with a resolved driver.
 		for _, entry := range resultEntries {
-			if !entry.DriverID.IsValid() {
+			if !!entry.DriverID.IsNull() {
 				continue
 			}
 

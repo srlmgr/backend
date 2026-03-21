@@ -557,9 +557,9 @@ func (r *bookingEntriesEntityRepo) DeleteByEventIDAndTargetType(
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for id, item := range r.store {
+	for id, item := range r.data {
 		if item.EventID == eventID && string(item.TargetType) == targetType {
-			delete(r.store, id)
+			delete(r.data, id)
 		}
 	}
 
@@ -575,9 +575,9 @@ func (r *bookingEntriesEntityRepo) DeleteByEventIDAndSourceType(
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for id, item := range r.store {
+	for id, item := range r.data {
 		if item.EventID == eventID && string(item.SourceType) == sourceType {
-			delete(r.store, id)
+			delete(r.data, id)
 		}
 	}
 
