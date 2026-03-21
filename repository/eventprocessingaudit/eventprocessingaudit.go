@@ -23,6 +23,7 @@ import (
 // Repository defines persistence operations for EventProcessingAudit entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.EventProcessingAudit, error)
+	LoadByEventID(ctx context.Context, eventID int32) ([]*models.EventProcessingAudit, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -80,6 +81,15 @@ func (r *auditRepository) Update(
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (r *auditRepository) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.EventProcessingAudit, error) {
+	return models.EventProcessingAudits.Query(
+		sm.Where(models.EventProcessingAudits.Columns.EventID.EQ(psql.Arg(eventID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *auditRepository) getExecutor(ctx context.Context) bob.Executor {

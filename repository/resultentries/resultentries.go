@@ -23,6 +23,8 @@ import (
 // Repository defines persistence operations for ResultEntry entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.ResultEntry, error)
+	LoadByImportBatchID(ctx context.Context, importBatchID int32) ([]*models.ResultEntry, error)
+	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
 	Update(
@@ -77,6 +79,24 @@ func (r *resultEntriesRepository) Update(
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (r *resultEntriesRepository) LoadByImportBatchID(
+	ctx context.Context,
+	importBatchID int32,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		sm.Where(models.ResultEntries.Columns.ImportBatchID.EQ(psql.Arg(importBatchID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *resultEntriesRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		sm.Where(models.ResultEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *resultEntriesRepository) getExecutor(ctx context.Context) bob.Executor {

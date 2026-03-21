@@ -23,7 +23,10 @@ import (
 // Repository defines persistence operations for BookingEntry entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.BookingEntry, error)
+	LoadByEventID(ctx context.Context, eventID int32) ([]*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByEventIDAndTargetType(ctx context.Context, eventID int32, targetType string) error
+	DeleteByEventIDAndSourceType(ctx context.Context, eventID int32, sourceType string) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
 	Update(
 		ctx context.Context,
@@ -77,6 +80,39 @@ func (r *bookingEntriesRepository) Update(
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (r *bookingEntriesRepository) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Query(
+		sm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) DeleteByEventIDAndTargetType(
+	ctx context.Context,
+	eventID int32,
+	targetType string,
+) error {
+	_, err := models.BookingEntries.Delete(
+		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+		dm.Where(models.BookingEntries.Columns.TargetType.EQ(psql.Arg(targetType))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *bookingEntriesRepository) DeleteByEventIDAndSourceType(
+	ctx context.Context,
+	eventID int32,
+	sourceType string,
+) error {
+	_, err := models.BookingEntries.Delete(
+		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+		dm.Where(models.BookingEntries.Columns.SourceType.EQ(psql.Arg(sourceType))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
 }
 
 func (r *bookingEntriesRepository) getExecutor(ctx context.Context) bob.Executor {
