@@ -18,7 +18,7 @@ func TestDriverSetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
 
 	setter := (driverSetterBuilder{}).Build(&v1.CreateDriverRequest{
-		ExternalId: 42,
+		ExternalId: "42",
 		Name:       "Max Verstappen",
 		IsActive:   true,
 	})
@@ -38,7 +38,7 @@ func TestDriverSetterBuilderBuildZeroValues(t *testing.T) {
 	t.Parallel()
 
 	setter := (driverSetterBuilder{}).Build(&v1.CreateDriverRequest{
-		ExternalId: 0,
+		ExternalId: "",
 		Name:       "",
 		IsActive:   false,
 	})
@@ -59,7 +59,7 @@ func TestCreateDriverSuccess(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateDriver(ctx, connect.NewRequest(&v1.CreateDriverRequest{
-		ExternalId: 99,
+		ExternalId: "99",
 		Name:       "Lewis Hamilton",
 		IsActive:   true,
 	}))
@@ -69,8 +69,12 @@ func TestCreateDriverSuccess(t *testing.T) {
 	if resp.Msg.GetDriver().GetName() != "Lewis Hamilton" {
 		t.Fatalf("unexpected driver name: %q", resp.Msg.GetDriver().GetName())
 	}
-	if resp.Msg.GetDriver().GetExternalId() != 99 {
-		t.Fatalf("unexpected external id: got %d want %d", resp.Msg.GetDriver().GetExternalId(), 99)
+	if resp.Msg.GetDriver().GetExternalId() != "99" {
+		t.Fatalf(
+			"unexpected external id: got %q want %q",
+			resp.Msg.GetDriver().GetExternalId(),
+			"99",
+		)
 	}
 
 	id := int32(resp.Msg.GetDriver().GetId())
@@ -97,7 +101,7 @@ func TestCreateDriverFailureDuplicateExternalID(t *testing.T) {
 	_, err := svc.CreateDriver(
 		context.Background(),
 		connect.NewRequest(&v1.CreateDriverRequest{
-			ExternalId: 100,
+			ExternalId: "100",
 			Name:       "Carlos Sainz",
 			IsActive:   true,
 		}),
@@ -122,7 +126,7 @@ func TestCreateDriverFailureTransactionError(t *testing.T) {
 	_, err := svc.CreateDriver(
 		context.Background(),
 		connect.NewRequest(&v1.CreateDriverRequest{
-			ExternalId: 1,
+			ExternalId: "1",
 			Name:       "Test Driver",
 		}),
 	)
@@ -149,7 +153,7 @@ func TestUpdateDriverSuccess(t *testing.T) {
 
 	resp, err := svc.UpdateDriver(ctx, connect.NewRequest(&v1.UpdateDriverRequest{
 		DriverId:   uint32(initial.ID),
-		ExternalId: 200,
+		ExternalId: "200",
 		Name:       "Sebastian Vettel Updated",
 		IsActive:   true,
 	}))
@@ -203,7 +207,7 @@ func TestUpdateDriverFailureDuplicateExternalID(t *testing.T) {
 		context.Background(),
 		connect.NewRequest(&v1.UpdateDriverRequest{
 			DriverId:   uint32(second.ID),
-			ExternalId: 300,
+			ExternalId: "300",
 			Name:       second.Name,
 		}),
 	)

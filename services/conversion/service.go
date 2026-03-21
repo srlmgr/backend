@@ -3,7 +3,6 @@ package conversion
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
@@ -242,15 +241,9 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 		return nil
 	}
 
-	var externalID uint32
-	if parsed, err := strconv.ParseUint(model.ExternalID, 10, 32); err == nil {
-		// TODO: define validation policy for non-numeric external IDs
-		externalID = uint32(parsed)
-	}
-
 	return &commonv1.Driver{
 		Id:         uint32(model.ID),
-		ExternalId: externalID,
+		ExternalId: model.ExternalID,
 		Name:       model.Name,
 		IsActive:   model.IsActive,
 	}
