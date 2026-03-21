@@ -11,7 +11,12 @@ import (
 // ProtoFieldStringOrEnumValue reads a protobuf field that may be encoded as a
 // string today or as an enum in a future generated API, returning the persisted
 // snake_case representation used by the database.
-func ProtoFieldStringOrEnumValue(msg protoreflect.Message, fieldName string) (string, error) {
+//
+//nolint:exhaustive,whitespace // we need only parts
+func ProtoFieldStringOrEnumValue(
+	msg protoreflect.Message,
+	fieldName string,
+) (string, error) {
 	field := msg.Descriptor().Fields().ByName(protoreflect.Name(fieldName))
 	if field == nil {
 		return "", fmt.Errorf("field %q not found", fieldName)
@@ -32,9 +37,16 @@ func ProtoFieldStringOrEnumValue(msg protoreflect.Message, fieldName string) (st
 			return "", fmt.Errorf("unknown enum value %d for field %q", enumNumber, fieldName)
 		}
 
-		persistedValue, ok := persistedValueFromEnumName(string(field.Enum().Name()), string(enumValue.Name()))
+		persistedValue, ok := persistedValueFromEnumName(
+			string(field.Enum().Name()),
+			string(enumValue.Name()),
+		)
 		if !ok {
-			return "", fmt.Errorf("unsupported enum value %q for field %q", enumValue.Name(), fieldName)
+			return "", fmt.Errorf(
+				"unsupported enum value %q for field %q",
+				enumValue.Name(),
+				fieldName,
+			)
 		}
 
 		return persistedValue, nil
@@ -45,7 +57,12 @@ func ProtoFieldStringOrEnumValue(msg protoreflect.Message, fieldName string) (st
 
 // SetProtoFieldStringOrEnum writes a persisted snake_case value into a protobuf
 // field that may be represented as either a string or enum in generated code.
-func SetProtoFieldStringOrEnum(msg protoreflect.Message, fieldName, persistedValue string) error {
+//
+//nolint:exhaustive,whitespace,lll // we need only parts
+func SetProtoFieldStringOrEnum(
+	msg protoreflect.Message,
+	fieldName, persistedValue string,
+) error {
 	field := msg.Descriptor().Fields().ByName(protoreflect.Name(fieldName))
 	if field == nil {
 		return fmt.Errorf("field %q not found", fieldName)
@@ -66,7 +83,10 @@ func SetProtoFieldStringOrEnum(msg protoreflect.Message, fieldName, persistedVal
 			return nil
 		}
 
-		if unspecified, hasUnspecified := enumNumberForPersistedValue(field.Enum(), "unspecified"); hasUnspecified {
+		if unspecified, hasUnspecified := enumNumberForPersistedValue(
+			field.Enum(),
+			"unspecified",
+		); hasUnspecified {
 			msg.Set(field, protoreflect.ValueOfEnum(unspecified))
 		}
 
@@ -76,7 +96,11 @@ func SetProtoFieldStringOrEnum(msg protoreflect.Message, fieldName, persistedVal
 	}
 }
 
-func enumNumberForPersistedValue(enumDesc protoreflect.EnumDescriptor, persistedValue string) (protoreflect.EnumNumber, bool) {
+//nolint:whitespace // editor/linter issue
+func enumNumberForPersistedValue(
+	enumDesc protoreflect.EnumDescriptor,
+	persistedValue string,
+) (protoreflect.EnumNumber, bool) {
 	suffix := toScreamingSnake(persistedValue)
 	if suffix == "" {
 		return 0, false

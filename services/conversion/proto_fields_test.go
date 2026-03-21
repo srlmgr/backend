@@ -1,3 +1,4 @@
+//nolint:lll,funlen // test setup
 package conversion
 
 import (
@@ -67,6 +68,7 @@ func TestSetProtoFieldStringOrEnumUnknownValueFallsBackToUnspecified(t *testing.
 	}
 }
 
+//nolint:whitespace // editor/linter issue
 func newDynamicEventMessage(
 	t *testing.T,
 ) (*dynamicpb.Message, protoreflect.FieldDescriptor, protoreflect.FieldDescriptor) {
@@ -88,8 +90,14 @@ func newDynamicEventMessage(
 			{
 				Name: protoString("EventProcessingState"),
 				Value: []*descriptorpb.EnumValueDescriptorProto{
-					{Name: protoString("EVENT_PROCESSING_STATE_UNSPECIFIED"), Number: protoInt32(0)},
-					{Name: protoString("EVENT_PROCESSING_STATE_RAW_IMPORTED"), Number: protoInt32(2)},
+					{
+						Name:   protoString("EVENT_PROCESSING_STATE_UNSPECIFIED"),
+						Number: protoInt32(0),
+					},
+					{
+						Name:   protoString("EVENT_PROCESSING_STATE_RAW_IMPORTED"),
+						Number: protoInt32(2),
+					},
 					{Name: protoString("EVENT_PROCESSING_STATE_FINALIZED"), Number: protoInt32(3)},
 				},
 			},

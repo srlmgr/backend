@@ -1,4 +1,4 @@
-//nolint:lll // service tests can have long lines for test data setup
+//nolint:lll,funlen // service tests can have long lines for test data setup
 package conversion
 
 import (

@@ -25,7 +25,7 @@ const (
 
 	eventStatusScheduled = "scheduled"
 	eventStatusCompleted = "completed"
-	eventStatusCancelled = "cancelled"
+	eventStatusCancelled = "canceled"
 
 	eventProcessingStateDraft                 = "draft"
 	eventProcessingStateRawImported           = "raw_imported"
@@ -282,6 +282,8 @@ func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
 }
 
 // EventToEvent converts an Event model to an Event message.
+//
+//nolint:funlen // many fields to convert and validate
 func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 	if model == nil {
 		return nil
@@ -303,7 +305,8 @@ func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 		)
 		status = ""
 	}
-	if err := SetProtoFieldStringOrEnum(event.ProtoReflect(), "status", status); err != nil {
+	if err := SetProtoFieldStringOrEnum(
+		event.ProtoReflect(), "status", status); err != nil {
 		s.logger.Warn("unknown event status, mapping to UNSPECIFIED",
 			log.String("status", status),
 			log.Int32("event_id", model.ID),
@@ -319,7 +322,11 @@ func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 		)
 		processingState = ""
 	}
-	if err := SetProtoFieldStringOrEnum(event.ProtoReflect(), "processing_state", processingState); err != nil {
+	if err := SetProtoFieldStringOrEnum(
+		event.ProtoReflect(),
+		"processing_state",
+		processingState,
+	); err != nil {
 		s.logger.Warn("unknown event processing_state, mapping to UNSPECIFIED",
 			log.String("processing_state", processingState),
 			log.Int32("event_id", model.ID),
