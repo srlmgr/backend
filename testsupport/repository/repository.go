@@ -476,6 +476,7 @@ func (r *resultEntriesEntityRepo) LoadByState(
 
 	return filtered, nil
 }
+
 type bookingEntriesEntityRepo struct {
 	*mapEntityRepo[models.BookingEntry, models.BookingEntrySetter]
 }

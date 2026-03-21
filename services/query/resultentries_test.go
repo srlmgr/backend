@@ -23,15 +23,16 @@ func seedImportBatch(
 ) *models.ImportBatch {
 	t.Helper()
 
-	batch, err := repo.ImportBatches().Create(context.Background(), &models.ImportBatchSetter{
-		EventID:         omit.From(eventID),
-		RaceID:          omit.From(raceID),
-		ImportFormat:    omit.From(mytypes.ImportFormat("csv")),
-		Payload:         omit.From([]byte("{}")),
-		ProcessingState: omit.From("raw_imported"),
-		CreatedBy:       omit.From(testUserSeed),
-		UpdatedBy:       omit.From(testUserSeed),
-	})
+	batch, err := repo.ImportBatches().Create(
+		context.Background(), &models.ImportBatchSetter{
+			EventID:         omit.From(eventID),
+			RaceID:          omit.From(raceID),
+			ImportFormat:    omit.From(mytypes.ImportFormat("csv")),
+			Payload:         omit.From([]byte("{}")),
+			ProcessingState: omit.From("raw_imported"),
+			CreatedBy:       omit.From(testUserSeed),
+			UpdatedBy:       omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed import batch: %v", err)
 	}
@@ -49,16 +50,17 @@ func seedResultEntry(
 ) *models.ResultEntry {
 	t.Helper()
 
-	entry, err := repo.ResultEntries().Create(context.Background(), &models.ResultEntrySetter{
-		ImportBatchID:     omit.From(importBatchID),
-		RaceID:            omit.From(raceID),
-		DriverName:        omit.From(driverName),
-		FinishingPosition: omit.From(finishingPosition),
-		CompletedLaps:     omit.From(int32(0)),
-		State:             omit.From("normal"),
-		CreatedBy:         omit.From(testUserSeed),
-		UpdatedBy:         omit.From(testUserSeed),
-	})
+	entry, err := repo.ResultEntries().Create(
+		context.Background(), &models.ResultEntrySetter{
+			ImportBatchID:     omit.From(importBatchID),
+			RaceID:            omit.From(raceID),
+			DriverName:        omit.From(driverName),
+			FinishingPosition: omit.From(finishingPosition),
+			CompletedLaps:     omit.From(int32(0)),
+			State:             omit.From("normal"),
+			CreatedBy:         omit.From(testUserSeed),
+			UpdatedBy:         omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed result entry for %q: %v", driverName, err)
 	}

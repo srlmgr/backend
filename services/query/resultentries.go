@@ -13,7 +13,7 @@ import (
 
 // GetResultEntry returns a result entry by ID.
 //
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,dupl // editor/linter issue
 func (s *service) GetResultEntry(
 	ctx context.Context,
 	req *connect.Request[queryv1.GetResultEntryRequest],
