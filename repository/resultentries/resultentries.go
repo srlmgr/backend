@@ -22,7 +22,11 @@ import (
 
 // Repository defines persistence operations for ResultEntry entities.
 type Repository interface {
+	LoadAll(ctx context.Context) ([]*models.ResultEntry, error)
 	LoadByID(ctx context.Context, id int32) (*models.ResultEntry, error)
+	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.ResultEntry, error)
+	LoadByImportBatchID(ctx context.Context, importBatchID int32) ([]*models.ResultEntry, error)
+	LoadByState(ctx context.Context, state string) ([]*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
 	Update(
@@ -49,6 +53,37 @@ func (r *resultEntriesRepository) LoadByID(
 		return nil, fmt.Errorf("result entry %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *resultEntriesRepository) LoadAll(ctx context.Context) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *resultEntriesRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		sm.Where(models.ResultEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *resultEntriesRepository) LoadByImportBatchID(
+	ctx context.Context,
+	importBatchID int32,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		sm.Where(models.ResultEntries.Columns.ImportBatchID.EQ(psql.Arg(importBatchID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *resultEntriesRepository) LoadByState(
+	ctx context.Context,
+	state string,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		sm.Where(models.ResultEntries.Columns.State.EQ(psql.Arg(state))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *resultEntriesRepository) DeleteByID(ctx context.Context, id int32) error {

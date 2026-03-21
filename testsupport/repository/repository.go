@@ -413,6 +413,69 @@ type importBatchesEntityRepo struct {
 type resultEntriesEntityRepo struct {
 	*mapEntityRepo[models.ResultEntry, models.ResultEntrySetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.ResultEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ResultEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) LoadByImportBatchID(
+	ctx context.Context,
+	importBatchID int32,
+) ([]*models.ResultEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ResultEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.ImportBatchID != importBatchID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) LoadByState(
+	ctx context.Context,
+	state string,
+) ([]*models.ResultEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ResultEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.State != state {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
 type bookingEntriesEntityRepo struct {
 	*mapEntityRepo[models.BookingEntry, models.BookingEntrySetter]
 }
