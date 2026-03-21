@@ -256,6 +256,20 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 	}
 }
 
+// TeamToTeam converts a Team model to a Team message.
+func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.Team{
+		Id:       uint32(model.ID),
+		SeasonId: uint32(model.SeasonID),
+		Name:     model.Name,
+		IsActive: model.IsActive,
+	}
+}
+
 // EventToEvent converts an Event model to an Event message.
 func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 	if model == nil {
@@ -309,6 +323,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.DriverErrors.ErrUniqueDriversExternalIdUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.TeamErrors.ErrUniqueTeamsSeasonIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
