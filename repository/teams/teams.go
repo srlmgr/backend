@@ -22,7 +22,9 @@ import (
 
 // TeamsRepository defines persistence operations for Team entities.
 type TeamsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.Team, error)
 	LoadByID(ctx context.Context, id int32) (*models.Team, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Team, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TeamSetter) (*models.Team, error)
 	Update(ctx context.Context, id int32, input *models.TeamSetter) (*models.Team, error)
@@ -66,6 +68,16 @@ func New(pool *pgxpool.Pool) Repository {
 
 func (r *repository) Teams() TeamsRepository             { return r.teams }
 func (r *repository) TeamDrivers() TeamDriversRepository { return r.teamDrivers }
+
+func (r *teamsRepository) LoadAll(ctx context.Context) ([]*models.Team, error) {
+	return models.Teams.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *teamsRepository) LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Team, error) {
+	return models.Teams.Query(
+		sm.Where(models.Teams.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+	).All(ctx, r.getExecutor(ctx))
+}
 
 func (r *teamsRepository) LoadByID(ctx context.Context, id int32) (*models.Team, error) {
 	entity, err := models.Teams.Query(sm.Where(models.Teams.Columns.ID.EQ(psql.Arg(id)))).

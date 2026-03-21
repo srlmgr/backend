@@ -360,6 +360,27 @@ type racesEntityRepo struct {
 type teamsEntityRepo struct {
 	*mapEntityRepo[models.Team, models.TeamSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *teamsEntityRepo) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.Team, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.Team, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SeasonID != seasonID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
 type teamDriversEntityRepo struct {
 	*mapEntityRepo[models.TeamDriver, models.TeamDriverSetter]
 }
