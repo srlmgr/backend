@@ -360,6 +360,36 @@ func isKnownEventProcessingState(processingState string) bool {
 	}
 }
 
+// ResultEntryToResultEntry converts a ResultEntry model to a ResultEntry message.
+func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.ResultEntry {
+	if model == nil {
+		return nil
+	}
+
+	entry := &commonv1.ResultEntry{
+		Id:                uint32(model.ID),
+		RaceId:            uint32(model.RaceID),
+		DriverId:          uint32(model.DriverID.GetOr(0)),
+		CarModelId:        uint32(model.CarModelID.GetOr(0)),
+		FinishingPosition: model.FinishingPosition,
+		CompletedLaps:     model.CompletedLaps,
+		FastestLapTimeMs:  model.FastestLapTimeMS.GetOr(0),
+		Incidents:         model.Incidents.GetOr(0),
+		AdminNotes:        model.AdminNotes.GetOr(""),
+	}
+
+	switch model.State {
+	case "normal":
+		entry.State = commonv1.ResultState_RESULT_STATE_NORMAL
+	case "dq":
+		entry.State = commonv1.ResultState_RESULT_STATE_DQ
+	default:
+		entry.State = commonv1.ResultState_RESULT_STATE_UNSPECIFIED
+	}
+
+	return entry
+}
+
 // RaceToRace converts a Race model to a Race message.
 // Unknown session_type strings map to UNSPECIFIED and emit a warning log.
 func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
@@ -438,6 +468,9 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdSequenceNoUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.ErrUniqueResultEntriesRaceIdDriverIdUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 
