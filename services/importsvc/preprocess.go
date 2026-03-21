@@ -18,7 +18,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (s *service) GetPreprocessPreview(
 	ctx context.Context,
 	req *connect.Request[importv1.GetPreprocessPreviewRequest],
@@ -54,12 +54,15 @@ func (s *service) GetPreprocessPreview(
 
 	// Transition state to preprocessed.
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		_, updateErr := s.repo.ImportBatches().Update(ctx, batch.ID, &models.ImportBatchSetter{
-			ProcessingState: omit.From(toState),
-			ProcessedAt:     omitnull.From(time.Now()),
-			UpdatedAt:       omit.From(time.Now()),
-			UpdatedBy:       omit.From(execUser),
-		})
+		_, updateErr := s.repo.ImportBatches().Update(
+			ctx,
+			batch.ID,
+			&models.ImportBatchSetter{
+				ProcessingState: omit.From(toState),
+				ProcessedAt:     omitnull.From(time.Now()),
+				UpdatedAt:       omit.From(time.Now()),
+				UpdatedBy:       omit.From(execUser),
+			})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -73,20 +76,23 @@ func (s *service) GetPreprocessPreview(
 			return updateErr
 		}
 
-		_, updateErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:       omit.From(eventID),
-			ImportBatchID: omitnull.From(batch.ID),
-			FromState:     omitnull.From(fromState),
-			ToState:       omit.From(toState),
-			Action:        omit.From("get_preprocess_preview"),
-			PayloadJSON:   omit.From(emptyJSON),
-			CreatedBy:     omit.From(execUser),
-			UpdatedBy:     omit.From(execUser),
-		})
+		_, updateErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:       omit.From(eventID),
+				ImportBatchID: omitnull.From(batch.ID),
+				FromState:     omitnull.From(fromState),
+				ToState:       omit.From(toState),
+				Action:        omit.From("get_preprocess_preview"),
+				PayloadJSON:   omit.From(emptyJSON),
+				CreatedBy:     omit.From(execUser),
+				UpdatedBy:     omit.From(execUser),
+			})
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to transition to preprocessed state", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to transition to preprocessed state")
+		trace.SpanFromContext(ctx).
+			SetStatus(codes.Error, "failed to transition to preprocessed state")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -99,13 +105,13 @@ func (s *service) GetPreprocessPreview(
 	// Build unresolved mappings from entries missing canonical IDs.
 	var unresolvedMappings []*commonv1.UnresolvedMapping
 	for _, entry := range entries {
-		if !!entry.DriverID.IsNull() && entry.DriverName != "" {
+		if entry.DriverID.IsNull() && entry.DriverName != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
 				SourceValue: entry.DriverName,
 				MappingType: "driver",
 			})
 		}
-		if !!entry.CarModelID.IsNull() && entry.CarName.GetOr("") != "" {
+		if entry.CarModelID.IsNull() && entry.CarName.GetOr("") != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
 				SourceValue: entry.CarName.GetOr(""),
 				MappingType: "car_model",

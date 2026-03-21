@@ -17,7 +17,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (s *service) ComputeDriverBookingEntries(
 	ctx context.Context,
 	req *connect.Request[importv1.ComputeDriverBookingEntriesRequest],
@@ -71,25 +71,28 @@ func (s *service) ComputeDriverBookingEntries(
 			return delErr
 		}
 
-		// Create one position-based driver booking entry per result entry with a resolved driver.
+		// Create one position-based driver booking entry per result entry
+		// with a resolved driver.
 		for _, entry := range resultEntries {
-			if !!entry.DriverID.IsNull() {
+			if entry.DriverID.IsNull() {
 				continue
 			}
 
-			_, createErr := s.repo.BookingEntries().Create(ctx, &models.BookingEntrySetter{
-				EventID:             omit.From(eventID),
-				SourceResultEntryID: omitnull.From(entry.ID),
-				TargetType:          omit.From(mytypes.TargetType("driver")),
-				DriverID:            omitnull.From(entry.DriverID.GetOr(0)),
-				SourceType:          omit.From(mytypes.SourceType("position")),
-				Points:              omit.From(int32(0)),
-				Description:         omit.From("driver position booking"),
-				IsManual:            omit.From(false),
-				MetadataJSON:        omit.From(emptyJSON),
-				CreatedBy:           omit.From(execUser),
-				UpdatedBy:           omit.From(execUser),
-			})
+			_, createErr := s.repo.BookingEntries().Create(
+				ctx,
+				&models.BookingEntrySetter{
+					EventID:             omit.From(eventID),
+					SourceResultEntryID: omitnull.From(entry.ID),
+					TargetType:          omit.From(mytypes.TargetType("driver")),
+					DriverID:            omitnull.From(entry.DriverID.GetOr(0)),
+					SourceType:          omit.From(mytypes.SourceType("position")),
+					Points:              omit.From(int32(0)),
+					Description:         omit.From("driver position booking"),
+					IsManual:            omit.From(false),
+					MetadataJSON:        omit.From(emptyJSON),
+					CreatedBy:           omit.From(execUser),
+					UpdatedBy:           omit.From(execUser),
+				})
 			if createErr != nil {
 				return createErr
 			}
@@ -106,19 +109,22 @@ func (s *service) ComputeDriverBookingEntries(
 		}
 
 		// Write audit row.
-		_, updateErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:     omit.From(eventID),
-			FromState:   omitnull.From(fromState),
-			ToState:     omit.From(toState),
-			Action:      omit.From("compute_driver_booking_entries"),
-			PayloadJSON: omit.From(emptyJSON),
-			CreatedBy:   omit.From(execUser),
-			UpdatedBy:   omit.From(execUser),
-		})
+		_, updateErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:     omit.From(eventID),
+				FromState:   omitnull.From(fromState),
+				ToState:     omit.From(toState),
+				Action:      omit.From("compute_driver_booking_entries"),
+				PayloadJSON: omit.From(emptyJSON),
+				CreatedBy:   omit.From(execUser),
+				UpdatedBy:   omit.From(execUser),
+			})
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to compute driver booking entries", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to compute driver booking entries")
+		trace.SpanFromContext(ctx).
+			SetStatus(codes.Error, "failed to compute driver booking entries")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

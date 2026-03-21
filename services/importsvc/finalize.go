@@ -19,7 +19,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (s *service) FinalizeEventProcessing(
 	ctx context.Context,
 	req *connect.Request[importv1.FinalizeEventProcessingRequest],
@@ -43,11 +43,18 @@ func (s *service) FinalizeEventProcessing(
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("event is already finalized"))
 	}
-	if event.ProcessingState == "draft" || event.ProcessingState == "raw_imported" ||
-		event.ProcessingState == "preprocessed" || event.ProcessingState == "driver_entries_computed" {
-		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			fmt.Errorf("event processing state %q is not ready for finalization: expected team_entries_computed",
-				event.ProcessingState))
+	if event.ProcessingState == "draft" ||
+		event.ProcessingState == "raw_imported" ||
+		event.ProcessingState == "preprocessed" ||
+		event.ProcessingState == "driver_entries_computed" {
+		//nolint:lll // readability
+		return nil, connect.NewError(
+			connect.CodeFailedPrecondition,
+			fmt.Errorf(
+				"event processing state %q is not ready for finalization: expected team_entries_computed",
+				event.ProcessingState,
+			),
+		)
 	}
 
 	fromState := event.ProcessingState
@@ -67,16 +74,20 @@ func (s *service) FinalizeEventProcessing(
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		// Finalize the latest import batch for each race.
 		for _, race := range races {
-			batch, loadErr := s.repo.ImportBatches().LoadLatestByEventIDAndRaceID(ctx, eventID, race.ID)
+			batch, loadErr := s.repo.ImportBatches().
+				LoadLatestByEventIDAndRaceID(ctx, eventID, race.ID)
 			if loadErr != nil {
 				// If no batch exists for this race, skip it.
 				continue
 			}
-			_, updateErr := s.repo.ImportBatches().Update(ctx, batch.ID, &models.ImportBatchSetter{
-				ProcessingState: omit.From(toState),
-				UpdatedAt:       omit.From(time.Now()),
-				UpdatedBy:       omit.From(execUser),
-			})
+			_, updateErr := s.repo.ImportBatches().Update(
+				ctx,
+				batch.ID,
+				&models.ImportBatchSetter{
+					ProcessingState: omit.From(toState),
+					UpdatedAt:       omit.From(time.Now()),
+					UpdatedBy:       omit.From(execUser),
+				})
 			if updateErr != nil {
 				return updateErr
 			}
@@ -94,19 +105,22 @@ func (s *service) FinalizeEventProcessing(
 		}
 
 		// Write audit row.
-		_, updateErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:     omit.From(eventID),
-			FromState:   omitnull.From(fromState),
-			ToState:     omit.From(toState),
-			Action:      omit.From("finalize_event_processing"),
-			PayloadJSON: omit.From(emptyJSON),
-			CreatedBy:   omit.From(execUser),
-			UpdatedBy:   omit.From(execUser),
-		})
+		_, updateErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:     omit.From(eventID),
+				FromState:   omitnull.From(fromState),
+				ToState:     omit.From(toState),
+				Action:      omit.From("finalize_event_processing"),
+				PayloadJSON: omit.From(emptyJSON),
+				CreatedBy:   omit.From(execUser),
+				UpdatedBy:   omit.From(execUser),
+			})
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to finalize event processing", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to finalize event processing")
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to finalize event processing")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

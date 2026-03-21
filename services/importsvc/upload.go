@@ -22,7 +22,7 @@ import (
 	"github.com/srlmgr/backend/services/conversion"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (s *service) UploadResultsFile(
 	ctx context.Context,
 	req *connect.Request[importv1.UploadResultsFileRequest],
@@ -44,7 +44,9 @@ func (s *service) UploadResultsFile(
 			errors.New("payload is required"))
 	}
 
-	formats, err := conversion.ImportFormatsFromProto([]commonv1.ImportFormat{req.Msg.GetImportFormat()})
+	formats, err := conversion.ImportFormatsFromProto(
+		[]commonv1.ImportFormat{req.Msg.GetImportFormat()},
+	)
 	if err != nil || len(formats) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			fmt.Errorf("invalid import_format: %w", err))
@@ -104,16 +106,18 @@ func (s *service) UploadResultsFile(
 		}
 
 		// Write audit row.
-		_, createErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:       omit.From(eventID),
-			ImportBatchID: omitnull.From(batch.ID),
-			FromState:     omitnull.From(fromState),
-			ToState:       omit.From(toState),
-			Action:        omit.From("upload_results_file"),
-			PayloadJSON:   omit.From(emptyJSON),
-			CreatedBy:     omit.From(execUser),
-			UpdatedBy:     omit.From(execUser),
-		})
+		_, createErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:       omit.From(eventID),
+				ImportBatchID: omitnull.From(batch.ID),
+				FromState:     omitnull.From(fromState),
+				ToState:       omit.From(toState),
+				Action:        omit.From("upload_results_file"),
+				PayloadJSON:   omit.From(emptyJSON),
+				CreatedBy:     omit.From(execUser),
+				UpdatedBy:     omit.From(execUser),
+			})
 		return createErr
 	}); txErr != nil {
 		l.Error("failed to upload results file", log.ErrorField(txErr))

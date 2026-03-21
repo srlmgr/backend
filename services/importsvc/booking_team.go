@@ -17,7 +17,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen,gocyclo // editor/linter issue
 func (s *service) ComputeTeamBookingEntries(
 	ctx context.Context,
 	req *connect.Request[importv1.ComputeTeamBookingEntriesRequest],
@@ -94,9 +94,10 @@ func (s *service) ComputeTeamBookingEntries(
 			return delErr
 		}
 
-		// Create one position-based team booking entry per result entry whose driver is in a team.
+		// Create one position-based team booking entry per result entry
+		// whose driver is in a team.
 		for _, entry := range resultEntries {
-			if !!entry.DriverID.IsNull() {
+			if entry.DriverID.IsNull() {
 				continue
 			}
 			driverID := entry.DriverID.GetOr(0)
@@ -105,19 +106,21 @@ func (s *service) ComputeTeamBookingEntries(
 				continue
 			}
 
-			_, createErr := s.repo.BookingEntries().Create(ctx, &models.BookingEntrySetter{
-				EventID:             omit.From(eventID),
-				SourceResultEntryID: omitnull.From(entry.ID),
-				TargetType:          omit.From(mytypes.TargetType("team")),
-				TeamID:              omitnull.From(teamID),
-				SourceType:          omit.From(mytypes.SourceType("position")),
-				Points:              omit.From(int32(0)),
-				Description:         omit.From("team position booking"),
-				IsManual:            omit.From(false),
-				MetadataJSON:        omit.From(emptyJSON),
-				CreatedBy:           omit.From(execUser),
-				UpdatedBy:           omit.From(execUser),
-			})
+			_, createErr := s.repo.BookingEntries().Create(
+				ctx,
+				&models.BookingEntrySetter{
+					EventID:             omit.From(eventID),
+					SourceResultEntryID: omitnull.From(entry.ID),
+					TargetType:          omit.From(mytypes.TargetType("team")),
+					TeamID:              omitnull.From(teamID),
+					SourceType:          omit.From(mytypes.SourceType("position")),
+					Points:              omit.From(int32(0)),
+					Description:         omit.From("team position booking"),
+					IsManual:            omit.From(false),
+					MetadataJSON:        omit.From(emptyJSON),
+					CreatedBy:           omit.From(execUser),
+					UpdatedBy:           omit.From(execUser),
+				})
 			if createErr != nil {
 				return createErr
 			}
@@ -134,19 +137,22 @@ func (s *service) ComputeTeamBookingEntries(
 		}
 
 		// Write audit row.
-		_, updateErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:     omit.From(eventID),
-			FromState:   omitnull.From(fromState),
-			ToState:     omit.From(toState),
-			Action:      omit.From("compute_team_booking_entries"),
-			PayloadJSON: omit.From(emptyJSON),
-			CreatedBy:   omit.From(execUser),
-			UpdatedBy:   omit.From(execUser),
-		})
+		_, updateErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:     omit.From(eventID),
+				FromState:   omitnull.From(fromState),
+				ToState:     omit.From(toState),
+				Action:      omit.From("compute_team_booking_entries"),
+				PayloadJSON: omit.From(emptyJSON),
+				CreatedBy:   omit.From(execUser),
+				UpdatedBy:   omit.From(execUser),
+			})
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to compute team booking entries", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to compute team booking entries")
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to compute team booking entries")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

@@ -20,7 +20,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (s *service) ApplyResultEdits(
 	ctx context.Context,
 	req *connect.Request[importv1.ApplyResultEditsRequest],
@@ -51,6 +51,7 @@ func (s *service) ApplyResultEdits(
 	}
 
 	fromState := batch.ProcessingState
+	//nolint:goconst // by design
 	toState := "preprocessed"
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
@@ -71,48 +72,58 @@ func (s *service) ApplyResultEdits(
 			}
 			if existing.RaceID != raceID {
 				return connect.NewError(connect.CodeInvalidArgument,
-					fmt.Errorf("result entry %d does not belong to race %d", row.GetId(), raceID))
+					fmt.Errorf("result entry %d does not belong to race %d",
+						row.GetId(), raceID))
 			}
 
 			setter := buildResultEntrySetterFromProto(row, execUser)
-			if _, updateErr := s.repo.ResultEntries().Update(ctx, int32(row.GetId()), setter); updateErr != nil {
+			if _, updateErr := s.repo.ResultEntries().
+				Update(ctx, int32(row.GetId()), setter); updateErr != nil {
 				return updateErr
 			}
 			updatedRows++
 		}
 
 		// Advance batch state.
-		_, updateErr := s.repo.ImportBatches().Update(ctx, batch.ID, &models.ImportBatchSetter{
-			ProcessingState: omit.From(toState),
-			ProcessedAt:     omitnull.From(time.Now()),
-			UpdatedAt:       omit.From(time.Now()),
-			UpdatedBy:       omit.From(execUser),
-		})
+		_, updateErr := s.repo.ImportBatches().Update(
+			ctx,
+			batch.ID,
+			&models.ImportBatchSetter{
+				ProcessingState: omit.From(toState),
+				ProcessedAt:     omitnull.From(time.Now()),
+				UpdatedAt:       omit.From(time.Now()),
+				UpdatedBy:       omit.From(execUser),
+			})
 		if updateErr != nil {
 			return updateErr
 		}
 
 		// Advance event state.
-		_, updateErr = s.repo.Events().Update(ctx, eventID, &models.EventSetter{
-			ProcessingState: omit.From(toState),
-			UpdatedAt:       omit.From(time.Now()),
-			UpdatedBy:       omit.From(execUser),
-		})
+		_, updateErr = s.repo.Events().Update(
+			ctx,
+			eventID,
+			&models.EventSetter{
+				ProcessingState: omit.From(toState),
+				UpdatedAt:       omit.From(time.Now()),
+				UpdatedBy:       omit.From(execUser),
+			})
 		if updateErr != nil {
 			return updateErr
 		}
 
 		// Write audit row.
-		_, updateErr = s.repo.EventProcessingAudit().Create(ctx, &models.EventProcessingAuditSetter{
-			EventID:       omit.From(eventID),
-			ImportBatchID: omitnull.From(batch.ID),
-			FromState:     omitnull.From(fromState),
-			ToState:       omit.From(toState),
-			Action:        omit.From("apply_result_edits"),
-			PayloadJSON:   omit.From(emptyJSON),
-			CreatedBy:     omit.From(execUser),
-			UpdatedBy:     omit.From(execUser),
-		})
+		_, updateErr = s.repo.EventProcessingAudit().Create(
+			ctx,
+			&models.EventProcessingAuditSetter{
+				EventID:       omit.From(eventID),
+				ImportBatchID: omitnull.From(batch.ID),
+				FromState:     omitnull.From(fromState),
+				ToState:       omit.From(toState),
+				Action:        omit.From("apply_result_edits"),
+				PayloadJSON:   omit.From(emptyJSON),
+				CreatedBy:     omit.From(execUser),
+				UpdatedBy:     omit.From(execUser),
+			})
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to apply result edits", log.ErrorField(txErr))
@@ -126,7 +137,11 @@ func (s *service) ApplyResultEdits(
 	}), nil
 }
 
-func buildResultEntrySetterFromProto(row *commonv1.ResultEntry, execUser string) *models.ResultEntrySetter {
+//nolint:whitespace // editor/linter issue
+func buildResultEntrySetterFromProto(
+	row *commonv1.ResultEntry,
+	execUser string,
+) *models.ResultEntrySetter {
 	setter := &models.ResultEntrySetter{
 		UpdatedAt: omit.From(time.Now()),
 		UpdatedBy: omit.From(execUser),

@@ -464,7 +464,12 @@ func (r *importBatchesEntityRepo) LoadLatestByEventIDAndRaceID(
 		return nil, err
 	}
 	if len(items) == 0 {
-		return nil, fmt.Errorf("import batch for event %d race %d: %w", eventID, raceID, repoerrors.ErrNotFound)
+		return nil, fmt.Errorf(
+			"import batch for event %d race %d: %w",
+			eventID,
+			raceID,
+			repoerrors.ErrNotFound,
+		)
 	}
 
 	latest := items[0]
@@ -629,6 +634,7 @@ func (r *eventProcessingAuditEntityRepo) LoadByEventID(
 
 	return filtered, nil
 }
+
 type seasonDriverStandingsEntityRepo struct {
 	*mapEntityRepo[models.SeasonDriverStanding, models.SeasonDriverStandingSetter]
 }
