@@ -73,7 +73,10 @@ func (r *teamsRepository) LoadAll(ctx context.Context) ([]*models.Team, error) {
 	return models.Teams.Query().All(ctx, r.getExecutor(ctx))
 }
 
-func (r *teamsRepository) LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Team, error) {
+func (r *teamsRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.Team, error) {
 	return models.Teams.Query(
 		sm.Where(models.Teams.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 	).All(ctx, r.getExecutor(ctx))

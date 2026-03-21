@@ -381,6 +381,7 @@ func (r *teamsEntityRepo) LoadBySeasonID(
 
 	return filtered, nil
 }
+
 type teamDriversEntityRepo struct {
 	*mapEntityRepo[models.TeamDriver, models.TeamDriverSetter]
 }
