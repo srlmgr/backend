@@ -407,9 +407,81 @@ func (r *teamsEntityRepo) LoadBySeasonID(
 type teamDriversEntityRepo struct {
 	*mapEntityRepo[models.TeamDriver, models.TeamDriverSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *teamDriversEntityRepo) LoadByTeamID(
+	ctx context.Context,
+	teamID int32,
+) ([]*models.TeamDriver, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.TeamDriver, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.TeamID != teamID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type importBatchesEntityRepo struct {
 	*mapEntityRepo[models.ImportBatch, models.ImportBatchSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *importBatchesEntityRepo) LoadByEventIDAndRaceID(
+	ctx context.Context,
+	eventID, raceID int32,
+) ([]*models.ImportBatch, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ImportBatch, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.EventID != eventID || item.RaceID != raceID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *importBatchesEntityRepo) LoadLatestByEventIDAndRaceID(
+	ctx context.Context,
+	eventID, raceID int32,
+) (*models.ImportBatch, error) {
+	items, err := r.LoadByEventIDAndRaceID(ctx, eventID, raceID)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf(
+			"import batch for event %d race %d: %w",
+			eventID,
+			raceID,
+			repoerrors.ErrNotFound,
+		)
+	}
+
+	latest := items[0]
+	for _, item := range items[1:] {
+		if item.ID > latest.ID {
+			latest = item
+		}
+	}
+
+	return latest, nil
+}
+
 type resultEntriesEntityRepo struct {
 	*mapEntityRepo[models.ResultEntry, models.ResultEntrySetter]
 }
@@ -480,9 +552,89 @@ func (r *resultEntriesEntityRepo) LoadByState(
 type bookingEntriesEntityRepo struct {
 	*mapEntityRepo[models.BookingEntry, models.BookingEntrySetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *bookingEntriesEntityRepo) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.BookingEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.BookingEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.EventID != eventID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *bookingEntriesEntityRepo) DeleteByEventIDAndTargetType(
+	_ context.Context,
+	eventID int32,
+	targetType string,
+) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for id, item := range r.data {
+		if item.EventID == eventID && string(item.TargetType) == targetType {
+			delete(r.data, id)
+		}
+	}
+
+	return nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *bookingEntriesEntityRepo) DeleteByEventIDAndSourceType(
+	_ context.Context,
+	eventID int32,
+	sourceType string,
+) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for id, item := range r.data {
+		if item.EventID == eventID && string(item.SourceType) == sourceType {
+			delete(r.data, id)
+		}
+	}
+
+	return nil
+}
+
 type eventProcessingAuditEntityRepo struct {
 	*mapEntityRepo[models.EventProcessingAudit, models.EventProcessingAuditSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *eventProcessingAuditEntityRepo) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.EventProcessingAudit, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.EventProcessingAudit, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.EventID != eventID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type seasonDriverStandingsEntityRepo struct {
 	*mapEntityRepo[models.SeasonDriverStanding, models.SeasonDriverStandingSetter]
 }

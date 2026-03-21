@@ -33,6 +33,7 @@ type TeamsRepository interface {
 // TeamDriversRepository defines persistence operations for TeamDriver entities.
 type TeamDriversRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.TeamDriver, error)
+	LoadByTeamID(ctx context.Context, teamID int32) ([]*models.TeamDriver, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TeamDriverSetter) (*models.TeamDriver, error)
 	Update(
@@ -129,6 +130,15 @@ func (r *teamDriversRepository) LoadByID(
 		return nil, fmt.Errorf("team driver %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *teamDriversRepository) LoadByTeamID(
+	ctx context.Context,
+	teamID int32,
+) ([]*models.TeamDriver, error) {
+	return models.TeamDrivers.Query(
+		sm.Where(models.TeamDrivers.Columns.TeamID.EQ(psql.Arg(teamID))),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *teamDriversRepository) DeleteByID(ctx context.Context, id int32) error {
