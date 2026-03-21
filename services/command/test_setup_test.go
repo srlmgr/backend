@@ -11,6 +11,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
@@ -358,4 +359,63 @@ func seedTeam(
 	}
 
 	return team
+}
+
+//nolint:whitespace // multiline signature style
+func seedImportBatch(
+	t *testing.T,
+	repo rootrepo.Repository,
+	eventID int32,
+	raceID int32,
+) (
+	batch *models.ImportBatch,
+) {
+	t.Helper()
+
+	var err error
+	batch, err = repo.ImportBatches().Create(context.Background(), &models.ImportBatchSetter{
+		EventID:         omit.From(eventID),
+		RaceID:          omit.From(raceID),
+		ImportFormat:    omit.From(mytypes.ImportFormat("csv")),
+		Payload:         omit.From([]byte("{}")),
+		ProcessingState: omit.From("raw_imported"),
+		CreatedBy:       omit.From(testUserSeed),
+		UpdatedBy:       omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed import batch: %v", err)
+	}
+
+	return batch
+}
+
+//nolint:whitespace // multiline signature style
+func seedResultEntry(
+	t *testing.T,
+	repo rootrepo.Repository,
+	importBatchID int32,
+	raceID int32,
+	driverName string,
+	finishingPosition int32,
+) (
+	entry *models.ResultEntry,
+) {
+	t.Helper()
+
+	var err error
+	entry, err = repo.ResultEntries().Create(context.Background(), &models.ResultEntrySetter{
+		ImportBatchID:     omit.From(importBatchID),
+		RaceID:            omit.From(raceID),
+		DriverName:        omit.From(driverName),
+		FinishingPosition: omit.From(finishingPosition),
+		CompletedLaps:     omit.From(int32(0)),
+		State:             omit.From("normal"),
+		CreatedBy:         omit.From(testUserSeed),
+		UpdatedBy:         omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed result entry: %v", err)
+	}
+
+	return entry
 }
