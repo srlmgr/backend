@@ -30,6 +30,11 @@ jobs:
         run: go mod download
 
       - name: Test
+        # tell testcontainer to reuse containers and not to use Ryuk
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+          TESTCONTAINERS_REUSE_ENABLE: true
+
         # due to database tests we need to run tests sequentially, so we set -p 1 to disable parallel test execution
         # may be changed if we decide to split tests into multiple packages and run them in parallel
         run: go test ./... -p 1 -race -coverprofile=coverage.txt -covermode=atomic -gcflags=-l

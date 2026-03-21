@@ -43,8 +43,10 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetSeries",
 		"GetSeason",
 		"GetEvent",
+		"GetRace",
 		"GetDriver",
 		"GetTeam",
+		"GetResultEntry",
 		"GetPointSystem",
 		"GetTrack",
 		"GetTrackLayout",
@@ -58,6 +60,7 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"ListSeries",
 		"ListSeasons",
 		"ListEvents",
+		"ListRaces",
 		"ListDrivers",
 		"ListTeams",
 		"ListPointSystems",
@@ -101,6 +104,9 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"CreatePointSystem",
 		"UpdatePointSystem",
 		"DeletePointSystem",
+		"CreateResultEntry",
+		"UpdateResultEntry",
+		"DeleteResultEntry",
 	} {
 		policies[procedure(commandService, method)] = ProcedurePolicy{
 			Capability: "season.write",

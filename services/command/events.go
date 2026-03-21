@@ -10,26 +10,27 @@ import (
 	"github.com/aarondl/opt/omit"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 type eventRequest interface {
+	proto.Message
 	GetSeasonId() uint32
 	GetTrackLayoutId() uint32
 	GetName() string
 	GetEventDate() *timestamppb.Timestamp
-	GetStatus() string
-	GetProcessingState() string
 }
 
 type eventSetter = models.EventSetter
 
 type eventSetterBuilder struct{}
 
-func (b eventSetterBuilder) Build(msg eventRequest) *eventSetter {
+func (b eventSetterBuilder) Build(msg eventRequest) (*eventSetter, error) {
 	setter := &eventSetter{}
 
 	if seasonID := msg.GetSeasonId(); seasonID != 0 {
@@ -48,15 +49,26 @@ func (b eventSetterBuilder) Build(msg eventRequest) *eventSetter {
 		setter.EventDate = omit.From(eventDate.AsTime())
 	}
 
-	if status := msg.GetStatus(); status != "" {
+	status, err := conversion.ProtoFieldStringOrEnumValue(msg.ProtoReflect(), "status")
+	if err != nil {
+		return nil, err
+	}
+	if status != "" {
 		setter.Status = omit.From(status)
 	}
 
-	if processingState := msg.GetProcessingState(); processingState != "" {
+	processingState, err := conversion.ProtoFieldStringOrEnumValue(
+		msg.ProtoReflect(),
+		"processing_state",
+	)
+	if err != nil {
+		return nil, err
+	}
+	if processingState != "" {
 		setter.ProcessingState = omit.From(processingState)
 	}
 
-	return setter
+	return setter, nil
 }
 
 //nolint:whitespace // editor/linter issue
@@ -67,7 +79,12 @@ func (s *service) CreateEvent(
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateEvent")
-	setter := (eventSetterBuilder{}).Build(req.Msg)
+	setter, err := (eventSetterBuilder{}).Build(req.Msg)
+	if err != nil {
+		l.Error("invalid event status fields", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid event status fields")
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 
 	var newEvent *models.Event
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -95,7 +112,12 @@ func (s *service) UpdateEvent(
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateEvent")
-	setter := (eventSetterBuilder{}).Build(req.Msg)
+	setter, err := (eventSetterBuilder{}).Build(req.Msg)
+	if err != nil {
+		l.Error("invalid event status fields", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid event status fields")
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 
 	var newEvent *models.Event
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {

@@ -1,4 +1,4 @@
-//nolint:lll // service tests can have long lines for test data setup
+//nolint:lll,funlen // service tests can have long lines for test data setup
 package conversion
 
 import (
@@ -7,6 +7,7 @@ import (
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
 )
@@ -158,5 +159,72 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 	empty := svc.RacingSimsToSimulations(nil)
 	if len(empty) != 0 {
 		t.Fatalf("expected empty slice for nil input, got len=%d", len(empty))
+	}
+}
+
+func TestServiceEventToEvent(t *testing.T) {
+	t.Parallel()
+
+	eventDate := timestamppb.Now().AsTime()
+	input := &models.Event{
+		ID:              42,
+		SeasonID:        3,
+		TrackLayoutID:   5,
+		Name:            "Round 1",
+		EventDate:       eventDate,
+		Status:          "scheduled",
+		ProcessingState: "raw_imported",
+	}
+
+	svc := New()
+	msg := svc.EventToEvent(input)
+
+	if msg == nil {
+		t.Fatal("expected converted event, got nil")
+	}
+	if msg.GetId() != 42 {
+		t.Fatalf("unexpected id: got %d want %d", msg.GetId(), 42)
+	}
+	if msg.GetSeasonId() != 3 {
+		t.Fatalf("unexpected season_id: got %d want %d", msg.GetSeasonId(), 3)
+	}
+	if msg.GetTrackLayoutId() != 5 {
+		t.Fatalf("unexpected track_layout_id: got %d want %d", msg.GetTrackLayoutId(), 5)
+	}
+	if msg.GetName() != "Round 1" {
+		t.Fatalf("unexpected name: got %q want %q", msg.GetName(), "Round 1")
+	}
+	if !msg.GetEventDate().AsTime().Equal(eventDate) {
+		t.Fatalf("unexpected event_date: got %v want %v", msg.GetEventDate().AsTime(), eventDate)
+	}
+	if msg.GetStatus() != commonv1.EventStatus_EVENT_STATUS_SCHEDULED {
+		t.Fatalf(
+			"unexpected status: got %v want %v",
+			msg.GetStatus(),
+			commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
+		)
+	}
+	if msg.GetProcessingState() != commonv1.EventProcessingState_EVENT_PROCESSING_STATE_RAW_IMPORTED {
+		t.Fatalf(
+			"unexpected processing_state: got %v want %v",
+			msg.GetProcessingState(),
+			commonv1.EventProcessingState_EVENT_PROCESSING_STATE_RAW_IMPORTED,
+		)
+	}
+
+	input.Status = "unknown_status"
+	input.ProcessingState = "unknown_processing_state"
+	msg = svc.EventToEvent(input)
+	if msg.GetStatus() != commonv1.EventStatus_EVENT_STATUS_UNSPECIFIED {
+		t.Fatalf(
+			"expected unknown status to fall back to zero value, got %v",
+			msg.GetStatus(),
+		)
+	}
+	if msg.GetProcessingState() != commonv1.EventProcessingState_EVENT_PROCESSING_STATE_UNSPECIFIED {
+		t.Fatalf(
+			"expected unknown processing_state to fall back to zero value, got %v",
+			msg.GetProcessingState(),
+		)
 	}
 }

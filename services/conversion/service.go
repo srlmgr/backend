@@ -22,6 +22,17 @@ const (
 	raceSessionTypeQualifying = "qualifying"
 	raceSessionTypeHeat       = "heat"
 	raceSessionTypeRace       = "race"
+
+	eventStatusScheduled = "scheduled"
+	eventStatusCompleted = "completed"
+	eventStatusCancelled = "canceled"
+
+	eventProcessingStateDraft                 = "draft"
+	eventProcessingStateRawImported           = "raw_imported"
+	eventProcessingStatePreprocessed          = "preprocessed"
+	eventProcessingStateDriverEntriesComputed = "driver_entries_computed"
+	eventProcessingStateTeamEntriesComputed   = "team_entries_computed"
+	eventProcessingStateFinalized             = "finalized"
 )
 
 // Service converts database models to gRPC messages.
@@ -271,19 +282,81 @@ func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
 }
 
 // EventToEvent converts an Event model to an Event message.
+//
+//nolint:funlen // many fields to convert and validate
 func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 	if model == nil {
 		return nil
 	}
 
-	return &commonv1.Event{
-		Id:              uint32(model.ID),
-		SeasonId:        uint32(model.SeasonID),
-		TrackLayoutId:   uint32(model.TrackLayoutID),
-		Name:            model.Name,
-		EventDate:       timestamppb.New(model.EventDate),
-		Status:          model.Status,
-		ProcessingState: model.ProcessingState,
+	event := &commonv1.Event{
+		Id:            uint32(model.ID),
+		SeasonId:      uint32(model.SeasonID),
+		TrackLayoutId: uint32(model.TrackLayoutID),
+		Name:          model.Name,
+		EventDate:     timestamppb.New(model.EventDate),
+	}
+
+	status := model.Status
+	if !isKnownEventStatus(status) {
+		s.logger.Warn("unknown event status, mapping to UNSPECIFIED",
+			log.String("status", model.Status),
+			log.Int32("event_id", model.ID),
+		)
+		status = ""
+	}
+	if err := SetProtoFieldStringOrEnum(
+		event.ProtoReflect(), "status", status); err != nil {
+		s.logger.Warn("unknown event status, mapping to UNSPECIFIED",
+			log.String("status", status),
+			log.Int32("event_id", model.ID),
+			log.ErrorField(err),
+		)
+	}
+
+	processingState := model.ProcessingState
+	if !isKnownEventProcessingState(processingState) {
+		s.logger.Warn("unknown event processing_state, mapping to UNSPECIFIED",
+			log.String("processing_state", model.ProcessingState),
+			log.Int32("event_id", model.ID),
+		)
+		processingState = ""
+	}
+	if err := SetProtoFieldStringOrEnum(
+		event.ProtoReflect(),
+		"processing_state",
+		processingState,
+	); err != nil {
+		s.logger.Warn("unknown event processing_state, mapping to UNSPECIFIED",
+			log.String("processing_state", processingState),
+			log.Int32("event_id", model.ID),
+			log.ErrorField(err),
+		)
+	}
+
+	return event
+}
+
+func isKnownEventStatus(status string) bool {
+	switch status {
+	case eventStatusScheduled, eventStatusCompleted, eventStatusCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownEventProcessingState(processingState string) bool {
+	switch processingState {
+	case eventProcessingStateDraft,
+		eventProcessingStateRawImported,
+		eventProcessingStatePreprocessed,
+		eventProcessingStateDriverEntriesComputed,
+		eventProcessingStateTeamEntriesComputed,
+		eventProcessingStateFinalized:
+		return true
+	default:
+		return false
 	}
 }
 
