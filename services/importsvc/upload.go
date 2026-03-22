@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
@@ -20,6 +21,7 @@ import (
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -71,6 +73,38 @@ func (s *service) UploadResultsFile(
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, event)
+	if err != nil {
+		l.Error("failed to resolve import processor", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error,
+			"failed to resolve import processor")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	if !slices.Contains(simulation.SupportedImportFormats, importFormat) {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf(
+				"import format %q is not supported by simulation %q",
+				importFormat,
+				simulation.Name,
+			),
+		)
+	}
+
+	if !processor.SupportsFormat(importProcessor, importFormat) {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf(
+				"%w: simulation=%q format=%q",
+				processor.ErrUnsupportedFormat,
+				simulation.Name,
+				importFormat,
+			),
+		)
 	}
 
 	fromState := event.ProcessingState
@@ -130,4 +164,32 @@ func (s *service) UploadResultsFile(
 		ImportBatchId:   uint32(batch.ID),
 		ProcessingState: toState,
 	}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) resolveProcessorForEvent(
+	ctx context.Context,
+	event *models.Event,
+) (processor.ProcessImport, *models.RacingSim, error) {
+	season, err := s.repo.Seasons().LoadByID(ctx, event.SeasonID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	series, err := s.repo.Series().LoadByID(ctx, season.SeriesID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	simulation, err := s.repo.RacingSims().LoadByID(ctx, series.SimulationID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	importProcessor, err := s.processor.Get(simulation.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return importProcessor, simulation, nil
 }

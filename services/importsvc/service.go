@@ -9,6 +9,7 @@ import (
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
 	"github.com/srlmgr/backend/services/conversion"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 type service struct {
@@ -18,6 +19,7 @@ type service struct {
 	repo       rootrepo.Repository
 	txMgr      rootrepo.TransactionManager
 	conversion *conversion.Service
+	processor  *processor.Factory
 }
 
 var _ importv1connect.ImportServiceHandler = (*service)(nil)
@@ -35,6 +37,7 @@ func New(
 		repo:       repo,
 		txMgr:      txMgr,
 		conversion: conversion.New(),
+		processor:  processor.NewDefaultFactory(),
 	}
 }
 
