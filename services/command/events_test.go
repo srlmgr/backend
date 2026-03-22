@@ -17,6 +17,7 @@ import (
 	rootrepo "github.com/srlmgr/backend/repository"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace // multiline signature with named return keeps lll and golines happy.
@@ -37,8 +38,8 @@ func seedEvent(
 		TrackLayoutID:   omit.From(trackLayoutID),
 		Name:            omit.From(name),
 		EventDate:       omit.From(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
-		Status:          omit.From("scheduled"),
-		ProcessingState: omit.From("draft"),
+		Status:          omit.From(conversion.EventStatusScheduled),
+		ProcessingState: omit.From(conversion.EventProcessingStateDraft),
 		CreatedBy:       omit.From(testUserSeed),
 		UpdatedBy:       omit.From(testUserSeed),
 	})
@@ -124,8 +125,8 @@ func TestCreateEventSuccess(t *testing.T) {
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Round 1",
 		EventDate:       timestamppb.New(eventDate),
-		Status:          "scheduled",
-		ProcessingState: "draft",
+		Status:          conversion.EventStatusScheduled,
+		ProcessingState: conversion.EventProcessingStateDraft,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -189,8 +190,8 @@ func TestCreateEventFailureDuplicateNameSameSeason(t *testing.T) {
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
-			Status:          "scheduled",
-			ProcessingState: "draft",
+			Status:          conversion.EventStatusScheduled,
+			ProcessingState: conversion.EventProcessingStateDraft,
 		}),
 	)
 	if err == nil {
@@ -219,8 +220,8 @@ func TestCreateEventSuccessDuplicateNameDifferentSeason(t *testing.T) {
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
-			Status:          "scheduled",
-			ProcessingState: "draft",
+			Status:          conversion.EventStatusScheduled,
+			ProcessingState: conversion.EventProcessingStateDraft,
 		}),
 	)
 	if err != nil {
@@ -284,8 +285,8 @@ func TestUpdateEventSuccess(t *testing.T) {
 		SeasonId:        uint32(season.ID),
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Daytona 500 Updated",
-		Status:          "completed",
-		ProcessingState: "finalized",
+		Status:          conversion.EventStatusCompleted,
+		ProcessingState: conversion.EventProcessingStateFinalized,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -308,8 +309,12 @@ func TestUpdateEventSuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
-	if after.Status != "completed" {
-		t.Fatalf("unexpected status after update: got %q want %q", after.Status, "completed")
+	if after.Status != conversion.EventStatusCompleted {
+		t.Fatalf(
+			"unexpected status after update: got %q want %q",
+			after.Status,
+			conversion.EventStatusCompleted,
+		)
 	}
 }
 

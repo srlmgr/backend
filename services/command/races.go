@@ -15,12 +15,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
-)
-
-const (
-	sessionTypeQualifying = "qualifying"
-	sessionTypeHeat       = "heat"
-	sessionTypeRace       = "race"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 type raceRequest interface {
@@ -65,11 +60,11 @@ func raceSessionTypeToString(st commonv1.RaceSessionType) (string, error) {
 	//nolint:exhaustive // we want to return an error for unsupported types
 	switch st {
 	case commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING:
-		return sessionTypeQualifying, nil
+		return conversion.RaceSessionTypeQualifying, nil
 	case commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT:
-		return sessionTypeHeat, nil
+		return conversion.RaceSessionTypeHeat, nil
 	case commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE:
-		return sessionTypeRace, nil
+		return conversion.RaceSessionTypeRace, nil
 	default:
 		return "", fmt.Errorf("unsupported session type: %s", st.String())
 	}

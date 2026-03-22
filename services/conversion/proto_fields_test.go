@@ -1,4 +1,4 @@
-//nolint:lll,funlen // test setup
+//nolint:funlen // test setup
 package conversion
 
 import (
@@ -21,16 +21,20 @@ func TestProtoFieldStringOrEnumValueEnumField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected status error: %v", err)
 	}
-	if status != "scheduled" {
-		t.Fatalf("unexpected status: got %q want %q", status, "scheduled")
+	if status != EventStatusScheduled {
+		t.Fatalf("unexpected status: got %q want %q", status, EventStatusScheduled)
 	}
 
 	processingState, err := ProtoFieldStringOrEnumValue(msg, "processing_state")
 	if err != nil {
 		t.Fatalf("unexpected processing state error: %v", err)
 	}
-	if processingState != "raw_imported" {
-		t.Fatalf("unexpected processing_state: got %q want %q", processingState, "raw_imported")
+	if processingState != EventProcessingStateRawImported {
+		t.Fatalf(
+			"unexpected processing_state: got %q want %q",
+			processingState,
+			EventProcessingStateRawImported,
+		)
 	}
 }
 
@@ -39,14 +43,18 @@ func TestSetProtoFieldStringOrEnumEnumField(t *testing.T) {
 
 	msg, statusField, processingStateField := newDynamicEventMessage(t)
 
-	if err := SetProtoFieldStringOrEnum(msg, "status", "completed"); err != nil {
+	if err := SetProtoFieldStringOrEnum(msg, "status", EventStatusCompleted); err != nil {
 		t.Fatalf("unexpected status error: %v", err)
 	}
 	if got := msg.Get(statusField).Enum(); got != 2 {
 		t.Fatalf("unexpected status enum number: got %d want %d", got, 2)
 	}
 
-	if err := SetProtoFieldStringOrEnum(msg, "processing_state", "finalized"); err != nil {
+	if err := SetProtoFieldStringOrEnum(
+		msg,
+		"processing_state",
+		EventProcessingStateFinalized,
+	); err != nil {
 		t.Fatalf("unexpected processing state error: %v", err)
 	}
 	if got := msg.Get(processingStateField).Enum(); got != 3 {

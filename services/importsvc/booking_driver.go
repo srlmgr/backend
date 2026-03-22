@@ -15,6 +15,7 @@ import (
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -57,7 +58,7 @@ func (s *service) ComputeDriverBookingEntries(
 	}
 
 	fromState := event.ProcessingState
-	toState := "driver_entries_computed"
+	toState := conversion.EventProcessingStateDriverEntriesComputed
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 

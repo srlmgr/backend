@@ -18,6 +18,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -51,7 +52,7 @@ func (s *service) ApplyResultEdits(
 	}
 
 	fromState := batch.ProcessingState
-	toState := "preprocessed"
+	toState := conversion.EventProcessingStatePreprocessed
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
@@ -185,9 +186,9 @@ func buildResultEntrySetterFromProto(
 func resultStateToStr(state commonv1.ResultState) string {
 	switch state {
 	case commonv1.ResultState_RESULT_STATE_NORMAL:
-		return "normal"
+		return conversion.ResultStateNormal
 	case commonv1.ResultState_RESULT_STATE_DQ:
-		return "dq"
+		return conversion.ResultStateDQ
 	default:
 		return ""
 	}

@@ -74,7 +74,7 @@ func (s *service) UploadResultsFile(
 	}
 
 	fromState := event.ProcessingState
-	toState := "raw_imported"
+	toState := conversion.EventProcessingStateRawImported
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 

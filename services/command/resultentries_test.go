@@ -15,6 +15,7 @@ import (
 	"github.com/srlmgr/backend/authn"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
+	"github.com/srlmgr/backend/services/conversion"
 	testsupportrepo "github.com/srlmgr/backend/testsupport/repository"
 )
 
@@ -55,7 +56,7 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.Incidents.IsValue() || setter.Incidents.MustGet() != 2 {
 		t.Fatalf("unexpected incidents setter value: %+v", setter.Incidents)
 	}
-	if !setter.State.IsValue() || setter.State.MustGet() != "normal" {
+	if !setter.State.IsValue() || setter.State.MustGet() != conversion.ResultStateNormal {
 		t.Fatalf("unexpected state setter value: %+v", setter.State)
 	}
 	if !setter.AdminNotes.IsValue() || setter.AdminNotes.MustGet() != "test note" {
@@ -70,7 +71,7 @@ func TestResultEntrySetterBuilderBuildDQState(t *testing.T) {
 		State: commonv1.ResultState_RESULT_STATE_DQ,
 	})
 
-	if !setter.State.IsValue() || setter.State.MustGet() != "dq" {
+	if !setter.State.IsValue() || setter.State.MustGet() != conversion.ResultStateDQ {
 		t.Fatalf("unexpected dq state setter value: %+v", setter.State)
 	}
 }
@@ -269,7 +270,7 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	race := seedRace(t, repo, event.ID, "Race 1", sessionTypeRace, 1)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, event.ID, race.ID)
 	initial := seedResultEntry(t, repo, batch.ID, race.ID, "Alex Tester", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
@@ -314,8 +315,12 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
-	if after.State != "dq" {
-		t.Fatalf("unexpected state after update: got %q want %q", after.State, "dq")
+	if after.State != conversion.ResultStateDQ {
+		t.Fatalf(
+			"unexpected state after update: got %q want %q",
+			after.State,
+			conversion.ResultStateDQ,
+		)
 	}
 }
 
@@ -346,7 +351,7 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	track := seedTrack(t, repo, "Interlagos")
 	layout := seedTrackLayout(t, repo, track.ID, "GP Layout")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
-	race := seedRace(t, repo, event.ID, "Race 1", sessionTypeRace, 1)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, event.ID, race.ID)
 	entry := seedResultEntry(t, repo, batch.ID, race.ID, "Bob Racer", 3)
 
@@ -368,7 +373,7 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	if loadErr != nil {
 		t.Fatalf("failed to load result entry after update: %v", loadErr)
 	}
-	if stored.State != "dq" {
+	if stored.State != conversion.ResultStateDQ {
 		t.Fatalf("expected state 'dq' in DB, got: %q", stored.State)
 	}
 }
@@ -382,7 +387,7 @@ func TestDeleteResultEntrySuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Monza")
 	layout := seedTrackLayout(t, repo, track.ID, "GP Layout")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 3")
-	race := seedRace(t, repo, event.ID, "Race 1", sessionTypeRace, 1)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, event.ID, race.ID)
 	entry := seedResultEntry(t, repo, batch.ID, race.ID, "Charlie Speed", 1)
 

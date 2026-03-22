@@ -15,6 +15,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 type resultEntryRequest interface {
@@ -79,9 +80,9 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 func resultStateToString(state commonv1.ResultState) string {
 	switch state {
 	case commonv1.ResultState_RESULT_STATE_NORMAL:
-		return "normal"
+		return conversion.ResultStateNormal
 	case commonv1.ResultState_RESULT_STATE_DQ:
-		return "dq"
+		return conversion.ResultStateDQ
 	default:
 		return ""
 	}

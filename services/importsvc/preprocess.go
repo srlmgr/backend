@@ -16,6 +16,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -48,7 +49,7 @@ func (s *service) GetPreprocessPreview(
 	}
 
 	fromState := batch.ProcessingState
-	toState := "preprocessed"
+	toState := conversion.EventProcessingStatePreprocessed
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
