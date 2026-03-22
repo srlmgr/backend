@@ -57,7 +57,7 @@ ALTER TABLE result_entries
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_state_check
-    CHECK (state IN ('normal', 'dq'));
+    CHECK (state IN ('mapping_error','normal', 'dq'));
 
 CREATE UNIQUE INDEX idx_result_entries_race_id_driver_id_unique
     ON result_entries (race_id, driver_id)

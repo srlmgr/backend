@@ -365,6 +365,8 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		entry.State = commonv1.ResultState_RESULT_STATE_NORMAL
 	case ResultStateDQ:
 		entry.State = commonv1.ResultState_RESULT_STATE_DQ
+	case ResultStateMappingError:
+		entry.State = commonv1.ResultState_RESULT_STATE_MAPPING_ERROR
 	default:
 		entry.State = commonv1.ResultState_RESULT_STATE_UNSPECIFIED
 	}

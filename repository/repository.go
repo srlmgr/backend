@@ -61,6 +61,23 @@ type bobTransaction struct {
 
 var _ TransactionManager = (*bobTransaction)(nil)
 
+type repositoryKey struct{} // used type to store repository in context
+var repositoryKeyInstance = repositoryKey{}
+
+func AddToContext(ctx context.Context, r Repository) context.Context {
+	return context.WithValue(ctx, repositoryKeyInstance, r)
+}
+
+func GetFromContext(ctx context.Context) Repository {
+	if ctx == nil {
+		return nil
+	}
+	if r, ok := ctx.Value(repositoryKeyInstance).(Repository); ok {
+		return r
+	}
+	return nil
+}
+
 func NewBobTransactionFromPool(pool *pgxpool.Pool) TransactionManager {
 	x := bob.NewDB(stdlib.OpenDBFromPool(pool))
 	return &bobTransaction{

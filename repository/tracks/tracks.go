@@ -46,6 +46,11 @@ type TrackLayoutsRepository interface {
 // SimulationTrackLayoutAliasesRepository defines persistence operations for SimulationTrackLayoutAlias entities.
 type SimulationTrackLayoutAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationTrackLayoutAlias, error)
+	FindBySimID(
+		ctx context.Context,
+		simID int32,
+		arg string,
+	) (*models.SimulationTrackLayoutAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -196,6 +201,26 @@ func (r *simulationTrackLayoutAliasesRepository) LoadByID(
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("simulation track layout alias %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *simulationTrackLayoutAliasesRepository) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.SimulationTrackLayoutAlias, error) {
+	entity, err := models.SimulationTrackLayoutAliases.Query(
+		sm.Where(models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+		sm.Where(models.SimulationTrackLayoutAliases.Columns.ExternalName.EQ(psql.Arg(arg))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf(
+			"simulation track layout alias %q for simulation %d: %w",
+			arg,
+			simID,
+			repoerrors.ErrNotFound,
+		)
 	}
 	return entity, err
 }

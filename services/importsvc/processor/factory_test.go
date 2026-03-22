@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-
 	"github.com/srlmgr/backend/services/conversion"
 )
 
@@ -23,8 +21,8 @@ func (p *testProcessor) Process(
 	_ context.Context,
 	_ ImportFormat,
 	_ any,
-) ([]*commonv1.ResultEntry, []*commonv1.UnresolvedMapping, error) {
-	return nil, nil, nil
+) (*ParsedImportPayload, error) {
+	return nil, nil
 }
 
 func TestFactoryGetNormalizesSimulationName(t *testing.T) {

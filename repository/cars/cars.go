@@ -59,6 +59,7 @@ type CarModelsRepository interface {
 // SimulationCarAliasesRepository defines persistence operations for SimulationCarAlias entities.
 type SimulationCarAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationCarAlias, error)
+	FindBySimID(ctx context.Context, simID int32, arg string) (*models.SimulationCarAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -272,6 +273,26 @@ func (r *simulationCarAliasesRepository) LoadByID(
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("simulation car alias %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *simulationCarAliasesRepository) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.SimulationCarAlias, error) {
+	entity, err := models.SimulationCarAliases.Query(
+		sm.Where(models.SimulationCarAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+		sm.Where(models.SimulationCarAliases.Columns.ExternalName.EQ(psql.Arg(arg))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf(
+			"simulation car alias %q for simulation %d: %w",
+			arg,
+			simID,
+			repoerrors.ErrNotFound,
+		)
 	}
 	return entity, err
 }

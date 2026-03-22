@@ -17,7 +17,7 @@ import (
 	database "github.com/srlmgr/backend/db/postgres"
 )
 
-// create a pg connection pool for the iracelog testdatabase
+// create a pg connection pool for the srlmgr testdatabase
 func SetupTestDB() (*pgxpool.Pool, error) {
 	ctx := context.Background()
 	port, err := nat.NewPort("tcp", "5432")
@@ -31,7 +31,7 @@ func SetupTestDB() (*pgxpool.Pool, error) {
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(5*time.Second)),
-		WithName("iracelog-service-manager-test"),
+		WithName("srlmgr-test"),
 	)
 	if err != nil {
 		return nil, err

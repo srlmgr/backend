@@ -28,6 +28,7 @@ type Repository interface {
 	LoadByImportBatchID(ctx context.Context, importBatchID int32) ([]*models.ResultEntry, error)
 	LoadByState(ctx context.Context, state string) ([]*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByRaceID(ctx context.Context, raceID int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
 	Update(
 		ctx context.Context,
@@ -88,6 +89,12 @@ func (r *resultEntriesRepository) LoadByState(
 
 func (r *resultEntriesRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.ResultEntries.Delete(dm.Where(models.ResultEntries.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *resultEntriesRepository) DeleteByRaceID(ctx context.Context, raceID int32) error {
+	_, err := models.ResultEntries.Delete(dm.Where(models.ResultEntries.Columns.RaceID.EQ(psql.Arg(raceID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

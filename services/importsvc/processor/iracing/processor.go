@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-
 	"github.com/srlmgr/backend/services/conversion"
 	"github.com/srlmgr/backend/services/importsvc/processor"
 )
@@ -16,16 +14,29 @@ type Processor struct{}
 var _ processor.ProcessImport = (*Processor)(nil)
 
 func (p *Processor) SupportedFormats() []string {
-	return []string{conversion.ImportFormatJSON, conversion.ImportFormatCSV}
+	return []string{
+		// conversion.ImportFormatJSON,
+		conversion.ImportFormatCSV,
+	}
 }
 
 //nolint:whitespace // editor/linter issue
 func (p *Processor) Process(
-	_ context.Context,
-	_ string,
-	_ any,
-) ([]*commonv1.ResultEntry, []*commonv1.UnresolvedMapping, error) {
-	return nil, nil, fmt.Errorf("iracing processor is not implemented")
+	ctx context.Context,
+	format string,
+	payload any,
+) (*processor.ParsedImportPayload, error) {
+	switch format {
+	case conversion.ImportFormatCSV:
+		parsed, err := ParseCSV(payload)
+		if err != nil {
+			return nil, fmt.Errorf("parse csv: %w", err)
+		}
+
+		return parsed, nil
+	default:
+		return nil, fmt.Errorf("%w: %s", processor.ErrUnsupportedFormat, format)
+	}
 }
 
 func init() {
