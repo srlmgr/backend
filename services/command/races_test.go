@@ -17,6 +17,7 @@ import (
 	rootrepo "github.com/srlmgr/backend/repository"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace // editor/linter issue
@@ -60,7 +61,9 @@ func TestRaceSetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.Name.IsValue() || setter.Name.MustGet() != "Qualifying 1" {
 		t.Fatalf("unexpected name setter value: %+v", setter.Name)
 	}
-	if !setter.SessionType.IsValue() || setter.SessionType.MustGet() != sessionTypeQualifying {
+	if !setter.SessionType.IsValue() ||
+		setter.SessionType.MustGet() != conversion.RaceSessionTypeQualifying {
+
 		t.Fatalf("unexpected session_type setter value: %+v", setter.SessionType)
 	}
 	if !setter.SequenceNo.IsValue() || setter.SequenceNo.MustGet() != 1 {
@@ -167,7 +170,7 @@ func TestCreateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	seedRace(t, repo, event.ID, "Race 1", sessionTypeQualifying, 1)
+	seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	_, err := svc.CreateRace(
 		context.Background(),
@@ -195,7 +198,7 @@ func TestCreateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	seedRace(t, repo, event.ID, "Race 1", sessionTypeQualifying, 1)
+	seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	_, err := svc.CreateRace(
 		context.Background(),
@@ -224,7 +227,7 @@ func TestCreateRaceSuccessDuplicateNameDifferentEvent(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
-	seedRace(t, repo, event1.ID, "Race 1", sessionTypeQualifying, 1)
+	seedRace(t, repo, event1.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	resp, err := svc.CreateRace(
 		context.Background(),
@@ -281,7 +284,7 @@ func TestUpdateRaceSuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	initial := seedRace(t, repo, event.ID, "Qualifying 1", sessionTypeQualifying, 1)
+	initial := seedRace(t, repo, event.ID, "Qualifying 1", conversion.RaceSessionTypeQualifying, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
 	before, err := repo.Races().LoadByID(context.Background(), initial.ID)
@@ -328,11 +331,11 @@ func TestUpdateRaceSuccess(t *testing.T) {
 	if after.Name != "Heat 1 Updated" {
 		t.Fatalf("unexpected name after update: got %q want %q", after.Name, "Heat 1 Updated")
 	}
-	if after.SessionType != sessionTypeRace {
+	if after.SessionType != conversion.RaceSessionTypeRace {
 		t.Fatalf(
 			"unexpected session_type after update: got %q want %q",
 			after.SessionType,
-			sessionTypeRace,
+			conversion.RaceSessionTypeRace,
 		)
 	}
 	if after.SequenceNo != 2 {
@@ -367,8 +370,8 @@ func TestUpdateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	first := seedRace(t, repo, event.ID, "Race 1", sessionTypeQualifying, 1)
-	second := seedRace(t, repo, event.ID, "Race 2", sessionTypeQualifying, 2)
+	first := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
+	second := seedRace(t, repo, event.ID, "Race 2", conversion.RaceSessionTypeQualifying, 2)
 
 	_, err := svc.UpdateRace(
 		context.Background(),
@@ -406,8 +409,8 @@ func TestUpdateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	first := seedRace(t, repo, event.ID, "Race 1", sessionTypeQualifying, 1)
-	second := seedRace(t, repo, event.ID, "Race 2", sessionTypeQualifying, 2)
+	first := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
+	second := seedRace(t, repo, event.ID, "Race 2", conversion.RaceSessionTypeQualifying, 2)
 
 	_, err := svc.UpdateRace(
 		context.Background(),
@@ -433,7 +436,7 @@ func TestDeleteRaceSuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	initial := seedRace(t, repo, event.ID, "Delete Me", sessionTypeQualifying, 1)
+	initial := seedRace(t, repo, event.ID, "Delete Me", conversion.RaceSessionTypeQualifying, 1)
 
 	resp, err := svc.DeleteRace(
 		context.Background(),

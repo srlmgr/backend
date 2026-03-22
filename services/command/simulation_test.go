@@ -13,6 +13,7 @@ import (
 	"github.com/srlmgr/backend/authn"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
@@ -40,7 +41,9 @@ func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
 	}
 
 	formats := setter.SupportedImportFormats.MustGet()
-	if len(formats) != 2 || formats[0] != "json" || formats[1] != "csv" {
+	if len(formats) != 2 || formats[0] != conversion.ImportFormatJSON ||
+		formats[1] != conversion.ImportFormatCSV {
+
 		t.Fatalf("unexpected supported formats: %v", formats)
 	}
 }
@@ -84,7 +87,9 @@ func TestCreateSimulationSuccess(t *testing.T) {
 			stored.UpdatedBy,
 		)
 	}
-	if len(stored.SupportedImportFormats) != 1 || stored.SupportedImportFormats[0] != "json" {
+	if len(stored.SupportedImportFormats) != 1 ||
+		stored.SupportedImportFormats[0] != conversion.ImportFormatJSON {
+
 		t.Fatalf("unexpected stored formats: %v", stored.SupportedImportFormats)
 	}
 }
@@ -201,7 +206,9 @@ func TestUpdateSimulationSuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
-	if len(after.SupportedImportFormats) != 1 || after.SupportedImportFormats[0] != "csv" {
+	if len(after.SupportedImportFormats) != 1 ||
+		after.SupportedImportFormats[0] != conversion.ImportFormatCSV {
+
 		t.Fatalf("unexpected updated formats: %v", after.SupportedImportFormats)
 	}
 }

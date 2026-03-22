@@ -72,7 +72,7 @@ func seedSimulation(t *testing.T, repo rootrepo.Repository, name string) *models
 	sim, err := repo.RacingSims().Create(context.Background(), &models.RacingSimSetter{
 		Name:                   omit.From(name),
 		IsActive:               omit.From(true),
-		SupportedImportFormats: omit.From(pq.StringArray{"json"}),
+		SupportedImportFormats: omit.From(pq.StringArray{conversion.ImportFormatJSON}),
 		CreatedBy:              omit.From(testUserSeed),
 		UpdatedBy:              omit.From(testUserSeed),
 	})

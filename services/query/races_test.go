@@ -12,6 +12,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace // multiline signature style
@@ -52,6 +53,7 @@ func TestListRacesEmpty(t *testing.T) {
 	}
 }
 
+//nolint:lll // readability
 func TestListRacesReturnsAll(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
@@ -62,8 +64,8 @@ func TestListRacesReturnsAll(t *testing.T) {
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	race1 := seedRace(t, repo, event.ID, "Qualifying", "qualifying", 1)
-	race2 := seedRace(t, repo, event.ID, "Feature Race", "race", 2)
+	race1 := seedRace(t, repo, event.ID, "Qualifying", conversion.RaceSessionTypeQualifying, 1)
+	race2 := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 2)
 
 	resp, err := svc.ListRaces(
 		context.Background(),
@@ -91,6 +93,7 @@ func TestListRacesReturnsAll(t *testing.T) {
 	}
 }
 
+//nolint:lll // readability
 func TestListRacesByEventID(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
@@ -102,8 +105,8 @@ func TestListRacesByEventID(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
-	race1 := seedRace(t, repo, event1.ID, "Feature Race", "race", 1)
-	seedRace(t, repo, event2.ID, "Feature Race", "race", 1)
+	race1 := seedRace(t, repo, event1.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
+	seedRace(t, repo, event2.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 
 	resp, err := svc.ListRaces(
 		context.Background(),
@@ -137,7 +140,7 @@ func TestGetRaceSuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	race := seedRace(t, repo, event.ID, "Feature Race", "race", 1)
+	race := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 
 	resp, err := svc.GetRace(
 		context.Background(),

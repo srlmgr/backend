@@ -15,26 +15,6 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-const (
-	importFormatJSON = "json"
-	importFormatCSV  = "csv"
-
-	raceSessionTypeQualifying = "qualifying"
-	raceSessionTypeHeat       = "heat"
-	raceSessionTypeRace       = "race"
-
-	eventStatusScheduled = "scheduled"
-	eventStatusCompleted = "completed"
-	eventStatusCancelled = "canceled"
-
-	eventProcessingStateDraft                 = "draft"
-	eventProcessingStateRawImported           = "raw_imported"
-	eventProcessingStatePreprocessed          = "preprocessed"
-	eventProcessingStateDriverEntriesComputed = "driver_entries_computed"
-	eventProcessingStateTeamEntriesComputed   = "team_entries_computed"
-	eventProcessingStateFinalized             = "finalized"
-)
-
 // Service converts database models to gRPC messages.
 type Service struct {
 	logger *log.Logger
@@ -54,9 +34,9 @@ func ImportFormatsToProto(formats []string) []commonv1.ImportFormat {
 	out := make([]commonv1.ImportFormat, 0, len(formats))
 	for _, format := range formats {
 		switch format {
-		case importFormatJSON:
+		case ImportFormatJSON:
 			out = append(out, commonv1.ImportFormat_IMPORT_FORMAT_JSON)
-		case importFormatCSV:
+		case ImportFormatCSV:
 			out = append(out, commonv1.ImportFormat_IMPORT_FORMAT_CSV)
 		default:
 			out = append(out, commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED)
@@ -77,9 +57,9 @@ func ImportFormatsFromProto(formats []commonv1.ImportFormat) ([]string, error) {
 	for _, format := range formats {
 		switch format {
 		case commonv1.ImportFormat_IMPORT_FORMAT_JSON:
-			out = append(out, importFormatJSON)
+			out = append(out, ImportFormatJSON)
 		case commonv1.ImportFormat_IMPORT_FORMAT_CSV:
-			out = append(out, importFormatCSV)
+			out = append(out, ImportFormatCSV)
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			// Skip unspecified formats.
 		default:
@@ -339,7 +319,7 @@ func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
 
 func isKnownEventStatus(status string) bool {
 	switch status {
-	case eventStatusScheduled, eventStatusCompleted, eventStatusCancelled:
+	case EventStatusScheduled, EventStatusCompleted, EventStatusCancelled:
 		return true
 	default:
 		return false
@@ -348,12 +328,12 @@ func isKnownEventStatus(status string) bool {
 
 func isKnownEventProcessingState(processingState string) bool {
 	switch processingState {
-	case eventProcessingStateDraft,
-		eventProcessingStateRawImported,
-		eventProcessingStatePreprocessed,
-		eventProcessingStateDriverEntriesComputed,
-		eventProcessingStateTeamEntriesComputed,
-		eventProcessingStateFinalized:
+	case EventProcessingStateDraft,
+		EventProcessingStateRawImported,
+		EventProcessingStatePreprocessed,
+		EventProcessingStateDriverEntriesComputed,
+		EventProcessingStateTeamEntriesComputed,
+		EventProcessingStateFinalized:
 		return true
 	default:
 		return false
@@ -381,9 +361,9 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 	}
 
 	switch model.State {
-	case "normal":
+	case ResultStateNormal:
 		entry.State = commonv1.ResultState_RESULT_STATE_NORMAL
-	case "dq":
+	case ResultStateDQ:
 		entry.State = commonv1.ResultState_RESULT_STATE_DQ
 	default:
 		entry.State = commonv1.ResultState_RESULT_STATE_UNSPECIFIED
@@ -401,11 +381,11 @@ func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 
 	var sessionType commonv1.RaceSessionType
 	switch model.SessionType {
-	case raceSessionTypeQualifying:
+	case RaceSessionTypeQualifying:
 		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
-	case raceSessionTypeHeat:
+	case RaceSessionTypeHeat:
 		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
-	case raceSessionTypeRace:
+	case RaceSessionTypeRace:
 		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
 	default:
 		s.logger.Warn("unknown race session_type, mapping to UNSPECIFIED",

@@ -12,6 +12,7 @@ import (
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace // multiline signature style
@@ -27,9 +28,9 @@ func seedImportBatch(
 		context.Background(), &models.ImportBatchSetter{
 			EventID:         omit.From(eventID),
 			RaceID:          omit.From(raceID),
-			ImportFormat:    omit.From(mytypes.ImportFormat("csv")),
+			ImportFormat:    omit.From(mytypes.ImportFormat(conversion.ImportFormatCSV)),
 			Payload:         omit.From([]byte("{}")),
-			ProcessingState: omit.From("raw_imported"),
+			ProcessingState: omit.From(conversion.EventProcessingStateRawImported),
 			CreatedBy:       omit.From(testUserSeed),
 			UpdatedBy:       omit.From(testUserSeed),
 		})
@@ -57,7 +58,7 @@ func seedResultEntry(
 			DriverName:        omit.From(driverName),
 			FinishingPosition: omit.From(finishingPosition),
 			CompletedLaps:     omit.From(int32(0)),
-			State:             omit.From("normal"),
+			State:             omit.From(conversion.ResultStateNormal),
 			CreatedBy:         omit.From(testUserSeed),
 			UpdatedBy:         omit.From(testUserSeed),
 		})

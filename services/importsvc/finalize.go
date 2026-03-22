@@ -17,6 +17,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -39,14 +40,14 @@ func (s *service) FinalizeEventProcessing(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	if event.ProcessingState == "finalized" {
+	if event.ProcessingState == conversion.EventProcessingStateFinalized {
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("event is already finalized"))
 	}
-	if event.ProcessingState == "draft" ||
-		event.ProcessingState == "raw_imported" ||
-		event.ProcessingState == "preprocessed" ||
-		event.ProcessingState == "driver_entries_computed" {
+	if event.ProcessingState == conversion.EventProcessingStateDraft ||
+		event.ProcessingState == conversion.EventProcessingStateRawImported ||
+		event.ProcessingState == conversion.EventProcessingStatePreprocessed ||
+		event.ProcessingState == conversion.EventProcessingStateDriverEntriesComputed {
 		//nolint:lll // readability
 		return nil, connect.NewError(
 			connect.CodeFailedPrecondition,
@@ -58,7 +59,7 @@ func (s *service) FinalizeEventProcessing(
 	}
 
 	fromState := event.ProcessingState
-	toState := "finalized"
+	toState := conversion.EventProcessingStateFinalized
 	execUser := s.execUser(ctx)
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 	finalizedAt := time.Now()

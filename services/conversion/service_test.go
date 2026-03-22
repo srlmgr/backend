@@ -15,7 +15,7 @@ import (
 func TestImportFormatsToProto(t *testing.T) {
 	t.Parallel()
 
-	got := ImportFormatsToProto([]string{"json", "csv", "unknown"})
+	got := ImportFormatsToProto([]string{ImportFormatJSON, ImportFormatCSV, "unknown"})
 	if len(got) != 3 {
 		t.Fatalf("unexpected format count: got %d want %d", len(got), 3)
 	}
@@ -55,7 +55,7 @@ func TestImportFormatsFromProto(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("unexpected format count: got %d want %d", len(got), 2)
 	}
-	if got[0] != "json" || got[1] != "csv" {
+	if got[0] != ImportFormatJSON || got[1] != ImportFormatCSV {
 		t.Fatalf("unexpected formats: got %v", got)
 	}
 }
@@ -82,7 +82,7 @@ func TestServiceRacingSimToSimulation(t *testing.T) {
 		ID:                     42,
 		FrontendID:             frontendID,
 		Name:                   "iRacing",
-		SupportedImportFormats: pq.StringArray{"json", "csv"},
+		SupportedImportFormats: pq.StringArray{ImportFormatJSON, ImportFormatCSV},
 		IsActive:               true,
 	}
 
@@ -111,7 +111,7 @@ func TestServiceRacingSimToSimulation(t *testing.T) {
 		t.Fatalf("unexpected supported formats: got %v", msg.SupportedFormats)
 	}
 
-	input.SupportedImportFormats[0] = "csv"
+	input.SupportedImportFormats[0] = ImportFormatCSV
 	if msg.SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
 		t.Fatalf("supported formats should be copied, got %v", msg.SupportedFormats[0])
 	}
@@ -135,11 +135,16 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 		{
 			ID:                     1,
 			Name:                   "Assetto Corsa",
-			SupportedImportFormats: pq.StringArray{"json"},
+			SupportedImportFormats: pq.StringArray{ImportFormatJSON},
 			IsActive:               true,
 		},
 		nil,
-		{ID: 2, Name: "rFactor 2", SupportedImportFormats: pq.StringArray{"csv"}, IsActive: false},
+		{
+			ID:                     2,
+			Name:                   "rFactor 2",
+			SupportedImportFormats: pq.StringArray{ImportFormatCSV},
+			IsActive:               false,
+		},
 	}
 
 	got := svc.RacingSimsToSimulations(items)
@@ -172,8 +177,8 @@ func TestServiceEventToEvent(t *testing.T) {
 		TrackLayoutID:   5,
 		Name:            "Round 1",
 		EventDate:       eventDate,
-		Status:          "scheduled",
-		ProcessingState: "raw_imported",
+		Status:          EventStatusScheduled,
+		ProcessingState: EventProcessingStateRawImported,
 	}
 
 	svc := New()

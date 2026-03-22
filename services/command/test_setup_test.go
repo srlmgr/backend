@@ -113,7 +113,7 @@ func seedSimulation(
 	sim, err = repo.RacingSims().Create(context.Background(), &models.RacingSimSetter{
 		Name:                   omit.From(name),
 		IsActive:               omit.From(true),
-		SupportedImportFormats: omit.From(pq.StringArray{"json"}),
+		SupportedImportFormats: omit.From(pq.StringArray{conversion.ImportFormatJSON}),
 		CreatedBy:              omit.From(testUserSeed),
 		UpdatedBy:              omit.From(testUserSeed),
 	})
@@ -376,9 +376,9 @@ func seedImportBatch(
 	batch, err = repo.ImportBatches().Create(context.Background(), &models.ImportBatchSetter{
 		EventID:         omit.From(eventID),
 		RaceID:          omit.From(raceID),
-		ImportFormat:    omit.From(mytypes.ImportFormat("csv")),
+		ImportFormat:    omit.From(mytypes.ImportFormat(conversion.ImportFormatCSV)),
 		Payload:         omit.From([]byte("{}")),
-		ProcessingState: omit.From("raw_imported"),
+		ProcessingState: omit.From(conversion.EventProcessingStateRawImported),
 		CreatedBy:       omit.From(testUserSeed),
 		UpdatedBy:       omit.From(testUserSeed),
 	})
@@ -409,7 +409,7 @@ func seedResultEntry(
 		DriverName:        omit.From(driverName),
 		FinishingPosition: omit.From(finishingPosition),
 		CompletedLaps:     omit.From(int32(0)),
-		State:             omit.From("normal"),
+		State:             omit.From(conversion.ResultStateNormal),
 		CreatedBy:         omit.From(testUserSeed),
 		UpdatedBy:         omit.From(testUserSeed),
 	})
