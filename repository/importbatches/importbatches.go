@@ -27,11 +27,16 @@ type Repository interface {
 		ctx context.Context,
 		eventID, raceID int32,
 	) ([]*models.ImportBatch, error)
+	LoadByRaceID(
+		ctx context.Context,
+		raceID int32,
+	) (*models.ImportBatch, error)
 	LoadLatestByEventIDAndRaceID(
 		ctx context.Context,
 		eventID, raceID int32,
 	) (*models.ImportBatch, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByRaceID(ctx context.Context, raceID int32) error
 	Create(ctx context.Context, input *models.ImportBatchSetter) (*models.ImportBatch, error)
 	Update(
 		ctx context.Context,
@@ -61,6 +66,12 @@ func (r *importBatchesRepository) LoadByID(
 
 func (r *importBatchesRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.ImportBatches.Delete(dm.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *importBatchesRepository) DeleteByRaceID(ctx context.Context, raceID int32) error {
+	_, err := models.ImportBatches.Delete(dm.Where(models.ImportBatches.Columns.RaceID.EQ(psql.Arg(raceID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -95,6 +106,19 @@ func (r *importBatchesRepository) LoadByEventIDAndRaceID(
 		sm.Where(models.ImportBatches.Columns.EventID.EQ(psql.Arg(eventID))),
 		sm.Where(models.ImportBatches.Columns.RaceID.EQ(psql.Arg(raceID))),
 	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *importBatchesRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) (*models.ImportBatch, error) {
+	entity, err := models.ImportBatches.Query(
+		sm.Where(models.ImportBatches.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("import batch for race %d: %w", raceID, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *importBatchesRepository) LoadLatestByEventIDAndRaceID(

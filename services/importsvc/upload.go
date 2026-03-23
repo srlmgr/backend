@@ -24,7 +24,7 @@ import (
 	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace,funlen,gocyclo // editor/linter issue
 func (s *service) UploadResultsFile(
 	ctx context.Context,
 	req *connect.Request[importv1.UploadResultsFileRequest],
@@ -75,6 +75,20 @@ func (s *service) UploadResultsFile(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
+	if !slices.Contains([]string{
+		conversion.EventProcessingStateDraft,
+		conversion.EventProcessingStatePreprocessed,
+		conversion.EventProcessingStateMappingError,
+	}, event.ProcessingState) {
+		return nil, connect.NewError(
+			connect.CodeFailedPrecondition,
+			fmt.Errorf(
+				"cannot upload results file in current processing state: %s",
+				event.ProcessingState,
+			),
+		)
+	}
+
 	importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, event)
 	if err != nil {
 		l.Error("failed to resolve import processor", log.ErrorField(err))
@@ -114,6 +128,14 @@ func (s *service) UploadResultsFile(
 
 	var batch *models.ImportBatch
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		if cleanupErr := s.cleanupExistingImportBatch(ctx, raceID); cleanupErr != nil {
+			l.Error("failed to cleanup existing import batch", log.ErrorField(cleanupErr))
+			trace.SpanFromContext(ctx).
+				SetStatus(codes.Error, "failed to cleanup existing import batch")
+			return cleanupErr
+		}
+
+		// TODO: support Upsert for ImportBatch
 		var createErr error
 		batch, createErr = s.repo.ImportBatches().Create(ctx, &models.ImportBatchSetter{
 			EventID:         omit.From(eventID),
@@ -127,6 +149,37 @@ func (s *service) UploadResultsFile(
 		})
 		if createErr != nil {
 			return createErr
+		}
+
+		// TODO move to own function
+		// - process
+		// - resolve
+		// - remove data from previous steps
+		// - store resultEntries
+		input, inpErr := importProcessor.Process(ctx, importFormat, req.Msg.GetPayload())
+		if inpErr != nil {
+			return fmt.Errorf("process import payload: %w", inpErr)
+		}
+
+		resolver := processor.NewResolver(
+			processor.NewRepositoryEntityResolver(s.repo, simulation))
+		resolved, resolveErr := resolver.ResolveInput(input)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve import payload: %w", resolveErr)
+		}
+
+		if persistErr := s.replaceResultEntriesForBatch(
+			ctx,
+			batch,
+			resolved.Entries,
+			execUser,
+		); persistErr != nil {
+			return persistErr
+		}
+		if len(resolved.Unmapped) > 0 {
+			toState = conversion.EventProcessingStateMappingError
+		} else {
+			toState = conversion.EventProcessingStatePreprocessed
 		}
 
 		// Advance event processing state.
@@ -166,6 +219,23 @@ func (s *service) UploadResultsFile(
 	}), nil
 }
 
+func (s *service) cleanupExistingImportBatch(ctx context.Context, raceID int32) error {
+	importBatch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
+	if err == nil && importBatch != nil {
+		if err := s.repo.EventProcessingAudit().DeleteByImportBatchID(
+			ctx, importBatch.ID); err != nil {
+			return fmt.Errorf("delete existing event processing audits: %w", err)
+		}
+	}
+	if err := s.repo.ResultEntries().DeleteByRaceID(ctx, raceID); err != nil {
+		return fmt.Errorf("delete existing result entries: %w", err)
+	}
+	if err := s.repo.ImportBatches().DeleteByRaceID(ctx, raceID); err != nil {
+		return fmt.Errorf("delete existing import batch: %w", err)
+	}
+	return nil
+}
+
 //nolint:whitespace // editor/linter issue
 func (s *service) resolveProcessorForEvent(
 	ctx context.Context,
@@ -192,4 +262,74 @@ func (s *service) resolveProcessorForEvent(
 	}
 
 	return importProcessor, simulation, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) replaceResultEntriesForBatch(
+	ctx context.Context,
+	batch *models.ImportBatch,
+	entries []*models.ResultEntry,
+	execUser string,
+) error {
+	existing, err := s.repo.ResultEntries().LoadByImportBatchID(ctx, batch.ID)
+	if err != nil {
+		return fmt.Errorf("load result entries for import batch %d: %w", batch.ID, err)
+	}
+
+	for _, item := range existing {
+		if deleteErr := s.repo.ResultEntries().DeleteByID(ctx, item.ID); deleteErr != nil {
+			return fmt.Errorf("delete result entry %d: %w", item.ID, deleteErr)
+		}
+	}
+
+	for _, entry := range entries {
+		setter := buildResultEntryCreateSetter(batch, entry, execUser)
+		if _, createErr := s.repo.ResultEntries().Create(ctx, setter); createErr != nil {
+			return fmt.Errorf("create result entry: %w", createErr)
+		}
+	}
+
+	return nil
+}
+
+//nolint:whitespace // editor/linter issue
+func buildResultEntryCreateSetter(
+	batch *models.ImportBatch,
+	entry *models.ResultEntry,
+	execUser string,
+) *models.ResultEntrySetter {
+	setter := &models.ResultEntrySetter{
+		ImportBatchID:     omit.From(batch.ID),
+		RaceID:            omit.From(batch.RaceID),
+		DriverName:        omit.From(entry.DriverName),
+		FinishingPosition: omit.From(entry.FinishingPosition),
+		CompletedLaps:     omit.From(entry.CompletedLaps),
+		State:             omit.From(entry.State),
+		CreatedBy:         omit.From(execUser),
+		UpdatedBy:         omit.From(execUser),
+	}
+
+	if !entry.DriverID.IsNull() {
+		setter.DriverID = omitnull.From(entry.DriverID.GetOr(0))
+	}
+	if !entry.CarModelID.IsNull() {
+		setter.CarModelID = omitnull.From(entry.CarModelID.GetOr(0))
+	}
+	if !entry.CarName.IsNull() {
+		setter.CarName = omitnull.From(entry.CarName.GetOr(""))
+	}
+	if !entry.FastestLapTimeMS.IsNull() {
+		setter.FastestLapTimeMS = omitnull.From(entry.FastestLapTimeMS.GetOr(0))
+	}
+	if !entry.Incidents.IsNull() {
+		setter.Incidents = omitnull.From(entry.Incidents.GetOr(0))
+	}
+	if !entry.SourceRowNumber.IsNull() {
+		setter.SourceRowNumber = omitnull.From(entry.SourceRowNumber.GetOr(0))
+	}
+	if !entry.AdminNotes.IsNull() {
+		setter.AdminNotes = omitnull.From(entry.AdminNotes.GetOr(""))
+	}
+
+	return setter
 }

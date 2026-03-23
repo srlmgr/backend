@@ -172,6 +172,7 @@ func addImportPolicies(policies map[string]ProcedurePolicy) {
 	importService := "backend.import.v1.ImportService"
 	for _, method := range []string{
 		"UploadResultsFile",
+		"ResolveMappings",
 		"GetPreprocessPreview",
 		"ApplyResultEdits",
 		"ComputeDriverBookingEntries",

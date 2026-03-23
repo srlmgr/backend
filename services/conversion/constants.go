@@ -24,14 +24,17 @@ const (
 const (
 	EventProcessingStateDraft                 = "draft"
 	EventProcessingStateRawImported           = "raw_imported"
+	EventProcessingStateMappingError          = "mapping_error"
 	EventProcessingStatePreprocessed          = "preprocessed"
 	EventProcessingStateDriverEntriesComputed = "driver_entries_computed"
 	EventProcessingStateTeamEntriesComputed   = "team_entries_computed"
+	EventProcessingStateComputed              = "computed"
 	EventProcessingStateFinalized             = "finalized"
 )
 
 // Result state strings as persisted in the database.
 const (
-	ResultStateNormal = "normal"
-	ResultStateDQ     = "dq"
+	ResultStateNormal       = "normal"
+	ResultStateDQ           = "dq"
+	ResultStateMappingError = "mapping_error"
 )

@@ -2,21 +2,14 @@ package importsvc
 
 import (
 	"context"
-	"encoding/json"
-	"time"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
 	"connectrpc.com/connect"
-	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
-	"github.com/stephenafamo/bob/types"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
-	"github.com/srlmgr/backend/services/conversion"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -46,55 +39,6 @@ func (s *service) GetPreprocessPreview(
 		l.Error("failed to load result entries", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load result entries")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
-	}
-
-	fromState := batch.ProcessingState
-	toState := conversion.EventProcessingStatePreprocessed
-	execUser := s.execUser(ctx)
-	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
-
-	// Transition state to preprocessed.
-	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		_, updateErr := s.repo.ImportBatches().Update(
-			ctx,
-			batch.ID,
-			&models.ImportBatchSetter{
-				ProcessingState: omit.From(toState),
-				ProcessedAt:     omitnull.From(time.Now()),
-				UpdatedAt:       omit.From(time.Now()),
-				UpdatedBy:       omit.From(execUser),
-			})
-		if updateErr != nil {
-			return updateErr
-		}
-
-		_, updateErr = s.repo.Events().Update(ctx, eventID, &models.EventSetter{
-			ProcessingState: omit.From(toState),
-			UpdatedAt:       omit.From(time.Now()),
-			UpdatedBy:       omit.From(execUser),
-		})
-		if updateErr != nil {
-			return updateErr
-		}
-
-		_, updateErr = s.repo.EventProcessingAudit().Create(
-			ctx,
-			&models.EventProcessingAuditSetter{
-				EventID:       omit.From(eventID),
-				ImportBatchID: omitnull.From(batch.ID),
-				FromState:     omitnull.From(fromState),
-				ToState:       omit.From(toState),
-				Action:        omit.From("get_preprocess_preview"),
-				PayloadJSON:   omit.From(emptyJSON),
-				CreatedBy:     omit.From(execUser),
-				UpdatedBy:     omit.From(execUser),
-			})
-		return updateErr
-	}); txErr != nil {
-		l.Error("failed to transition to preprocessed state", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).
-			SetStatus(codes.Error, "failed to transition to preprocessed state")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
 	// Convert result entries to proto.

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-
 	"github.com/srlmgr/backend/services/conversion"
 	"github.com/srlmgr/backend/services/importsvc/processor"
 )
@@ -24,8 +22,8 @@ func (p *Processor) Process(
 	_ context.Context,
 	_ string,
 	_ any,
-) ([]*commonv1.ResultEntry, []*commonv1.UnresolvedMapping, error) {
-	return nil, nil, fmt.Errorf("assetto corsa competizione processor is not implemented")
+) (*processor.ParsedImportPayload, error) {
+	return nil, fmt.Errorf("assetto corsa competizione processor is not implemented")
 }
 
 func init() {

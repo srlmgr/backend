@@ -181,6 +181,33 @@ type driversEntityRepo struct {
 type driverSimulationIDsEntityRepo struct {
 	*mapEntityRepo[models.DriverSimulationID, models.DriverSimulationIDSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *driverSimulationIDsEntityRepo) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.DriverSimulationID, error) {
+	items, err := r.LoadBySimulationID(ctx, simID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item == nil || item.SimulationDriverID != arg {
+			continue
+		}
+		return item, nil
+	}
+
+	return nil, fmt.Errorf(
+		"driver simulation id %q for simulation %d: %w",
+		arg,
+		simID,
+		repoerrors.ErrNotFound,
+	)
+}
+
 type tracksEntityRepo struct {
 	*mapEntityRepo[models.Track, models.TrackSetter]
 }
@@ -212,6 +239,33 @@ func (r *trackLayoutsEntityRepo) LoadByTrackID(
 type simulationTrackLayoutAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationTrackLayoutAlias, models.SimulationTrackLayoutAliasSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *simulationTrackLayoutAliasesEntityRepo) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.SimulationTrackLayoutAlias, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item == nil || item.SimulationID != simID || item.ExternalName != arg {
+			continue
+		}
+		return item, nil
+	}
+
+	return nil, fmt.Errorf(
+		"simulation track layout alias %q for simulation %d: %w",
+		arg,
+		simID,
+		repoerrors.ErrNotFound,
+	)
+}
+
 type carManufacturersEntityRepo struct {
 	*mapEntityRepo[models.CarManufacturer, models.CarManufacturerSetter]
 }
@@ -225,6 +279,33 @@ type carModelsEntityRepo struct {
 type simulationCarAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationCarAlias, models.SimulationCarAliasSetter]
 }
+
+//nolint:whitespace // multiline signature style
+func (r *simulationCarAliasesEntityRepo) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.SimulationCarAlias, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item == nil || item.SimulationID != simID || item.ExternalName != arg {
+			continue
+		}
+		return item, nil
+	}
+
+	return nil, fmt.Errorf(
+		"simulation car alias %q for simulation %d: %w",
+		arg,
+		simID,
+		repoerrors.ErrNotFound,
+	)
+}
+
 type seriesEntityRepo struct {
 	*mapEntityRepo[models.Series, models.SeriesSetter]
 }
@@ -240,6 +321,27 @@ func (r *seriesEntityRepo) LoadBySimulationID(
 	}
 
 	filtered := make([]*models.Series, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SimulationID != simulationID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *driverSimulationIDsEntityRepo) LoadBySimulationID(
+	ctx context.Context,
+	simulationID int32,
+) ([]*models.DriverSimulationID, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.DriverSimulationID, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.SimulationID != simulationID {
 			continue
@@ -482,6 +584,48 @@ func (r *importBatchesEntityRepo) LoadLatestByEventIDAndRaceID(
 	return latest, nil
 }
 
+//nolint:whitespace // multiline signature style
+func (r *importBatchesEntityRepo) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) (*models.ImportBatch, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		return item, nil
+	}
+
+	return nil, fmt.Errorf("import batch for race %d: %w", raceID, repoerrors.ErrNotFound)
+}
+
+//nolint:whitespace // multiline signature style
+func (r *importBatchesEntityRepo) DeleteByRaceID(
+	ctx context.Context,
+	raceID int32,
+) error {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		if err := r.DeleteByID(ctx, item.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type resultEntriesEntityRepo struct {
 	*mapEntityRepo[models.ResultEntry, models.ResultEntrySetter]
 }
@@ -547,6 +691,28 @@ func (r *resultEntriesEntityRepo) LoadByState(
 	}
 
 	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) DeleteByRaceID(
+	ctx context.Context,
+	raceID int32,
+) error {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		if err := r.DeleteByID(ctx, item.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type bookingEntriesEntityRepo struct {
@@ -633,6 +799,29 @@ func (r *eventProcessingAuditEntityRepo) LoadByEventID(
 	}
 
 	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *eventProcessingAuditEntityRepo) DeleteByImportBatchID(
+	ctx context.Context,
+	importBatchID int32,
+) error {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item == nil || item.ImportBatchID.IsNull() ||
+			item.ImportBatchID.MustGet() != importBatchID {
+			continue
+		}
+		if err := r.DeleteByID(ctx, item.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type seasonDriverStandingsEntityRepo struct {

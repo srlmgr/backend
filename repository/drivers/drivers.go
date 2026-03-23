@@ -32,6 +32,8 @@ type DriversRepository interface {
 // DriverSimulationIDsRepository defines persistence operations for DriverSimulationID entities.
 type DriverSimulationIDsRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.DriverSimulationID, error)
+	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.DriverSimulationID, error)
+	FindBySimID(ctx context.Context, simID int32, arg string) (*models.DriverSimulationID, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -129,6 +131,39 @@ func (r *driverSimulationIDsRepository) LoadByID(
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("driver simulation id %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *driverSimulationIDsRepository) LoadBySimulationID(
+	ctx context.Context,
+	simID int32,
+) ([]*models.DriverSimulationID, error) {
+	entity, err := models.DriverSimulationIds.
+		Query(
+			sm.Where(
+				models.DriverSimulationIds.Columns.SimulationID.EQ(psql.Arg(simID)))).
+		All(ctx, r.getExecutor(ctx))
+
+	return entity, err
+}
+
+func (r *driverSimulationIDsRepository) FindBySimID(
+	ctx context.Context,
+	simID int32,
+	arg string,
+) (*models.DriverSimulationID, error) {
+	entity, err := models.DriverSimulationIds.Query(
+		sm.Where(models.DriverSimulationIds.Columns.SimulationID.EQ(psql.Arg(simID))),
+		sm.Where(models.DriverSimulationIds.Columns.SimulationDriverID.EQ(psql.Arg(arg))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf(
+			"driver simulation id %q for simulation %d: %w",
+			arg,
+			simID,
+			repoerrors.ErrNotFound,
+		)
 	}
 	return entity, err
 }

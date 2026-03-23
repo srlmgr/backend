@@ -8,6 +8,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
+	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -61,8 +62,8 @@ func TestEventSetterBuilderBuildSuccess(t *testing.T) {
 		TrackLayoutId:   20,
 		Name:            "Round 1",
 		EventDate:       ts,
-		Status:          "planned",
-		ProcessingState: "idle",
+		Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
+		ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -83,10 +84,10 @@ func TestEventSetterBuilderBuildSuccess(t *testing.T) {
 	if got := setter.EventDate.MustGet(); !got.Equal(eventDate) {
 		t.Fatalf("unexpected event_date: got %v want %v", got, eventDate)
 	}
-	if !setter.Status.IsValue() || setter.Status.MustGet() != "planned" {
+	if !setter.Status.IsValue() || setter.Status.MustGet() != "scheduled" {
 		t.Fatalf("unexpected status setter value: %+v", setter.Status)
 	}
-	if !setter.ProcessingState.IsValue() || setter.ProcessingState.MustGet() != "idle" {
+	if !setter.ProcessingState.IsValue() || setter.ProcessingState.MustGet() != "draft" {
 		t.Fatalf("unexpected processing_state setter value: %+v", setter.ProcessingState)
 	}
 }
@@ -125,8 +126,8 @@ func TestCreateEventSuccess(t *testing.T) {
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Round 1",
 		EventDate:       timestamppb.New(eventDate),
-		Status:          conversion.EventStatusScheduled,
-		ProcessingState: conversion.EventProcessingStateDraft,
+		Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
+		ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -190,8 +191,8 @@ func TestCreateEventFailureDuplicateNameSameSeason(t *testing.T) {
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
-			Status:          conversion.EventStatusScheduled,
-			ProcessingState: conversion.EventProcessingStateDraft,
+			Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
+			ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
 		}),
 	)
 	if err == nil {
@@ -220,8 +221,8 @@ func TestCreateEventSuccessDuplicateNameDifferentSeason(t *testing.T) {
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
-			Status:          conversion.EventStatusScheduled,
-			ProcessingState: conversion.EventProcessingStateDraft,
+			Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
+			ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
 		}),
 	)
 	if err != nil {
@@ -285,8 +286,8 @@ func TestUpdateEventSuccess(t *testing.T) {
 		SeasonId:        uint32(season.ID),
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Daytona 500 Updated",
-		Status:          conversion.EventStatusCompleted,
-		ProcessingState: conversion.EventProcessingStateFinalized,
+		Status:          commonv1.EventStatus_EVENT_STATUS_COMPLETED,
+		ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_FINALIZED,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

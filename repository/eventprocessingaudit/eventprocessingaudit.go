@@ -25,6 +25,7 @@ type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.EventProcessingAudit, error)
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.EventProcessingAudit, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByImportBatchID(ctx context.Context, importBatchID int32) error
 	Create(
 		ctx context.Context,
 		input *models.EventProcessingAuditSetter,
@@ -57,6 +58,12 @@ func (r *auditRepository) LoadByID(
 
 func (r *auditRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.EventProcessingAudits.Delete(dm.Where(models.EventProcessingAudits.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *auditRepository) DeleteByImportBatchID(ctx context.Context, importBatchID int32) error {
+	_, err := models.EventProcessingAudits.Delete(dm.Where(models.EventProcessingAudits.Columns.ImportBatchID.EQ(psql.Arg(importBatchID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

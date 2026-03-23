@@ -37,7 +37,7 @@ ALTER TABLE events
 
 ALTER TABLE events
     ADD CONSTRAINT events_processing_state_check
-    CHECK (processing_state IN ('draft', 'raw_imported', 'preprocessed', 'driver_entries_computed', 'team_entries_computed', 'finalized'));
+    CHECK (processing_state IN ('draft', 'raw_imported', 'mapping_error', 'pre_processed','driver_entries_computed', 'team_entries_computed', 'finalized'));
 
 CREATE INDEX idx_events_season_id ON events (season_id);
 CREATE INDEX idx_events_track_layout_id ON events (track_layout_id);

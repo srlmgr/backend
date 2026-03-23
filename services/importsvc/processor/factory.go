@@ -12,7 +12,7 @@ var (
 
 	// ErrUnsupportedFormat indicates that a processor does not support a format.
 	ErrUnsupportedFormat = errors.New("unsupported import format")
-	providers            map[string]ProcessImport
+	providers            = make(map[string]ProcessImport)
 )
 
 func Register(simulationName string, processor ProcessImport) {

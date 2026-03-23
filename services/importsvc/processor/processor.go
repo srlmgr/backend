@@ -4,8 +4,6 @@ package processor
 import (
 	"context"
 	"slices"
-
-	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 )
 
 // ImportFormat is the persisted format value used by processors.
@@ -17,7 +15,7 @@ type ProcessImport interface {
 		ctx context.Context,
 		format ImportFormat,
 		payload any,
-	) ([]*commonv1.ResultEntry, []*commonv1.UnresolvedMapping, error)
+	) (*ParsedImportPayload, error)
 }
 
 // FormatSupporter can be implemented by processors that expose supported formats.
