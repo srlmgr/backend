@@ -61,7 +61,7 @@ func (r *RepositoryEntityResolver) ResolveDriver(
 	}
 
 	resolveArg := func(arg string) (uint32, error) {
-		driverSimID, err := r.repos.Drivers().DriverSimulationIDs().FindBySimID(
+		driverSimID, err := r.repos.Drivers().SimulationDriverAliases().FindBySimID(
 			context.Background(),
 			r.sim.ID,
 			arg,

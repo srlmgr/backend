@@ -22,7 +22,6 @@ type Factory struct {
 	baseCarBrandMods                   CarBrandModSlice
 	baseCarManufacturerMods            CarManufacturerModSlice
 	baseCarModelMods                   CarModelModSlice
-	baseDriverSimulationIDMods         DriverSimulationIDModSlice
 	baseDriverMods                     DriverModSlice
 	baseEventDriverStandingMods        EventDriverStandingModSlice
 	baseEventProcessingAuditMods       EventProcessingAuditModSlice
@@ -39,6 +38,7 @@ type Factory struct {
 	baseSeasonMods                     SeasonModSlice
 	baseSeriesMods                     SeriesModSlice
 	baseSimulationCarAliasMods         SimulationCarAliasModSlice
+	baseSimulationDriverAliasMods      SimulationDriverAliasModSlice
 	baseSimulationTrackLayoutAliasMods SimulationTrackLayoutAliasModSlice
 	baseTeamDriverMods                 TeamDriverModSlice
 	baseTeamMods                       TeamModSlice
@@ -227,45 +227,6 @@ func (f *Factory) FromExistingCarModel(m *models.CarModel) *CarModelTemplate {
 	return o
 }
 
-func (f *Factory) NewDriverSimulationID(mods ...DriverSimulationIDMod) *DriverSimulationIDTemplate {
-	return f.NewDriverSimulationIDWithContext(context.Background(), mods...)
-}
-
-func (f *Factory) NewDriverSimulationIDWithContext(ctx context.Context, mods ...DriverSimulationIDMod) *DriverSimulationIDTemplate {
-	o := &DriverSimulationIDTemplate{f: f}
-
-	if f != nil {
-		f.baseDriverSimulationIDMods.Apply(ctx, o)
-	}
-
-	DriverSimulationIDModSlice(mods).Apply(ctx, o)
-
-	return o
-}
-
-func (f *Factory) FromExistingDriverSimulationID(m *models.DriverSimulationID) *DriverSimulationIDTemplate {
-	o := &DriverSimulationIDTemplate{f: f, alreadyPersisted: true}
-
-	o.ID = func() int32 { return m.ID }
-	o.DriverID = func() int32 { return m.DriverID }
-	o.SimulationID = func() int32 { return m.SimulationID }
-	o.SimulationDriverID = func() string { return m.SimulationDriverID }
-	o.CreatedAt = func() time.Time { return m.CreatedAt }
-	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
-	o.CreatedBy = func() string { return m.CreatedBy }
-	o.UpdatedBy = func() string { return m.UpdatedBy }
-
-	ctx := context.Background()
-	if m.R.Driver != nil {
-		DriverSimulationIDMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
-	}
-	if m.R.SimulationRacingSim != nil {
-		DriverSimulationIDMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
-	}
-
-	return o
-}
-
 func (f *Factory) NewDriver(mods ...DriverMod) *DriverTemplate {
 	return f.NewDriverWithContext(context.Background(), mods...)
 }
@@ -300,9 +261,6 @@ func (f *Factory) FromExistingDriver(m *models.Driver) *DriverTemplate {
 	if len(m.R.BookingEntries) > 0 {
 		DriverMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
 	}
-	if len(m.R.DriverSimulationIds) > 0 {
-		DriverMods.AddExistingDriverSimulationIds(m.R.DriverSimulationIds...).Apply(ctx, o)
-	}
 	if len(m.R.EventDriverStandings) > 0 {
 		DriverMods.AddExistingEventDriverStandings(m.R.EventDriverStandings...).Apply(ctx, o)
 	}
@@ -311,6 +269,9 @@ func (f *Factory) FromExistingDriver(m *models.Driver) *DriverTemplate {
 	}
 	if len(m.R.SeasonDriverStandings) > 0 {
 		DriverMods.AddExistingSeasonDriverStandings(m.R.SeasonDriverStandings...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationDriverAliases) > 0 {
+		DriverMods.AddExistingSimulationDriverAliases(m.R.SimulationDriverAliases...).Apply(ctx, o)
 	}
 	if len(m.R.TeamDrivers) > 0 {
 		DriverMods.AddExistingTeamDrivers(m.R.TeamDrivers...).Apply(ctx, o)
@@ -506,9 +467,6 @@ func (f *Factory) FromExistingEvent(m *models.Event) *EventTemplate {
 	if m.R.TrackLayout != nil {
 		EventMods.WithExistingTrackLayout(m.R.TrackLayout).Apply(ctx, o)
 	}
-	if len(m.R.ImportBatches) > 0 {
-		EventMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
-	}
 	if len(m.R.Races) > 0 {
 		EventMods.AddExistingRaces(m.R.Races...).Apply(ctx, o)
 	}
@@ -537,7 +495,6 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.EventID = func() int32 { return m.EventID }
 	o.RaceID = func() int32 { return m.RaceID }
 	o.ImportFormat = func() mytypes.ImportFormat { return m.ImportFormat }
 	o.Payload = func() []byte { return m.Payload }
@@ -554,14 +511,8 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 	if len(m.R.EventProcessingAudits) > 0 {
 		ImportBatchMods.AddExistingEventProcessingAudits(m.R.EventProcessingAudits...).Apply(ctx, o)
 	}
-	if m.R.Event != nil {
-		ImportBatchMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
-	}
 	if m.R.Race != nil {
 		ImportBatchMods.WithExistingRace(m.R.Race).Apply(ctx, o)
-	}
-	if len(m.R.ResultEntries) > 0 {
-		ImportBatchMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
 	}
 
 	return o
@@ -715,14 +666,14 @@ func (f *Factory) FromExistingRacingSim(m *models.RacingSim) *RacingSimTemplate 
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
-	if len(m.R.SimulationDriverSimulationIds) > 0 {
-		RacingSimMods.AddExistingSimulationDriverSimulationIds(m.R.SimulationDriverSimulationIds...).Apply(ctx, o)
-	}
 	if len(m.R.SimulationSeries) > 0 {
 		RacingSimMods.AddExistingSimulationSeries(m.R.SimulationSeries...).Apply(ctx, o)
 	}
 	if len(m.R.SimulationSimulationCarAliases) > 0 {
 		RacingSimMods.AddExistingSimulationSimulationCarAliases(m.R.SimulationSimulationCarAliases...).Apply(ctx, o)
+	}
+	if len(m.R.SimulationSimulationDriverAliases) > 0 {
+		RacingSimMods.AddExistingSimulationSimulationDriverAliases(m.R.SimulationSimulationDriverAliases...).Apply(ctx, o)
 	}
 	if len(m.R.SimulationSimulationTrackLayoutAliases) > 0 {
 		RacingSimMods.AddExistingSimulationSimulationTrackLayoutAliases(m.R.SimulationSimulationTrackLayoutAliases...).Apply(ctx, o)
@@ -752,7 +703,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.ImportBatchID = func() int32 { return m.ImportBatchID }
 	o.RaceID = func() int32 { return m.RaceID }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.DriverName = func() string { return m.DriverName }
@@ -781,9 +731,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.Driver != nil {
 		ResultEntryMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
-	}
-	if m.R.ImportBatch != nil {
-		ResultEntryMods.WithExistingImportBatch(m.R.ImportBatch).Apply(ctx, o)
 	}
 	if m.R.Race != nil {
 		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
@@ -1017,6 +964,45 @@ func (f *Factory) FromExistingSimulationCarAlias(m *models.SimulationCarAlias) *
 	}
 	if m.R.SimulationRacingSim != nil {
 		SimulationCarAliasMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSimulationDriverAlias(mods ...SimulationDriverAliasMod) *SimulationDriverAliasTemplate {
+	return f.NewSimulationDriverAliasWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSimulationDriverAliasWithContext(ctx context.Context, mods ...SimulationDriverAliasMod) *SimulationDriverAliasTemplate {
+	o := &SimulationDriverAliasTemplate{f: f}
+
+	if f != nil {
+		f.baseSimulationDriverAliasMods.Apply(ctx, o)
+	}
+
+	SimulationDriverAliasModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSimulationDriverAlias(m *models.SimulationDriverAlias) *SimulationDriverAliasTemplate {
+	o := &SimulationDriverAliasTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.DriverID = func() int32 { return m.DriverID }
+	o.SimulationID = func() int32 { return m.SimulationID }
+	o.SimulationDriverID = func() string { return m.SimulationDriverID }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Driver != nil {
+		SimulationDriverAliasMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.SimulationRacingSim != nil {
+		SimulationDriverAliasMods.WithExistingSimulationRacingSim(m.R.SimulationRacingSim).Apply(ctx, o)
 	}
 
 	return o
@@ -1266,14 +1252,6 @@ func (f *Factory) AddBaseCarModelMod(mods ...CarModelMod) {
 	f.baseCarModelMods = append(f.baseCarModelMods, mods...)
 }
 
-func (f *Factory) ClearBaseDriverSimulationIDMods() {
-	f.baseDriverSimulationIDMods = nil
-}
-
-func (f *Factory) AddBaseDriverSimulationIDMod(mods ...DriverSimulationIDMod) {
-	f.baseDriverSimulationIDMods = append(f.baseDriverSimulationIDMods, mods...)
-}
-
 func (f *Factory) ClearBaseDriverMods() {
 	f.baseDriverMods = nil
 }
@@ -1400,6 +1378,14 @@ func (f *Factory) ClearBaseSimulationCarAliasMods() {
 
 func (f *Factory) AddBaseSimulationCarAliasMod(mods ...SimulationCarAliasMod) {
 	f.baseSimulationCarAliasMods = append(f.baseSimulationCarAliasMods, mods...)
+}
+
+func (f *Factory) ClearBaseSimulationDriverAliasMods() {
+	f.baseSimulationDriverAliasMods = nil
+}
+
+func (f *Factory) AddBaseSimulationDriverAliasMod(mods ...SimulationDriverAliasMod) {
+	f.baseSimulationDriverAliasMods = append(f.baseSimulationDriverAliasMods, mods...)
 }
 
 func (f *Factory) ClearBaseSimulationTrackLayoutAliasMods() {

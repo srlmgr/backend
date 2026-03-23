@@ -3,7 +3,6 @@ BEGIN;
 CREATE TABLE result_entries (
     id serial PRIMARY KEY,
     frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    import_batch_id integer NOT NULL,
     race_id integer NOT NULL,
     driver_id integer,
     driver_name text NOT NULL,
@@ -26,10 +25,6 @@ CREATE TABLE result_entries (
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_frontend_id_unique UNIQUE (frontend_id);
-
-ALTER TABLE result_entries
-    ADD CONSTRAINT result_entries_import_batch_id_fk
-    FOREIGN KEY (import_batch_id) REFERENCES import_batches (id);
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_race_id_fk
@@ -63,7 +58,6 @@ CREATE UNIQUE INDEX idx_result_entries_race_id_driver_id_unique
     ON result_entries (race_id, driver_id)
     WHERE driver_id IS NOT NULL;
 
-CREATE INDEX idx_result_entries_import_batch_id ON result_entries (import_batch_id);
 CREATE INDEX idx_result_entries_race_id ON result_entries (race_id);
 CREATE INDEX idx_result_entries_driver_id ON result_entries (driver_id);
 CREATE INDEX idx_result_entries_car_model_id ON result_entries (car_model_id);

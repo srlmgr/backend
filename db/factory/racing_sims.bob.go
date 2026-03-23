@@ -54,16 +54,12 @@ type RacingSimTemplate struct {
 }
 
 type racingSimR struct {
-	SimulationDriverSimulationIds          []*racingSimRSimulationDriverSimulationIdsR
 	SimulationSeries                       []*racingSimRSimulationSeriesR
 	SimulationSimulationCarAliases         []*racingSimRSimulationSimulationCarAliasesR
+	SimulationSimulationDriverAliases      []*racingSimRSimulationSimulationDriverAliasesR
 	SimulationSimulationTrackLayoutAliases []*racingSimRSimulationSimulationTrackLayoutAliasesR
 }
 
-type racingSimRSimulationDriverSimulationIdsR struct {
-	number int
-	o      *DriverSimulationIDTemplate
-}
 type racingSimRSimulationSeriesR struct {
 	number int
 	o      *SeriesTemplate
@@ -71,6 +67,10 @@ type racingSimRSimulationSeriesR struct {
 type racingSimRSimulationSimulationCarAliasesR struct {
 	number int
 	o      *SimulationCarAliasTemplate
+}
+type racingSimRSimulationSimulationDriverAliasesR struct {
+	number int
+	o      *SimulationDriverAliasTemplate
 }
 type racingSimRSimulationSimulationTrackLayoutAliasesR struct {
 	number int
@@ -87,19 +87,6 @@ func (o *RacingSimTemplate) Apply(ctx context.Context, mods ...RacingSimMod) {
 // setModelRels creates and sets the relationships on *models.RacingSim
 // according to the relationships in the template. Nothing is inserted into the db
 func (t RacingSimTemplate) setModelRels(o *models.RacingSim) {
-	if t.r.SimulationDriverSimulationIds != nil {
-		rel := models.DriverSimulationIDSlice{}
-		for _, r := range t.r.SimulationDriverSimulationIds {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.SimulationID = o.ID // h2
-				rel.R.SimulationRacingSim = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.SimulationDriverSimulationIds = rel
-	}
-
 	if t.r.SimulationSeries != nil {
 		rel := models.SeriesSlice{}
 		for _, r := range t.r.SimulationSeries {
@@ -124,6 +111,19 @@ func (t RacingSimTemplate) setModelRels(o *models.RacingSim) {
 			rel = append(rel, related...)
 		}
 		o.R.SimulationSimulationCarAliases = rel
+	}
+
+	if t.r.SimulationSimulationDriverAliases != nil {
+		rel := models.SimulationDriverAliasSlice{}
+		for _, r := range t.r.SimulationSimulationDriverAliases {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SimulationID = o.ID // h2
+				rel.R.SimulationRacingSim = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SimulationSimulationDriverAliases = rel
 	}
 
 	if t.r.SimulationSimulationTrackLayoutAliases != nil {
@@ -262,26 +262,6 @@ func ensureCreatableRacingSim(m *models.RacingSimSetter) {
 func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.RacingSim) error {
 	var err error
 
-	isSimulationDriverSimulationIdsDone, _ := racingSimRelSimulationDriverSimulationIdsCtx.Value(ctx)
-	if !isSimulationDriverSimulationIdsDone && o.r.SimulationDriverSimulationIds != nil {
-		ctx = racingSimRelSimulationDriverSimulationIdsCtx.WithValue(ctx, true)
-		for _, r := range o.r.SimulationDriverSimulationIds {
-			if r.o.alreadyPersisted {
-				m.R.SimulationDriverSimulationIds = append(m.R.SimulationDriverSimulationIds, r.o.Build())
-			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachSimulationDriverSimulationIds(ctx, exec, rel0...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	isSimulationSeriesDone, _ := racingSimRelSimulationSeriesCtx.Value(ctx)
 	if !isSimulationSeriesDone && o.r.SimulationSeries != nil {
 		ctx = racingSimRelSimulationSeriesCtx.WithValue(ctx, true)
@@ -289,12 +269,12 @@ func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor
 			if r.o.alreadyPersisted {
 				m.R.SimulationSeries = append(m.R.SimulationSeries, r.o.Build())
 			} else {
-				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSimulationSeries(ctx, exec, rel1...)
+				err = m.AttachSimulationSeries(ctx, exec, rel0...)
 				if err != nil {
 					return err
 				}
@@ -309,12 +289,32 @@ func (o *RacingSimTemplate) insertOptRels(ctx context.Context, exec bob.Executor
 			if r.o.alreadyPersisted {
 				m.R.SimulationSimulationCarAliases = append(m.R.SimulationSimulationCarAliases, r.o.Build())
 			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSimulationSimulationCarAliases(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	isSimulationSimulationDriverAliasesDone, _ := racingSimRelSimulationSimulationDriverAliasesCtx.Value(ctx)
+	if !isSimulationSimulationDriverAliasesDone && o.r.SimulationSimulationDriverAliases != nil {
+		ctx = racingSimRelSimulationSimulationDriverAliasesCtx.WithValue(ctx, true)
+		for _, r := range o.r.SimulationSimulationDriverAliases {
+			if r.o.alreadyPersisted {
+				m.R.SimulationSimulationDriverAliases = append(m.R.SimulationSimulationDriverAliases, r.o.Build())
+			} else {
 				rel2, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSimulationSimulationCarAliases(ctx, exec, rel2...)
+				err = m.AttachSimulationSimulationDriverAliases(ctx, exec, rel2...)
 				if err != nil {
 					return err
 				}
@@ -734,54 +734,6 @@ func (m racingSimMods) WithParentsCascading() RacingSimMod {
 	})
 }
 
-func (m racingSimMods) WithSimulationDriverSimulationIds(number int, related *DriverSimulationIDTemplate) RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		o.r.SimulationDriverSimulationIds = []*racingSimRSimulationDriverSimulationIdsR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m racingSimMods) WithNewSimulationDriverSimulationIds(number int, mods ...DriverSimulationIDMod) RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
-		m.WithSimulationDriverSimulationIds(number, related).Apply(ctx, o)
-	})
-}
-
-func (m racingSimMods) AddSimulationDriverSimulationIds(number int, related *DriverSimulationIDTemplate) RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		o.r.SimulationDriverSimulationIds = append(o.r.SimulationDriverSimulationIds, &racingSimRSimulationDriverSimulationIdsR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m racingSimMods) AddNewSimulationDriverSimulationIds(number int, mods ...DriverSimulationIDMod) RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		related := o.f.NewDriverSimulationIDWithContext(ctx, mods...)
-		m.AddSimulationDriverSimulationIds(number, related).Apply(ctx, o)
-	})
-}
-
-func (m racingSimMods) AddExistingSimulationDriverSimulationIds(existingModels ...*models.DriverSimulationID) RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		for _, em := range existingModels {
-			o.r.SimulationDriverSimulationIds = append(o.r.SimulationDriverSimulationIds, &racingSimRSimulationDriverSimulationIdsR{
-				o: o.f.FromExistingDriverSimulationID(em),
-			})
-		}
-	})
-}
-
-func (m racingSimMods) WithoutSimulationDriverSimulationIds() RacingSimMod {
-	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
-		o.r.SimulationDriverSimulationIds = nil
-	})
-}
-
 func (m racingSimMods) WithSimulationSeries(number int, related *SeriesTemplate) RacingSimMod {
 	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
 		o.r.SimulationSeries = []*racingSimRSimulationSeriesR{{
@@ -875,6 +827,54 @@ func (m racingSimMods) AddExistingSimulationSimulationCarAliases(existingModels 
 func (m racingSimMods) WithoutSimulationSimulationCarAliases() RacingSimMod {
 	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
 		o.r.SimulationSimulationCarAliases = nil
+	})
+}
+
+func (m racingSimMods) WithSimulationSimulationDriverAliases(number int, related *SimulationDriverAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationDriverAliases = []*racingSimRSimulationSimulationDriverAliasesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m racingSimMods) WithNewSimulationSimulationDriverAliases(number int, mods ...SimulationDriverAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationDriverAliasWithContext(ctx, mods...)
+		m.WithSimulationSimulationDriverAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddSimulationSimulationDriverAliases(number int, related *SimulationDriverAliasTemplate) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationDriverAliases = append(o.r.SimulationSimulationDriverAliases, &racingSimRSimulationSimulationDriverAliasesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m racingSimMods) AddNewSimulationSimulationDriverAliases(number int, mods ...SimulationDriverAliasMod) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		related := o.f.NewSimulationDriverAliasWithContext(ctx, mods...)
+		m.AddSimulationSimulationDriverAliases(number, related).Apply(ctx, o)
+	})
+}
+
+func (m racingSimMods) AddExistingSimulationSimulationDriverAliases(existingModels ...*models.SimulationDriverAlias) RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		for _, em := range existingModels {
+			o.r.SimulationSimulationDriverAliases = append(o.r.SimulationSimulationDriverAliases, &racingSimRSimulationSimulationDriverAliasesR{
+				o: o.f.FromExistingSimulationDriverAlias(em),
+			})
+		}
+	})
+}
+
+func (m racingSimMods) WithoutSimulationSimulationDriverAliases() RacingSimMod {
+	return RacingSimModFunc(func(ctx context.Context, o *RacingSimTemplate) {
+		o.r.SimulationSimulationDriverAliases = nil
 	})
 }
 

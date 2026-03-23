@@ -33,15 +33,6 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		ImportBatchID: column{
-			Name:      "import_batch_id",
-			DBType:    "integer",
-			Default:   "",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		RaceID: column{
 			Name:      "race_id",
 			DBType:    "integer",
@@ -257,23 +248,6 @@ var ResultEntries = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxResultEntriesImportBatchID: index{
-			Type: "btree",
-			Name: "idx_result_entries_import_batch_id",
-			Columns: []indexColumn{
-				{
-					Name:         "import_batch_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 		IdxResultEntriesRaceID: index{
 			Type: "btree",
 			Name: "idx_result_entries_race_id",
@@ -372,15 +346,6 @@ var ResultEntries = Table[
 			ForeignTable:   "drivers",
 			ForeignColumns: []string{"id"},
 		},
-		ResultEntriesResultEntriesImportBatchIDFK: foreignKey{
-			constraint: constraint{
-				Name:    "result_entries.result_entries_import_batch_id_fk",
-				Columns: []string{"import_batch_id"},
-				Comment: "",
-			},
-			ForeignTable:   "import_batches",
-			ForeignColumns: []string{"id"},
-		},
 		ResultEntriesResultEntriesRaceIDFK: foreignKey{
 			constraint: constraint{
 				Name:    "result_entries.result_entries_race_id_fk",
@@ -429,7 +394,7 @@ var ResultEntries = Table[
 				Columns: []string{"state"},
 				Comment: "",
 			},
-			Expression: "(state = ANY (ARRAY['normal'::text, 'dq'::text]))",
+			Expression: "(state = ANY (ARRAY['mapping_error'::text, 'normal'::text, 'dq'::text]))",
 		},
 	},
 	Comment: "",
@@ -438,7 +403,6 @@ var ResultEntries = Table[
 type resultEntryColumns struct {
 	ID                column
 	FrontendID        column
-	ImportBatchID     column
 	RaceID            column
 	DriverID          column
 	DriverName        column
@@ -461,7 +425,7 @@ type resultEntryColumns struct {
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.ImportBatchID, c.RaceID, c.DriverID, c.DriverName, c.CarModelID, c.CarName, c.FinishingPosition, c.CompletedLaps, c.FastestLapTimeMS, c.Incidents, c.State, c.SourceRowNumber, c.RawPayload, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceID, c.DriverID, c.DriverName, c.CarModelID, c.CarName, c.FinishingPosition, c.CompletedLaps, c.FastestLapTimeMS, c.Incidents, c.State, c.SourceRowNumber, c.RawPayload, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
@@ -469,7 +433,6 @@ type resultEntryIndexes struct {
 	ResultEntriesPkey                    index
 	IdxResultEntriesCarModelID           index
 	IdxResultEntriesDriverID             index
-	IdxResultEntriesImportBatchID        index
 	IdxResultEntriesRaceID               index
 	IdxResultEntriesRaceIDDriverIDUnique index
 	IdxResultEntriesState                index
@@ -478,20 +441,19 @@ type resultEntryIndexes struct {
 
 func (i resultEntryIndexes) AsSlice() []index {
 	return []index{
-		i.ResultEntriesPkey, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesImportBatchID, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.ResultEntriesFrontendIDUnique,
+		i.ResultEntriesPkey, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.ResultEntriesFrontendIDUnique,
 	}
 }
 
 type resultEntryForeignKeys struct {
-	ResultEntriesResultEntriesCarModelIDFK    foreignKey
-	ResultEntriesResultEntriesDriverIDFK      foreignKey
-	ResultEntriesResultEntriesImportBatchIDFK foreignKey
-	ResultEntriesResultEntriesRaceIDFK        foreignKey
+	ResultEntriesResultEntriesCarModelIDFK foreignKey
+	ResultEntriesResultEntriesDriverIDFK   foreignKey
+	ResultEntriesResultEntriesRaceIDFK     foreignKey
 }
 
 func (f resultEntryForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesImportBatchIDFK, f.ResultEntriesResultEntriesRaceIDFK,
+		f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesRaceIDFK,
 	}
 }
 

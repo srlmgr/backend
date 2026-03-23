@@ -21,7 +21,6 @@ type preloaders struct {
 	CarBrand                   carBrandPreloader
 	CarManufacturer            carManufacturerPreloader
 	CarModel                   carModelPreloader
-	DriverSimulationID         driverSimulationIDPreloader
 	Driver                     driverPreloader
 	EventDriverStanding        eventDriverStandingPreloader
 	EventProcessingAudit       eventProcessingAuditPreloader
@@ -38,6 +37,7 @@ type preloaders struct {
 	Season                     seasonPreloader
 	Series                     seriesPreloader
 	SimulationCarAlias         simulationCarAliasPreloader
+	SimulationDriverAlias      simulationDriverAliasPreloader
 	SimulationTrackLayoutAlias simulationTrackLayoutAliasPreloader
 	TeamDriver                 teamDriverPreloader
 	Team                       teamPreloader
@@ -51,7 +51,6 @@ func getPreloaders() preloaders {
 		CarBrand:                   buildCarBrandPreloader(),
 		CarManufacturer:            buildCarManufacturerPreloader(),
 		CarModel:                   buildCarModelPreloader(),
-		DriverSimulationID:         buildDriverSimulationIDPreloader(),
 		Driver:                     buildDriverPreloader(),
 		EventDriverStanding:        buildEventDriverStandingPreloader(),
 		EventProcessingAudit:       buildEventProcessingAuditPreloader(),
@@ -68,6 +67,7 @@ func getPreloaders() preloaders {
 		Season:                     buildSeasonPreloader(),
 		Series:                     buildSeriesPreloader(),
 		SimulationCarAlias:         buildSimulationCarAliasPreloader(),
+		SimulationDriverAlias:      buildSimulationDriverAliasPreloader(),
 		SimulationTrackLayoutAlias: buildSimulationTrackLayoutAliasPreloader(),
 		TeamDriver:                 buildTeamDriverPreloader(),
 		Team:                       buildTeamPreloader(),
@@ -87,7 +87,6 @@ type thenLoaders[Q orm.Loadable] struct {
 	CarBrand                   carBrandThenLoader[Q]
 	CarManufacturer            carManufacturerThenLoader[Q]
 	CarModel                   carModelThenLoader[Q]
-	DriverSimulationID         driverSimulationIDThenLoader[Q]
 	Driver                     driverThenLoader[Q]
 	EventDriverStanding        eventDriverStandingThenLoader[Q]
 	EventProcessingAudit       eventProcessingAuditThenLoader[Q]
@@ -104,6 +103,7 @@ type thenLoaders[Q orm.Loadable] struct {
 	Season                     seasonThenLoader[Q]
 	Series                     seriesThenLoader[Q]
 	SimulationCarAlias         simulationCarAliasThenLoader[Q]
+	SimulationDriverAlias      simulationDriverAliasThenLoader[Q]
 	SimulationTrackLayoutAlias simulationTrackLayoutAliasThenLoader[Q]
 	TeamDriver                 teamDriverThenLoader[Q]
 	Team                       teamThenLoader[Q]
@@ -117,7 +117,6 @@ func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 		CarBrand:                   buildCarBrandThenLoader[Q](),
 		CarManufacturer:            buildCarManufacturerThenLoader[Q](),
 		CarModel:                   buildCarModelThenLoader[Q](),
-		DriverSimulationID:         buildDriverSimulationIDThenLoader[Q](),
 		Driver:                     buildDriverThenLoader[Q](),
 		EventDriverStanding:        buildEventDriverStandingThenLoader[Q](),
 		EventProcessingAudit:       buildEventProcessingAuditThenLoader[Q](),
@@ -134,6 +133,7 @@ func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 		Season:                     buildSeasonThenLoader[Q](),
 		Series:                     buildSeriesThenLoader[Q](),
 		SimulationCarAlias:         buildSimulationCarAliasThenLoader[Q](),
+		SimulationDriverAlias:      buildSimulationDriverAliasThenLoader[Q](),
 		SimulationTrackLayoutAlias: buildSimulationTrackLayoutAliasThenLoader[Q](),
 		TeamDriver:                 buildTeamDriverThenLoader[Q](),
 		Team:                       buildTeamThenLoader[Q](),

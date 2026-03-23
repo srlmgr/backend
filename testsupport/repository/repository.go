@@ -178,16 +178,16 @@ type pointRulesEntityRepo struct {
 type driversEntityRepo struct {
 	*mapEntityRepo[models.Driver, models.DriverSetter]
 }
-type driverSimulationIDsEntityRepo struct {
-	*mapEntityRepo[models.DriverSimulationID, models.DriverSimulationIDSetter]
+type simulationDriverAliasesEntityRepo struct {
+	*mapEntityRepo[models.SimulationDriverAlias, models.SimulationDriverAliasSetter]
 }
 
 //nolint:whitespace // multiline signature style
-func (r *driverSimulationIDsEntityRepo) FindBySimID(
+func (r *simulationDriverAliasesEntityRepo) FindBySimID(
 	ctx context.Context,
 	simID int32,
 	arg string,
-) (*models.DriverSimulationID, error) {
+) (*models.SimulationDriverAlias, error) {
 	items, err := r.LoadBySimulationID(ctx, simID)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (r *driverSimulationIDsEntityRepo) FindBySimID(
 	}
 
 	return nil, fmt.Errorf(
-		"driver simulation id %q for simulation %d: %w",
+		"simulation driver alias %q for simulation %d: %w",
 		arg,
 		simID,
 		repoerrors.ErrNotFound,
@@ -332,16 +332,16 @@ func (r *seriesEntityRepo) LoadBySimulationID(
 }
 
 //nolint:whitespace // multiline signature style
-func (r *driverSimulationIDsEntityRepo) LoadBySimulationID(
+func (r *simulationDriverAliasesEntityRepo) LoadBySimulationID(
 	ctx context.Context,
 	simulationID int32,
-) ([]*models.DriverSimulationID, error) {
+) ([]*models.SimulationDriverAlias, error) {
 	items, err := r.LoadAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	filtered := make([]*models.DriverSimulationID, 0, len(items))
+	filtered := make([]*models.SimulationDriverAlias, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.SimulationID != simulationID {
 			continue
@@ -536,54 +536,6 @@ type importBatchesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
-func (r *importBatchesEntityRepo) LoadByEventIDAndRaceID(
-	ctx context.Context,
-	eventID, raceID int32,
-) ([]*models.ImportBatch, error) {
-	items, err := r.LoadAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	filtered := make([]*models.ImportBatch, 0, len(items))
-	for _, item := range items {
-		if item == nil || item.EventID != eventID || item.RaceID != raceID {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-
-	return filtered, nil
-}
-
-//nolint:whitespace // multiline signature style
-func (r *importBatchesEntityRepo) LoadLatestByEventIDAndRaceID(
-	ctx context.Context,
-	eventID, raceID int32,
-) (*models.ImportBatch, error) {
-	items, err := r.LoadByEventIDAndRaceID(ctx, eventID, raceID)
-	if err != nil {
-		return nil, err
-	}
-	if len(items) == 0 {
-		return nil, fmt.Errorf(
-			"import batch for event %d race %d: %w",
-			eventID,
-			raceID,
-			repoerrors.ErrNotFound,
-		)
-	}
-
-	latest := items[0]
-	for _, item := range items[1:] {
-		if item.ID > latest.ID {
-			latest = item
-		}
-	}
-
-	return latest, nil
-}
-
 //nolint:whitespace // multiline signature style
 func (r *importBatchesEntityRepo) LoadByRaceID(
 	ctx context.Context,
@@ -643,27 +595,6 @@ func (r *resultEntriesEntityRepo) LoadByRaceID(
 	filtered := make([]*models.ResultEntry, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.RaceID != raceID {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-
-	return filtered, nil
-}
-
-//nolint:whitespace // multiline signature style
-func (r *resultEntriesEntityRepo) LoadByImportBatchID(
-	ctx context.Context,
-	importBatchID int32,
-) ([]*models.ResultEntry, error) {
-	items, err := r.LoadAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	filtered := make([]*models.ResultEntry, 0, len(items))
-	for _, item := range items {
-		if item == nil || item.ImportBatchID != importBatchID {
 			continue
 		}
 		filtered = append(filtered, item)
@@ -847,13 +778,13 @@ func (g *pointSystemsGroup) PointSystems() pointsystems.PointSystemsRepository {
 func (g *pointSystemsGroup) PointRules() pointsystems.PointRulesRepository { return g.pointRules }
 
 type driversGroup struct {
-	drivers             drivers.DriversRepository
-	driverSimulationIDs drivers.DriverSimulationIDsRepository
+	drivers                 drivers.DriversRepository
+	simulationDriverAliases drivers.SimulationDriverAliasesRepository
 }
 
 func (g *driversGroup) Drivers() drivers.DriversRepository { return g.drivers }
-func (g *driversGroup) DriverSimulationIDs() drivers.DriverSimulationIDsRepository {
-	return g.driverSimulationIDs
+func (g *driversGroup) SimulationDriverAliases() drivers.SimulationDriverAliasesRepository {
+	return g.simulationDriverAliases
 }
 
 type tracksGroup struct {
@@ -1004,12 +935,12 @@ func New() rootrepo.Repository {
 			},
 		),
 	}
-	driverSimulationIDRepo := &driverSimulationIDsEntityRepo{
+	simulationDriverAliasRepo := &simulationDriverAliasesEntityRepo{
 		newMapEntityRepo(
-			func(m *models.DriverSimulationID) int32 { return m.ID },
-			func(m *models.DriverSimulationID, id int32) { m.ID = id },
-			func(m *models.DriverSimulationID, s *models.DriverSimulationIDSetter) { s.Overwrite(m) },
-			&models.DriverSimulationID{
+			func(m *models.SimulationDriverAlias) int32 { return m.ID },
+			func(m *models.SimulationDriverAlias, id int32) { m.ID = id },
+			func(m *models.SimulationDriverAlias, s *models.SimulationDriverAliasSetter) { s.Overwrite(m) },
+			&models.SimulationDriverAlias{
 				ID:                 1,
 				DriverID:           1,
 				SimulationID:       1,
@@ -1261,7 +1192,6 @@ func New() rootrepo.Repository {
 			&models.ImportBatch{
 				ID:              1,
 				FrontendID:      mustUUID("00000000-0000-0000-0000-000000000009"),
-				EventID:         1,
 				RaceID:          1,
 				ImportFormat:    mytypes.ImportFormat("csv"),
 				Payload:         []byte("sample import payload"),
@@ -1281,7 +1211,6 @@ func New() rootrepo.Repository {
 			&models.ResultEntry{
 				ID:                1,
 				FrontendID:        mustUUID("00000000-0000-0000-0000-000000000010"),
-				ImportBatchID:     1,
 				RaceID:            1,
 				DriverName:        "Alex Driver",
 				FinishingPosition: 1,
@@ -1425,8 +1354,8 @@ func New() rootrepo.Repository {
 			pointRules:   pointRuleRepo,
 		},
 		drivers: &driversGroup{
-			drivers:             driverRepo,
-			driverSimulationIDs: driverSimulationIDRepo,
+			drivers:                 driverRepo,
+			simulationDriverAliases: simulationDriverAliasRepo,
 		},
 		tracks: &tracksGroup{
 			tracks:                       trackRepo,

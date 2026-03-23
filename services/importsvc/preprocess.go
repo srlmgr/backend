@@ -22,19 +22,18 @@ func (s *service) GetPreprocessPreview(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("GetPreprocessPreview")
 
-	eventID := int32(req.Msg.GetEventId())
 	raceID := int32(req.Msg.GetRaceId())
 
-	// Resolve the latest import batch.
-	batch, err := s.repo.ImportBatches().LoadLatestByEventIDAndRaceID(ctx, eventID, raceID)
+	// Resolve the import batch for the race.
+	batch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
 	if err != nil {
 		l.Error("failed to load import batch", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load import batch")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	// Load result entries for the batch.
-	entries, err := s.repo.ResultEntries().LoadByImportBatchID(ctx, batch.ID)
+	// Load result entries for the race.
+	entries, err := s.repo.ResultEntries().LoadByRaceID(ctx, batch.RaceID)
 	if err != nil {
 		l.Error("failed to load result entries", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load result entries")

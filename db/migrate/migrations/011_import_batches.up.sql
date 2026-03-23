@@ -3,7 +3,6 @@ BEGIN;
 CREATE TABLE import_batches (
     id serial PRIMARY KEY,
     frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    event_id integer NOT NULL,
     race_id integer NOT NULL,
     import_format text NOT NULL,
     payload bytea NOT NULL,
@@ -21,10 +20,6 @@ ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_frontend_id_unique UNIQUE (frontend_id);
 
 ALTER TABLE import_batches
-    ADD CONSTRAINT import_batches_event_id_fk
-    FOREIGN KEY (event_id) REFERENCES events (id);
-
-ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_race_id_fk
     FOREIGN KEY (race_id) REFERENCES races (id);
 
@@ -36,7 +31,6 @@ ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_processing_state_check
     CHECK (processing_state IN ('raw_imported', 'preprocessed', 'driver_entries_computed', 'team_entries_computed', 'finalized', 'failed'));
 
-CREATE INDEX idx_import_batches_event_id ON import_batches (event_id);
 CREATE INDEX idx_import_batches_race_id ON import_batches (race_id);
 CREATE INDEX idx_import_batches_processing_state ON import_batches (processing_state);
 

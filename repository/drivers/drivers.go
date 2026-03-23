@@ -29,50 +29,50 @@ type DriversRepository interface {
 	Update(ctx context.Context, id int32, input *models.DriverSetter) (*models.Driver, error)
 }
 
-// DriverSimulationIDsRepository defines persistence operations for DriverSimulationID entities.
-type DriverSimulationIDsRepository interface {
-	LoadByID(ctx context.Context, id int32) (*models.DriverSimulationID, error)
-	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.DriverSimulationID, error)
-	FindBySimID(ctx context.Context, simID int32, arg string) (*models.DriverSimulationID, error)
+// SimulationDriverAliasesRepository defines persistence operations for SimulationDriverAlias entities.
+type SimulationDriverAliasesRepository interface {
+	LoadByID(ctx context.Context, id int32) (*models.SimulationDriverAlias, error)
+	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.SimulationDriverAlias, error)
+	FindBySimID(ctx context.Context, simID int32, arg string) (*models.SimulationDriverAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
-		input *models.DriverSimulationIDSetter,
-	) (*models.DriverSimulationID, error)
+		input *models.SimulationDriverAliasSetter,
+	) (*models.SimulationDriverAlias, error)
 	Update(
 		ctx context.Context,
 		id int32,
-		input *models.DriverSimulationIDSetter,
-	) (*models.DriverSimulationID, error)
+		input *models.SimulationDriverAliasSetter,
+	) (*models.SimulationDriverAlias, error)
 }
 
 // Repository exposes repositories for the drivers migration group.
 type Repository interface {
 	Drivers() DriversRepository
-	DriverSimulationIDs() DriverSimulationIDsRepository
+	SimulationDriverAliases() SimulationDriverAliasesRepository
 }
 
 type repository struct {
-	drivers             DriversRepository
-	driverSimulationIDs DriverSimulationIDsRepository
+	drivers                 DriversRepository
+	simulationDriverAliases SimulationDriverAliasesRepository
 }
 
 type (
-	driversRepository             struct{ exec *pgbob.Executor }
-	driverSimulationIDsRepository struct{ exec *pgbob.Executor }
+	driversRepository                 struct{ exec *pgbob.Executor }
+	simulationDriverAliasesRepository struct{ exec *pgbob.Executor }
 )
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
 	return &repository{
-		drivers:             &driversRepository{exec: pgbob.New(pool)},
-		driverSimulationIDs: &driverSimulationIDsRepository{exec: pgbob.New(pool)},
+		drivers:                 &driversRepository{exec: pgbob.New(pool)},
+		simulationDriverAliases: &simulationDriverAliasesRepository{exec: pgbob.New(pool)},
 	}
 }
 
 func (r *repository) Drivers() DriversRepository { return r.drivers }
-func (r *repository) DriverSimulationIDs() DriverSimulationIDsRepository {
-	return r.driverSimulationIDs
+func (r *repository) SimulationDriverAliases() SimulationDriverAliasesRepository {
+	return r.simulationDriverAliases
 }
 
 func (r *driversRepository) LoadAll(ctx context.Context) ([]*models.Driver, error) {
@@ -123,43 +123,43 @@ func (r *driversRepository) getExecutor(ctx context.Context) bob.Executor {
 	return r.exec
 }
 
-func (r *driverSimulationIDsRepository) LoadByID(
+func (r *simulationDriverAliasesRepository) LoadByID(
 	ctx context.Context,
 	id int32,
-) (*models.DriverSimulationID, error) {
-	entity, err := models.DriverSimulationIds.Query(sm.Where(models.DriverSimulationIds.Columns.ID.EQ(psql.Arg(id)))).
+) (*models.SimulationDriverAlias, error) {
+	entity, err := models.SimulationDriverAliases.Query(sm.Where(models.SimulationDriverAliases.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("driver simulation id %d: %w", id, repoerrors.ErrNotFound)
+		return nil, fmt.Errorf("simulation driver alias %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
 }
 
-func (r *driverSimulationIDsRepository) LoadBySimulationID(
+func (r *simulationDriverAliasesRepository) LoadBySimulationID(
 	ctx context.Context,
 	simID int32,
-) ([]*models.DriverSimulationID, error) {
-	entity, err := models.DriverSimulationIds.
+) ([]*models.SimulationDriverAlias, error) {
+	entity, err := models.SimulationDriverAliases.
 		Query(
 			sm.Where(
-				models.DriverSimulationIds.Columns.SimulationID.EQ(psql.Arg(simID)))).
+				models.SimulationDriverAliases.Columns.SimulationID.EQ(psql.Arg(simID)))).
 		All(ctx, r.getExecutor(ctx))
 
 	return entity, err
 }
 
-func (r *driverSimulationIDsRepository) FindBySimID(
+func (r *simulationDriverAliasesRepository) FindBySimID(
 	ctx context.Context,
 	simID int32,
 	arg string,
-) (*models.DriverSimulationID, error) {
-	entity, err := models.DriverSimulationIds.Query(
-		sm.Where(models.DriverSimulationIds.Columns.SimulationID.EQ(psql.Arg(simID))),
-		sm.Where(models.DriverSimulationIds.Columns.SimulationDriverID.EQ(psql.Arg(arg))),
+) (*models.SimulationDriverAlias, error) {
+	entity, err := models.SimulationDriverAliases.Query(
+		sm.Where(models.SimulationDriverAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+		sm.Where(models.SimulationDriverAliases.Columns.SimulationDriverID.EQ(psql.Arg(arg))),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf(
-			"driver simulation id %q for simulation %d: %w",
+			"simulation driver alias %q for simulation %d: %w",
 			arg,
 			simID,
 			repoerrors.ErrNotFound,
@@ -168,24 +168,24 @@ func (r *driverSimulationIDsRepository) FindBySimID(
 	return entity, err
 }
 
-func (r *driverSimulationIDsRepository) DeleteByID(ctx context.Context, id int32) error {
-	_, err := models.DriverSimulationIds.Delete(dm.Where(models.DriverSimulationIds.Columns.ID.EQ(psql.Arg(id)))).
+func (r *simulationDriverAliasesRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.SimulationDriverAliases.Delete(dm.Where(models.SimulationDriverAliases.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
 
-func (r *driverSimulationIDsRepository) Create(
+func (r *simulationDriverAliasesRepository) Create(
 	ctx context.Context,
-	input *models.DriverSimulationIDSetter,
-) (*models.DriverSimulationID, error) {
-	return models.DriverSimulationIds.Insert(input).One(ctx, r.getExecutor(ctx))
+	input *models.SimulationDriverAliasSetter,
+) (*models.SimulationDriverAlias, error) {
+	return models.SimulationDriverAliases.Insert(input).One(ctx, r.getExecutor(ctx))
 }
 
-func (r *driverSimulationIDsRepository) Update(
+func (r *simulationDriverAliasesRepository) Update(
 	ctx context.Context,
 	id int32,
-	input *models.DriverSimulationIDSetter,
-) (*models.DriverSimulationID, error) {
+	input *models.SimulationDriverAliasSetter,
+) (*models.SimulationDriverAlias, error) {
 	entity, err := r.LoadByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func (r *driverSimulationIDsRepository) Update(
 	return entity, nil
 }
 
-func (r *driverSimulationIDsRepository) getExecutor(ctx context.Context) bob.Executor {
+func (r *simulationDriverAliasesRepository) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor
 	}

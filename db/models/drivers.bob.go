@@ -53,12 +53,12 @@ type DriversQuery = *psql.ViewQuery[*Driver, DriverSlice]
 
 // driverR is where relationships are stored.
 type driverR struct {
-	BookingEntries        BookingEntrySlice         // booking_entries.booking_entries_driver_id_fk
-	DriverSimulationIds   DriverSimulationIDSlice   // driver_simulation_ids.driver_simulation_ids_driver_id_fk
-	EventDriverStandings  EventDriverStandingSlice  // event_driver_standings.event_driver_standings_driver_id_fk
-	ResultEntries         ResultEntrySlice          // result_entries.result_entries_driver_id_fk
-	SeasonDriverStandings SeasonDriverStandingSlice // season_driver_standings.season_driver_standings_driver_id_fk
-	TeamDrivers           TeamDriverSlice           // team_drivers.team_drivers_driver_id_fk
+	BookingEntries          BookingEntrySlice          // booking_entries.booking_entries_driver_id_fk
+	EventDriverStandings    EventDriverStandingSlice   // event_driver_standings.event_driver_standings_driver_id_fk
+	ResultEntries           ResultEntrySlice           // result_entries.result_entries_driver_id_fk
+	SeasonDriverStandings   SeasonDriverStandingSlice  // season_driver_standings.season_driver_standings_driver_id_fk
+	SimulationDriverAliases SimulationDriverAliasSlice // simulation_driver_aliases.simulation_driver_aliases_driver_id_fk
+	TeamDrivers             TeamDriverSlice            // team_drivers.team_drivers_driver_id_fk
 }
 
 func buildDriverColumns(alias string) driverColumns {
@@ -585,30 +585,6 @@ func (os DriverSlice) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) Book
 	)...)
 }
 
-// DriverSimulationIds starts a query for related objects on driver_simulation_ids
-func (o *Driver) DriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
-	return DriverSimulationIds.Query(append(mods,
-		sm.Where(DriverSimulationIds.Columns.DriverID.EQ(psql.Arg(o.ID))),
-	)...)
-}
-
-func (os DriverSlice) DriverSimulationIds(mods ...bob.Mod[*dialect.SelectQuery]) DriverSimulationIdsQuery {
-	pkID := make(pgtypes.Array[int32], 0, len(os))
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-		pkID = append(pkID, o.ID)
-	}
-	PKArgExpr := psql.Select(sm.Columns(
-		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
-	))
-
-	return DriverSimulationIds.Query(append(mods,
-		sm.Where(psql.Group(DriverSimulationIds.Columns.DriverID).OP("IN", PKArgExpr)),
-	)...)
-}
-
 // EventDriverStandings starts a query for related objects on event_driver_standings
 func (o *Driver) EventDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) EventDriverStandingsQuery {
 	return EventDriverStandings.Query(append(mods,
@@ -678,6 +654,30 @@ func (os DriverSlice) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery
 
 	return SeasonDriverStandings.Query(append(mods,
 		sm.Where(psql.Group(SeasonDriverStandings.Columns.DriverID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// SimulationDriverAliases starts a query for related objects on simulation_driver_aliases
+func (o *Driver) SimulationDriverAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationDriverAliasesQuery {
+	return SimulationDriverAliases.Query(append(mods,
+		sm.Where(SimulationDriverAliases.Columns.DriverID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os DriverSlice) SimulationDriverAliases(mods ...bob.Mod[*dialect.SelectQuery]) SimulationDriverAliasesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SimulationDriverAliases.Query(append(mods,
+		sm.Where(psql.Group(SimulationDriverAliases.Columns.DriverID).OP("IN", PKArgExpr)),
 	)...)
 }
 
@@ -765,74 +765,6 @@ func (driver0 *Driver) AttachBookingEntries(ctx context.Context, exec bob.Execut
 	}
 
 	driver0.R.BookingEntries = append(driver0.R.BookingEntries, bookingEntries1...)
-
-	for _, rel := range related {
-		rel.R.Driver = driver0
-	}
-
-	return nil
-}
-
-func insertDriverDriverSimulationIds0(ctx context.Context, exec bob.Executor, driverSimulationIds1 []*DriverSimulationIDSetter, driver0 *Driver) (DriverSimulationIDSlice, error) {
-	for i := range driverSimulationIds1 {
-		driverSimulationIds1[i].DriverID = omit.From(driver0.ID)
-	}
-
-	ret, err := DriverSimulationIds.Insert(bob.ToMods(driverSimulationIds1...)).All(ctx, exec)
-	if err != nil {
-		return ret, fmt.Errorf("insertDriverDriverSimulationIds0: %w", err)
-	}
-
-	return ret, nil
-}
-
-func attachDriverDriverSimulationIds0(ctx context.Context, exec bob.Executor, count int, driverSimulationIds1 DriverSimulationIDSlice, driver0 *Driver) (DriverSimulationIDSlice, error) {
-	setter := &DriverSimulationIDSetter{
-		DriverID: omit.From(driver0.ID),
-	}
-
-	err := driverSimulationIds1.UpdateAll(ctx, exec, *setter)
-	if err != nil {
-		return nil, fmt.Errorf("attachDriverDriverSimulationIds0: %w", err)
-	}
-
-	return driverSimulationIds1, nil
-}
-
-func (driver0 *Driver) InsertDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationIDSetter) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-
-	driverSimulationIds1, err := insertDriverDriverSimulationIds0(ctx, exec, related, driver0)
-	if err != nil {
-		return err
-	}
-
-	driver0.R.DriverSimulationIds = append(driver0.R.DriverSimulationIds, driverSimulationIds1...)
-
-	for _, rel := range driverSimulationIds1 {
-		rel.R.Driver = driver0
-	}
-	return nil
-}
-
-func (driver0 *Driver) AttachDriverSimulationIds(ctx context.Context, exec bob.Executor, related ...*DriverSimulationID) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	driverSimulationIds1 := DriverSimulationIDSlice(related)
-
-	_, err = attachDriverDriverSimulationIds0(ctx, exec, len(related), driverSimulationIds1, driver0)
-	if err != nil {
-		return err
-	}
-
-	driver0.R.DriverSimulationIds = append(driver0.R.DriverSimulationIds, driverSimulationIds1...)
 
 	for _, rel := range related {
 		rel.R.Driver = driver0
@@ -1045,6 +977,74 @@ func (driver0 *Driver) AttachSeasonDriverStandings(ctx context.Context, exec bob
 	return nil
 }
 
+func insertDriverSimulationDriverAliases0(ctx context.Context, exec bob.Executor, simulationDriverAliases1 []*SimulationDriverAliasSetter, driver0 *Driver) (SimulationDriverAliasSlice, error) {
+	for i := range simulationDriverAliases1 {
+		simulationDriverAliases1[i].DriverID = omit.From(driver0.ID)
+	}
+
+	ret, err := SimulationDriverAliases.Insert(bob.ToMods(simulationDriverAliases1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertDriverSimulationDriverAliases0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachDriverSimulationDriverAliases0(ctx context.Context, exec bob.Executor, count int, simulationDriverAliases1 SimulationDriverAliasSlice, driver0 *Driver) (SimulationDriverAliasSlice, error) {
+	setter := &SimulationDriverAliasSetter{
+		DriverID: omit.From(driver0.ID),
+	}
+
+	err := simulationDriverAliases1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachDriverSimulationDriverAliases0: %w", err)
+	}
+
+	return simulationDriverAliases1, nil
+}
+
+func (driver0 *Driver) InsertSimulationDriverAliases(ctx context.Context, exec bob.Executor, related ...*SimulationDriverAliasSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	simulationDriverAliases1, err := insertDriverSimulationDriverAliases0(ctx, exec, related, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.SimulationDriverAliases = append(driver0.R.SimulationDriverAliases, simulationDriverAliases1...)
+
+	for _, rel := range simulationDriverAliases1 {
+		rel.R.Driver = driver0
+	}
+	return nil
+}
+
+func (driver0 *Driver) AttachSimulationDriverAliases(ctx context.Context, exec bob.Executor, related ...*SimulationDriverAlias) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	simulationDriverAliases1 := SimulationDriverAliasSlice(related)
+
+	_, err = attachDriverSimulationDriverAliases0(ctx, exec, len(related), simulationDriverAliases1, driver0)
+	if err != nil {
+		return err
+	}
+
+	driver0.R.SimulationDriverAliases = append(driver0.R.SimulationDriverAliases, simulationDriverAliases1...)
+
+	for _, rel := range related {
+		rel.R.Driver = driver0
+	}
+
+	return nil
+}
+
 func insertDriverTeamDrivers0(ctx context.Context, exec bob.Executor, teamDrivers1 []*TeamDriverSetter, driver0 *Driver) (TeamDriverSlice, error) {
 	for i := range teamDrivers1 {
 		teamDrivers1[i].DriverID = omit.From(driver0.ID)
@@ -1165,20 +1165,6 @@ func (o *Driver) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
-	case "DriverSimulationIds":
-		rels, ok := retrieved.(DriverSimulationIDSlice)
-		if !ok {
-			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
-		}
-
-		o.R.DriverSimulationIds = rels
-
-		for _, rel := range rels {
-			if rel != nil {
-				rel.R.Driver = o
-			}
-		}
-		return nil
 	case "EventDriverStandings":
 		rels, ok := retrieved.(EventDriverStandingSlice)
 		if !ok {
@@ -1221,6 +1207,20 @@ func (o *Driver) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "SimulationDriverAliases":
+		rels, ok := retrieved.(SimulationDriverAliasSlice)
+		if !ok {
+			return fmt.Errorf("driver cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SimulationDriverAliases = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Driver = o
+			}
+		}
+		return nil
 	case "TeamDrivers":
 		rels, ok := retrieved.(TeamDriverSlice)
 		if !ok {
@@ -1247,20 +1247,17 @@ func buildDriverPreloader() driverPreloader {
 }
 
 type driverThenLoader[Q orm.Loadable] struct {
-	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	DriverSimulationIds   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	EventDriverStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	SeasonDriverStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	TeamDrivers           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	BookingEntries          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	EventDriverStandings    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ResultEntries           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonDriverStandings   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationDriverAliases func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	TeamDrivers             func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildDriverThenLoader[Q orm.Loadable]() driverThenLoader[Q] {
 	type BookingEntriesLoadInterface interface {
 		LoadBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
-	}
-	type DriverSimulationIdsLoadInterface interface {
-		LoadDriverSimulationIds(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type EventDriverStandingsLoadInterface interface {
 		LoadEventDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1271,6 +1268,9 @@ func buildDriverThenLoader[Q orm.Loadable]() driverThenLoader[Q] {
 	type SeasonDriverStandingsLoadInterface interface {
 		LoadSeasonDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
+	type SimulationDriverAliasesLoadInterface interface {
+		LoadSimulationDriverAliases(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type TeamDriversLoadInterface interface {
 		LoadTeamDrivers(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -1280,12 +1280,6 @@ func buildDriverThenLoader[Q orm.Loadable]() driverThenLoader[Q] {
 			"BookingEntries",
 			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadBookingEntries(ctx, exec, mods...)
-			},
-		),
-		DriverSimulationIds: thenLoadBuilder[Q](
-			"DriverSimulationIds",
-			func(ctx context.Context, exec bob.Executor, retrieved DriverSimulationIdsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
-				return retrieved.LoadDriverSimulationIds(ctx, exec, mods...)
 			},
 		),
 		EventDriverStandings: thenLoadBuilder[Q](
@@ -1304,6 +1298,12 @@ func buildDriverThenLoader[Q orm.Loadable]() driverThenLoader[Q] {
 			"SeasonDriverStandings",
 			func(ctx context.Context, exec bob.Executor, retrieved SeasonDriverStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadSeasonDriverStandings(ctx, exec, mods...)
+			},
+		),
+		SimulationDriverAliases: thenLoadBuilder[Q](
+			"SimulationDriverAliases",
+			func(ctx context.Context, exec bob.Executor, retrieved SimulationDriverAliasesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSimulationDriverAliases(ctx, exec, mods...)
 			},
 		),
 		TeamDrivers: thenLoadBuilder[Q](
@@ -1373,67 +1373,6 @@ func (os DriverSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor,
 			rel.R.Driver = o
 
 			o.R.BookingEntries = append(o.R.BookingEntries, rel)
-		}
-	}
-
-	return nil
-}
-
-// LoadDriverSimulationIds loads the driver's DriverSimulationIds into the .R struct
-func (o *Driver) LoadDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if o == nil {
-		return nil
-	}
-
-	// Reset the relationship
-	o.R.DriverSimulationIds = nil
-
-	related, err := o.DriverSimulationIds(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, rel := range related {
-		rel.R.Driver = o
-	}
-
-	o.R.DriverSimulationIds = related
-	return nil
-}
-
-// LoadDriverSimulationIds loads the driver's DriverSimulationIds into the .R struct
-func (os DriverSlice) LoadDriverSimulationIds(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if len(os) == 0 {
-		return nil
-	}
-
-	driverSimulationIds, err := os.DriverSimulationIds(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		o.R.DriverSimulationIds = nil
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		for _, rel := range driverSimulationIds {
-
-			if !(o.ID == rel.DriverID) {
-				continue
-			}
-
-			rel.R.Driver = o
-
-			o.R.DriverSimulationIds = append(o.R.DriverSimulationIds, rel)
 		}
 	}
 
@@ -1626,6 +1565,67 @@ func (os DriverSlice) LoadSeasonDriverStandings(ctx context.Context, exec bob.Ex
 	return nil
 }
 
+// LoadSimulationDriverAliases loads the driver's SimulationDriverAliases into the .R struct
+func (o *Driver) LoadSimulationDriverAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SimulationDriverAliases = nil
+
+	related, err := o.SimulationDriverAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Driver = o
+	}
+
+	o.R.SimulationDriverAliases = related
+	return nil
+}
+
+// LoadSimulationDriverAliases loads the driver's SimulationDriverAliases into the .R struct
+func (os DriverSlice) LoadSimulationDriverAliases(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	simulationDriverAliases, err := os.SimulationDriverAliases(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SimulationDriverAliases = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range simulationDriverAliases {
+
+			if !(o.ID == rel.DriverID) {
+				continue
+			}
+
+			rel.R.Driver = o
+
+			o.R.SimulationDriverAliases = append(o.R.SimulationDriverAliases, rel)
+		}
+	}
+
+	return nil
+}
+
 // LoadTeamDrivers loads the driver's TeamDrivers into the .R struct
 func (o *Driver) LoadTeamDrivers(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
@@ -1688,13 +1688,13 @@ func (os DriverSlice) LoadTeamDrivers(ctx context.Context, exec bob.Executor, mo
 }
 
 type driverJoins[Q dialect.Joinable] struct {
-	typ                   string
-	BookingEntries        modAs[Q, bookingEntryColumns]
-	DriverSimulationIds   modAs[Q, driverSimulationIDColumns]
-	EventDriverStandings  modAs[Q, eventDriverStandingColumns]
-	ResultEntries         modAs[Q, resultEntryColumns]
-	SeasonDriverStandings modAs[Q, seasonDriverStandingColumns]
-	TeamDrivers           modAs[Q, teamDriverColumns]
+	typ                     string
+	BookingEntries          modAs[Q, bookingEntryColumns]
+	EventDriverStandings    modAs[Q, eventDriverStandingColumns]
+	ResultEntries           modAs[Q, resultEntryColumns]
+	SeasonDriverStandings   modAs[Q, seasonDriverStandingColumns]
+	SimulationDriverAliases modAs[Q, simulationDriverAliasColumns]
+	TeamDrivers             modAs[Q, teamDriverColumns]
 }
 
 func (j driverJoins[Q]) aliasedAs(alias string) driverJoins[Q] {
@@ -1711,20 +1711,6 @@ func buildDriverJoins[Q dialect.Joinable](cols driverColumns, typ string) driver
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
-						to.DriverID.EQ(cols.ID),
-					))
-				}
-
-				return mods
-			},
-		},
-		DriverSimulationIds: modAs[Q, driverSimulationIDColumns]{
-			c: DriverSimulationIds.Columns,
-			f: func(to driverSimulationIDColumns) bob.Mod[Q] {
-				mods := make(mods.QueryMods[Q], 0, 1)
-
-				{
-					mods = append(mods, dialect.Join[Q](typ, DriverSimulationIds.Name().As(to.Alias())).On(
 						to.DriverID.EQ(cols.ID),
 					))
 				}
@@ -1767,6 +1753,20 @@ func buildDriverJoins[Q dialect.Joinable](cols driverColumns, typ string) driver
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, SeasonDriverStandings.Name().As(to.Alias())).On(
+						to.DriverID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SimulationDriverAliases: modAs[Q, simulationDriverAliasColumns]{
+			c: SimulationDriverAliases.Columns,
+			f: func(to simulationDriverAliasColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SimulationDriverAliases.Name().As(to.Alias())).On(
 						to.DriverID.EQ(cols.ID),
 					))
 				}

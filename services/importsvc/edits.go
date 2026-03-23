@@ -31,20 +31,27 @@ func (s *service) ApplyResultEdits(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ApplyResultEdits")
 
-	eventID := int32(req.Msg.GetEventId())
 	raceID := int32(req.Msg.GetRaceId())
 
-	if eventID == 0 || raceID == 0 {
+	if raceID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("event_id and race_id are required"))
+			errors.New("race_id is required"))
 	}
 	if len(req.Msg.GetEditedRows()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			errors.New("edited_rows must not be empty"))
 	}
 
-	// Resolve the latest import batch.
-	batch, err := s.repo.ImportBatches().LoadLatestByEventIDAndRaceID(ctx, eventID, raceID)
+	race, err := s.repo.Races().LoadByID(ctx, raceID)
+	if err != nil {
+		l.Error("failed to load race", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+	eventID := race.EventID
+
+	// Resolve the import batch for the race.
+	batch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
 	if err != nil {
 		l.Error("failed to load import batch", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load import batch")

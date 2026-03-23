@@ -43,7 +43,6 @@ func (mods ImportBatchModSlice) Apply(ctx context.Context, n *ImportBatchTemplat
 type ImportBatchTemplate struct {
 	ID              func() int32
 	FrontendID      func() uuid.UUID
-	EventID         func() int32
 	RaceID          func() int32
 	ImportFormat    func() mytypes.ImportFormat
 	Payload         func() []byte
@@ -64,24 +63,15 @@ type ImportBatchTemplate struct {
 
 type importBatchR struct {
 	EventProcessingAudits []*importBatchREventProcessingAuditsR
-	Event                 *importBatchREventR
 	Race                  *importBatchRRaceR
-	ResultEntries         []*importBatchRResultEntriesR
 }
 
 type importBatchREventProcessingAuditsR struct {
 	number int
 	o      *EventProcessingAuditTemplate
 }
-type importBatchREventR struct {
-	o *EventTemplate
-}
 type importBatchRRaceR struct {
 	o *RaceTemplate
-}
-type importBatchRResultEntriesR struct {
-	number int
-	o      *ResultEntryTemplate
 }
 
 // Apply mods to the ImportBatchTemplate
@@ -107,31 +97,11 @@ func (t ImportBatchTemplate) setModelRels(o *models.ImportBatch) {
 		o.R.EventProcessingAudits = rel
 	}
 
-	if t.r.Event != nil {
-		rel := t.r.Event.o.Build()
-		rel.R.ImportBatches = append(rel.R.ImportBatches, o)
-		o.EventID = rel.ID // h2
-		o.R.Event = rel
-	}
-
 	if t.r.Race != nil {
 		rel := t.r.Race.o.Build()
 		rel.R.ImportBatches = append(rel.R.ImportBatches, o)
 		o.RaceID = rel.ID // h2
 		o.R.Race = rel
-	}
-
-	if t.r.ResultEntries != nil {
-		rel := models.ResultEntrySlice{}
-		for _, r := range t.r.ResultEntries {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.ImportBatchID = o.ID // h2
-				rel.R.ImportBatch = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.ResultEntries = rel
 	}
 }
 
@@ -147,10 +117,6 @@ func (o ImportBatchTemplate) BuildSetter() *models.ImportBatchSetter {
 	if o.FrontendID != nil {
 		val := o.FrontendID()
 		m.FrontendID = omit.From(val)
-	}
-	if o.EventID != nil {
-		val := o.EventID()
-		m.EventID = omit.From(val)
 	}
 	if o.RaceID != nil {
 		val := o.RaceID()
@@ -224,9 +190,6 @@ func (o ImportBatchTemplate) Build() *models.ImportBatch {
 	if o.FrontendID != nil {
 		m.FrontendID = o.FrontendID()
 	}
-	if o.EventID != nil {
-		m.EventID = o.EventID()
-	}
 	if o.RaceID != nil {
 		m.RaceID = o.RaceID()
 	}
@@ -280,10 +243,6 @@ func (o ImportBatchTemplate) BuildMany(number int) models.ImportBatchSlice {
 }
 
 func ensureCreatableImportBatch(m *models.ImportBatchSetter) {
-	if !(m.EventID.IsValue()) {
-		val := random_int32(nil)
-		m.EventID = omit.From(val)
-	}
 	if !(m.RaceID.IsValue()) {
 		val := random_int32(nil)
 		m.RaceID = omit.From(val)
@@ -324,26 +283,6 @@ func (o *ImportBatchTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		}
 	}
 
-	isResultEntriesDone, _ := importBatchRelResultEntriesCtx.Value(ctx)
-	if !isResultEntriesDone && o.r.ResultEntries != nil {
-		ctx = importBatchRelResultEntriesCtx.WithValue(ctx, true)
-		for _, r := range o.r.ResultEntries {
-			if r.o.alreadyPersisted {
-				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
-			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachResultEntries(ctx, exec, rel3...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	return err
 }
 
@@ -354,47 +293,29 @@ func (o *ImportBatchTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 	opt := o.BuildSetter()
 	ensureCreatableImportBatch(opt)
 
-	if o.r.Event == nil {
-		ImportBatchMods.WithNewEvent().Apply(ctx, o)
-	}
-
-	var rel1 *models.Event
-
-	if o.r.Event.o.alreadyPersisted {
-		rel1 = o.r.Event.o.Build()
-	} else {
-		rel1, err = o.r.Event.o.Create(ctx, exec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	opt.EventID = omit.From(rel1.ID)
-
 	if o.r.Race == nil {
 		ImportBatchMods.WithNewRace().Apply(ctx, o)
 	}
 
-	var rel2 *models.Race
+	var rel1 *models.Race
 
 	if o.r.Race.o.alreadyPersisted {
-		rel2 = o.r.Race.o.Build()
+		rel1 = o.r.Race.o.Build()
 	} else {
-		rel2, err = o.r.Race.o.Create(ctx, exec)
+		rel1, err = o.r.Race.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceID = omit.From(rel2.ID)
+	opt.RaceID = omit.From(rel1.ID)
 
 	m, err := models.ImportBatches.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Event = rel1
-	m.R.Race = rel2
+	m.R.Race = rel1
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -475,7 +396,6 @@ func (m importBatchMods) RandomizeAllColumns(f *faker.Faker) ImportBatchMod {
 	return ImportBatchModSlice{
 		ImportBatchMods.RandomID(f),
 		ImportBatchMods.RandomFrontendID(f),
-		ImportBatchMods.RandomEventID(f),
 		ImportBatchMods.RandomRaceID(f),
 		ImportBatchMods.RandomImportFormat(f),
 		ImportBatchMods.RandomPayload(f),
@@ -548,37 +468,6 @@ func (m importBatchMods) RandomFrontendID(f *faker.Faker) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
 		o.FrontendID = func() uuid.UUID {
 			return random_uuid_UUID(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m importBatchMods) EventID(val int32) ImportBatchMod {
-	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.EventID = func() int32 { return val }
-	})
-}
-
-// Set the Column from the function
-func (m importBatchMods) EventIDFunc(f func() int32) ImportBatchMod {
-	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.EventID = f
-	})
-}
-
-// Clear any values for the column
-func (m importBatchMods) UnsetEventID() ImportBatchMod {
-	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.EventID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m importBatchMods) RandomEventID(f *faker.Faker) ImportBatchMod {
-	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.EventID = func() int32 {
-			return random_int32(f)
 		}
 	})
 }
@@ -976,44 +865,9 @@ func (m importBatchMods) WithParentsCascading() ImportBatchMod {
 		ctx = importBatchWithParentsCascadingCtx.WithValue(ctx, true)
 		{
 
-			related := o.f.NewEventWithContext(ctx, EventMods.WithParentsCascading())
-			m.WithEvent(related).Apply(ctx, o)
-		}
-		{
-
 			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
 			m.WithRace(related).Apply(ctx, o)
 		}
-	})
-}
-
-func (m importBatchMods) WithEvent(rel *EventTemplate) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Event = &importBatchREventR{
-			o: rel,
-		}
-	})
-}
-
-func (m importBatchMods) WithNewEvent(mods ...EventMod) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		related := o.f.NewEventWithContext(ctx, mods...)
-
-		m.WithEvent(related).Apply(ctx, o)
-	})
-}
-
-func (m importBatchMods) WithExistingEvent(em *models.Event) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Event = &importBatchREventR{
-			o: o.f.FromExistingEvent(em),
-		}
-	})
-}
-
-func (m importBatchMods) WithoutEvent() ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Event = nil
 	})
 }
 
@@ -1092,53 +946,5 @@ func (m importBatchMods) AddExistingEventProcessingAudits(existingModels ...*mod
 func (m importBatchMods) WithoutEventProcessingAudits() ImportBatchMod {
 	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
 		o.r.EventProcessingAudits = nil
-	})
-}
-
-func (m importBatchMods) WithResultEntries(number int, related *ResultEntryTemplate) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.ResultEntries = []*importBatchRResultEntriesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m importBatchMods) WithNewResultEntries(number int, mods ...ResultEntryMod) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		related := o.f.NewResultEntryWithContext(ctx, mods...)
-		m.WithResultEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m importBatchMods) AddResultEntries(number int, related *ResultEntryTemplate) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.ResultEntries = append(o.r.ResultEntries, &importBatchRResultEntriesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m importBatchMods) AddNewResultEntries(number int, mods ...ResultEntryMod) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		related := o.f.NewResultEntryWithContext(ctx, mods...)
-		m.AddResultEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m importBatchMods) AddExistingResultEntries(existingModels ...*models.ResultEntry) ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		for _, em := range existingModels {
-			o.r.ResultEntries = append(o.r.ResultEntries, &importBatchRResultEntriesR{
-				o: o.f.FromExistingResultEntry(em),
-			})
-		}
-	})
-}
-
-func (m importBatchMods) WithoutResultEntries() ImportBatchMod {
-	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.ResultEntries = nil
 	})
 }

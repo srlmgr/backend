@@ -31,7 +31,6 @@ import (
 type ResultEntry struct {
 	ID                int32                       `db:"id,pk" `
 	FrontendID        uuid.UUID                   `db:"frontend_id" `
-	ImportBatchID     int32                       `db:"import_batch_id" `
 	RaceID            int32                       `db:"race_id" `
 	DriverID          null.Val[int32]             `db:"driver_id" `
 	DriverName        string                      `db:"driver_name" `
@@ -69,19 +68,17 @@ type resultEntryR struct {
 	SourceResultEntryBookingEntries BookingEntrySlice // booking_entries.booking_entries_source_result_entry_id_fk
 	CarModel                        *CarModel         // result_entries.result_entries_car_model_id_fk
 	Driver                          *Driver           // result_entries.result_entries_driver_id_fk
-	ImportBatch                     *ImportBatch      // result_entries.result_entries_import_batch_id_fk
 	Race                            *Race             // result_entries.result_entries_race_id_fk
 }
 
 func buildResultEntryColumns(alias string) resultEntryColumns {
 	return resultEntryColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "import_batch_id", "race_id", "driver_id", "driver_name", "car_model_id", "car_name", "finishing_position", "completed_laps", "fastest_lap_time_ms", "incidents", "state", "source_row_number", "raw_payload", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "race_id", "driver_id", "driver_name", "car_model_id", "car_name", "finishing_position", "completed_laps", "fastest_lap_time_ms", "incidents", "state", "source_row_number", "raw_payload", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("result_entries"),
 		tableAlias:        alias,
 		ID:                psql.Quote(alias, "id"),
 		FrontendID:        psql.Quote(alias, "frontend_id"),
-		ImportBatchID:     psql.Quote(alias, "import_batch_id"),
 		RaceID:            psql.Quote(alias, "race_id"),
 		DriverID:          psql.Quote(alias, "driver_id"),
 		DriverName:        psql.Quote(alias, "driver_name"),
@@ -108,7 +105,6 @@ type resultEntryColumns struct {
 	tableAlias        string
 	ID                psql.Expression
 	FrontendID        psql.Expression
-	ImportBatchID     psql.Expression
 	RaceID            psql.Expression
 	DriverID          psql.Expression
 	DriverName        psql.Expression
@@ -143,7 +139,6 @@ func (resultEntryColumns) AliasedAs(alias string) resultEntryColumns {
 type ResultEntrySetter struct {
 	ID                omit.Val[int32]                       `db:"id,pk" `
 	FrontendID        omit.Val[uuid.UUID]                   `db:"frontend_id" `
-	ImportBatchID     omit.Val[int32]                       `db:"import_batch_id" `
 	RaceID            omit.Val[int32]                       `db:"race_id" `
 	DriverID          omitnull.Val[int32]                   `db:"driver_id" `
 	DriverName        omit.Val[string]                      `db:"driver_name" `
@@ -165,15 +160,12 @@ type ResultEntrySetter struct {
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 21)
+	vals := make([]string, 0, 20)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
 	if s.FrontendID.IsValue() {
 		vals = append(vals, "frontend_id")
-	}
-	if s.ImportBatchID.IsValue() {
-		vals = append(vals, "import_batch_id")
 	}
 	if s.RaceID.IsValue() {
 		vals = append(vals, "race_id")
@@ -239,9 +231,6 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if s.FrontendID.IsValue() {
 		t.FrontendID = s.FrontendID.MustGet()
 	}
-	if s.ImportBatchID.IsValue() {
-		t.ImportBatchID = s.ImportBatchID.MustGet()
-	}
 	if s.RaceID.IsValue() {
 		t.RaceID = s.RaceID.MustGet()
 	}
@@ -304,7 +293,7 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 21)
+		vals := make([]bob.Expression, 20)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -317,118 +306,112 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.ImportBatchID.IsValue() {
-			vals[2] = psql.Arg(s.ImportBatchID.MustGet())
+		if s.RaceID.IsValue() {
+			vals[2] = psql.Arg(s.RaceID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.RaceID.IsValue() {
-			vals[3] = psql.Arg(s.RaceID.MustGet())
+		if !s.DriverID.IsUnset() {
+			vals[3] = psql.Arg(s.DriverID.MustGetNull())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if !s.DriverID.IsUnset() {
-			vals[4] = psql.Arg(s.DriverID.MustGetNull())
+		if s.DriverName.IsValue() {
+			vals[4] = psql.Arg(s.DriverName.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.DriverName.IsValue() {
-			vals[5] = psql.Arg(s.DriverName.MustGet())
+		if !s.CarModelID.IsUnset() {
+			vals[5] = psql.Arg(s.CarModelID.MustGetNull())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarModelID.IsUnset() {
-			vals[6] = psql.Arg(s.CarModelID.MustGetNull())
+		if !s.CarName.IsUnset() {
+			vals[6] = psql.Arg(s.CarName.MustGetNull())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarName.IsUnset() {
-			vals[7] = psql.Arg(s.CarName.MustGetNull())
+		if s.FinishingPosition.IsValue() {
+			vals[7] = psql.Arg(s.FinishingPosition.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.FinishingPosition.IsValue() {
-			vals[8] = psql.Arg(s.FinishingPosition.MustGet())
+		if s.CompletedLaps.IsValue() {
+			vals[8] = psql.Arg(s.CompletedLaps.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.CompletedLaps.IsValue() {
-			vals[9] = psql.Arg(s.CompletedLaps.MustGet())
+		if !s.FastestLapTimeMS.IsUnset() {
+			vals[9] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FastestLapTimeMS.IsUnset() {
-			vals[10] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
+		if !s.Incidents.IsUnset() {
+			vals[10] = psql.Arg(s.Incidents.MustGetNull())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Incidents.IsUnset() {
-			vals[11] = psql.Arg(s.Incidents.MustGetNull())
+		if s.State.IsValue() {
+			vals[11] = psql.Arg(s.State.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if s.State.IsValue() {
-			vals[12] = psql.Arg(s.State.MustGet())
+		if !s.SourceRowNumber.IsUnset() {
+			vals[12] = psql.Arg(s.SourceRowNumber.MustGetNull())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if !s.SourceRowNumber.IsUnset() {
-			vals[13] = psql.Arg(s.SourceRowNumber.MustGetNull())
+		if s.RawPayload.IsValue() {
+			vals[13] = psql.Arg(s.RawPayload.MustGet())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.RawPayload.IsValue() {
-			vals[14] = psql.Arg(s.RawPayload.MustGet())
+		if !s.AdminNotes.IsUnset() {
+			vals[14] = psql.Arg(s.AdminNotes.MustGetNull())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if !s.AdminNotes.IsUnset() {
-			vals[15] = psql.Arg(s.AdminNotes.MustGetNull())
+		if !s.LockedAt.IsUnset() {
+			vals[15] = psql.Arg(s.LockedAt.MustGetNull())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LockedAt.IsUnset() {
-			vals[16] = psql.Arg(s.LockedAt.MustGetNull())
+		if s.CreatedAt.IsValue() {
+			vals[16] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[16] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[17] = psql.Arg(s.CreatedAt.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[17] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[17] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[18] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[18] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[18] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[19] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedBy.IsValue() {
+			vals[19] = psql.Arg(s.UpdatedBy.MustGet())
 		} else {
 			vals[19] = psql.Raw("DEFAULT")
-		}
-
-		if s.UpdatedBy.IsValue() {
-			vals[20] = psql.Arg(s.UpdatedBy.MustGet())
-		} else {
-			vals[20] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -440,7 +423,7 @@ func (s ResultEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 21)
+	exprs := make([]bob.Expression, 0, 20)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -453,13 +436,6 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "frontend_id")...),
 			psql.Arg(s.FrontendID),
-		}})
-	}
-
-	if s.ImportBatchID.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "import_batch_id")...),
-			psql.Arg(s.ImportBatchID),
 		}})
 	}
 
@@ -887,30 +863,6 @@ func (os ResultEntrySlice) Driver(mods ...bob.Mod[*dialect.SelectQuery]) Drivers
 	)...)
 }
 
-// ImportBatch starts a query for related objects on import_batches
-func (o *ResultEntry) ImportBatch(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
-	return ImportBatches.Query(append(mods,
-		sm.Where(ImportBatches.Columns.ID.EQ(psql.Arg(o.ImportBatchID))),
-	)...)
-}
-
-func (os ResultEntrySlice) ImportBatch(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
-	pkImportBatchID := make(pgtypes.Array[int32], 0, len(os))
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-		pkImportBatchID = append(pkImportBatchID, o.ImportBatchID)
-	}
-	PKArgExpr := psql.Select(sm.Columns(
-		psql.F("unnest", psql.Cast(psql.Arg(pkImportBatchID), "integer[]")),
-	))
-
-	return ImportBatches.Query(append(mods,
-		sm.Where(psql.Group(ImportBatches.Columns.ID).OP("IN", PKArgExpr)),
-	)...)
-}
-
 // Race starts a query for related objects on races
 func (o *ResultEntry) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
 	return Races.Query(append(mods,
@@ -1099,54 +1051,6 @@ func (resultEntry0 *ResultEntry) AttachDriver(ctx context.Context, exec bob.Exec
 	return nil
 }
 
-func attachResultEntryImportBatch0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, importBatch1 *ImportBatch) (*ResultEntry, error) {
-	setter := &ResultEntrySetter{
-		ImportBatchID: omit.From(importBatch1.ID),
-	}
-
-	err := resultEntry0.Update(ctx, exec, setter)
-	if err != nil {
-		return nil, fmt.Errorf("attachResultEntryImportBatch0: %w", err)
-	}
-
-	return resultEntry0, nil
-}
-
-func (resultEntry0 *ResultEntry) InsertImportBatch(ctx context.Context, exec bob.Executor, related *ImportBatchSetter) error {
-	var err error
-
-	importBatch1, err := ImportBatches.Insert(related).One(ctx, exec)
-	if err != nil {
-		return fmt.Errorf("inserting related objects: %w", err)
-	}
-
-	_, err = attachResultEntryImportBatch0(ctx, exec, 1, resultEntry0, importBatch1)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.ImportBatch = importBatch1
-
-	importBatch1.R.ResultEntries = append(importBatch1.R.ResultEntries, resultEntry0)
-
-	return nil
-}
-
-func (resultEntry0 *ResultEntry) AttachImportBatch(ctx context.Context, exec bob.Executor, importBatch1 *ImportBatch) error {
-	var err error
-
-	_, err = attachResultEntryImportBatch0(ctx, exec, 1, resultEntry0, importBatch1)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.ImportBatch = importBatch1
-
-	importBatch1.R.ResultEntries = append(importBatch1.R.ResultEntries, resultEntry0)
-
-	return nil
-}
-
 func attachResultEntryRace0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, race1 *Race) (*ResultEntry, error) {
 	setter := &ResultEntrySetter{
 		RaceID: omit.From(race1.ID),
@@ -1198,7 +1102,6 @@ func (resultEntry0 *ResultEntry) AttachRace(ctx context.Context, exec bob.Execut
 type resultEntryWhere[Q psql.Filterable] struct {
 	ID                psql.WhereMod[Q, int32]
 	FrontendID        psql.WhereMod[Q, uuid.UUID]
-	ImportBatchID     psql.WhereMod[Q, int32]
 	RaceID            psql.WhereMod[Q, int32]
 	DriverID          psql.WhereNullMod[Q, int32]
 	DriverName        psql.WhereMod[Q, string]
@@ -1227,7 +1130,6 @@ func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEnt
 	return resultEntryWhere[Q]{
 		ID:                psql.Where[Q, int32](cols.ID),
 		FrontendID:        psql.Where[Q, uuid.UUID](cols.FrontendID),
-		ImportBatchID:     psql.Where[Q, int32](cols.ImportBatchID),
 		RaceID:            psql.Where[Q, int32](cols.RaceID),
 		DriverID:          psql.WhereNull[Q, int32](cols.DriverID),
 		DriverName:        psql.Where[Q, string](cols.DriverName),
@@ -1293,18 +1195,6 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 			rel.R.ResultEntries = ResultEntrySlice{o}
 		}
 		return nil
-	case "ImportBatch":
-		rel, ok := retrieved.(*ImportBatch)
-		if !ok {
-			return fmt.Errorf("resultEntry cannot load %T as %q", retrieved, name)
-		}
-
-		o.R.ImportBatch = rel
-
-		if rel != nil {
-			rel.R.ResultEntries = ResultEntrySlice{o}
-		}
-		return nil
 	case "Race":
 		rel, ok := retrieved.(*Race)
 		if !ok {
@@ -1323,10 +1213,9 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 }
 
 type resultEntryPreloader struct {
-	CarModel    func(...psql.PreloadOption) psql.Preloader
-	Driver      func(...psql.PreloadOption) psql.Preloader
-	ImportBatch func(...psql.PreloadOption) psql.Preloader
-	Race        func(...psql.PreloadOption) psql.Preloader
+	CarModel func(...psql.PreloadOption) psql.Preloader
+	Driver   func(...psql.PreloadOption) psql.Preloader
+	Race     func(...psql.PreloadOption) psql.Preloader
 }
 
 func buildResultEntryPreloader() resultEntryPreloader {
@@ -1357,19 +1246,6 @@ func buildResultEntryPreloader() resultEntryPreloader {
 				},
 			}, Drivers.Columns.Names(), opts...)
 		},
-		ImportBatch: func(opts ...psql.PreloadOption) psql.Preloader {
-			return psql.Preload[*ImportBatch, ImportBatchSlice](psql.PreloadRel{
-				Name: "ImportBatch",
-				Sides: []psql.PreloadSide{
-					{
-						From:        ResultEntries,
-						To:          ImportBatches,
-						FromColumns: []string{"import_batch_id"},
-						ToColumns:   []string{"id"},
-					},
-				},
-			}, ImportBatches.Columns.Names(), opts...)
-		},
 		Race: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*Race, RaceSlice](psql.PreloadRel{
 				Name: "Race",
@@ -1390,7 +1266,6 @@ type resultEntryThenLoader[Q orm.Loadable] struct {
 	SourceResultEntryBookingEntries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	CarModel                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Driver                          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	ImportBatch                     func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Race                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
@@ -1403,9 +1278,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 	}
 	type DriverLoadInterface interface {
 		LoadDriver(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
-	}
-	type ImportBatchLoadInterface interface {
-		LoadImportBatch(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type RaceLoadInterface interface {
 		LoadRace(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1428,12 +1300,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 			"Driver",
 			func(ctx context.Context, exec bob.Executor, retrieved DriverLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadDriver(ctx, exec, mods...)
-			},
-		),
-		ImportBatch: thenLoadBuilder[Q](
-			"ImportBatch",
-			func(ctx context.Context, exec bob.Executor, retrieved ImportBatchLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
-				return retrieved.LoadImportBatch(ctx, exec, mods...)
 			},
 		),
 		Race: thenLoadBuilder[Q](
@@ -1619,58 +1485,6 @@ func (os ResultEntrySlice) LoadDriver(ctx context.Context, exec bob.Executor, mo
 	return nil
 }
 
-// LoadImportBatch loads the resultEntry's ImportBatch into the .R struct
-func (o *ResultEntry) LoadImportBatch(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if o == nil {
-		return nil
-	}
-
-	// Reset the relationship
-	o.R.ImportBatch = nil
-
-	related, err := o.ImportBatch(mods...).One(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	related.R.ResultEntries = ResultEntrySlice{o}
-
-	o.R.ImportBatch = related
-	return nil
-}
-
-// LoadImportBatch loads the resultEntry's ImportBatch into the .R struct
-func (os ResultEntrySlice) LoadImportBatch(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if len(os) == 0 {
-		return nil
-	}
-
-	importBatches, err := os.ImportBatch(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		for _, rel := range importBatches {
-
-			if !(o.ImportBatchID == rel.ID) {
-				continue
-			}
-
-			rel.R.ResultEntries = append(rel.R.ResultEntries, o)
-
-			o.R.ImportBatch = rel
-			break
-		}
-	}
-
-	return nil
-}
-
 // LoadRace loads the resultEntry's Race into the .R struct
 func (o *ResultEntry) LoadRace(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
@@ -1728,7 +1542,6 @@ type resultEntryJoins[Q dialect.Joinable] struct {
 	SourceResultEntryBookingEntries modAs[Q, bookingEntryColumns]
 	CarModel                        modAs[Q, carModelColumns]
 	Driver                          modAs[Q, driverColumns]
-	ImportBatch                     modAs[Q, importBatchColumns]
 	Race                            modAs[Q, raceColumns]
 }
 
@@ -1775,20 +1588,6 @@ func buildResultEntryJoins[Q dialect.Joinable](cols resultEntryColumns, typ stri
 				{
 					mods = append(mods, dialect.Join[Q](typ, Drivers.Name().As(to.Alias())).On(
 						to.ID.EQ(cols.DriverID),
-					))
-				}
-
-				return mods
-			},
-		},
-		ImportBatch: modAs[Q, importBatchColumns]{
-			c: ImportBatches.Columns,
-			f: func(to importBatchColumns) bob.Mod[Q] {
-				mods := make(mods.QueryMods[Q], 0, 1)
-
-				{
-					mods = append(mods, dialect.Join[Q](typ, ImportBatches.Name().As(to.Alias())).On(
-						to.ID.EQ(cols.ImportBatchID),
 					))
 				}
 

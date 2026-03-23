@@ -22,8 +22,8 @@ import (
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
-// DriverSimulationID is an object representing the database table.
-type DriverSimulationID struct {
+// SimulationDriverAlias is an object representing the database table.
+type SimulationDriverAlias struct {
 	ID                 int32     `db:"id,pk" `
 	DriverID           int32     `db:"driver_id" `
 	SimulationID       int32     `db:"simulation_id" `
@@ -33,30 +33,30 @@ type DriverSimulationID struct {
 	CreatedBy          string    `db:"created_by" `
 	UpdatedBy          string    `db:"updated_by" `
 
-	R driverSimulationIDR `db:"-" `
+	R simulationDriverAliasR `db:"-" `
 }
 
-// DriverSimulationIDSlice is an alias for a slice of pointers to DriverSimulationID.
-// This should almost always be used instead of []*DriverSimulationID.
-type DriverSimulationIDSlice []*DriverSimulationID
+// SimulationDriverAliasSlice is an alias for a slice of pointers to SimulationDriverAlias.
+// This should almost always be used instead of []*SimulationDriverAlias.
+type SimulationDriverAliasSlice []*SimulationDriverAlias
 
-// DriverSimulationIds contains methods to work with the driver_simulation_ids table
-var DriverSimulationIds = psql.NewTablex[*DriverSimulationID, DriverSimulationIDSlice, *DriverSimulationIDSetter]("", "driver_simulation_ids", buildDriverSimulationIDColumns("driver_simulation_ids"))
+// SimulationDriverAliases contains methods to work with the simulation_driver_aliases table
+var SimulationDriverAliases = psql.NewTablex[*SimulationDriverAlias, SimulationDriverAliasSlice, *SimulationDriverAliasSetter]("", "simulation_driver_aliases", buildSimulationDriverAliasColumns("simulation_driver_aliases"))
 
-// DriverSimulationIdsQuery is a query on the driver_simulation_ids table
-type DriverSimulationIdsQuery = *psql.ViewQuery[*DriverSimulationID, DriverSimulationIDSlice]
+// SimulationDriverAliasesQuery is a query on the simulation_driver_aliases table
+type SimulationDriverAliasesQuery = *psql.ViewQuery[*SimulationDriverAlias, SimulationDriverAliasSlice]
 
-// driverSimulationIDR is where relationships are stored.
-type driverSimulationIDR struct {
-	Driver              *Driver    // driver_simulation_ids.driver_simulation_ids_driver_id_fk
-	SimulationRacingSim *RacingSim // driver_simulation_ids.driver_simulation_ids_simulation_id_fk
+// simulationDriverAliasR is where relationships are stored.
+type simulationDriverAliasR struct {
+	Driver              *Driver    // simulation_driver_aliases.simulation_driver_aliases_driver_id_fk
+	SimulationRacingSim *RacingSim // simulation_driver_aliases.simulation_driver_aliases_simulation_id_fk
 }
 
-func buildDriverSimulationIDColumns(alias string) driverSimulationIDColumns {
-	return driverSimulationIDColumns{
+func buildSimulationDriverAliasColumns(alias string) simulationDriverAliasColumns {
+	return simulationDriverAliasColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
 			"id", "driver_id", "simulation_id", "simulation_driver_id", "created_at", "updated_at", "created_by", "updated_by",
-		).WithParent("driver_simulation_ids"),
+		).WithParent("simulation_driver_aliases"),
 		tableAlias:         alias,
 		ID:                 psql.Quote(alias, "id"),
 		DriverID:           psql.Quote(alias, "driver_id"),
@@ -69,7 +69,7 @@ func buildDriverSimulationIDColumns(alias string) driverSimulationIDColumns {
 	}
 }
 
-type driverSimulationIDColumns struct {
+type simulationDriverAliasColumns struct {
 	expr.ColumnsExpr
 	tableAlias         string
 	ID                 psql.Expression
@@ -82,18 +82,18 @@ type driverSimulationIDColumns struct {
 	UpdatedBy          psql.Expression
 }
 
-func (c driverSimulationIDColumns) Alias() string {
+func (c simulationDriverAliasColumns) Alias() string {
 	return c.tableAlias
 }
 
-func (driverSimulationIDColumns) AliasedAs(alias string) driverSimulationIDColumns {
-	return buildDriverSimulationIDColumns(alias)
+func (simulationDriverAliasColumns) AliasedAs(alias string) simulationDriverAliasColumns {
+	return buildSimulationDriverAliasColumns(alias)
 }
 
-// DriverSimulationIDSetter is used for insert/upsert/update operations
+// SimulationDriverAliasSetter is used for insert/upsert/update operations
 // All values are optional, and do not have to be set
 // Generated columns are not included
-type DriverSimulationIDSetter struct {
+type SimulationDriverAliasSetter struct {
 	ID                 omit.Val[int32]     `db:"id,pk" `
 	DriverID           omit.Val[int32]     `db:"driver_id" `
 	SimulationID       omit.Val[int32]     `db:"simulation_id" `
@@ -104,7 +104,7 @@ type DriverSimulationIDSetter struct {
 	UpdatedBy          omit.Val[string]    `db:"updated_by" `
 }
 
-func (s DriverSimulationIDSetter) SetColumns() []string {
+func (s SimulationDriverAliasSetter) SetColumns() []string {
 	vals := make([]string, 0, 8)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
@@ -133,7 +133,7 @@ func (s DriverSimulationIDSetter) SetColumns() []string {
 	return vals
 }
 
-func (s DriverSimulationIDSetter) Overwrite(t *DriverSimulationID) {
+func (s SimulationDriverAliasSetter) Overwrite(t *SimulationDriverAlias) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
@@ -160,9 +160,9 @@ func (s DriverSimulationIDSetter) Overwrite(t *DriverSimulationID) {
 	}
 }
 
-func (s *DriverSimulationIDSetter) Apply(q *dialect.InsertQuery) {
+func (s *SimulationDriverAliasSetter) Apply(q *dialect.InsertQuery) {
 	q.AppendHooks(func(ctx context.Context, exec bob.Executor) (context.Context, error) {
-		return DriverSimulationIds.BeforeInsertHooks.RunHooks(ctx, exec, s)
+		return SimulationDriverAliases.BeforeInsertHooks.RunHooks(ctx, exec, s)
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
@@ -219,11 +219,11 @@ func (s *DriverSimulationIDSetter) Apply(q *dialect.InsertQuery) {
 	}))
 }
 
-func (s DriverSimulationIDSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
+func (s SimulationDriverAliasSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 	return um.Set(s.Expressions()...)
 }
 
-func (s DriverSimulationIDSetter) Expressions(prefix ...string) []bob.Expression {
+func (s SimulationDriverAliasSetter) Expressions(prefix ...string) []bob.Expression {
 	exprs := make([]bob.Expression, 0, 8)
 
 	if s.ID.IsValue() {
@@ -285,60 +285,60 @@ func (s DriverSimulationIDSetter) Expressions(prefix ...string) []bob.Expression
 	return exprs
 }
 
-// FindDriverSimulationID retrieves a single record by primary key
+// FindSimulationDriverAlias retrieves a single record by primary key
 // If cols is empty Find will return all columns.
-func FindDriverSimulationID(ctx context.Context, exec bob.Executor, IDPK int32, cols ...string) (*DriverSimulationID, error) {
+func FindSimulationDriverAlias(ctx context.Context, exec bob.Executor, IDPK int32, cols ...string) (*SimulationDriverAlias, error) {
 	if len(cols) == 0 {
-		return DriverSimulationIds.Query(
-			sm.Where(DriverSimulationIds.Columns.ID.EQ(psql.Arg(IDPK))),
+		return SimulationDriverAliases.Query(
+			sm.Where(SimulationDriverAliases.Columns.ID.EQ(psql.Arg(IDPK))),
 		).One(ctx, exec)
 	}
 
-	return DriverSimulationIds.Query(
-		sm.Where(DriverSimulationIds.Columns.ID.EQ(psql.Arg(IDPK))),
-		sm.Columns(DriverSimulationIds.Columns.Only(cols...)),
+	return SimulationDriverAliases.Query(
+		sm.Where(SimulationDriverAliases.Columns.ID.EQ(psql.Arg(IDPK))),
+		sm.Columns(SimulationDriverAliases.Columns.Only(cols...)),
 	).One(ctx, exec)
 }
 
-// DriverSimulationIDExists checks the presence of a single record by primary key
-func DriverSimulationIDExists(ctx context.Context, exec bob.Executor, IDPK int32) (bool, error) {
-	return DriverSimulationIds.Query(
-		sm.Where(DriverSimulationIds.Columns.ID.EQ(psql.Arg(IDPK))),
+// SimulationDriverAliasExists checks the presence of a single record by primary key
+func SimulationDriverAliasExists(ctx context.Context, exec bob.Executor, IDPK int32) (bool, error) {
+	return SimulationDriverAliases.Query(
+		sm.Where(SimulationDriverAliases.Columns.ID.EQ(psql.Arg(IDPK))),
 	).Exists(ctx, exec)
 }
 
-// AfterQueryHook is called after DriverSimulationID is retrieved from the database
-func (o *DriverSimulationID) AfterQueryHook(ctx context.Context, exec bob.Executor, queryType bob.QueryType) error {
+// AfterQueryHook is called after SimulationDriverAlias is retrieved from the database
+func (o *SimulationDriverAlias) AfterQueryHook(ctx context.Context, exec bob.Executor, queryType bob.QueryType) error {
 	var err error
 
 	switch queryType {
 	case bob.QueryTypeSelect:
-		ctx, err = DriverSimulationIds.AfterSelectHooks.RunHooks(ctx, exec, DriverSimulationIDSlice{o})
+		ctx, err = SimulationDriverAliases.AfterSelectHooks.RunHooks(ctx, exec, SimulationDriverAliasSlice{o})
 	case bob.QueryTypeInsert:
-		ctx, err = DriverSimulationIds.AfterInsertHooks.RunHooks(ctx, exec, DriverSimulationIDSlice{o})
+		ctx, err = SimulationDriverAliases.AfterInsertHooks.RunHooks(ctx, exec, SimulationDriverAliasSlice{o})
 	case bob.QueryTypeUpdate:
-		ctx, err = DriverSimulationIds.AfterUpdateHooks.RunHooks(ctx, exec, DriverSimulationIDSlice{o})
+		ctx, err = SimulationDriverAliases.AfterUpdateHooks.RunHooks(ctx, exec, SimulationDriverAliasSlice{o})
 	case bob.QueryTypeDelete:
-		ctx, err = DriverSimulationIds.AfterDeleteHooks.RunHooks(ctx, exec, DriverSimulationIDSlice{o})
+		ctx, err = SimulationDriverAliases.AfterDeleteHooks.RunHooks(ctx, exec, SimulationDriverAliasSlice{o})
 	}
 
 	return err
 }
 
-// primaryKeyVals returns the primary key values of the DriverSimulationID
-func (o *DriverSimulationID) primaryKeyVals() bob.Expression {
+// primaryKeyVals returns the primary key values of the SimulationDriverAlias
+func (o *SimulationDriverAlias) primaryKeyVals() bob.Expression {
 	return psql.Arg(o.ID)
 }
 
-func (o *DriverSimulationID) pkEQ() dialect.Expression {
-	return psql.Quote("driver_simulation_ids", "id").EQ(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+func (o *SimulationDriverAlias) pkEQ() dialect.Expression {
+	return psql.Quote("simulation_driver_aliases", "id").EQ(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
 		return o.primaryKeyVals().WriteSQL(ctx, w, d, start)
 	}))
 }
 
-// Update uses an executor to update the DriverSimulationID
-func (o *DriverSimulationID) Update(ctx context.Context, exec bob.Executor, s *DriverSimulationIDSetter) error {
-	v, err := DriverSimulationIds.Update(s.UpdateMod(), um.Where(o.pkEQ())).One(ctx, exec)
+// Update uses an executor to update the SimulationDriverAlias
+func (o *SimulationDriverAlias) Update(ctx context.Context, exec bob.Executor, s *SimulationDriverAliasSetter) error {
+	v, err := SimulationDriverAliases.Update(s.UpdateMod(), um.Where(o.pkEQ())).One(ctx, exec)
 	if err != nil {
 		return err
 	}
@@ -349,16 +349,16 @@ func (o *DriverSimulationID) Update(ctx context.Context, exec bob.Executor, s *D
 	return nil
 }
 
-// Delete deletes a single DriverSimulationID record with an executor
-func (o *DriverSimulationID) Delete(ctx context.Context, exec bob.Executor) error {
-	_, err := DriverSimulationIds.Delete(dm.Where(o.pkEQ())).Exec(ctx, exec)
+// Delete deletes a single SimulationDriverAlias record with an executor
+func (o *SimulationDriverAlias) Delete(ctx context.Context, exec bob.Executor) error {
+	_, err := SimulationDriverAliases.Delete(dm.Where(o.pkEQ())).Exec(ctx, exec)
 	return err
 }
 
-// Reload refreshes the DriverSimulationID using the executor
-func (o *DriverSimulationID) Reload(ctx context.Context, exec bob.Executor) error {
-	o2, err := DriverSimulationIds.Query(
-		sm.Where(DriverSimulationIds.Columns.ID.EQ(psql.Arg(o.ID))),
+// Reload refreshes the SimulationDriverAlias using the executor
+func (o *SimulationDriverAlias) Reload(ctx context.Context, exec bob.Executor) error {
+	o2, err := SimulationDriverAliases.Query(
+		sm.Where(SimulationDriverAliases.Columns.ID.EQ(psql.Arg(o.ID))),
 	).One(ctx, exec)
 	if err != nil {
 		return err
@@ -369,30 +369,30 @@ func (o *DriverSimulationID) Reload(ctx context.Context, exec bob.Executor) erro
 	return nil
 }
 
-// AfterQueryHook is called after DriverSimulationIDSlice is retrieved from the database
-func (o DriverSimulationIDSlice) AfterQueryHook(ctx context.Context, exec bob.Executor, queryType bob.QueryType) error {
+// AfterQueryHook is called after SimulationDriverAliasSlice is retrieved from the database
+func (o SimulationDriverAliasSlice) AfterQueryHook(ctx context.Context, exec bob.Executor, queryType bob.QueryType) error {
 	var err error
 
 	switch queryType {
 	case bob.QueryTypeSelect:
-		ctx, err = DriverSimulationIds.AfterSelectHooks.RunHooks(ctx, exec, o)
+		ctx, err = SimulationDriverAliases.AfterSelectHooks.RunHooks(ctx, exec, o)
 	case bob.QueryTypeInsert:
-		ctx, err = DriverSimulationIds.AfterInsertHooks.RunHooks(ctx, exec, o)
+		ctx, err = SimulationDriverAliases.AfterInsertHooks.RunHooks(ctx, exec, o)
 	case bob.QueryTypeUpdate:
-		ctx, err = DriverSimulationIds.AfterUpdateHooks.RunHooks(ctx, exec, o)
+		ctx, err = SimulationDriverAliases.AfterUpdateHooks.RunHooks(ctx, exec, o)
 	case bob.QueryTypeDelete:
-		ctx, err = DriverSimulationIds.AfterDeleteHooks.RunHooks(ctx, exec, o)
+		ctx, err = SimulationDriverAliases.AfterDeleteHooks.RunHooks(ctx, exec, o)
 	}
 
 	return err
 }
 
-func (o DriverSimulationIDSlice) pkIN() dialect.Expression {
+func (o SimulationDriverAliasSlice) pkIN() dialect.Expression {
 	if len(o) == 0 {
 		return psql.Raw("NULL")
 	}
 
-	return psql.Quote("driver_simulation_ids", "id").In(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+	return psql.Quote("simulation_driver_aliases", "id").In(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
 		pkPairs := make([]bob.Expression, len(o))
 		for i, row := range o {
 			pkPairs[i] = row.primaryKeyVals()
@@ -404,7 +404,7 @@ func (o DriverSimulationIDSlice) pkIN() dialect.Expression {
 // copyMatchingRows finds models in the given slice that have the same primary key
 // then it first copies the existing relationships from the old model to the new model
 // and then replaces the old model in the slice with the new model
-func (o DriverSimulationIDSlice) copyMatchingRows(from ...*DriverSimulationID) {
+func (o SimulationDriverAliasSlice) copyMatchingRows(from ...*SimulationDriverAlias) {
 	for i, old := range o {
 		for _, new := range from {
 			if new.ID != old.ID {
@@ -418,25 +418,25 @@ func (o DriverSimulationIDSlice) copyMatchingRows(from ...*DriverSimulationID) {
 }
 
 // UpdateMod modifies an update query with "WHERE primary_key IN (o...)"
-func (o DriverSimulationIDSlice) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
+func (o SimulationDriverAliasSlice) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 	return bob.ModFunc[*dialect.UpdateQuery](func(q *dialect.UpdateQuery) {
 		q.AppendHooks(func(ctx context.Context, exec bob.Executor) (context.Context, error) {
-			return DriverSimulationIds.BeforeUpdateHooks.RunHooks(ctx, exec, o)
+			return SimulationDriverAliases.BeforeUpdateHooks.RunHooks(ctx, exec, o)
 		})
 
 		q.AppendLoader(bob.LoaderFunc(func(ctx context.Context, exec bob.Executor, retrieved any) error {
 			var err error
 			switch retrieved := retrieved.(type) {
-			case *DriverSimulationID:
+			case *SimulationDriverAlias:
 				o.copyMatchingRows(retrieved)
-			case []*DriverSimulationID:
+			case []*SimulationDriverAlias:
 				o.copyMatchingRows(retrieved...)
-			case DriverSimulationIDSlice:
+			case SimulationDriverAliasSlice:
 				o.copyMatchingRows(retrieved...)
 			default:
-				// If the retrieved value is not a DriverSimulationID or a slice of DriverSimulationID
+				// If the retrieved value is not a SimulationDriverAlias or a slice of SimulationDriverAlias
 				// then run the AfterUpdateHooks on the slice
-				_, err = DriverSimulationIds.AfterUpdateHooks.RunHooks(ctx, exec, o)
+				_, err = SimulationDriverAliases.AfterUpdateHooks.RunHooks(ctx, exec, o)
 			}
 
 			return err
@@ -447,25 +447,25 @@ func (o DriverSimulationIDSlice) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 // DeleteMod modifies an delete query with "WHERE primary_key IN (o...)"
-func (o DriverSimulationIDSlice) DeleteMod() bob.Mod[*dialect.DeleteQuery] {
+func (o SimulationDriverAliasSlice) DeleteMod() bob.Mod[*dialect.DeleteQuery] {
 	return bob.ModFunc[*dialect.DeleteQuery](func(q *dialect.DeleteQuery) {
 		q.AppendHooks(func(ctx context.Context, exec bob.Executor) (context.Context, error) {
-			return DriverSimulationIds.BeforeDeleteHooks.RunHooks(ctx, exec, o)
+			return SimulationDriverAliases.BeforeDeleteHooks.RunHooks(ctx, exec, o)
 		})
 
 		q.AppendLoader(bob.LoaderFunc(func(ctx context.Context, exec bob.Executor, retrieved any) error {
 			var err error
 			switch retrieved := retrieved.(type) {
-			case *DriverSimulationID:
+			case *SimulationDriverAlias:
 				o.copyMatchingRows(retrieved)
-			case []*DriverSimulationID:
+			case []*SimulationDriverAlias:
 				o.copyMatchingRows(retrieved...)
-			case DriverSimulationIDSlice:
+			case SimulationDriverAliasSlice:
 				o.copyMatchingRows(retrieved...)
 			default:
-				// If the retrieved value is not a DriverSimulationID or a slice of DriverSimulationID
+				// If the retrieved value is not a SimulationDriverAlias or a slice of SimulationDriverAlias
 				// then run the AfterDeleteHooks on the slice
-				_, err = DriverSimulationIds.AfterDeleteHooks.RunHooks(ctx, exec, o)
+				_, err = SimulationDriverAliases.AfterDeleteHooks.RunHooks(ctx, exec, o)
 			}
 
 			return err
@@ -475,30 +475,30 @@ func (o DriverSimulationIDSlice) DeleteMod() bob.Mod[*dialect.DeleteQuery] {
 	})
 }
 
-func (o DriverSimulationIDSlice) UpdateAll(ctx context.Context, exec bob.Executor, vals DriverSimulationIDSetter) error {
+func (o SimulationDriverAliasSlice) UpdateAll(ctx context.Context, exec bob.Executor, vals SimulationDriverAliasSetter) error {
 	if len(o) == 0 {
 		return nil
 	}
 
-	_, err := DriverSimulationIds.Update(vals.UpdateMod(), o.UpdateMod()).All(ctx, exec)
+	_, err := SimulationDriverAliases.Update(vals.UpdateMod(), o.UpdateMod()).All(ctx, exec)
 	return err
 }
 
-func (o DriverSimulationIDSlice) DeleteAll(ctx context.Context, exec bob.Executor) error {
+func (o SimulationDriverAliasSlice) DeleteAll(ctx context.Context, exec bob.Executor) error {
 	if len(o) == 0 {
 		return nil
 	}
 
-	_, err := DriverSimulationIds.Delete(o.DeleteMod()).Exec(ctx, exec)
+	_, err := SimulationDriverAliases.Delete(o.DeleteMod()).Exec(ctx, exec)
 	return err
 }
 
-func (o DriverSimulationIDSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
+func (o SimulationDriverAliasSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	if len(o) == 0 {
 		return nil
 	}
 
-	o2, err := DriverSimulationIds.Query(sm.Where(o.pkIN())).All(ctx, exec)
+	o2, err := SimulationDriverAliases.Query(sm.Where(o.pkIN())).All(ctx, exec)
 	if err != nil {
 		return err
 	}
@@ -509,13 +509,13 @@ func (o DriverSimulationIDSlice) ReloadAll(ctx context.Context, exec bob.Executo
 }
 
 // Driver starts a query for related objects on drivers
-func (o *DriverSimulationID) Driver(mods ...bob.Mod[*dialect.SelectQuery]) DriversQuery {
+func (o *SimulationDriverAlias) Driver(mods ...bob.Mod[*dialect.SelectQuery]) DriversQuery {
 	return Drivers.Query(append(mods,
 		sm.Where(Drivers.Columns.ID.EQ(psql.Arg(o.DriverID))),
 	)...)
 }
 
-func (os DriverSimulationIDSlice) Driver(mods ...bob.Mod[*dialect.SelectQuery]) DriversQuery {
+func (os SimulationDriverAliasSlice) Driver(mods ...bob.Mod[*dialect.SelectQuery]) DriversQuery {
 	pkDriverID := make(pgtypes.Array[int32], 0, len(os))
 	for _, o := range os {
 		if o == nil {
@@ -533,13 +533,13 @@ func (os DriverSimulationIDSlice) Driver(mods ...bob.Mod[*dialect.SelectQuery]) 
 }
 
 // SimulationRacingSim starts a query for related objects on racing_sims
-func (o *DriverSimulationID) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) RacingSimsQuery {
+func (o *SimulationDriverAlias) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) RacingSimsQuery {
 	return RacingSims.Query(append(mods,
 		sm.Where(RacingSims.Columns.ID.EQ(psql.Arg(o.SimulationID))),
 	)...)
 }
 
-func (os DriverSimulationIDSlice) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) RacingSimsQuery {
+func (os SimulationDriverAliasSlice) SimulationRacingSim(mods ...bob.Mod[*dialect.SelectQuery]) RacingSimsQuery {
 	pkSimulationID := make(pgtypes.Array[int32], 0, len(os))
 	for _, o := range os {
 		if o == nil {
@@ -556,20 +556,20 @@ func (os DriverSimulationIDSlice) SimulationRacingSim(mods ...bob.Mod[*dialect.S
 	)...)
 }
 
-func attachDriverSimulationIDDriver0(ctx context.Context, exec bob.Executor, count int, driverSimulationID0 *DriverSimulationID, driver1 *Driver) (*DriverSimulationID, error) {
-	setter := &DriverSimulationIDSetter{
+func attachSimulationDriverAliasDriver0(ctx context.Context, exec bob.Executor, count int, simulationDriverAlias0 *SimulationDriverAlias, driver1 *Driver) (*SimulationDriverAlias, error) {
+	setter := &SimulationDriverAliasSetter{
 		DriverID: omit.From(driver1.ID),
 	}
 
-	err := driverSimulationID0.Update(ctx, exec, setter)
+	err := simulationDriverAlias0.Update(ctx, exec, setter)
 	if err != nil {
-		return nil, fmt.Errorf("attachDriverSimulationIDDriver0: %w", err)
+		return nil, fmt.Errorf("attachSimulationDriverAliasDriver0: %w", err)
 	}
 
-	return driverSimulationID0, nil
+	return simulationDriverAlias0, nil
 }
 
-func (driverSimulationID0 *DriverSimulationID) InsertDriver(ctx context.Context, exec bob.Executor, related *DriverSetter) error {
+func (simulationDriverAlias0 *SimulationDriverAlias) InsertDriver(ctx context.Context, exec bob.Executor, related *DriverSetter) error {
 	var err error
 
 	driver1, err := Drivers.Insert(related).One(ctx, exec)
@@ -577,47 +577,47 @@ func (driverSimulationID0 *DriverSimulationID) InsertDriver(ctx context.Context,
 		return fmt.Errorf("inserting related objects: %w", err)
 	}
 
-	_, err = attachDriverSimulationIDDriver0(ctx, exec, 1, driverSimulationID0, driver1)
+	_, err = attachSimulationDriverAliasDriver0(ctx, exec, 1, simulationDriverAlias0, driver1)
 	if err != nil {
 		return err
 	}
 
-	driverSimulationID0.R.Driver = driver1
+	simulationDriverAlias0.R.Driver = driver1
 
-	driver1.R.DriverSimulationIds = append(driver1.R.DriverSimulationIds, driverSimulationID0)
+	driver1.R.SimulationDriverAliases = append(driver1.R.SimulationDriverAliases, simulationDriverAlias0)
 
 	return nil
 }
 
-func (driverSimulationID0 *DriverSimulationID) AttachDriver(ctx context.Context, exec bob.Executor, driver1 *Driver) error {
+func (simulationDriverAlias0 *SimulationDriverAlias) AttachDriver(ctx context.Context, exec bob.Executor, driver1 *Driver) error {
 	var err error
 
-	_, err = attachDriverSimulationIDDriver0(ctx, exec, 1, driverSimulationID0, driver1)
+	_, err = attachSimulationDriverAliasDriver0(ctx, exec, 1, simulationDriverAlias0, driver1)
 	if err != nil {
 		return err
 	}
 
-	driverSimulationID0.R.Driver = driver1
+	simulationDriverAlias0.R.Driver = driver1
 
-	driver1.R.DriverSimulationIds = append(driver1.R.DriverSimulationIds, driverSimulationID0)
+	driver1.R.SimulationDriverAliases = append(driver1.R.SimulationDriverAliases, simulationDriverAlias0)
 
 	return nil
 }
 
-func attachDriverSimulationIDSimulationRacingSim0(ctx context.Context, exec bob.Executor, count int, driverSimulationID0 *DriverSimulationID, racingSim1 *RacingSim) (*DriverSimulationID, error) {
-	setter := &DriverSimulationIDSetter{
+func attachSimulationDriverAliasSimulationRacingSim0(ctx context.Context, exec bob.Executor, count int, simulationDriverAlias0 *SimulationDriverAlias, racingSim1 *RacingSim) (*SimulationDriverAlias, error) {
+	setter := &SimulationDriverAliasSetter{
 		SimulationID: omit.From(racingSim1.ID),
 	}
 
-	err := driverSimulationID0.Update(ctx, exec, setter)
+	err := simulationDriverAlias0.Update(ctx, exec, setter)
 	if err != nil {
-		return nil, fmt.Errorf("attachDriverSimulationIDSimulationRacingSim0: %w", err)
+		return nil, fmt.Errorf("attachSimulationDriverAliasSimulationRacingSim0: %w", err)
 	}
 
-	return driverSimulationID0, nil
+	return simulationDriverAlias0, nil
 }
 
-func (driverSimulationID0 *DriverSimulationID) InsertSimulationRacingSim(ctx context.Context, exec bob.Executor, related *RacingSimSetter) error {
+func (simulationDriverAlias0 *SimulationDriverAlias) InsertSimulationRacingSim(ctx context.Context, exec bob.Executor, related *RacingSimSetter) error {
 	var err error
 
 	racingSim1, err := RacingSims.Insert(related).One(ctx, exec)
@@ -625,34 +625,34 @@ func (driverSimulationID0 *DriverSimulationID) InsertSimulationRacingSim(ctx con
 		return fmt.Errorf("inserting related objects: %w", err)
 	}
 
-	_, err = attachDriverSimulationIDSimulationRacingSim0(ctx, exec, 1, driverSimulationID0, racingSim1)
+	_, err = attachSimulationDriverAliasSimulationRacingSim0(ctx, exec, 1, simulationDriverAlias0, racingSim1)
 	if err != nil {
 		return err
 	}
 
-	driverSimulationID0.R.SimulationRacingSim = racingSim1
+	simulationDriverAlias0.R.SimulationRacingSim = racingSim1
 
-	racingSim1.R.SimulationDriverSimulationIds = append(racingSim1.R.SimulationDriverSimulationIds, driverSimulationID0)
+	racingSim1.R.SimulationSimulationDriverAliases = append(racingSim1.R.SimulationSimulationDriverAliases, simulationDriverAlias0)
 
 	return nil
 }
 
-func (driverSimulationID0 *DriverSimulationID) AttachSimulationRacingSim(ctx context.Context, exec bob.Executor, racingSim1 *RacingSim) error {
+func (simulationDriverAlias0 *SimulationDriverAlias) AttachSimulationRacingSim(ctx context.Context, exec bob.Executor, racingSim1 *RacingSim) error {
 	var err error
 
-	_, err = attachDriverSimulationIDSimulationRacingSim0(ctx, exec, 1, driverSimulationID0, racingSim1)
+	_, err = attachSimulationDriverAliasSimulationRacingSim0(ctx, exec, 1, simulationDriverAlias0, racingSim1)
 	if err != nil {
 		return err
 	}
 
-	driverSimulationID0.R.SimulationRacingSim = racingSim1
+	simulationDriverAlias0.R.SimulationRacingSim = racingSim1
 
-	racingSim1.R.SimulationDriverSimulationIds = append(racingSim1.R.SimulationDriverSimulationIds, driverSimulationID0)
+	racingSim1.R.SimulationSimulationDriverAliases = append(racingSim1.R.SimulationSimulationDriverAliases, simulationDriverAlias0)
 
 	return nil
 }
 
-type driverSimulationIDWhere[Q psql.Filterable] struct {
+type simulationDriverAliasWhere[Q psql.Filterable] struct {
 	ID                 psql.WhereMod[Q, int32]
 	DriverID           psql.WhereMod[Q, int32]
 	SimulationID       psql.WhereMod[Q, int32]
@@ -663,12 +663,12 @@ type driverSimulationIDWhere[Q psql.Filterable] struct {
 	UpdatedBy          psql.WhereMod[Q, string]
 }
 
-func (driverSimulationIDWhere[Q]) AliasedAs(alias string) driverSimulationIDWhere[Q] {
-	return buildDriverSimulationIDWhere[Q](buildDriverSimulationIDColumns(alias))
+func (simulationDriverAliasWhere[Q]) AliasedAs(alias string) simulationDriverAliasWhere[Q] {
+	return buildSimulationDriverAliasWhere[Q](buildSimulationDriverAliasColumns(alias))
 }
 
-func buildDriverSimulationIDWhere[Q psql.Filterable](cols driverSimulationIDColumns) driverSimulationIDWhere[Q] {
-	return driverSimulationIDWhere[Q]{
+func buildSimulationDriverAliasWhere[Q psql.Filterable](cols simulationDriverAliasColumns) simulationDriverAliasWhere[Q] {
+	return simulationDriverAliasWhere[Q]{
 		ID:                 psql.Where[Q, int32](cols.ID),
 		DriverID:           psql.Where[Q, int32](cols.DriverID),
 		SimulationID:       psql.Where[Q, int32](cols.SimulationID),
@@ -680,7 +680,7 @@ func buildDriverSimulationIDWhere[Q psql.Filterable](cols driverSimulationIDColu
 	}
 }
 
-func (o *DriverSimulationID) Preload(name string, retrieved any) error {
+func (o *SimulationDriverAlias) Preload(name string, retrieved any) error {
 	if o == nil {
 		return nil
 	}
@@ -689,45 +689,45 @@ func (o *DriverSimulationID) Preload(name string, retrieved any) error {
 	case "Driver":
 		rel, ok := retrieved.(*Driver)
 		if !ok {
-			return fmt.Errorf("driverSimulationID cannot load %T as %q", retrieved, name)
+			return fmt.Errorf("simulationDriverAlias cannot load %T as %q", retrieved, name)
 		}
 
 		o.R.Driver = rel
 
 		if rel != nil {
-			rel.R.DriverSimulationIds = DriverSimulationIDSlice{o}
+			rel.R.SimulationDriverAliases = SimulationDriverAliasSlice{o}
 		}
 		return nil
 	case "SimulationRacingSim":
 		rel, ok := retrieved.(*RacingSim)
 		if !ok {
-			return fmt.Errorf("driverSimulationID cannot load %T as %q", retrieved, name)
+			return fmt.Errorf("simulationDriverAlias cannot load %T as %q", retrieved, name)
 		}
 
 		o.R.SimulationRacingSim = rel
 
 		if rel != nil {
-			rel.R.SimulationDriverSimulationIds = DriverSimulationIDSlice{o}
+			rel.R.SimulationSimulationDriverAliases = SimulationDriverAliasSlice{o}
 		}
 		return nil
 	default:
-		return fmt.Errorf("driverSimulationID has no relationship %q", name)
+		return fmt.Errorf("simulationDriverAlias has no relationship %q", name)
 	}
 }
 
-type driverSimulationIDPreloader struct {
+type simulationDriverAliasPreloader struct {
 	Driver              func(...psql.PreloadOption) psql.Preloader
 	SimulationRacingSim func(...psql.PreloadOption) psql.Preloader
 }
 
-func buildDriverSimulationIDPreloader() driverSimulationIDPreloader {
-	return driverSimulationIDPreloader{
+func buildSimulationDriverAliasPreloader() simulationDriverAliasPreloader {
+	return simulationDriverAliasPreloader{
 		Driver: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*Driver, DriverSlice](psql.PreloadRel{
 				Name: "Driver",
 				Sides: []psql.PreloadSide{
 					{
-						From:        DriverSimulationIds,
+						From:        SimulationDriverAliases,
 						To:          Drivers,
 						FromColumns: []string{"driver_id"},
 						ToColumns:   []string{"id"},
@@ -740,7 +740,7 @@ func buildDriverSimulationIDPreloader() driverSimulationIDPreloader {
 				Name: "SimulationRacingSim",
 				Sides: []psql.PreloadSide{
 					{
-						From:        DriverSimulationIds,
+						From:        SimulationDriverAliases,
 						To:          RacingSims,
 						FromColumns: []string{"simulation_id"},
 						ToColumns:   []string{"id"},
@@ -751,12 +751,12 @@ func buildDriverSimulationIDPreloader() driverSimulationIDPreloader {
 	}
 }
 
-type driverSimulationIDThenLoader[Q orm.Loadable] struct {
+type simulationDriverAliasThenLoader[Q orm.Loadable] struct {
 	Driver              func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SimulationRacingSim func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
-func buildDriverSimulationIDThenLoader[Q orm.Loadable]() driverSimulationIDThenLoader[Q] {
+func buildSimulationDriverAliasThenLoader[Q orm.Loadable]() simulationDriverAliasThenLoader[Q] {
 	type DriverLoadInterface interface {
 		LoadDriver(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -764,7 +764,7 @@ func buildDriverSimulationIDThenLoader[Q orm.Loadable]() driverSimulationIDThenL
 		LoadSimulationRacingSim(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 
-	return driverSimulationIDThenLoader[Q]{
+	return simulationDriverAliasThenLoader[Q]{
 		Driver: thenLoadBuilder[Q](
 			"Driver",
 			func(ctx context.Context, exec bob.Executor, retrieved DriverLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -780,8 +780,8 @@ func buildDriverSimulationIDThenLoader[Q orm.Loadable]() driverSimulationIDThenL
 	}
 }
 
-// LoadDriver loads the driverSimulationID's Driver into the .R struct
-func (o *DriverSimulationID) LoadDriver(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+// LoadDriver loads the simulationDriverAlias's Driver into the .R struct
+func (o *SimulationDriverAlias) LoadDriver(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
 		return nil
 	}
@@ -794,14 +794,14 @@ func (o *DriverSimulationID) LoadDriver(ctx context.Context, exec bob.Executor, 
 		return err
 	}
 
-	related.R.DriverSimulationIds = DriverSimulationIDSlice{o}
+	related.R.SimulationDriverAliases = SimulationDriverAliasSlice{o}
 
 	o.R.Driver = related
 	return nil
 }
 
-// LoadDriver loads the driverSimulationID's Driver into the .R struct
-func (os DriverSimulationIDSlice) LoadDriver(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+// LoadDriver loads the simulationDriverAlias's Driver into the .R struct
+func (os SimulationDriverAliasSlice) LoadDriver(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if len(os) == 0 {
 		return nil
 	}
@@ -822,7 +822,7 @@ func (os DriverSimulationIDSlice) LoadDriver(ctx context.Context, exec bob.Execu
 				continue
 			}
 
-			rel.R.DriverSimulationIds = append(rel.R.DriverSimulationIds, o)
+			rel.R.SimulationDriverAliases = append(rel.R.SimulationDriverAliases, o)
 
 			o.R.Driver = rel
 			break
@@ -832,8 +832,8 @@ func (os DriverSimulationIDSlice) LoadDriver(ctx context.Context, exec bob.Execu
 	return nil
 }
 
-// LoadSimulationRacingSim loads the driverSimulationID's SimulationRacingSim into the .R struct
-func (o *DriverSimulationID) LoadSimulationRacingSim(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+// LoadSimulationRacingSim loads the simulationDriverAlias's SimulationRacingSim into the .R struct
+func (o *SimulationDriverAlias) LoadSimulationRacingSim(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
 		return nil
 	}
@@ -846,14 +846,14 @@ func (o *DriverSimulationID) LoadSimulationRacingSim(ctx context.Context, exec b
 		return err
 	}
 
-	related.R.SimulationDriverSimulationIds = DriverSimulationIDSlice{o}
+	related.R.SimulationSimulationDriverAliases = SimulationDriverAliasSlice{o}
 
 	o.R.SimulationRacingSim = related
 	return nil
 }
 
-// LoadSimulationRacingSim loads the driverSimulationID's SimulationRacingSim into the .R struct
-func (os DriverSimulationIDSlice) LoadSimulationRacingSim(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+// LoadSimulationRacingSim loads the simulationDriverAlias's SimulationRacingSim into the .R struct
+func (os SimulationDriverAliasSlice) LoadSimulationRacingSim(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if len(os) == 0 {
 		return nil
 	}
@@ -874,7 +874,7 @@ func (os DriverSimulationIDSlice) LoadSimulationRacingSim(ctx context.Context, e
 				continue
 			}
 
-			rel.R.SimulationDriverSimulationIds = append(rel.R.SimulationDriverSimulationIds, o)
+			rel.R.SimulationSimulationDriverAliases = append(rel.R.SimulationSimulationDriverAliases, o)
 
 			o.R.SimulationRacingSim = rel
 			break
@@ -884,18 +884,18 @@ func (os DriverSimulationIDSlice) LoadSimulationRacingSim(ctx context.Context, e
 	return nil
 }
 
-type driverSimulationIDJoins[Q dialect.Joinable] struct {
+type simulationDriverAliasJoins[Q dialect.Joinable] struct {
 	typ                 string
 	Driver              modAs[Q, driverColumns]
 	SimulationRacingSim modAs[Q, racingSimColumns]
 }
 
-func (j driverSimulationIDJoins[Q]) aliasedAs(alias string) driverSimulationIDJoins[Q] {
-	return buildDriverSimulationIDJoins[Q](buildDriverSimulationIDColumns(alias), j.typ)
+func (j simulationDriverAliasJoins[Q]) aliasedAs(alias string) simulationDriverAliasJoins[Q] {
+	return buildSimulationDriverAliasJoins[Q](buildSimulationDriverAliasColumns(alias), j.typ)
 }
 
-func buildDriverSimulationIDJoins[Q dialect.Joinable](cols driverSimulationIDColumns, typ string) driverSimulationIDJoins[Q] {
-	return driverSimulationIDJoins[Q]{
+func buildSimulationDriverAliasJoins[Q dialect.Joinable](cols simulationDriverAliasColumns, typ string) simulationDriverAliasJoins[Q] {
+	return simulationDriverAliasJoins[Q]{
 		typ: typ,
 		Driver: modAs[Q, driverColumns]{
 			c: Drivers.Columns,

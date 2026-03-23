@@ -65,7 +65,6 @@ type eventR struct {
 	EventTeamStandings    []*eventREventTeamStandingsR
 	Season                *eventRSeasonR
 	TrackLayout           *eventRTrackLayoutR
-	ImportBatches         []*eventRImportBatchesR
 	Races                 []*eventRRacesR
 }
 
@@ -90,10 +89,6 @@ type eventRSeasonR struct {
 }
 type eventRTrackLayoutR struct {
 	o *TrackLayoutTemplate
-}
-type eventRImportBatchesR struct {
-	number int
-	o      *ImportBatchTemplate
 }
 type eventRRacesR struct {
 	number int
@@ -174,19 +169,6 @@ func (t EventTemplate) setModelRels(o *models.Event) {
 		rel.R.Events = append(rel.R.Events, o)
 		o.TrackLayoutID = rel.ID // h2
 		o.R.TrackLayout = rel
-	}
-
-	if t.r.ImportBatches != nil {
-		rel := models.ImportBatchSlice{}
-		for _, r := range t.r.ImportBatches {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.EventID = o.ID // h2
-				rel.R.Event = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.ImportBatches = rel
 	}
 
 	if t.r.Races != nil {
@@ -445,26 +427,6 @@ func (o *EventTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m 
 		}
 	}
 
-	isImportBatchesDone, _ := eventRelImportBatchesCtx.Value(ctx)
-	if !isImportBatchesDone && o.r.ImportBatches != nil {
-		ctx = eventRelImportBatchesCtx.WithValue(ctx, true)
-		for _, r := range o.r.ImportBatches {
-			if r.o.alreadyPersisted {
-				m.R.ImportBatches = append(m.R.ImportBatches, r.o.Build())
-			} else {
-				rel6, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachImportBatches(ctx, exec, rel6...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	isRacesDone, _ := eventRelRacesCtx.Value(ctx)
 	if !isRacesDone && o.r.Races != nil {
 		ctx = eventRelRacesCtx.WithValue(ctx, true)
@@ -472,12 +434,12 @@ func (o *EventTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m 
 			if r.o.alreadyPersisted {
 				m.R.Races = append(m.R.Races, r.o.Build())
 			} else {
-				rel7, err := r.o.CreateMany(ctx, exec, r.number)
+				rel6, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachRaces(ctx, exec, rel7...)
+				err = m.AttachRaces(ctx, exec, rel6...)
 				if err != nil {
 					return err
 				}
@@ -1323,54 +1285,6 @@ func (m eventMods) AddExistingEventTeamStandings(existingModels ...*models.Event
 func (m eventMods) WithoutEventTeamStandings() EventMod {
 	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
 		o.r.EventTeamStandings = nil
-	})
-}
-
-func (m eventMods) WithImportBatches(number int, related *ImportBatchTemplate) EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		o.r.ImportBatches = []*eventRImportBatchesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m eventMods) WithNewImportBatches(number int, mods ...ImportBatchMod) EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		related := o.f.NewImportBatchWithContext(ctx, mods...)
-		m.WithImportBatches(number, related).Apply(ctx, o)
-	})
-}
-
-func (m eventMods) AddImportBatches(number int, related *ImportBatchTemplate) EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		o.r.ImportBatches = append(o.r.ImportBatches, &eventRImportBatchesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m eventMods) AddNewImportBatches(number int, mods ...ImportBatchMod) EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		related := o.f.NewImportBatchWithContext(ctx, mods...)
-		m.AddImportBatches(number, related).Apply(ctx, o)
-	})
-}
-
-func (m eventMods) AddExistingImportBatches(existingModels ...*models.ImportBatch) EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		for _, em := range existingModels {
-			o.r.ImportBatches = append(o.r.ImportBatches, &eventRImportBatchesR{
-				o: o.f.FromExistingImportBatch(em),
-			})
-		}
-	})
-}
-
-func (m eventMods) WithoutImportBatches() EventMod {
-	return EventModFunc(func(ctx context.Context, o *EventTemplate) {
-		o.r.ImportBatches = nil
 	})
 }
 
