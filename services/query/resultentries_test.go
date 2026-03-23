@@ -19,14 +19,12 @@ import (
 func seedImportBatch(
 	t *testing.T,
 	repo rootrepo.Repository,
-	eventID int32,
 	raceID int32,
 ) *models.ImportBatch {
 	t.Helper()
 
 	batch, err := repo.ImportBatches().Create(
 		context.Background(), &models.ImportBatchSetter{
-			EventID:         omit.From(eventID),
 			RaceID:          omit.From(raceID),
 			ImportFormat:    omit.From(mytypes.ImportFormat(conversion.ImportFormatCSV)),
 			Payload:         omit.From([]byte("{}")),
@@ -45,7 +43,7 @@ func seedImportBatch(
 func seedResultEntry(
 	t *testing.T,
 	repo rootrepo.Repository,
-	importBatchID, raceID int32,
+	raceID int32,
 	driverName string,
 	finishingPosition int32,
 ) *models.ResultEntry {
@@ -53,7 +51,6 @@ func seedResultEntry(
 
 	entry, err := repo.ResultEntries().Create(
 		context.Background(), &models.ResultEntrySetter{
-			ImportBatchID:     omit.From(importBatchID),
 			RaceID:            omit.From(raceID),
 			DriverName:        omit.From(driverName),
 			FinishingPosition: omit.From(finishingPosition),
@@ -80,9 +77,9 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	race := seedRace(t, repo, event.ID, "Feature Race", "race", 1)
-	batch := seedImportBatch(t, repo, event.ID, race.ID)
-	entry := seedResultEntry(t, repo, batch.ID, race.ID, "Alice", 1)
-
+	batch := seedImportBatch(t, repo, race.ID)
+	entry := seedResultEntry(t, repo, race.ID, "Alice", 1)
+	_ = batch // batch is not directly relevant to this test, but seeded for completeness
 	resp, err := svc.GetResultEntry(
 		context.Background(),
 		connect.NewRequest(&queryv1.GetResultEntryRequest{

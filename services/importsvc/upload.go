@@ -34,12 +34,11 @@ func (s *service) UploadResultsFile(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UploadResultsFile")
 
-	eventID := int32(req.Msg.GetEventId())
 	raceID := int32(req.Msg.GetRaceId())
 
-	if eventID == 0 || raceID == 0 {
+	if raceID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("event_id and race_id are required"))
+			errors.New("race_id is required"))
 	}
 	if len(req.Msg.GetPayload()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
@@ -62,10 +61,7 @@ func (s *service) UploadResultsFile(
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
-	if race.EventID != eventID {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("race %d does not belong to event %d", raceID, eventID))
-	}
+	eventID := race.EventID
 
 	// Load event to get current processing state.
 	event, err := s.repo.Events().LoadByID(ctx, eventID)
@@ -138,7 +134,6 @@ func (s *service) UploadResultsFile(
 		// TODO: support Upsert for ImportBatch
 		var createErr error
 		batch, createErr = s.repo.ImportBatches().Create(ctx, &models.ImportBatchSetter{
-			EventID:         omit.From(eventID),
 			RaceID:          omit.From(raceID),
 			ImportFormat:    omit.From(mytypes.ImportFormat(importFormat)),
 			Payload:         omit.From(req.Msg.GetPayload()),
@@ -214,7 +209,7 @@ func (s *service) UploadResultsFile(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "results file uploaded")
 	return connect.NewResponse(&importv1.UploadResultsFileResponse{
-		ImportBatchId:   uint32(batch.ID),
+		RaceId:          uint32(batch.RaceID),
 		ProcessingState: toState,
 	}), nil
 }
@@ -271,9 +266,9 @@ func (s *service) replaceResultEntriesForBatch(
 	entries []*models.ResultEntry,
 	execUser string,
 ) error {
-	existing, err := s.repo.ResultEntries().LoadByImportBatchID(ctx, batch.ID)
+	existing, err := s.repo.ResultEntries().LoadByRaceID(ctx, batch.RaceID)
 	if err != nil {
-		return fmt.Errorf("load result entries for import batch %d: %w", batch.ID, err)
+		return fmt.Errorf("load result entries for race %d: %w", batch.RaceID, err)
 	}
 
 	for _, item := range existing {
@@ -299,7 +294,6 @@ func buildResultEntryCreateSetter(
 	execUser string,
 ) *models.ResultEntrySetter {
 	setter := &models.ResultEntrySetter{
-		ImportBatchID:     omit.From(batch.ID),
 		RaceID:            omit.From(batch.RaceID),
 		DriverName:        omit.From(entry.DriverName),
 		FinishingPosition: omit.From(entry.FinishingPosition),

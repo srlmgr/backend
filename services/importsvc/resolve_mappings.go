@@ -29,22 +29,27 @@ func (s *service) ResolveMappings(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ResolveMappings")
 
-	importBatchID := int32(req.Msg.GetImportBatchId())
-	if importBatchID == 0 {
+	raceID := int32(req.Msg.GetRaceId())
+	if raceID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("import_batch_id is required"))
+			errors.New("race_id is required"))
 	}
 
 	execUser := s.execUser(ctx)
-	var resolvedMappings int32
+	var unresolvedMappings int32
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		batch, err := s.repo.ImportBatches().LoadByID(ctx, importBatchID)
+		batch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
 		if err != nil {
 			return err
 		}
 
-		event, err := s.repo.Events().LoadByID(ctx, batch.EventID)
+		race, err := s.repo.Races().LoadByID(ctx, batch.RaceID)
+		if err != nil {
+			return err
+		}
+
+		event, err := s.repo.Events().LoadByID(ctx, race.EventID)
 		if err != nil {
 			return err
 		}
@@ -69,12 +74,10 @@ func (s *service) ResolveMappings(
 			return fmt.Errorf("process import payload: %w", err)
 		}
 
-		existing, err := s.repo.ResultEntries().LoadByImportBatchID(ctx, importBatchID)
+		existing, err := s.repo.ResultEntries().LoadByRaceID(ctx, raceID)
 		if err != nil {
 			return err
 		}
-
-		mappingErrorsBefore := countMappingErrors(existing)
 
 		resolver := processor.NewResolver(
 			processor.NewRepositoryEntityResolver(s.repo, simulation),
@@ -111,9 +114,10 @@ func (s *service) ResolveMappings(
 		}
 
 		mappingErrorsAfter := countMappingErrors(resolved.Entries)
-		if mappingErrorsBefore > mappingErrorsAfter {
-			resolvedMappings = int32(mappingErrorsBefore - mappingErrorsAfter)
+		if mappingErrorsAfter < 0 {
+			mappingErrorsAfter = 0
 		}
+		unresolvedMappings = int32(mappingErrorsAfter)
 
 		return nil
 	}); txErr != nil {
@@ -124,7 +128,7 @@ func (s *service) ResolveMappings(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "mappings resolved")
 	return connect.NewResponse(&importv1.ResolveMappingsResponse{
-		ResolvedMappings: resolvedMappings,
+		UnresolvedMappings: unresolvedMappings,
 	}), nil
 }
 

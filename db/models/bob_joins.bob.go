@@ -36,7 +36,6 @@ type joins[Q dialect.Joinable] struct {
 	CarBrands                    joinSet[carBrandJoins[Q]]
 	CarManufacturers             joinSet[carManufacturerJoins[Q]]
 	CarModels                    joinSet[carModelJoins[Q]]
-	DriverSimulationIds          joinSet[driverSimulationIDJoins[Q]]
 	Drivers                      joinSet[driverJoins[Q]]
 	EventDriverStandings         joinSet[eventDriverStandingJoins[Q]]
 	EventProcessingAudits        joinSet[eventProcessingAuditJoins[Q]]
@@ -53,6 +52,7 @@ type joins[Q dialect.Joinable] struct {
 	Seasons                      joinSet[seasonJoins[Q]]
 	Serieses                     joinSet[seriesJoins[Q]]
 	SimulationCarAliases         joinSet[simulationCarAliasJoins[Q]]
+	SimulationDriverAliases      joinSet[simulationDriverAliasJoins[Q]]
 	SimulationTrackLayoutAliases joinSet[simulationTrackLayoutAliasJoins[Q]]
 	TeamDrivers                  joinSet[teamDriverJoins[Q]]
 	Teams                        joinSet[teamJoins[Q]]
@@ -74,7 +74,6 @@ func getJoins[Q dialect.Joinable]() joins[Q] {
 		CarBrands:                    buildJoinSet[carBrandJoins[Q]](CarBrands.Columns, buildCarBrandJoins),
 		CarManufacturers:             buildJoinSet[carManufacturerJoins[Q]](CarManufacturers.Columns, buildCarManufacturerJoins),
 		CarModels:                    buildJoinSet[carModelJoins[Q]](CarModels.Columns, buildCarModelJoins),
-		DriverSimulationIds:          buildJoinSet[driverSimulationIDJoins[Q]](DriverSimulationIds.Columns, buildDriverSimulationIDJoins),
 		Drivers:                      buildJoinSet[driverJoins[Q]](Drivers.Columns, buildDriverJoins),
 		EventDriverStandings:         buildJoinSet[eventDriverStandingJoins[Q]](EventDriverStandings.Columns, buildEventDriverStandingJoins),
 		EventProcessingAudits:        buildJoinSet[eventProcessingAuditJoins[Q]](EventProcessingAudits.Columns, buildEventProcessingAuditJoins),
@@ -91,6 +90,7 @@ func getJoins[Q dialect.Joinable]() joins[Q] {
 		Seasons:                      buildJoinSet[seasonJoins[Q]](Seasons.Columns, buildSeasonJoins),
 		Serieses:                     buildJoinSet[seriesJoins[Q]](Serieses.Columns, buildSeriesJoins),
 		SimulationCarAliases:         buildJoinSet[simulationCarAliasJoins[Q]](SimulationCarAliases.Columns, buildSimulationCarAliasJoins),
+		SimulationDriverAliases:      buildJoinSet[simulationDriverAliasJoins[Q]](SimulationDriverAliases.Columns, buildSimulationDriverAliasJoins),
 		SimulationTrackLayoutAliases: buildJoinSet[simulationTrackLayoutAliasJoins[Q]](SimulationTrackLayoutAliases.Columns, buildSimulationTrackLayoutAliasJoins),
 		TeamDrivers:                  buildJoinSet[teamDriverJoins[Q]](TeamDrivers.Columns, buildTeamDriverJoins),
 		Teams:                        buildJoinSet[teamJoins[Q]](Teams.Columns, buildTeamJoins),

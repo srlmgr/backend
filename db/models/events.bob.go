@@ -62,7 +62,6 @@ type eventR struct {
 	EventTeamStandings    EventTeamStandingSlice    // event_team_standings.event_team_standings_event_id_fk
 	Season                *Season                   // events.events_season_id_fk
 	TrackLayout           *TrackLayout              // events.events_track_layout_id_fk
-	ImportBatches         ImportBatchSlice          // import_batches.import_batches_event_id_fk
 	Races                 RaceSlice                 // races.races_event_id_fk
 }
 
@@ -776,30 +775,6 @@ func (os EventSlice) TrackLayout(mods ...bob.Mod[*dialect.SelectQuery]) TrackLay
 	)...)
 }
 
-// ImportBatches starts a query for related objects on import_batches
-func (o *Event) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
-	return ImportBatches.Query(append(mods,
-		sm.Where(ImportBatches.Columns.EventID.EQ(psql.Arg(o.ID))),
-	)...)
-}
-
-func (os EventSlice) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
-	pkID := make(pgtypes.Array[int32], 0, len(os))
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-		pkID = append(pkID, o.ID)
-	}
-	PKArgExpr := psql.Select(sm.Columns(
-		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
-	))
-
-	return ImportBatches.Query(append(mods,
-		sm.Where(psql.Group(ImportBatches.Columns.EventID).OP("IN", PKArgExpr)),
-	)...)
-}
-
 // Races starts a query for related objects on races
 func (o *Event) Races(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
 	return Races.Query(append(mods,
@@ -1192,74 +1167,6 @@ func (event0 *Event) AttachTrackLayout(ctx context.Context, exec bob.Executor, t
 	return nil
 }
 
-func insertEventImportBatches0(ctx context.Context, exec bob.Executor, importBatches1 []*ImportBatchSetter, event0 *Event) (ImportBatchSlice, error) {
-	for i := range importBatches1 {
-		importBatches1[i].EventID = omit.From(event0.ID)
-	}
-
-	ret, err := ImportBatches.Insert(bob.ToMods(importBatches1...)).All(ctx, exec)
-	if err != nil {
-		return ret, fmt.Errorf("insertEventImportBatches0: %w", err)
-	}
-
-	return ret, nil
-}
-
-func attachEventImportBatches0(ctx context.Context, exec bob.Executor, count int, importBatches1 ImportBatchSlice, event0 *Event) (ImportBatchSlice, error) {
-	setter := &ImportBatchSetter{
-		EventID: omit.From(event0.ID),
-	}
-
-	err := importBatches1.UpdateAll(ctx, exec, *setter)
-	if err != nil {
-		return nil, fmt.Errorf("attachEventImportBatches0: %w", err)
-	}
-
-	return importBatches1, nil
-}
-
-func (event0 *Event) InsertImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatchSetter) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-
-	importBatches1, err := insertEventImportBatches0(ctx, exec, related, event0)
-	if err != nil {
-		return err
-	}
-
-	event0.R.ImportBatches = append(event0.R.ImportBatches, importBatches1...)
-
-	for _, rel := range importBatches1 {
-		rel.R.Event = event0
-	}
-	return nil
-}
-
-func (event0 *Event) AttachImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatch) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	importBatches1 := ImportBatchSlice(related)
-
-	_, err = attachEventImportBatches0(ctx, exec, len(related), importBatches1, event0)
-	if err != nil {
-		return err
-	}
-
-	event0.R.ImportBatches = append(event0.R.ImportBatches, importBatches1...)
-
-	for _, rel := range related {
-		rel.R.Event = event0
-	}
-
-	return nil
-}
-
 func insertEventRaces0(ctx context.Context, exec bob.Executor, races1 []*RaceSetter, event0 *Event) (RaceSlice, error) {
 	for i := range races1 {
 		races1[i].EventID = omit.From(event0.ID)
@@ -1452,20 +1359,6 @@ func (o *Event) Preload(name string, retrieved any) error {
 			rel.R.Events = EventSlice{o}
 		}
 		return nil
-	case "ImportBatches":
-		rels, ok := retrieved.(ImportBatchSlice)
-		if !ok {
-			return fmt.Errorf("event cannot load %T as %q", retrieved, name)
-		}
-
-		o.R.ImportBatches = rels
-
-		for _, rel := range rels {
-			if rel != nil {
-				rel.R.Event = o
-			}
-		}
-		return nil
 	case "Races":
 		rels, ok := retrieved.(RaceSlice)
 		if !ok {
@@ -1528,7 +1421,6 @@ type eventThenLoader[Q orm.Loadable] struct {
 	EventTeamStandings    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Season                func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	TrackLayout           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	ImportBatches         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Races                 func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
@@ -1550,9 +1442,6 @@ func buildEventThenLoader[Q orm.Loadable]() eventThenLoader[Q] {
 	}
 	type TrackLayoutLoadInterface interface {
 		LoadTrackLayout(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
-	}
-	type ImportBatchesLoadInterface interface {
-		LoadImportBatches(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type RacesLoadInterface interface {
 		LoadRaces(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1593,12 +1482,6 @@ func buildEventThenLoader[Q orm.Loadable]() eventThenLoader[Q] {
 			"TrackLayout",
 			func(ctx context.Context, exec bob.Executor, retrieved TrackLayoutLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadTrackLayout(ctx, exec, mods...)
-			},
-		),
-		ImportBatches: thenLoadBuilder[Q](
-			"ImportBatches",
-			func(ctx context.Context, exec bob.Executor, retrieved ImportBatchesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
-				return retrieved.LoadImportBatches(ctx, exec, mods...)
 			},
 		),
 		Races: thenLoadBuilder[Q](
@@ -1958,67 +1841,6 @@ func (os EventSlice) LoadTrackLayout(ctx context.Context, exec bob.Executor, mod
 	return nil
 }
 
-// LoadImportBatches loads the event's ImportBatches into the .R struct
-func (o *Event) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if o == nil {
-		return nil
-	}
-
-	// Reset the relationship
-	o.R.ImportBatches = nil
-
-	related, err := o.ImportBatches(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, rel := range related {
-		rel.R.Event = o
-	}
-
-	o.R.ImportBatches = related
-	return nil
-}
-
-// LoadImportBatches loads the event's ImportBatches into the .R struct
-func (os EventSlice) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if len(os) == 0 {
-		return nil
-	}
-
-	importBatches, err := os.ImportBatches(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		o.R.ImportBatches = nil
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		for _, rel := range importBatches {
-
-			if !(o.ID == rel.EventID) {
-				continue
-			}
-
-			rel.R.Event = o
-
-			o.R.ImportBatches = append(o.R.ImportBatches, rel)
-		}
-	}
-
-	return nil
-}
-
 // LoadRaces loads the event's Races into the .R struct
 func (o *Event) LoadRaces(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
@@ -2088,7 +1910,6 @@ type eventJoins[Q dialect.Joinable] struct {
 	EventTeamStandings    modAs[Q, eventTeamStandingColumns]
 	Season                modAs[Q, seasonColumns]
 	TrackLayout           modAs[Q, trackLayoutColumns]
-	ImportBatches         modAs[Q, importBatchColumns]
 	Races                 modAs[Q, raceColumns]
 }
 
@@ -2177,20 +1998,6 @@ func buildEventJoins[Q dialect.Joinable](cols eventColumns, typ string) eventJoi
 				{
 					mods = append(mods, dialect.Join[Q](typ, TrackLayouts.Name().As(to.Alias())).On(
 						to.ID.EQ(cols.TrackLayoutID),
-					))
-				}
-
-				return mods
-			},
-		},
-		ImportBatches: modAs[Q, importBatchColumns]{
-			c: ImportBatches.Columns,
-			f: func(to importBatchColumns) bob.Mod[Q] {
-				mods := make(mods.QueryMods[Q], 0, 1)
-
-				{
-					mods = append(mods, dialect.Join[Q](typ, ImportBatches.Name().As(to.Alias())).On(
-						to.EventID.EQ(cols.ID),
 					))
 				}
 

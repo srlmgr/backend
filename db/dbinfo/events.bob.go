@@ -303,7 +303,7 @@ var Events = Table[
 				Columns: []string{"processing_state"},
 				Comment: "",
 			},
-			Expression: "(processing_state = ANY (ARRAY['draft'::text, 'raw_imported'::text, 'preprocessed'::text, 'driver_entries_computed'::text, 'team_entries_computed'::text, 'finalized'::text]))",
+			Expression: "(processing_state = ANY (ARRAY['draft'::text, 'raw_imported'::text, 'mapping_error'::text, 'pre_processed'::text, 'driver_entries_computed'::text, 'team_entries_computed'::text, 'finalized'::text]))",
 		},
 		EventsStatusCheck: check{
 			constraint: constraint{

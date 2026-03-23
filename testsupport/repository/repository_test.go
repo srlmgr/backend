@@ -9,13 +9,13 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-func TestDriverSimulationIDsFindBySimID(t *testing.T) {
+func TestSimulationDriverAliasesFindBySimID(t *testing.T) {
 	t.Parallel()
 
 	repo := New()
 	ctx := context.Background()
 
-	item, err := repo.Drivers().DriverSimulationIDs().FindBySimID(ctx, 1, "alex-ir-01")
+	item, err := repo.Drivers().SimulationDriverAliases().FindBySimID(ctx, 1, "alex-ir-01")
 	if err != nil {
 		t.Fatalf("FindBySimID returned error: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestDriverSimulationIDsFindBySimID(t *testing.T) {
 		t.Fatalf("unexpected item id: got %d want 1", item.ID)
 	}
 
-	_, err = repo.Drivers().DriverSimulationIDs().FindBySimID(ctx, 2, "alex-ir-01")
+	_, err = repo.Drivers().SimulationDriverAliases().FindBySimID(ctx, 2, "alex-ir-01")
 	if !errors.Is(err, repoerrors.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound for wrong simulation, got %v", err)
 	}

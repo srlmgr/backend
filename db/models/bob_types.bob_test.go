@@ -31,9 +31,6 @@ var _ bob.HookableType = &CarManufacturer{}
 // Make sure the type CarModel runs hooks after queries
 var _ bob.HookableType = &CarModel{}
 
-// Make sure the type DriverSimulationID runs hooks after queries
-var _ bob.HookableType = &DriverSimulationID{}
-
 // Make sure the type Driver runs hooks after queries
 var _ bob.HookableType = &Driver{}
 
@@ -81,6 +78,9 @@ var _ bob.HookableType = &Series{}
 
 // Make sure the type SimulationCarAlias runs hooks after queries
 var _ bob.HookableType = &SimulationCarAlias{}
+
+// Make sure the type SimulationDriverAlias runs hooks after queries
+var _ bob.HookableType = &SimulationDriverAlias{}
 
 // Make sure the type SimulationTrackLayoutAlias runs hooks after queries
 var _ bob.HookableType = &SimulationTrackLayoutAlias{}

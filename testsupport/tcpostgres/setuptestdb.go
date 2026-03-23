@@ -93,7 +93,7 @@ func ClearAllTables(pool *pgxpool.Pool) error {
 		"seasons",
 		"simulation_track_layout_aliases",
 		"car_models",
-		"driver_simulation_ids",
+		"simulation_driver_aliases",
 		"series",
 		"track_layouts",
 		"car_brands",

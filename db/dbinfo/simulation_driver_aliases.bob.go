@@ -5,20 +5,20 @@ package dbinfo
 
 import "github.com/aarondl/opt/null"
 
-var DriverSimulationIds = Table[
-	driverSimulationIDColumns,
-	driverSimulationIDIndexes,
-	driverSimulationIDForeignKeys,
-	driverSimulationIDUniques,
-	driverSimulationIDChecks,
+var SimulationDriverAliases = Table[
+	simulationDriverAliasColumns,
+	simulationDriverAliasIndexes,
+	simulationDriverAliasForeignKeys,
+	simulationDriverAliasUniques,
+	simulationDriverAliasChecks,
 ]{
 	Schema: "",
-	Name:   "driver_simulation_ids",
-	Columns: driverSimulationIDColumns{
+	Name:   "simulation_driver_aliases",
+	Columns: simulationDriverAliasColumns{
 		ID: column{
 			Name:      "id",
 			DBType:    "integer",
-			Default:   "nextval('driver_simulation_ids_id_seq'::regclass)",
+			Default:   "nextval('simulation_driver_aliases_id_seq'::regclass)",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -88,10 +88,10 @@ var DriverSimulationIds = Table[
 			AutoIncr:  false,
 		},
 	},
-	Indexes: driverSimulationIDIndexes{
-		DriverSimulationIdsPkey: index{
+	Indexes: simulationDriverAliasIndexes{
+		SimulationDriverAliasesPkey: index{
 			Type: "btree",
-			Name: "driver_simulation_ids_pkey",
+			Name: "simulation_driver_aliases_pkey",
 			Columns: []indexColumn{
 				{
 					Name:         "id",
@@ -106,9 +106,43 @@ var DriverSimulationIds = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		DriverSimulationIdsDriverIDSimulationIDUnique: index{
+		IdxSimulationDriverAliasesDriverID: index{
 			Type: "btree",
-			Name: "driver_simulation_ids_driver_id_simulation_id_unique",
+			Name: "idx_simulation_driver_aliases_driver_id",
+			Columns: []indexColumn{
+				{
+					Name:         "driver_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxSimulationDriverAliasesSimulationID: index{
+			Type: "btree",
+			Name: "idx_simulation_driver_aliases_simulation_id",
+			Columns: []indexColumn{
+				{
+					Name:         "simulation_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		SimulationDriverAliasesDriverIDSimulationIDUnique: index{
+			Type: "btree",
+			Name: "simulation_driver_aliases_driver_id_simulation_id_unique",
 			Columns: []indexColumn{
 				{
 					Name:         "driver_id",
@@ -128,9 +162,9 @@ var DriverSimulationIds = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		DriverSimulationIdsSimulationIDDriverKeyUnique: index{
+		SimulationDriverAliasesSimulationIDDriverKeyUnique: index{
 			Type: "btree",
-			Name: "driver_simulation_ids_simulation_id_driver_key_unique",
+			Name: "simulation_driver_aliases_simulation_id_driver_key_unique",
 			Columns: []indexColumn{
 				{
 					Name:         "simulation_id",
@@ -150,59 +184,25 @@ var DriverSimulationIds = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxDriverSimulationIdsDriverID: index{
-			Type: "btree",
-			Name: "idx_driver_simulation_ids_driver_id",
-			Columns: []indexColumn{
-				{
-					Name:         "driver_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		IdxDriverSimulationIdsSimulationID: index{
-			Type: "btree",
-			Name: "idx_driver_simulation_ids_simulation_id",
-			Columns: []indexColumn{
-				{
-					Name:         "simulation_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 	},
 	PrimaryKey: &constraint{
-		Name:    "driver_simulation_ids_pkey",
+		Name:    "simulation_driver_aliases_pkey",
 		Columns: []string{"id"},
 		Comment: "",
 	},
-	ForeignKeys: driverSimulationIDForeignKeys{
-		DriverSimulationIdsDriverSimulationIdsDriverIDFK: foreignKey{
+	ForeignKeys: simulationDriverAliasForeignKeys{
+		SimulationDriverAliasesSimulationDriverAliasesDriverIDFK: foreignKey{
 			constraint: constraint{
-				Name:    "driver_simulation_ids.driver_simulation_ids_driver_id_fk",
+				Name:    "simulation_driver_aliases.simulation_driver_aliases_driver_id_fk",
 				Columns: []string{"driver_id"},
 				Comment: "",
 			},
 			ForeignTable:   "drivers",
 			ForeignColumns: []string{"id"},
 		},
-		DriverSimulationIdsDriverSimulationIdsSimulationIDFK: foreignKey{
+		SimulationDriverAliasesSimulationDriverAliasesSimulationIDFK: foreignKey{
 			constraint: constraint{
-				Name:    "driver_simulation_ids.driver_simulation_ids_simulation_id_fk",
+				Name:    "simulation_driver_aliases.simulation_driver_aliases_simulation_id_fk",
 				Columns: []string{"simulation_id"},
 				Comment: "",
 			},
@@ -210,14 +210,14 @@ var DriverSimulationIds = Table[
 			ForeignColumns: []string{"id"},
 		},
 	},
-	Uniques: driverSimulationIDUniques{
-		DriverSimulationIdsDriverIDSimulationIDUnique: constraint{
-			Name:    "driver_simulation_ids_driver_id_simulation_id_unique",
+	Uniques: simulationDriverAliasUniques{
+		SimulationDriverAliasesDriverIDSimulationIDUnique: constraint{
+			Name:    "simulation_driver_aliases_driver_id_simulation_id_unique",
 			Columns: []string{"driver_id", "simulation_id"},
 			Comment: "",
 		},
-		DriverSimulationIdsSimulationIDDriverKeyUnique: constraint{
-			Name:    "driver_simulation_ids_simulation_id_driver_key_unique",
+		SimulationDriverAliasesSimulationIDDriverKeyUnique: constraint{
+			Name:    "simulation_driver_aliases_simulation_id_driver_key_unique",
 			Columns: []string{"simulation_id", "simulation_driver_id"},
 			Comment: "",
 		},
@@ -226,7 +226,7 @@ var DriverSimulationIds = Table[
 	Comment: "",
 }
 
-type driverSimulationIDColumns struct {
+type simulationDriverAliasColumns struct {
 	ID                 column
 	DriverID           column
 	SimulationID       column
@@ -237,50 +237,50 @@ type driverSimulationIDColumns struct {
 	UpdatedBy          column
 }
 
-func (c driverSimulationIDColumns) AsSlice() []column {
+func (c simulationDriverAliasColumns) AsSlice() []column {
 	return []column{
 		c.ID, c.DriverID, c.SimulationID, c.SimulationDriverID, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
-type driverSimulationIDIndexes struct {
-	DriverSimulationIdsPkey                        index
-	DriverSimulationIdsDriverIDSimulationIDUnique  index
-	DriverSimulationIdsSimulationIDDriverKeyUnique index
-	IdxDriverSimulationIdsDriverID                 index
-	IdxDriverSimulationIdsSimulationID             index
+type simulationDriverAliasIndexes struct {
+	SimulationDriverAliasesPkey                        index
+	IdxSimulationDriverAliasesDriverID                 index
+	IdxSimulationDriverAliasesSimulationID             index
+	SimulationDriverAliasesDriverIDSimulationIDUnique  index
+	SimulationDriverAliasesSimulationIDDriverKeyUnique index
 }
 
-func (i driverSimulationIDIndexes) AsSlice() []index {
+func (i simulationDriverAliasIndexes) AsSlice() []index {
 	return []index{
-		i.DriverSimulationIdsPkey, i.DriverSimulationIdsDriverIDSimulationIDUnique, i.DriverSimulationIdsSimulationIDDriverKeyUnique, i.IdxDriverSimulationIdsDriverID, i.IdxDriverSimulationIdsSimulationID,
+		i.SimulationDriverAliasesPkey, i.IdxSimulationDriverAliasesDriverID, i.IdxSimulationDriverAliasesSimulationID, i.SimulationDriverAliasesDriverIDSimulationIDUnique, i.SimulationDriverAliasesSimulationIDDriverKeyUnique,
 	}
 }
 
-type driverSimulationIDForeignKeys struct {
-	DriverSimulationIdsDriverSimulationIdsDriverIDFK     foreignKey
-	DriverSimulationIdsDriverSimulationIdsSimulationIDFK foreignKey
+type simulationDriverAliasForeignKeys struct {
+	SimulationDriverAliasesSimulationDriverAliasesDriverIDFK     foreignKey
+	SimulationDriverAliasesSimulationDriverAliasesSimulationIDFK foreignKey
 }
 
-func (f driverSimulationIDForeignKeys) AsSlice() []foreignKey {
+func (f simulationDriverAliasForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.DriverSimulationIdsDriverSimulationIdsDriverIDFK, f.DriverSimulationIdsDriverSimulationIdsSimulationIDFK,
+		f.SimulationDriverAliasesSimulationDriverAliasesDriverIDFK, f.SimulationDriverAliasesSimulationDriverAliasesSimulationIDFK,
 	}
 }
 
-type driverSimulationIDUniques struct {
-	DriverSimulationIdsDriverIDSimulationIDUnique  constraint
-	DriverSimulationIdsSimulationIDDriverKeyUnique constraint
+type simulationDriverAliasUniques struct {
+	SimulationDriverAliasesDriverIDSimulationIDUnique  constraint
+	SimulationDriverAliasesSimulationIDDriverKeyUnique constraint
 }
 
-func (u driverSimulationIDUniques) AsSlice() []constraint {
+func (u simulationDriverAliasUniques) AsSlice() []constraint {
 	return []constraint{
-		u.DriverSimulationIdsDriverIDSimulationIDUnique, u.DriverSimulationIdsSimulationIDDriverKeyUnique,
+		u.SimulationDriverAliasesDriverIDSimulationIDUnique, u.SimulationDriverAliasesSimulationIDDriverKeyUnique,
 	}
 }
 
-type driverSimulationIDChecks struct{}
+type simulationDriverAliasChecks struct{}
 
-func (c driverSimulationIDChecks) AsSlice() []check {
+func (c simulationDriverAliasChecks) AsSlice() []check {
 	return []check{}
 }

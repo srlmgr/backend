@@ -42,7 +42,6 @@ func (mods ResultEntryModSlice) Apply(ctx context.Context, n *ResultEntryTemplat
 type ResultEntryTemplate struct {
 	ID                func() int32
 	FrontendID        func() uuid.UUID
-	ImportBatchID     func() int32
 	RaceID            func() int32
 	DriverID          func() null.Val[int32]
 	DriverName        func() string
@@ -72,7 +71,6 @@ type resultEntryR struct {
 	SourceResultEntryBookingEntries []*resultEntryRSourceResultEntryBookingEntriesR
 	CarModel                        *resultEntryRCarModelR
 	Driver                          *resultEntryRDriverR
-	ImportBatch                     *resultEntryRImportBatchR
 	Race                            *resultEntryRRaceR
 }
 
@@ -85,9 +83,6 @@ type resultEntryRCarModelR struct {
 }
 type resultEntryRDriverR struct {
 	o *DriverTemplate
-}
-type resultEntryRImportBatchR struct {
-	o *ImportBatchTemplate
 }
 type resultEntryRRaceR struct {
 	o *RaceTemplate
@@ -130,13 +125,6 @@ func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
 		o.R.Driver = rel
 	}
 
-	if t.r.ImportBatch != nil {
-		rel := t.r.ImportBatch.o.Build()
-		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
-		o.ImportBatchID = rel.ID // h2
-		o.R.ImportBatch = rel
-	}
-
 	if t.r.Race != nil {
 		rel := t.r.Race.o.Build()
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
@@ -157,10 +145,6 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 	if o.FrontendID != nil {
 		val := o.FrontendID()
 		m.FrontendID = omit.From(val)
-	}
-	if o.ImportBatchID != nil {
-		val := o.ImportBatchID()
-		m.ImportBatchID = omit.From(val)
 	}
 	if o.RaceID != nil {
 		val := o.RaceID()
@@ -262,9 +246,6 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.FrontendID != nil {
 		m.FrontendID = o.FrontendID()
 	}
-	if o.ImportBatchID != nil {
-		m.ImportBatchID = o.ImportBatchID()
-	}
 	if o.RaceID != nil {
 		m.RaceID = o.RaceID()
 	}
@@ -339,10 +320,6 @@ func (o ResultEntryTemplate) BuildMany(number int) models.ResultEntrySlice {
 }
 
 func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
-	if !(m.ImportBatchID.IsValue()) {
-		val := random_int32(nil)
-		m.ImportBatchID = omit.From(val)
-	}
 	if !(m.RaceID.IsValue()) {
 		val := random_int32(nil)
 		m.RaceID = omit.From(val)
@@ -431,47 +408,29 @@ func (o *ResultEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 	opt := o.BuildSetter()
 	ensureCreatableResultEntry(opt)
 
-	if o.r.ImportBatch == nil {
-		ResultEntryMods.WithNewImportBatch().Apply(ctx, o)
-	}
-
-	var rel3 *models.ImportBatch
-
-	if o.r.ImportBatch.o.alreadyPersisted {
-		rel3 = o.r.ImportBatch.o.Build()
-	} else {
-		rel3, err = o.r.ImportBatch.o.Create(ctx, exec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	opt.ImportBatchID = omit.From(rel3.ID)
-
 	if o.r.Race == nil {
 		ResultEntryMods.WithNewRace().Apply(ctx, o)
 	}
 
-	var rel4 *models.Race
+	var rel3 *models.Race
 
 	if o.r.Race.o.alreadyPersisted {
-		rel4 = o.r.Race.o.Build()
+		rel3 = o.r.Race.o.Build()
 	} else {
-		rel4, err = o.r.Race.o.Create(ctx, exec)
+		rel3, err = o.r.Race.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceID = omit.From(rel4.ID)
+	opt.RaceID = omit.From(rel3.ID)
 
 	m, err := models.ResultEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.ImportBatch = rel3
-	m.R.Race = rel4
+	m.R.Race = rel3
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -552,7 +511,6 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModSlice{
 		ResultEntryMods.RandomID(f),
 		ResultEntryMods.RandomFrontendID(f),
-		ResultEntryMods.RandomImportBatchID(f),
 		ResultEntryMods.RandomRaceID(f),
 		ResultEntryMods.RandomDriverID(f),
 		ResultEntryMods.RandomDriverName(f),
@@ -632,37 +590,6 @@ func (m resultEntryMods) RandomFrontendID(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.FrontendID = func() uuid.UUID {
 			return random_uuid_UUID(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m resultEntryMods) ImportBatchID(val int32) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.ImportBatchID = func() int32 { return val }
-	})
-}
-
-// Set the Column from the function
-func (m resultEntryMods) ImportBatchIDFunc(f func() int32) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.ImportBatchID = f
-	})
-}
-
-// Clear any values for the column
-func (m resultEntryMods) UnsetImportBatchID() ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.ImportBatchID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m resultEntryMods) RandomImportBatchID(f *faker.Faker) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.ImportBatchID = func() int32 {
-			return random_int32(f)
 		}
 	})
 }
@@ -1419,11 +1346,6 @@ func (m resultEntryMods) WithParentsCascading() ResultEntryMod {
 		}
 		{
 
-			related := o.f.NewImportBatchWithContext(ctx, ImportBatchMods.WithParentsCascading())
-			m.WithImportBatch(related).Apply(ctx, o)
-		}
-		{
-
 			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
 			m.WithRace(related).Apply(ctx, o)
 		}
@@ -1487,36 +1409,6 @@ func (m resultEntryMods) WithExistingDriver(em *models.Driver) ResultEntryMod {
 func (m resultEntryMods) WithoutDriver() ResultEntryMod {
 	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
 		o.r.Driver = nil
-	})
-}
-
-func (m resultEntryMods) WithImportBatch(rel *ImportBatchTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.ImportBatch = &resultEntryRImportBatchR{
-			o: rel,
-		}
-	})
-}
-
-func (m resultEntryMods) WithNewImportBatch(mods ...ImportBatchMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewImportBatchWithContext(ctx, mods...)
-
-		m.WithImportBatch(related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) WithExistingImportBatch(em *models.ImportBatch) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.ImportBatch = &resultEntryRImportBatchR{
-			o: o.f.FromExistingImportBatch(em),
-		}
-	})
-}
-
-func (m resultEntryMods) WithoutImportBatch() ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.ImportBatch = nil
 	})
 }
 

@@ -21,7 +21,6 @@ func Where[Q psql.Filterable]() struct {
 	CarBrands                    carBrandWhere[Q]
 	CarManufacturers             carManufacturerWhere[Q]
 	CarModels                    carModelWhere[Q]
-	DriverSimulationIds          driverSimulationIDWhere[Q]
 	Drivers                      driverWhere[Q]
 	EventDriverStandings         eventDriverStandingWhere[Q]
 	EventProcessingAudits        eventProcessingAuditWhere[Q]
@@ -38,6 +37,7 @@ func Where[Q psql.Filterable]() struct {
 	Seasons                      seasonWhere[Q]
 	Serieses                     seriesWhere[Q]
 	SimulationCarAliases         simulationCarAliasWhere[Q]
+	SimulationDriverAliases      simulationDriverAliasWhere[Q]
 	SimulationTrackLayoutAliases simulationTrackLayoutAliasWhere[Q]
 	TeamDrivers                  teamDriverWhere[Q]
 	Teams                        teamWhere[Q]
@@ -49,7 +49,6 @@ func Where[Q psql.Filterable]() struct {
 		CarBrands                    carBrandWhere[Q]
 		CarManufacturers             carManufacturerWhere[Q]
 		CarModels                    carModelWhere[Q]
-		DriverSimulationIds          driverSimulationIDWhere[Q]
 		Drivers                      driverWhere[Q]
 		EventDriverStandings         eventDriverStandingWhere[Q]
 		EventProcessingAudits        eventProcessingAuditWhere[Q]
@@ -66,6 +65,7 @@ func Where[Q psql.Filterable]() struct {
 		Seasons                      seasonWhere[Q]
 		Serieses                     seriesWhere[Q]
 		SimulationCarAliases         simulationCarAliasWhere[Q]
+		SimulationDriverAliases      simulationDriverAliasWhere[Q]
 		SimulationTrackLayoutAliases simulationTrackLayoutAliasWhere[Q]
 		TeamDrivers                  teamDriverWhere[Q]
 		Teams                        teamWhere[Q]
@@ -76,7 +76,6 @@ func Where[Q psql.Filterable]() struct {
 		CarBrands:                    buildCarBrandWhere[Q](CarBrands.Columns),
 		CarManufacturers:             buildCarManufacturerWhere[Q](CarManufacturers.Columns),
 		CarModels:                    buildCarModelWhere[Q](CarModels.Columns),
-		DriverSimulationIds:          buildDriverSimulationIDWhere[Q](DriverSimulationIds.Columns),
 		Drivers:                      buildDriverWhere[Q](Drivers.Columns),
 		EventDriverStandings:         buildEventDriverStandingWhere[Q](EventDriverStandings.Columns),
 		EventProcessingAudits:        buildEventProcessingAuditWhere[Q](EventProcessingAudits.Columns),
@@ -93,6 +92,7 @@ func Where[Q psql.Filterable]() struct {
 		Seasons:                      buildSeasonWhere[Q](Seasons.Columns),
 		Serieses:                     buildSeriesWhere[Q](Serieses.Columns),
 		SimulationCarAliases:         buildSimulationCarAliasWhere[Q](SimulationCarAliases.Columns),
+		SimulationDriverAliases:      buildSimulationDriverAliasWhere[Q](SimulationDriverAliases.Columns),
 		SimulationTrackLayoutAliases: buildSimulationTrackLayoutAliasWhere[Q](SimulationTrackLayoutAliases.Columns),
 		TeamDrivers:                  buildTeamDriverWhere[Q](TeamDrivers.Columns),
 		Teams:                        buildTeamWhere[Q](Teams.Columns),

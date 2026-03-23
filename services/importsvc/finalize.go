@@ -73,10 +73,9 @@ func (s *service) FinalizeEventProcessing(
 	}
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		// Finalize the latest import batch for each race.
+		// Finalize the import batch for each race.
 		for _, race := range races {
-			batch, loadErr := s.repo.ImportBatches().
-				LoadLatestByEventIDAndRaceID(ctx, eventID, race.ID)
+			batch, loadErr := s.repo.ImportBatches().LoadByRaceID(ctx, race.ID)
 			if loadErr != nil {
 				// If no batch exists for this race, skip it.
 				continue

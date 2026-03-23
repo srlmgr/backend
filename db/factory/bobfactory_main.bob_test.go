@@ -104,30 +104,6 @@ func TestCreateCarModel(t *testing.T) {
 	}
 }
 
-func TestCreateDriverSimulationID(t *testing.T) {
-	if testDB == nil {
-		t.Skip("skipping test, no DSN provided")
-	}
-
-	ctx, cancel := context.WithCancel(t.Context())
-	t.Cleanup(cancel)
-
-	tx, err := testDB.Begin(ctx)
-	if err != nil {
-		t.Fatalf("Error starting transaction: %v", err)
-	}
-
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
-			t.Fatalf("Error rolling back transaction: %v", err)
-		}
-	}()
-
-	if _, err := New().NewDriverSimulationIDWithContext(ctx).Create(ctx, tx); err != nil {
-		t.Fatalf("Error creating DriverSimulationID: %v", err)
-	}
-}
-
 func TestCreateDriver(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -509,6 +485,30 @@ func TestCreateSimulationCarAlias(t *testing.T) {
 
 	if _, err := New().NewSimulationCarAliasWithContext(ctx).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating SimulationCarAlias: %v", err)
+	}
+}
+
+func TestCreateSimulationDriverAlias(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSimulationDriverAliasWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SimulationDriverAlias: %v", err)
 	}
 }
 
