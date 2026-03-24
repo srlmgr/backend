@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -156,14 +157,10 @@ func (r *seasonDriverStandingsRepository) Update(
 	id int32,
 	input *models.SeasonDriverStandingSetter,
 ) (*models.SeasonDriverStanding, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.SeasonDriverStandings.Update(
+		input.UpdateMod(),
+		um.Where(models.SeasonDriverStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *seasonTeamStandingsRepository) LoadByID(
@@ -196,14 +193,10 @@ func (r *seasonTeamStandingsRepository) Update(
 	id int32,
 	input *models.SeasonTeamStandingSetter,
 ) (*models.SeasonTeamStanding, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.SeasonTeamStandings.Update(
+		input.UpdateMod(),
+		um.Where(models.SeasonTeamStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *eventDriverStandingsRepository) LoadByID(
@@ -236,14 +229,10 @@ func (r *eventDriverStandingsRepository) Update(
 	id int32,
 	input *models.EventDriverStandingSetter,
 ) (*models.EventDriverStanding, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.EventDriverStandings.Update(
+		input.UpdateMod(),
+		um.Where(models.EventDriverStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *eventTeamStandingsRepository) LoadByID(
@@ -276,14 +265,10 @@ func (r *eventTeamStandingsRepository) Update(
 	id int32,
 	input *models.EventTeamStandingSetter,
 ) (*models.EventTeamStanding, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.EventTeamStandings.Update(
+		input.UpdateMod(),
+		um.Where(models.EventTeamStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *seasonDriverStandingsRepository) getExecutor(ctx context.Context) bob.Executor {

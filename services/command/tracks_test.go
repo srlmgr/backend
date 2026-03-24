@@ -1,4 +1,4 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -8,8 +8,10 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
+	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/db/models"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
@@ -335,6 +337,92 @@ func TestDeleteTrackFailureTransactionError(t *testing.T) {
 	}
 	if !errors.Is(err, txErr) {
 		t.Fatalf("expected wrapped transaction error: %v", err)
+	}
+}
+
+func TestSetSimulationTrackLayoutAliasesFlushAndFill(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
+
+	sim := seedSimulation(t, repo, "iRacing")
+	track := seedTrack(t, repo, "Alias Track")
+	layout := seedTrackLayout(t, repo, track.ID, "Alias Layout")
+	otherLayout := seedTrackLayout(t, repo, track.ID, "Other Alias Layout")
+
+	_, err := repo.Tracks().
+		SimulationTrackLayoutAliases().
+		Create(ctx, &models.SimulationTrackLayoutAliasSetter{
+			TrackLayoutID: omit.From(layout.ID),
+			SimulationID:  omit.From(sim.ID),
+			ExternalName:  omit.From("old-layout-alias"),
+			CreatedBy:     omit.From(testUserSeed),
+			UpdatedBy:     omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed old track layout alias: %v", err)
+	}
+
+	_, err = repo.Tracks().
+		SimulationTrackLayoutAliases().
+		Create(ctx, &models.SimulationTrackLayoutAliasSetter{
+			TrackLayoutID: omit.From(otherLayout.ID),
+			SimulationID:  omit.From(sim.ID),
+			ExternalName:  omit.From("other-layout-alias"),
+			CreatedBy:     omit.From(testUserSeed),
+			UpdatedBy:     omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed other track layout alias: %v", err)
+	}
+
+	resp, err := svc.SetSimulationTrackLayoutAliases(
+		ctx,
+		connect.NewRequest(&v1.SetSimulationTrackLayoutAliasesRequest{
+			TrackLayoutId: uint32(layout.ID),
+			SimulationId:  uint32(sim.ID),
+			ExternalName:  []string{"new-layout-alias-1"},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Msg.GetUpdated() {
+		t.Fatal("expected updated=true")
+	}
+
+	_, err = repo.Tracks().
+		SimulationTrackLayoutAliases().
+		FindBySimID(ctx, sim.ID, "old-layout-alias")
+	if !errors.Is(err, repoerrors.ErrNotFound) {
+		t.Fatalf("expected old track layout alias to be removed, got: %v", err)
+	}
+
+	first, err := repo.Tracks().
+		SimulationTrackLayoutAliases().
+		FindBySimID(ctx, sim.ID, "new-layout-alias-1")
+	if err != nil {
+		t.Fatalf("failed to load first new track layout alias: %v", err)
+	}
+	if first.TrackLayoutID != layout.ID {
+		t.Fatalf(
+			"unexpected track_layout_id for first alias: got %d want %d",
+			first.TrackLayoutID,
+			layout.ID,
+		)
+	}
+
+	other, err := repo.Tracks().
+		SimulationTrackLayoutAliases().
+		FindBySimID(ctx, sim.ID, "other-layout-alias")
+	if err != nil {
+		t.Fatalf("expected other track layout alias to remain: %v", err)
+	}
+	if other.TrackLayoutID != otherLayout.ID {
+		t.Fatalf(
+			"unexpected track_layout_id for other alias: got %d want %d",
+			other.TrackLayoutID,
+			otherLayout.ID,
+		)
 	}
 }
 

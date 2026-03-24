@@ -261,3 +261,64 @@ func (s *service) DeleteTrackLayout(
 		Deleted: true,
 	}), nil
 }
+
+//nolint:whitespace,funlen // editor/linter issue
+func (s *service) SetSimulationTrackLayoutAliases(
+	ctx context.Context,
+	req *connect.Request[v1.SetSimulationTrackLayoutAliasesRequest]) (
+	*connect.Response[v1.SetSimulationTrackLayoutAliasesResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("SetSimulationTrackLayoutAliases")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		trackLayoutID := int32(req.Msg.GetTrackLayoutId())
+		simulationID := int32(req.Msg.GetSimulationId())
+
+		existing, err := s.repo.Tracks().
+			SimulationTrackLayoutAliases().
+			LoadBySimulationID(ctx, simulationID)
+		if err != nil {
+			return err
+		}
+
+		for _, alias := range existing {
+			if alias.TrackLayoutID != trackLayoutID {
+				continue
+			}
+			if err := s.repo.Tracks().
+				SimulationTrackLayoutAliases().
+				DeleteByID(ctx, alias.ID); err != nil {
+				return err
+			}
+		}
+
+		user := s.execUser(ctx)
+		for _, externalName := range req.Msg.GetExternalName() {
+			_, err := s.repo.Tracks().
+				SimulationTrackLayoutAliases().
+				Create(ctx, &models.SimulationTrackLayoutAliasSetter{
+					TrackLayoutID: omit.From(trackLayoutID),
+					SimulationID:  omit.From(simulationID),
+					ExternalName:  omit.From(externalName),
+					CreatedBy:     omit.From(user),
+					UpdatedBy:     omit.From(user),
+				})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); txErr != nil {
+		l.Error("failed to set simulation track layout aliases", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).
+			SetStatus(codes.Error, "failed to set simulation track layout aliases")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation track layout aliases set")
+	return connect.NewResponse(&v1.SetSimulationTrackLayoutAliasesResponse{
+		Updated: true,
+	}), nil
+}

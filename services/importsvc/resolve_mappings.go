@@ -80,7 +80,7 @@ func (s *service) ResolveMappings(
 		}
 
 		resolver := processor.NewResolver(
-			processor.NewRepositoryEntityResolver(s.repo, simulation),
+			processor.NewRepositoryEntityResolver(ctx, s.repo, simulation),
 		)
 		resolved, err := resolver.ResolveNonMapped(input, existing)
 		if err != nil {

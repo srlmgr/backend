@@ -157,7 +157,7 @@ func (s *service) UploadResultsFile(
 		}
 
 		resolver := processor.NewResolver(
-			processor.NewRepositoryEntityResolver(s.repo, simulation))
+			processor.NewRepositoryEntityResolver(ctx, s.repo, simulation))
 		resolved, resolveErr := resolver.ResolveInput(input)
 		if resolveErr != nil {
 			return fmt.Errorf("resolve import payload: %w", resolveErr)
@@ -277,11 +277,12 @@ func (s *service) replaceResultEntriesForBatch(
 		}
 	}
 
-	for _, entry := range entries {
-		setter := buildResultEntryCreateSetter(batch, entry, execUser)
-		if _, createErr := s.repo.ResultEntries().Create(ctx, setter); createErr != nil {
-			return fmt.Errorf("create result entry: %w", createErr)
-		}
+	setters := make([]*models.ResultEntrySetter, len(entries))
+	for i, entry := range entries {
+		setters[i] = buildResultEntryCreateSetter(batch, entry, execUser)
+	}
+	if _, createErr := s.repo.ResultEntries().CreateMany(ctx, setters); createErr != nil {
+		return fmt.Errorf("create result entries: %w", createErr)
 	}
 
 	return nil

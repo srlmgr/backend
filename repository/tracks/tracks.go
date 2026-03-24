@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -46,10 +47,14 @@ type TrackLayoutsRepository interface {
 // SimulationTrackLayoutAliasesRepository defines persistence operations for SimulationTrackLayoutAlias entities.
 type SimulationTrackLayoutAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationTrackLayoutAlias, error)
+	LoadBySimulationID(
+		ctx context.Context,
+		simID int32,
+	) ([]*models.SimulationTrackLayoutAlias, error)
 	FindBySimID(
 		ctx context.Context,
 		simID int32,
-		arg string,
+		aliases ...string,
 	) (*models.SimulationTrackLayoutAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
@@ -130,14 +135,10 @@ func (r *tracksRepository) Update(
 	id int32,
 	input *models.TrackSetter,
 ) (*models.Track, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.Tracks.Update(
+		input.UpdateMod(),
+		um.Where(models.Tracks.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *trackLayoutsRepository) LoadAll(ctx context.Context) ([]*models.TrackLayout, error) {
@@ -183,14 +184,10 @@ func (r *trackLayoutsRepository) Update(
 	id int32,
 	input *models.TrackLayoutSetter,
 ) (*models.TrackLayout, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.TrackLayouts.Update(
+		input.UpdateMod(),
+		um.Where(models.TrackLayouts.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *simulationTrackLayoutAliasesRepository) LoadByID(
@@ -205,19 +202,37 @@ func (r *simulationTrackLayoutAliasesRepository) LoadByID(
 	return entity, err
 }
 
+func (r *simulationTrackLayoutAliasesRepository) LoadBySimulationID(
+	ctx context.Context,
+	simID int32,
+) ([]*models.SimulationTrackLayoutAlias, error) {
+	entity, err := models.SimulationTrackLayoutAliases.
+		Query(
+			sm.Where(
+				models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+		).
+		All(ctx, r.getExecutor(ctx))
+
+	return entity, err
+}
+
 func (r *simulationTrackLayoutAliasesRepository) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationTrackLayoutAlias, error) {
 	entity, err := models.SimulationTrackLayoutAliases.Query(
 		sm.Where(models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
-		sm.Where(models.SimulationTrackLayoutAliases.Columns.ExternalName.EQ(psql.Arg(arg))),
+		sm.Where(
+			models.SimulationTrackLayoutAliases.Columns.ExternalName.EQ(
+				psql.F("ANY", psql.Arg(aliases)),
+			),
+		),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf(
 			"simulation track layout alias %q for simulation %d: %w",
-			arg,
+			aliases,
 			simID,
 			repoerrors.ErrNotFound,
 		)
@@ -243,14 +258,10 @@ func (r *simulationTrackLayoutAliasesRepository) Update(
 	id int32,
 	input *models.SimulationTrackLayoutAliasSetter,
 ) (*models.SimulationTrackLayoutAlias, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.SimulationTrackLayoutAliases.Update(
+		input.UpdateMod(),
+		um.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *tracksRepository) getExecutor(ctx context.Context) bob.Executor {

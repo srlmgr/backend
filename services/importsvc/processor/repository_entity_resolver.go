@@ -11,6 +11,7 @@ import (
 
 // RepositoryEntityResolver resolves simulation-specific identifiers via repositories.
 type RepositoryEntityResolver struct {
+	ctx   context.Context
 	repos repository.Repository
 	sim   *models.RacingSim
 }
@@ -19,10 +20,12 @@ type RepositoryEntityResolver struct {
 //
 //nolint:whitespace // editor/linter issue
 func NewRepositoryEntityResolver(
+	ctx context.Context,
 	repos repository.Repository,
 	sim *models.RacingSim,
 ) *RepositoryEntityResolver {
 	return &RepositoryEntityResolver{
+		ctx:   ctx,
 		repos: repos,
 		sim:   sim,
 	}
@@ -38,9 +41,9 @@ func (r *RepositoryEntityResolver) ResolveTrack(
 
 	resolveArg := func(arg string) (uint32, error) {
 		alias, err := r.repos.Tracks().SimulationTrackLayoutAliases().FindBySimID(
-			context.Background(),
+			r.ctx,
 			r.sim.ID,
-			arg,
+			simTrackID, simTrackName,
 		)
 		if err != nil {
 			return 0, err
@@ -49,7 +52,7 @@ func (r *RepositoryEntityResolver) ResolveTrack(
 		return uint32(alias.TrackLayoutID), nil
 	}
 
-	return r.resolveByIDThenName("track", simTrackID, simTrackName, resolveArg)
+	return r.resolveBy("track", simTrackID, simTrackName, resolveArg)
 }
 
 //nolint:whitespace // editor/linter issue
@@ -61,19 +64,25 @@ func (r *RepositoryEntityResolver) ResolveDriver(
 	}
 
 	resolveArg := func(arg string) (uint32, error) {
-		driverSimID, err := r.repos.Drivers().SimulationDriverAliases().FindBySimID(
-			context.Background(),
+		driverIDBySim, err := r.repos.Drivers().SimulationDriverAliases().FindBySimID(
+			r.ctx,
 			r.sim.ID,
-			arg,
+			simDriverID, simDriverName,
 		)
 		if err != nil {
 			return 0, err
 		}
 
-		return uint32(driverSimID.DriverID), nil
+		return uint32(driverIDBySim.DriverID), nil
 	}
 
-	return r.resolveByIDThenName("driver", simDriverID, simDriverName, resolveArg)
+	driverID, err := r.repos.Drivers().Drivers().FindByName(
+		r.ctx, simDriverName)
+	if err == nil {
+		return uint32(driverID.ID), nil
+	}
+
+	return r.resolveBy("driver", simDriverID, simDriverName, resolveArg)
 }
 
 //nolint:whitespace // editor/linter issue
@@ -86,9 +95,9 @@ func (r *RepositoryEntityResolver) ResolveCar(
 
 	resolveArg := func(arg string) (uint32, error) {
 		alias, err := r.repos.Cars().SimulationCarAliases().FindBySimID(
-			context.Background(),
+			r.ctx,
 			r.sim.ID,
-			arg,
+			simCarID, simCarName,
 		)
 		if err != nil {
 			return 0, err
@@ -97,11 +106,11 @@ func (r *RepositoryEntityResolver) ResolveCar(
 		return uint32(alias.CarModelID), nil
 	}
 
-	return r.resolveByIDThenName("car", simCarID, simCarName, resolveArg)
+	return r.resolveBy("car", simCarID, simCarName, resolveArg)
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *RepositoryEntityResolver) resolveByIDThenName(
+func (r *RepositoryEntityResolver) resolveBy(
 	kind string,
 	simID string,
 	simName string,

@@ -1,4 +1,4 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -8,8 +8,10 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
+	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/db/models"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
@@ -277,5 +279,84 @@ func TestDeleteDriverFailureTransactionError(t *testing.T) {
 	}
 	if !errors.Is(err, txErr) {
 		t.Fatalf("expected wrapped transaction error: %v", err)
+	}
+}
+
+func TestSetSimulationDriverAliasesFlushAndFill(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
+
+	sim := seedSimulation(t, repo, "iRacing")
+	driver := seedDriver(t, repo, "1", "Alias Driver")
+	otherDriver := seedDriver(t, repo, "2", "Other Driver")
+
+	_, err := repo.Drivers().
+		SimulationDriverAliases().
+		Create(ctx, &models.SimulationDriverAliasSetter{
+			DriverID:           omit.From(driver.ID),
+			SimulationID:       omit.From(sim.ID),
+			SimulationDriverID: omit.From("old-driver-id"),
+			CreatedBy:          omit.From(testUserSeed),
+			UpdatedBy:          omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed old alias: %v", err)
+	}
+
+	_, err = repo.Drivers().
+		SimulationDriverAliases().
+		Create(ctx, &models.SimulationDriverAliasSetter{
+			DriverID:           omit.From(otherDriver.ID),
+			SimulationID:       omit.From(sim.ID),
+			SimulationDriverID: omit.From("other-driver-id"),
+			CreatedBy:          omit.From(testUserSeed),
+			UpdatedBy:          omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed other driver alias: %v", err)
+	}
+
+	resp, err := svc.SetSimulationDriverAliases(
+		ctx,
+		connect.NewRequest(&v1.SetSimulationDriverAliasesRequest{
+			DriverId:           uint32(driver.ID),
+			SimulationId:       uint32(sim.ID),
+			SimulationDriverId: []string{"new-driver-id-1"},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Msg.GetUpdated() {
+		t.Fatal("expected updated=true")
+	}
+
+	_, err = repo.Drivers().SimulationDriverAliases().FindBySimID(ctx, sim.ID, "old-driver-id")
+	if !errors.Is(err, repoerrors.ErrNotFound) {
+		t.Fatalf("expected old alias to be removed, got: %v", err)
+	}
+
+	first, err := repo.Drivers().
+		SimulationDriverAliases().
+		FindBySimID(ctx, sim.ID, "new-driver-id-1")
+	if err != nil {
+		t.Fatalf("failed to load first new alias: %v", err)
+	}
+	if first.DriverID != driver.ID {
+		t.Fatalf("unexpected driver_id for first alias: got %d want %d", first.DriverID, driver.ID)
+	}
+
+	other, err := repo.Drivers().
+		SimulationDriverAliases().
+		FindBySimID(ctx, sim.ID, "other-driver-id")
+	if err != nil {
+		t.Fatalf("expected other driver's alias to remain: %v", err)
+	}
+	if other.DriverID != otherDriver.ID {
+		t.Fatalf(
+			"unexpected driver_id for other alias: got %d want %d",
+			other.DriverID,
+			otherDriver.ID,
+		)
 	}
 }

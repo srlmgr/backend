@@ -6,6 +6,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -178,6 +179,30 @@ type pointRulesEntityRepo struct {
 type driversEntityRepo struct {
 	*mapEntityRepo[models.Driver, models.DriverSetter]
 }
+
+//nolint:whitespace // editor/linter issue
+func (r *driversEntityRepo) FindByName(
+	ctx context.Context, arg string,
+) (*models.Driver, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item == nil || item.Name != arg {
+			continue
+		}
+		return item, nil
+	}
+
+	return nil, fmt.Errorf(
+		"driver with name %q: %w",
+		arg,
+		repoerrors.ErrNotFound,
+	)
+}
+
 type simulationDriverAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationDriverAlias, models.SimulationDriverAliasSetter]
 }
@@ -186,7 +211,7 @@ type simulationDriverAliasesEntityRepo struct {
 func (r *simulationDriverAliasesEntityRepo) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationDriverAlias, error) {
 	items, err := r.LoadBySimulationID(ctx, simID)
 	if err != nil {
@@ -194,7 +219,7 @@ func (r *simulationDriverAliasesEntityRepo) FindBySimID(
 	}
 
 	for _, item := range items {
-		if item == nil || item.SimulationDriverID != arg {
+		if item == nil || !slices.Contains(aliases, item.SimulationDriverID) {
 			continue
 		}
 		return item, nil
@@ -202,7 +227,7 @@ func (r *simulationDriverAliasesEntityRepo) FindBySimID(
 
 	return nil, fmt.Errorf(
 		"simulation driver alias %q for simulation %d: %w",
-		arg,
+		aliases,
 		simID,
 		repoerrors.ErrNotFound,
 	)
@@ -241,10 +266,31 @@ type simulationTrackLayoutAliasesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
+func (r *simulationTrackLayoutAliasesEntityRepo) LoadBySimulationID(
+	ctx context.Context,
+	simulationID int32,
+) ([]*models.SimulationTrackLayoutAlias, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.SimulationTrackLayoutAlias, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SimulationID != simulationID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
 func (r *simulationTrackLayoutAliasesEntityRepo) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationTrackLayoutAlias, error) {
 	items, err := r.LoadAll(ctx)
 	if err != nil {
@@ -252,7 +298,8 @@ func (r *simulationTrackLayoutAliasesEntityRepo) FindBySimID(
 	}
 
 	for _, item := range items {
-		if item == nil || item.SimulationID != simID || item.ExternalName != arg {
+		if item == nil || item.SimulationID != simID ||
+			!slices.Contains(aliases, item.ExternalName) {
 			continue
 		}
 		return item, nil
@@ -260,7 +307,7 @@ func (r *simulationTrackLayoutAliasesEntityRepo) FindBySimID(
 
 	return nil, fmt.Errorf(
 		"simulation track layout alias %q for simulation %d: %w",
-		arg,
+		aliases,
 		simID,
 		repoerrors.ErrNotFound,
 	)
@@ -281,10 +328,31 @@ type simulationCarAliasesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
+func (r *simulationCarAliasesEntityRepo) LoadBySimulationID(
+	ctx context.Context,
+	simulationID int32,
+) ([]*models.SimulationCarAlias, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.SimulationCarAlias, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.SimulationID != simulationID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
 func (r *simulationCarAliasesEntityRepo) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationCarAlias, error) {
 	items, err := r.LoadAll(ctx)
 	if err != nil {
@@ -292,7 +360,8 @@ func (r *simulationCarAliasesEntityRepo) FindBySimID(
 	}
 
 	for _, item := range items {
-		if item == nil || item.SimulationID != simID || item.ExternalName != arg {
+		if item == nil || item.SimulationID != simID ||
+			!slices.Contains(aliases, item.ExternalName) {
 			continue
 		}
 		return item, nil
@@ -300,7 +369,7 @@ func (r *simulationCarAliasesEntityRepo) FindBySimID(
 
 	return nil, fmt.Errorf(
 		"simulation car alias %q for simulation %d: %w",
-		arg,
+		aliases,
 		simID,
 		repoerrors.ErrNotFound,
 	)
@@ -536,7 +605,6 @@ type importBatchesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
-//nolint:whitespace // multiline signature style
 func (r *importBatchesEntityRepo) LoadByRaceID(
 	ctx context.Context,
 	raceID int32,
@@ -580,6 +648,18 @@ func (r *importBatchesEntityRepo) DeleteByRaceID(
 
 type resultEntriesEntityRepo struct {
 	*mapEntityRepo[models.ResultEntry, models.ResultEntrySetter]
+}
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) CreateMany(
+	ctx context.Context,
+	input []*models.ResultEntrySetter,
+) ([]*models.ResultEntry, error) {
+	if len(input) == 0 {
+		return []*models.ResultEntry{}, nil
+	}
+
+	return nil, fmt.Errorf("not implemented")
 }
 
 //nolint:whitespace // multiline signature style

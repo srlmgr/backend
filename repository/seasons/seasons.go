@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -77,14 +78,10 @@ func (r *seasonsRepository) Update(
 	id int32,
 	input *models.SeasonSetter,
 ) (*models.Season, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return models.Seasons.Update(
+		input.UpdateMod(),
+		um.Where(models.Seasons.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *seasonsRepository) getExecutor(ctx context.Context) bob.Executor {

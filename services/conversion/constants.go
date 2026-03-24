@@ -25,7 +25,7 @@ const (
 	EventProcessingStateDraft                 = "draft"
 	EventProcessingStateRawImported           = "raw_imported"
 	EventProcessingStateMappingError          = "mapping_error"
-	EventProcessingStatePreprocessed          = "preprocessed"
+	EventProcessingStatePreprocessed          = "pre_processed"
 	EventProcessingStateDriverEntriesComputed = "driver_entries_computed"
 	EventProcessingStateTeamEntriesComputed   = "team_entries_computed"
 	EventProcessingStateComputed              = "computed"

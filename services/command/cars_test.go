@@ -1,4 +1,4 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -8,8 +8,10 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
+	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/db/models"
 	rootrepo "github.com/srlmgr/backend/repository"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
@@ -350,6 +352,83 @@ func TestCreateCarBrandFailureTransactionError(t *testing.T) {
 	}
 	if !errors.Is(err, txErr) {
 		t.Fatalf("expected wrapped transaction error: %v", err)
+	}
+}
+
+func TestSetSimulationCarAliasesFlushAndFill(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
+
+	sim := seedSimulation(t, repo, "iRacing")
+	manufacturer := seedCarManufacturer(t, repo, "Alias Manufacturer")
+	brand := seedCarBrand(t, repo, manufacturer.ID, "Alias Brand")
+	carModel := seedCarModel(t, repo, brand.ID, "Alias Car")
+	otherCarModel := seedCarModel(t, repo, brand.ID, "Other Alias Car")
+
+	_, err := repo.Cars().SimulationCarAliases().Create(ctx, &models.SimulationCarAliasSetter{
+		CarModelID:   omit.From(carModel.ID),
+		SimulationID: omit.From(sim.ID),
+		ExternalName: omit.From("old-car-alias"),
+		CreatedBy:    omit.From(testUserSeed),
+		UpdatedBy:    omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed old car alias: %v", err)
+	}
+
+	_, err = repo.Cars().SimulationCarAliases().Create(ctx, &models.SimulationCarAliasSetter{
+		CarModelID:   omit.From(otherCarModel.ID),
+		SimulationID: omit.From(sim.ID),
+		ExternalName: omit.From("other-car-alias"),
+		CreatedBy:    omit.From(testUserSeed),
+		UpdatedBy:    omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed other car alias: %v", err)
+	}
+
+	resp, err := svc.SetSimulationCarAliases(
+		ctx,
+		connect.NewRequest(&v1.SetSimulationCarAliasesRequest{
+			CarModelId:   uint32(carModel.ID),
+			SimulationId: uint32(sim.ID),
+			ExternalName: []string{"new-car-alias-1"},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Msg.GetUpdated() {
+		t.Fatal("expected updated=true")
+	}
+
+	_, err = repo.Cars().SimulationCarAliases().FindBySimID(ctx, sim.ID, "old-car-alias")
+	if !errors.Is(err, repoerrors.ErrNotFound) {
+		t.Fatalf("expected old car alias to be removed, got: %v", err)
+	}
+
+	first, err := repo.Cars().SimulationCarAliases().FindBySimID(ctx, sim.ID, "new-car-alias-1")
+	if err != nil {
+		t.Fatalf("failed to load first new car alias: %v", err)
+	}
+	if first.CarModelID != carModel.ID {
+		t.Fatalf(
+			"unexpected car_model_id for first alias: got %d want %d",
+			first.CarModelID,
+			carModel.ID,
+		)
+	}
+
+	other, err := repo.Cars().SimulationCarAliases().FindBySimID(ctx, sim.ID, "other-car-alias")
+	if err != nil {
+		t.Fatalf("expected other car model alias to remain: %v", err)
+	}
+	if other.CarModelID != otherCarModel.ID {
+		t.Fatalf(
+			"unexpected car_model_id for other alias: got %d want %d",
+			other.CarModelID,
+			otherCarModel.ID,
+		)
 	}
 }
 
