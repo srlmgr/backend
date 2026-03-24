@@ -117,10 +117,14 @@ func (r *resultEntriesRepository) Update(
 	id int32,
 	input *models.ResultEntrySetter,
 ) (*models.ResultEntry, error) {
-	return models.ResultEntries.Update(
+	entity, err := models.ResultEntries.Update(
 		input.UpdateMod(),
 		um.Where(models.ResultEntries.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("result entry %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *resultEntriesRepository) getExecutor(ctx context.Context) bob.Executor {

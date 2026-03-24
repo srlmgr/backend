@@ -78,10 +78,14 @@ func (r *seasonsRepository) Update(
 	id int32,
 	input *models.SeasonSetter,
 ) (*models.Season, error) {
-	return models.Seasons.Update(
+	entity, err := models.Seasons.Update(
 		input.UpdateMod(),
 		um.Where(models.Seasons.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("season %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *seasonsRepository) getExecutor(ctx context.Context) bob.Executor {

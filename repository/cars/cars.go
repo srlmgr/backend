@@ -153,10 +153,14 @@ func (r *carManufacturersRepository) Update(
 	id int32,
 	input *models.CarManufacturerSetter,
 ) (*models.CarManufacturer, error) {
-	return models.CarManufacturers.Update(
+	entity, err := models.CarManufacturers.Update(
 		input.UpdateMod(),
 		um.Where(models.CarManufacturers.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car manufacturer %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *carBrandsRepository) LoadAll(ctx context.Context) ([]*models.CarBrand, error) {
@@ -199,10 +203,14 @@ func (r *carBrandsRepository) Update(
 	id int32,
 	input *models.CarBrandSetter,
 ) (*models.CarBrand, error) {
-	return models.CarBrands.Update(
+	entity, err := models.CarBrands.Update(
 		input.UpdateMod(),
 		um.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car brand %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *carModelsRepository) LoadAll(ctx context.Context) ([]*models.CarModel, error) {
@@ -253,10 +261,14 @@ func (r *carModelsRepository) Update(
 	id int32,
 	input *models.CarModelSetter,
 ) (*models.CarModel, error) {
-	return models.CarModels.Update(
+	entity, err := models.CarModels.Update(
 		input.UpdateMod(),
 		um.Where(models.CarModels.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car model %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *simulationCarAliasesRepository) LoadByID(
@@ -325,10 +337,14 @@ func (r *simulationCarAliasesRepository) Update(
 	id int32,
 	input *models.SimulationCarAliasSetter,
 ) (*models.SimulationCarAlias, error) {
-	return models.SimulationCarAliases.Update(
+	entity, err := models.SimulationCarAliases.Update(
 		input.UpdateMod(),
 		um.Where(models.SimulationCarAliases.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("simulation car alias %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *carManufacturersRepository) getExecutor(ctx context.Context) bob.Executor {

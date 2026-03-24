@@ -78,10 +78,14 @@ func (r *racesRepository) Update(
 	id int32,
 	input *models.RaceSetter,
 ) (*models.Race, error) {
-	return models.Races.Update(
+	entity, err := models.Races.Update(
 		input.UpdateMod(),
 		um.Where(models.Races.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("race %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *racesRepository) getExecutor(ctx context.Context) bob.Executor {

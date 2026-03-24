@@ -157,10 +157,14 @@ func (r *seasonDriverStandingsRepository) Update(
 	id int32,
 	input *models.SeasonDriverStandingSetter,
 ) (*models.SeasonDriverStanding, error) {
-	return models.SeasonDriverStandings.Update(
+	entity, err := models.SeasonDriverStandings.Update(
 		input.UpdateMod(),
 		um.Where(models.SeasonDriverStandings.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("season driver standing %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *seasonTeamStandingsRepository) LoadByID(
@@ -193,10 +197,14 @@ func (r *seasonTeamStandingsRepository) Update(
 	id int32,
 	input *models.SeasonTeamStandingSetter,
 ) (*models.SeasonTeamStanding, error) {
-	return models.SeasonTeamStandings.Update(
+	entity, err := models.SeasonTeamStandings.Update(
 		input.UpdateMod(),
 		um.Where(models.SeasonTeamStandings.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("season team standing %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *eventDriverStandingsRepository) LoadByID(
@@ -229,10 +237,14 @@ func (r *eventDriverStandingsRepository) Update(
 	id int32,
 	input *models.EventDriverStandingSetter,
 ) (*models.EventDriverStanding, error) {
-	return models.EventDriverStandings.Update(
+	entity, err := models.EventDriverStandings.Update(
 		input.UpdateMod(),
 		um.Where(models.EventDriverStandings.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("event driver standing %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *eventTeamStandingsRepository) LoadByID(
@@ -265,10 +277,14 @@ func (r *eventTeamStandingsRepository) Update(
 	id int32,
 	input *models.EventTeamStandingSetter,
 ) (*models.EventTeamStanding, error) {
-	return models.EventTeamStandings.Update(
+	entity, err := models.EventTeamStandings.Update(
 		input.UpdateMod(),
 		um.Where(models.EventTeamStandings.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("event team standing %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *seasonDriverStandingsRepository) getExecutor(ctx context.Context) bob.Executor {

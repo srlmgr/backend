@@ -81,10 +81,14 @@ func (r *importBatchesRepository) Update(
 	id int32,
 	input *models.ImportBatchSetter,
 ) (*models.ImportBatch, error) {
-	return models.ImportBatches.Update(
+	entity, err := models.ImportBatches.Update(
 		input.UpdateMod(),
 		um.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("import batch %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *importBatchesRepository) LoadByRaceID(

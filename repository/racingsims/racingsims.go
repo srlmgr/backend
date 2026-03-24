@@ -74,10 +74,14 @@ func (r *racingSimsRepository) Update(
 	id int32,
 	input *models.RacingSimSetter,
 ) (*models.RacingSim, error) {
-	return models.RacingSims.Update(
+	entity, err := models.RacingSims.Update(
 		input.UpdateMod(),
 		um.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("racing sim %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *racingSimsRepository) getExecutor(ctx context.Context) bob.Executor {

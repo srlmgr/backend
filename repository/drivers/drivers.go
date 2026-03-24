@@ -121,10 +121,14 @@ func (r *driversRepository) Update(
 	id int32,
 	input *models.DriverSetter,
 ) (*models.Driver, error) {
-	return models.Drivers.Update(
+	entity, err := models.Drivers.Update(
 		input.UpdateMod(),
 		um.Where(models.Drivers.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("driver %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *driversRepository) getExecutor(ctx context.Context) bob.Executor {
@@ -201,10 +205,14 @@ func (r *simulationDriverAliasesRepository) Update(
 	id int32,
 	input *models.SimulationDriverAliasSetter,
 ) (*models.SimulationDriverAlias, error) {
-	return models.SimulationDriverAliases.Update(
+	entity, err := models.SimulationDriverAliases.Update(
 		input.UpdateMod(),
 		um.Where(models.SimulationDriverAliases.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("simulation driver alias %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *simulationDriverAliasesRepository) getExecutor(ctx context.Context) bob.Executor {

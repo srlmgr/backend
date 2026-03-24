@@ -135,10 +135,14 @@ func (r *tracksRepository) Update(
 	id int32,
 	input *models.TrackSetter,
 ) (*models.Track, error) {
-	return models.Tracks.Update(
+	entity, err := models.Tracks.Update(
 		input.UpdateMod(),
 		um.Where(models.Tracks.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("track %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *trackLayoutsRepository) LoadAll(ctx context.Context) ([]*models.TrackLayout, error) {
@@ -184,10 +188,14 @@ func (r *trackLayoutsRepository) Update(
 	id int32,
 	input *models.TrackLayoutSetter,
 ) (*models.TrackLayout, error) {
-	return models.TrackLayouts.Update(
+	entity, err := models.TrackLayouts.Update(
 		input.UpdateMod(),
 		um.Where(models.TrackLayouts.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("track layout %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *simulationTrackLayoutAliasesRepository) LoadByID(
@@ -258,10 +266,14 @@ func (r *simulationTrackLayoutAliasesRepository) Update(
 	id int32,
 	input *models.SimulationTrackLayoutAliasSetter,
 ) (*models.SimulationTrackLayoutAlias, error) {
-	return models.SimulationTrackLayoutAliases.Update(
+	entity, err := models.SimulationTrackLayoutAliases.Update(
 		input.UpdateMod(),
 		um.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("simulation track layout alias %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *tracksRepository) getExecutor(ctx context.Context) bob.Executor {

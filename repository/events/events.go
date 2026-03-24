@@ -78,10 +78,14 @@ func (r *eventsRepository) Update(
 	id int32,
 	input *models.EventSetter,
 ) (*models.Event, error) {
-	return models.Events.Update(
+	entity, err := models.Events.Update(
 		input.UpdateMod(),
 		um.Where(models.Events.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("event %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *eventsRepository) getExecutor(ctx context.Context) bob.Executor {

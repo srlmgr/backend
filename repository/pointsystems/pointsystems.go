@@ -103,10 +103,14 @@ func (r *pointSystemsRepository) Update(
 	id int32,
 	input *models.PointSystemSetter,
 ) (*models.PointSystem, error) {
-	return models.PointSystems.Update(
+	entity, err := models.PointSystems.Update(
 		input.UpdateMod(),
 		um.Where(models.PointSystems.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("point system %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *pointRulesRepository) LoadByID(ctx context.Context, id int32) (*models.PointRule, error) {
@@ -136,10 +140,14 @@ func (r *pointRulesRepository) Update(
 	id int32,
 	input *models.PointRuleSetter,
 ) (*models.PointRule, error) {
-	return models.PointRules.Update(
+	entity, err := models.PointRules.Update(
 		input.UpdateMod(),
 		um.Where(models.PointRules.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("point rule %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *pointSystemsRepository) getExecutor(ctx context.Context) bob.Executor {

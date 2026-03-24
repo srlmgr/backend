@@ -111,10 +111,14 @@ func (r *teamsRepository) Update(
 	id int32,
 	input *models.TeamSetter,
 ) (*models.Team, error) {
-	return models.Teams.Update(
+	entity, err := models.Teams.Update(
 		input.UpdateMod(),
 		um.Where(models.Teams.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("team %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *teamDriversRepository) LoadByID(
@@ -156,10 +160,14 @@ func (r *teamDriversRepository) Update(
 	id int32,
 	input *models.TeamDriverSetter,
 ) (*models.TeamDriver, error) {
-	return models.TeamDrivers.Update(
+	entity, err := models.TeamDrivers.Update(
 		input.UpdateMod(),
 		um.Where(models.TeamDrivers.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("team driver %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *teamsRepository) getExecutor(ctx context.Context) bob.Executor {

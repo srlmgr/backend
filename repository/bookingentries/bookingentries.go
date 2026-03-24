@@ -73,10 +73,14 @@ func (r *bookingEntriesRepository) Update(
 	id int32,
 	input *models.BookingEntrySetter,
 ) (*models.BookingEntry, error) {
-	return models.BookingEntries.Update(
+	entity, err := models.BookingEntries.Update(
 		input.UpdateMod(),
 		um.Where(models.BookingEntries.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("booking entry %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
 }
 
 func (r *bookingEntriesRepository) LoadByEventID(
