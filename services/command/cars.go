@@ -348,3 +348,61 @@ func (s *service) DeleteCarModel(
 		Deleted: true,
 	}), nil
 }
+
+//nolint:whitespace,funlen // editor/linter issue
+func (s *service) SetSimulationCarAliases(
+	ctx context.Context,
+	req *connect.Request[v1.SetSimulationCarAliasesRequest]) (
+	*connect.Response[v1.SetSimulationCarAliasesResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("SetSimulationCarAliases")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		carModelID := int32(req.Msg.GetCarModelId())
+		simulationID := int32(req.Msg.GetSimulationId())
+
+		existing, err := s.repo.Cars().SimulationCarAliases().LoadBySimulationID(
+			ctx, simulationID)
+		if err != nil {
+			return err
+		}
+
+		for _, alias := range existing {
+			if alias.CarModelID != carModelID {
+				continue
+			}
+			if err := s.repo.Cars().SimulationCarAliases().DeleteByID(
+				ctx, alias.ID); err != nil {
+				return err
+			}
+		}
+
+		user := s.execUser(ctx)
+		for _, externalName := range req.Msg.GetExternalName() {
+			_, err := s.repo.Cars().
+				SimulationCarAliases().
+				Create(ctx, &models.SimulationCarAliasSetter{
+					CarModelID:   omit.From(carModelID),
+					SimulationID: omit.From(simulationID),
+					ExternalName: omit.From(externalName),
+					CreatedBy:    omit.From(user),
+					UpdatedBy:    omit.From(user),
+				})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); txErr != nil {
+		l.Error("failed to set simulation car aliases", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error,
+			"failed to set simulation car aliases")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation car aliases set")
+	return connect.NewResponse(&v1.SetSimulationCarAliasesResponse{Updated: true}), nil
+}

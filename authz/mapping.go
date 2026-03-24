@@ -96,7 +96,7 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"CreateDriver",
 		"UpdateDriver",
 		"DeleteDriver",
-		"UpsertDriverSimulationIdentity",
+		"SetSimulationDriverAliases",
 		"CreateTeam",
 		"UpdateTeam",
 		"DeleteTeam",
@@ -121,8 +121,8 @@ func addSimulationScopedCommandPolicies(policies map[string]ProcedurePolicy) {
 		"CreateSimulation",
 		"UpdateSimulation",
 		"DeleteSimulation",
-		"UpsertSimulationTrackLayoutAlias",
-		"UpsertSimulationCarAlias",
+		"SetSimulationTrackLayoutAliases",
+		"SetSimulationCarAliases",
 	} {
 		policies[procedure(commandService, method)] = ProcedurePolicy{
 			Capability: "simulation.write",

@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -80,14 +81,14 @@ func (r *importBatchesRepository) Update(
 	id int32,
 	input *models.ImportBatchSetter,
 ) (*models.ImportBatch, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.ImportBatches.Update(
+		input.UpdateMod(),
+		um.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("import batch %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *importBatchesRepository) LoadByRaceID(

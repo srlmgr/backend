@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -59,7 +60,12 @@ type CarModelsRepository interface {
 // SimulationCarAliasesRepository defines persistence operations for SimulationCarAlias entities.
 type SimulationCarAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationCarAlias, error)
-	FindBySimID(ctx context.Context, simID int32, arg string) (*models.SimulationCarAlias, error)
+	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.SimulationCarAlias, error)
+	FindBySimID(
+		ctx context.Context,
+		simID int32,
+		aliases ...string,
+	) (*models.SimulationCarAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -147,14 +153,14 @@ func (r *carManufacturersRepository) Update(
 	id int32,
 	input *models.CarManufacturerSetter,
 ) (*models.CarManufacturer, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.CarManufacturers.Update(
+		input.UpdateMod(),
+		um.Where(models.CarManufacturers.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car manufacturer %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *carBrandsRepository) LoadAll(ctx context.Context) ([]*models.CarBrand, error) {
@@ -197,14 +203,14 @@ func (r *carBrandsRepository) Update(
 	id int32,
 	input *models.CarBrandSetter,
 ) (*models.CarBrand, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.CarBrands.Update(
+		input.UpdateMod(),
+		um.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car brand %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *carModelsRepository) LoadAll(ctx context.Context) ([]*models.CarModel, error) {
@@ -255,14 +261,14 @@ func (r *carModelsRepository) Update(
 	id int32,
 	input *models.CarModelSetter,
 ) (*models.CarModel, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.CarModels.Update(
+		input.UpdateMod(),
+		um.Where(models.CarModels.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car model %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *simulationCarAliasesRepository) LoadByID(
@@ -277,19 +283,35 @@ func (r *simulationCarAliasesRepository) LoadByID(
 	return entity, err
 }
 
+func (r *simulationCarAliasesRepository) LoadBySimulationID(
+	ctx context.Context,
+	simID int32,
+) ([]*models.SimulationCarAlias, error) {
+	entity, err := models.SimulationCarAliases.
+		Query(
+			sm.Where(
+				models.SimulationCarAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+		).
+		All(ctx, r.getExecutor(ctx))
+
+	return entity, err
+}
+
 func (r *simulationCarAliasesRepository) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationCarAlias, error) {
 	entity, err := models.SimulationCarAliases.Query(
 		sm.Where(models.SimulationCarAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
-		sm.Where(models.SimulationCarAliases.Columns.ExternalName.EQ(psql.Arg(arg))),
+		sm.Where(
+			models.SimulationCarAliases.Columns.ExternalName.EQ(psql.F("ANY", psql.Arg(aliases))),
+		),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf(
 			"simulation car alias %q for simulation %d: %w",
-			arg,
+			aliases,
 			simID,
 			repoerrors.ErrNotFound,
 		)
@@ -315,14 +337,14 @@ func (r *simulationCarAliasesRepository) Update(
 	id int32,
 	input *models.SimulationCarAliasSetter,
 ) (*models.SimulationCarAlias, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.SimulationCarAliases.Update(
+		input.UpdateMod(),
+		um.Where(models.SimulationCarAliases.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("simulation car alias %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *carManufacturersRepository) getExecutor(ctx context.Context) bob.Executor {

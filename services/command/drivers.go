@@ -129,3 +129,63 @@ func (s *service) DeleteDriver(
 		Deleted: true,
 	}), nil
 }
+
+//nolint:whitespace,funlen // editor/linter issue
+func (s *service) SetSimulationDriverAliases(
+	ctx context.Context,
+	req *connect.Request[v1.SetSimulationDriverAliasesRequest]) (
+	*connect.Response[v1.SetSimulationDriverAliasesResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("SetSimulationDriverAliases")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		driverID := int32(req.Msg.GetDriverId())
+		simulationID := int32(req.Msg.GetSimulationId())
+
+		existing, err := s.repo.Drivers().SimulationDriverAliases().LoadBySimulationID(
+			ctx,
+			simulationID,
+		)
+		if err != nil {
+			return err
+		}
+
+		for _, alias := range existing {
+			if alias.DriverID != driverID {
+				continue
+			}
+			if err := s.repo.Drivers().
+				SimulationDriverAliases().
+				DeleteByID(ctx, alias.ID); err != nil {
+				return err
+			}
+		}
+
+		user := s.execUser(ctx)
+		for _, simulationDriverID := range req.Msg.GetSimulationDriverId() {
+			_, err := s.repo.Drivers().
+				SimulationDriverAliases().
+				Create(ctx, &models.SimulationDriverAliasSetter{
+					DriverID:           omit.From(driverID),
+					SimulationID:       omit.From(simulationID),
+					SimulationDriverID: omit.From(simulationDriverID),
+					CreatedBy:          omit.From(user),
+					UpdatedBy:          omit.From(user),
+				})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); txErr != nil {
+		l.Error("failed to set simulation driver aliases", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to set simulation driver aliases")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation driver aliases set")
+	return connect.NewResponse(&v1.SetSimulationDriverAliasesResponse{Updated: true}), nil
+}

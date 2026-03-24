@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -110,14 +111,14 @@ func (r *teamsRepository) Update(
 	id int32,
 	input *models.TeamSetter,
 ) (*models.Team, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.Teams.Update(
+		input.UpdateMod(),
+		um.Where(models.Teams.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("team %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *teamDriversRepository) LoadByID(
@@ -159,14 +160,14 @@ func (r *teamDriversRepository) Update(
 	id int32,
 	input *models.TeamDriverSetter,
 ) (*models.TeamDriver, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.TeamDrivers.Update(
+		input.UpdateMod(),
+		um.Where(models.TeamDrivers.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("team driver %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *teamsRepository) getExecutor(ctx context.Context) bob.Executor {

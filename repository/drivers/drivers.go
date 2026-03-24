@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -27,13 +28,18 @@ type DriversRepository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.DriverSetter) (*models.Driver, error)
 	Update(ctx context.Context, id int32, input *models.DriverSetter) (*models.Driver, error)
+	FindByName(ctx context.Context, arg string) (*models.Driver, error)
 }
 
 // SimulationDriverAliasesRepository defines persistence operations for SimulationDriverAlias entities.
 type SimulationDriverAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationDriverAlias, error)
 	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.SimulationDriverAlias, error)
-	FindBySimID(ctx context.Context, simID int32, arg string) (*models.SimulationDriverAlias, error)
+	FindBySimID(
+		ctx context.Context,
+		simID int32,
+		aliases ...string,
+	) (*models.SimulationDriverAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(
 		ctx context.Context,
@@ -88,6 +94,15 @@ func (r *driversRepository) LoadByID(ctx context.Context, id int32) (*models.Dri
 	return entity, err
 }
 
+func (r *driversRepository) FindByName(ctx context.Context, arg string) (*models.Driver, error) {
+	entity, err := models.Drivers.Query(sm.Where(models.Drivers.Columns.Name.EQ(psql.Arg(arg)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("driver with name %q: %w", arg, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
 func (r *driversRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.Drivers.Delete(dm.Where(models.Drivers.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
@@ -106,14 +121,14 @@ func (r *driversRepository) Update(
 	id int32,
 	input *models.DriverSetter,
 ) (*models.Driver, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.Drivers.Update(
+		input.UpdateMod(),
+		um.Where(models.Drivers.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("driver %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *driversRepository) getExecutor(ctx context.Context) bob.Executor {
@@ -151,16 +166,20 @@ func (r *simulationDriverAliasesRepository) LoadBySimulationID(
 func (r *simulationDriverAliasesRepository) FindBySimID(
 	ctx context.Context,
 	simID int32,
-	arg string,
+	aliases ...string,
 ) (*models.SimulationDriverAlias, error) {
 	entity, err := models.SimulationDriverAliases.Query(
 		sm.Where(models.SimulationDriverAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
-		sm.Where(models.SimulationDriverAliases.Columns.SimulationDriverID.EQ(psql.Arg(arg))),
+		sm.Where(
+			models.SimulationDriverAliases.Columns.SimulationDriverID.EQ(
+				psql.F("ANY", psql.Arg(aliases)),
+			),
+		),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf(
 			"simulation driver alias %q for simulation %d: %w",
-			arg,
+			aliases,
 			simID,
 			repoerrors.ErrNotFound,
 		)
@@ -186,14 +205,14 @@ func (r *simulationDriverAliasesRepository) Update(
 	id int32,
 	input *models.SimulationDriverAliasSetter,
 ) (*models.SimulationDriverAlias, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.SimulationDriverAliases.Update(
+		input.UpdateMod(),
+		um.Where(models.SimulationDriverAliases.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("simulation driver alias %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *simulationDriverAliasesRepository) getExecutor(ctx context.Context) bob.Executor {

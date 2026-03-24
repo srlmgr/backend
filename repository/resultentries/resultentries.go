@@ -14,6 +14,7 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	"github.com/stephenafamo/bob/dialect/psql/um"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -29,6 +30,10 @@ type Repository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	DeleteByRaceID(ctx context.Context, raceID int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
+	CreateMany(
+		ctx context.Context,
+		input []*models.ResultEntrySetter,
+	) ([]*models.ResultEntry, error)
 	Update(
 		ctx context.Context,
 		id int32,
@@ -96,19 +101,30 @@ func (r *resultEntriesRepository) Create(
 	return models.ResultEntries.Insert(input).One(ctx, r.getExecutor(ctx))
 }
 
+func (r *resultEntriesRepository) CreateMany(
+	ctx context.Context,
+	input []*models.ResultEntrySetter,
+) ([]*models.ResultEntry, error) {
+	if len(input) == 0 {
+		return []*models.ResultEntry{}, nil
+	}
+
+	return models.ResultEntries.Insert(bob.ToMods(input...)).All(ctx, r.getExecutor(ctx))
+}
+
 func (r *resultEntriesRepository) Update(
 	ctx context.Context,
 	id int32,
 	input *models.ResultEntrySetter,
 ) (*models.ResultEntry, error) {
-	entity, err := r.LoadByID(ctx, id)
-	if err != nil {
-		return nil, err
+	entity, err := models.ResultEntries.Update(
+		input.UpdateMod(),
+		um.Where(models.ResultEntries.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("result entry %d: %w", id, repoerrors.ErrNotFound)
 	}
-	if err := entity.Update(ctx, r.getExecutor(ctx), input); err != nil {
-		return nil, err
-	}
-	return entity, nil
+	return entity, err
 }
 
 func (r *resultEntriesRepository) getExecutor(ctx context.Context) bob.Executor {
