@@ -20,6 +20,8 @@ import (
 type Factory struct {
 	baseBookingEntryMods               BookingEntryModSlice
 	baseCarBrandMods                   CarBrandModSlice
+	baseCarClassMods                   CarClassModSlice
+	baseCarClassesToCarModelMods       CarClassesToCarModelModSlice
 	baseCarManufacturerMods            CarManufacturerModSlice
 	baseCarModelMods                   CarModelModSlice
 	baseDriverMods                     DriverModSlice
@@ -150,6 +152,78 @@ func (f *Factory) FromExistingCarBrand(m *models.CarBrand) *CarBrandTemplate {
 	return o
 }
 
+func (f *Factory) NewCarClass(mods ...CarClassMod) *CarClassTemplate {
+	return f.NewCarClassWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewCarClassWithContext(ctx context.Context, mods ...CarClassMod) *CarClassTemplate {
+	o := &CarClassTemplate{f: f}
+
+	if f != nil {
+		f.baseCarClassMods.Apply(ctx, o)
+	}
+
+	CarClassModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingCarClass(m *models.CarClass) *CarClassTemplate {
+	o := &CarClassTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.Name = func() string { return m.Name }
+	o.IsActive = func() bool { return m.IsActive }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if len(m.R.CarClassesToCarModels) > 0 {
+		CarClassMods.AddExistingCarClassesToCarModels(m.R.CarClassesToCarModels...).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		CarClassMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewCarClassesToCarModel(mods ...CarClassesToCarModelMod) *CarClassesToCarModelTemplate {
+	return f.NewCarClassesToCarModelWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewCarClassesToCarModelWithContext(ctx context.Context, mods ...CarClassesToCarModelMod) *CarClassesToCarModelTemplate {
+	o := &CarClassesToCarModelTemplate{f: f}
+
+	if f != nil {
+		f.baseCarClassesToCarModelMods.Apply(ctx, o)
+	}
+
+	CarClassesToCarModelModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingCarClassesToCarModel(m *models.CarClassesToCarModel) *CarClassesToCarModelTemplate {
+	o := &CarClassesToCarModelTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.CarClassID = func() int32 { return m.CarClassID }
+	o.CarModelID = func() int32 { return m.CarModelID }
+
+	ctx := context.Background()
+	if m.R.CarClass != nil {
+		CarClassesToCarModelMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
+	}
+	if m.R.CarModel != nil {
+		CarClassesToCarModelMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
+	}
+
+	return o
+}
+
 func (f *Factory) NewCarManufacturer(mods ...CarManufacturerMod) *CarManufacturerTemplate {
 	return f.NewCarManufacturerWithContext(context.Background(), mods...)
 }
@@ -214,6 +288,9 @@ func (f *Factory) FromExistingCarModel(m *models.CarModel) *CarModelTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.CarClassesToCarModels) > 0 {
+		CarModelMods.AddExistingCarClassesToCarModels(m.R.CarClassesToCarModels...).Apply(ctx, o)
+	}
 	if m.R.BrandCarBrand != nil {
 		CarModelMods.WithExistingBrandCarBrand(m.R.BrandCarBrand).Apply(ctx, o)
 	}
@@ -705,16 +782,22 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.RaceID = func() int32 { return m.RaceID }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
-	o.DriverName = func() string { return m.DriverName }
+	o.TeamID = func() null.Val[int32] { return m.TeamID }
 	o.CarModelID = func() null.Val[int32] { return m.CarModelID }
-	o.CarName = func() null.Val[string] { return m.CarName }
+	o.CarClassID = func() null.Val[int32] { return m.CarClassID }
+	o.RawCarName = func() null.Val[string] { return m.RawCarName }
+	o.RawDriverName = func() null.Val[string] { return m.RawDriverName }
+	o.RawTeamName = func() null.Val[string] { return m.RawTeamName }
+	o.CarNumber = func() null.Val[string] { return m.CarNumber }
+	o.IsGuestDriver = func() bool { return m.IsGuestDriver }
+	o.StartingPosition = func() null.Val[int32] { return m.StartingPosition }
 	o.FinishingPosition = func() int32 { return m.FinishingPosition }
 	o.CompletedLaps = func() int32 { return m.CompletedLaps }
+	o.QualiLapTimeMS = func() null.Val[int32] { return m.QualiLapTimeMS }
 	o.FastestLapTimeMS = func() null.Val[int32] { return m.FastestLapTimeMS }
+	o.TotalTimeMS = func() null.Val[int32] { return m.TotalTimeMS }
 	o.Incidents = func() null.Val[int32] { return m.Incidents }
 	o.State = func() string { return m.State }
-	o.SourceRowNumber = func() null.Val[int32] { return m.SourceRowNumber }
-	o.RawPayload = func() types.JSON[json.RawMessage] { return m.RawPayload }
 	o.AdminNotes = func() null.Val[string] { return m.AdminNotes }
 	o.LockedAt = func() null.Val[time.Time] { return m.LockedAt }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
@@ -726,6 +809,9 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	if len(m.R.SourceResultEntryBookingEntries) > 0 {
 		ResultEntryMods.AddExistingSourceResultEntryBookingEntries(m.R.SourceResultEntryBookingEntries...).Apply(ctx, o)
 	}
+	if m.R.CarClass != nil {
+		ResultEntryMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
+	}
 	if m.R.CarModel != nil {
 		ResultEntryMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
 	}
@@ -734,6 +820,9 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.Race != nil {
 		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	}
+	if m.R.Team != nil {
+		ResultEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
 	}
 
 	return o
@@ -1124,6 +1213,9 @@ func (f *Factory) FromExistingTeam(m *models.Team) *TeamTemplate {
 	if len(m.R.EventTeamStandings) > 0 {
 		TeamMods.AddExistingEventTeamStandings(m.R.EventTeamStandings...).Apply(ctx, o)
 	}
+	if len(m.R.ResultEntries) > 0 {
+		TeamMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
 	if len(m.R.SeasonTeamStandings) > 0 {
 		TeamMods.AddExistingSeasonTeamStandings(m.R.SeasonTeamStandings...).Apply(ctx, o)
 	}
@@ -1234,6 +1326,22 @@ func (f *Factory) ClearBaseCarBrandMods() {
 
 func (f *Factory) AddBaseCarBrandMod(mods ...CarBrandMod) {
 	f.baseCarBrandMods = append(f.baseCarBrandMods, mods...)
+}
+
+func (f *Factory) ClearBaseCarClassMods() {
+	f.baseCarClassMods = nil
+}
+
+func (f *Factory) AddBaseCarClassMod(mods ...CarClassMod) {
+	f.baseCarClassMods = append(f.baseCarClassMods, mods...)
+}
+
+func (f *Factory) ClearBaseCarClassesToCarModelMods() {
+	f.baseCarClassesToCarModelMods = nil
+}
+
+func (f *Factory) AddBaseCarClassesToCarModelMod(mods ...CarClassesToCarModelMod) {
+	f.baseCarClassesToCarModelMods = append(f.baseCarClassesToCarModelMods, mods...)
 }
 
 func (f *Factory) ClearBaseCarManufacturerMods() {

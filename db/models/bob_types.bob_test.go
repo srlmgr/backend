@@ -25,6 +25,12 @@ var _ bob.HookableType = &BookingEntry{}
 // Make sure the type CarBrand runs hooks after queries
 var _ bob.HookableType = &CarBrand{}
 
+// Make sure the type CarClass runs hooks after queries
+var _ bob.HookableType = &CarClass{}
+
+// Make sure the type CarClassesToCarModel runs hooks after queries
+var _ bob.HookableType = &CarClassesToCarModel{}
+
 // Make sure the type CarManufacturer runs hooks after queries
 var _ bob.HookableType = &CarManufacturer{}
 

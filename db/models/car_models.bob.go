@@ -49,9 +49,10 @@ type CarModelsQuery = *psql.ViewQuery[*CarModel, CarModelSlice]
 
 // carModelR is where relationships are stored.
 type carModelR struct {
-	BrandCarBrand        *CarBrand               // car_models.car_models_brand_id_fk
-	ResultEntries        ResultEntrySlice        // result_entries.result_entries_car_model_id_fk
-	SimulationCarAliases SimulationCarAliasSlice // simulation_car_aliases.simulation_car_aliases_car_model_id_fk
+	CarClassesToCarModels CarClassesToCarModelSlice // car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk
+	BrandCarBrand         *CarBrand                 // car_models.car_models_brand_id_fk
+	ResultEntries         ResultEntrySlice          // result_entries.result_entries_car_model_id_fk
+	SimulationCarAliases  SimulationCarAliasSlice   // simulation_car_aliases.simulation_car_aliases_car_model_id_fk
 }
 
 func buildCarModelColumns(alias string) carModelColumns {
@@ -510,6 +511,30 @@ func (o CarModelSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// CarClassesToCarModels starts a query for related objects on car_classes_to_car_models
+func (o *CarModel) CarClassesToCarModels(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesToCarModelsQuery {
+	return CarClassesToCarModels.Query(append(mods,
+		sm.Where(CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os CarModelSlice) CarClassesToCarModels(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesToCarModelsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return CarClassesToCarModels.Query(append(mods,
+		sm.Where(psql.Group(CarClassesToCarModels.Columns.CarModelID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // BrandCarBrand starts a query for related objects on car_brands
 func (o *CarModel) BrandCarBrand(mods ...bob.Mod[*dialect.SelectQuery]) CarBrandsQuery {
 	return CarBrands.Query(append(mods,
@@ -580,6 +605,74 @@ func (os CarModelSlice) SimulationCarAliases(mods ...bob.Mod[*dialect.SelectQuer
 	return SimulationCarAliases.Query(append(mods,
 		sm.Where(psql.Group(SimulationCarAliases.Columns.CarModelID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+func insertCarModelCarClassesToCarModels0(ctx context.Context, exec bob.Executor, carClassesToCarModels1 []*CarClassesToCarModelSetter, carModel0 *CarModel) (CarClassesToCarModelSlice, error) {
+	for i := range carClassesToCarModels1 {
+		carClassesToCarModels1[i].CarModelID = omit.From(carModel0.ID)
+	}
+
+	ret, err := CarClassesToCarModels.Insert(bob.ToMods(carClassesToCarModels1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertCarModelCarClassesToCarModels0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachCarModelCarClassesToCarModels0(ctx context.Context, exec bob.Executor, count int, carClassesToCarModels1 CarClassesToCarModelSlice, carModel0 *CarModel) (CarClassesToCarModelSlice, error) {
+	setter := &CarClassesToCarModelSetter{
+		CarModelID: omit.From(carModel0.ID),
+	}
+
+	err := carClassesToCarModels1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachCarModelCarClassesToCarModels0: %w", err)
+	}
+
+	return carClassesToCarModels1, nil
+}
+
+func (carModel0 *CarModel) InsertCarClassesToCarModels(ctx context.Context, exec bob.Executor, related ...*CarClassesToCarModelSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	carClassesToCarModels1, err := insertCarModelCarClassesToCarModels0(ctx, exec, related, carModel0)
+	if err != nil {
+		return err
+	}
+
+	carModel0.R.CarClassesToCarModels = append(carModel0.R.CarClassesToCarModels, carClassesToCarModels1...)
+
+	for _, rel := range carClassesToCarModels1 {
+		rel.R.CarModel = carModel0
+	}
+	return nil
+}
+
+func (carModel0 *CarModel) AttachCarClassesToCarModels(ctx context.Context, exec bob.Executor, related ...*CarClassesToCarModel) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	carClassesToCarModels1 := CarClassesToCarModelSlice(related)
+
+	_, err = attachCarModelCarClassesToCarModels0(ctx, exec, len(related), carClassesToCarModels1, carModel0)
+	if err != nil {
+		return err
+	}
+
+	carModel0.R.CarClassesToCarModels = append(carModel0.R.CarClassesToCarModels, carClassesToCarModels1...)
+
+	for _, rel := range related {
+		rel.R.CarModel = carModel0
+	}
+
+	return nil
 }
 
 func attachCarModelBrandCarBrand0(ctx context.Context, exec bob.Executor, count int, carModel0 *CarModel, carBrand1 *CarBrand) (*CarModel, error) {
@@ -800,6 +893,20 @@ func (o *CarModel) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "CarClassesToCarModels":
+		rels, ok := retrieved.(CarClassesToCarModelSlice)
+		if !ok {
+			return fmt.Errorf("carModel cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.CarClassesToCarModels = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.CarModel = o
+			}
+		}
+		return nil
 	case "BrandCarBrand":
 		rel, ok := retrieved.(*CarBrand)
 		if !ok {
@@ -868,12 +975,16 @@ func buildCarModelPreloader() carModelPreloader {
 }
 
 type carModelThenLoader[Q orm.Loadable] struct {
-	BrandCarBrand        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	ResultEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	SimulationCarAliases func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	BrandCarBrand         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SimulationCarAliases  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildCarModelThenLoader[Q orm.Loadable]() carModelThenLoader[Q] {
+	type CarClassesToCarModelsLoadInterface interface {
+		LoadCarClassesToCarModels(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type BrandCarBrandLoadInterface interface {
 		LoadBrandCarBrand(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -885,6 +996,12 @@ func buildCarModelThenLoader[Q orm.Loadable]() carModelThenLoader[Q] {
 	}
 
 	return carModelThenLoader[Q]{
+		CarClassesToCarModels: thenLoadBuilder[Q](
+			"CarClassesToCarModels",
+			func(ctx context.Context, exec bob.Executor, retrieved CarClassesToCarModelsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCarClassesToCarModels(ctx, exec, mods...)
+			},
+		),
 		BrandCarBrand: thenLoadBuilder[Q](
 			"BrandCarBrand",
 			func(ctx context.Context, exec bob.Executor, retrieved BrandCarBrandLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -904,6 +1021,67 @@ func buildCarModelThenLoader[Q orm.Loadable]() carModelThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadCarClassesToCarModels loads the carModel's CarClassesToCarModels into the .R struct
+func (o *CarModel) LoadCarClassesToCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.CarClassesToCarModels = nil
+
+	related, err := o.CarClassesToCarModels(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.CarModel = o
+	}
+
+	o.R.CarClassesToCarModels = related
+	return nil
+}
+
+// LoadCarClassesToCarModels loads the carModel's CarClassesToCarModels into the .R struct
+func (os CarModelSlice) LoadCarClassesToCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	carClassesToCarModels, err := os.CarClassesToCarModels(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.CarClassesToCarModels = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range carClassesToCarModels {
+
+			if !(o.ID == rel.CarModelID) {
+				continue
+			}
+
+			rel.R.CarModel = o
+
+			o.R.CarClassesToCarModels = append(o.R.CarClassesToCarModels, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadBrandCarBrand loads the carModel's BrandCarBrand into the .R struct
@@ -1084,10 +1262,11 @@ func (os CarModelSlice) LoadSimulationCarAliases(ctx context.Context, exec bob.E
 }
 
 type carModelJoins[Q dialect.Joinable] struct {
-	typ                  string
-	BrandCarBrand        modAs[Q, carBrandColumns]
-	ResultEntries        modAs[Q, resultEntryColumns]
-	SimulationCarAliases modAs[Q, simulationCarAliasColumns]
+	typ                   string
+	CarClassesToCarModels modAs[Q, carClassesToCarModelColumns]
+	BrandCarBrand         modAs[Q, carBrandColumns]
+	ResultEntries         modAs[Q, resultEntryColumns]
+	SimulationCarAliases  modAs[Q, simulationCarAliasColumns]
 }
 
 func (j carModelJoins[Q]) aliasedAs(alias string) carModelJoins[Q] {
@@ -1097,6 +1276,20 @@ func (j carModelJoins[Q]) aliasedAs(alias string) carModelJoins[Q] {
 func buildCarModelJoins[Q dialect.Joinable](cols carModelColumns, typ string) carModelJoins[Q] {
 	return carModelJoins[Q]{
 		typ: typ,
+		CarClassesToCarModels: modAs[Q, carClassesToCarModelColumns]{
+			c: CarClassesToCarModels.Columns,
+			f: func(to carClassesToCarModelColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, CarClassesToCarModels.Name().As(to.Alias())).On(
+						to.CarModelID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		BrandCarBrand: modAs[Q, carBrandColumns]{
 			c: CarBrands.Columns,
 			f: func(to carBrandColumns) bob.Mod[Q] {

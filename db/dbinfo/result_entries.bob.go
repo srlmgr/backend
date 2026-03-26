@@ -51,12 +51,12 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		DriverName: column{
-			Name:      "driver_name",
-			DBType:    "text",
-			Default:   "",
+		TeamID: column{
+			Name:      "team_id",
+			DBType:    "integer",
+			Default:   "NULL",
 			Comment:   "",
-			Nullable:  false,
+			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -69,9 +69,63 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		CarName: column{
-			Name:      "car_name",
+		CarClassID: column{
+			Name:      "car_class_id",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		RawCarName: column{
+			Name:      "raw_car_name",
 			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		RawDriverName: column{
+			Name:      "raw_driver_name",
+			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		RawTeamName: column{
+			Name:      "raw_team_name",
+			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		CarNumber: column{
+			Name:      "car_number",
+			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		IsGuestDriver: column{
+			Name:      "is_guest_driver",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		StartingPosition: column{
+			Name:      "starting_position",
+			DBType:    "integer",
 			Default:   "NULL",
 			Comment:   "",
 			Nullable:  true,
@@ -96,8 +150,26 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		QualiLapTimeMS: column{
+			Name:      "quali_lap_time_ms",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		FastestLapTimeMS: column{
 			Name:      "fastest_lap_time_ms",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		TotalTimeMS: column{
+			Name:      "total_time_ms",
 			DBType:    "integer",
 			Default:   "NULL",
 			Comment:   "",
@@ -118,24 +190,6 @@ var ResultEntries = Table[
 			Name:      "state",
 			DBType:    "text",
 			Default:   "'normal'::text",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		SourceRowNumber: column{
-			Name:      "source_row_number",
-			DBType:    "integer",
-			Default:   "NULL",
-			Comment:   "",
-			Nullable:  true,
-			Generated: false,
-			AutoIncr:  false,
-		},
-		RawPayload: column{
-			Name:      "raw_payload",
-			DBType:    "jsonb",
-			Default:   "'{}'::jsonb",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,
@@ -208,6 +262,23 @@ var ResultEntries = Table[
 				},
 			},
 			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxResultEntriesCarClassID: index{
+			Type: "btree",
+			Name: "idx_result_entries_car_class_id",
+			Columns: []indexColumn{
+				{
+					Name:         "car_class_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
 			Comment:       "",
 			NullsFirst:    []bool{false},
 			NullsDistinct: false,
@@ -304,6 +375,23 @@ var ResultEntries = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		IdxResultEntriesTeamID: index{
+			Type: "btree",
+			Name: "idx_result_entries_team_id",
+			Columns: []indexColumn{
+				{
+					Name:         "team_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
 		ResultEntriesFrontendIDUnique: index{
 			Type: "btree",
 			Name: "result_entries_frontend_id_unique",
@@ -328,6 +416,15 @@ var ResultEntries = Table[
 		Comment: "",
 	},
 	ForeignKeys: resultEntryForeignKeys{
+		ResultEntriesResultEntriesCarClassIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "result_entries.result_entries_car_class_id_fk",
+				Columns: []string{"car_class_id"},
+				Comment: "",
+			},
+			ForeignTable:   "car_classes",
+			ForeignColumns: []string{"id"},
+		},
 		ResultEntriesResultEntriesCarModelIDFK: foreignKey{
 			constraint: constraint{
 				Name:    "result_entries.result_entries_car_model_id_fk",
@@ -353,6 +450,15 @@ var ResultEntries = Table[
 				Comment: "",
 			},
 			ForeignTable:   "races",
+			ForeignColumns: []string{"id"},
+		},
+		ResultEntriesResultEntriesTeamIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "result_entries.result_entries_team_id_fk",
+				Columns: []string{"team_id"},
+				Comment: "",
+			},
+			ForeignTable:   "teams",
 			ForeignColumns: []string{"id"},
 		},
 	},
@@ -388,6 +494,14 @@ var ResultEntries = Table[
 			},
 			Expression: "((incidents IS NULL) OR (incidents >= 0))",
 		},
+		ResultEntriesQualiLapTimeMSCheck: check{
+			constraint: constraint{
+				Name:    "result_entries_quali_lap_time_ms_check",
+				Columns: []string{"quali_lap_time_ms"},
+				Comment: "",
+			},
+			Expression: "((quali_lap_time_ms IS NULL) OR (quali_lap_time_ms > 0))",
+		},
 		ResultEntriesStateCheck: check{
 			constraint: constraint{
 				Name:    "result_entries_state_check",
@@ -395,6 +509,14 @@ var ResultEntries = Table[
 				Comment: "",
 			},
 			Expression: "(state = ANY (ARRAY['mapping_error'::text, 'normal'::text, 'dq'::text]))",
+		},
+		ResultEntriesTotalTimeMSCheck: check{
+			constraint: constraint{
+				Name:    "result_entries_total_time_ms_check",
+				Columns: []string{"total_time_ms"},
+				Comment: "",
+			},
+			Expression: "((total_time_ms IS NULL) OR (total_time_ms > 0))",
 		},
 	},
 	Comment: "",
@@ -405,16 +527,22 @@ type resultEntryColumns struct {
 	FrontendID        column
 	RaceID            column
 	DriverID          column
-	DriverName        column
+	TeamID            column
 	CarModelID        column
-	CarName           column
+	CarClassID        column
+	RawCarName        column
+	RawDriverName     column
+	RawTeamName       column
+	CarNumber         column
+	IsGuestDriver     column
+	StartingPosition  column
 	FinishingPosition column
 	CompletedLaps     column
+	QualiLapTimeMS    column
 	FastestLapTimeMS  column
+	TotalTimeMS       column
 	Incidents         column
 	State             column
-	SourceRowNumber   column
-	RawPayload        column
 	AdminNotes        column
 	LockedAt          column
 	CreatedAt         column
@@ -425,35 +553,39 @@ type resultEntryColumns struct {
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceID, c.DriverID, c.DriverName, c.CarModelID, c.CarName, c.FinishingPosition, c.CompletedLaps, c.FastestLapTimeMS, c.Incidents, c.State, c.SourceRowNumber, c.RawPayload, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartingPosition, c.FinishingPosition, c.CompletedLaps, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type resultEntryIndexes struct {
 	ResultEntriesPkey                    index
+	IdxResultEntriesCarClassID           index
 	IdxResultEntriesCarModelID           index
 	IdxResultEntriesDriverID             index
 	IdxResultEntriesRaceID               index
 	IdxResultEntriesRaceIDDriverIDUnique index
 	IdxResultEntriesState                index
+	IdxResultEntriesTeamID               index
 	ResultEntriesFrontendIDUnique        index
 }
 
 func (i resultEntryIndexes) AsSlice() []index {
 	return []index{
-		i.ResultEntriesPkey, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.ResultEntriesFrontendIDUnique,
+		i.ResultEntriesPkey, i.IdxResultEntriesCarClassID, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.IdxResultEntriesTeamID, i.ResultEntriesFrontendIDUnique,
 	}
 }
 
 type resultEntryForeignKeys struct {
+	ResultEntriesResultEntriesCarClassIDFK foreignKey
 	ResultEntriesResultEntriesCarModelIDFK foreignKey
 	ResultEntriesResultEntriesDriverIDFK   foreignKey
 	ResultEntriesResultEntriesRaceIDFK     foreignKey
+	ResultEntriesResultEntriesTeamIDFK     foreignKey
 }
 
 func (f resultEntryForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesRaceIDFK,
+		f.ResultEntriesResultEntriesCarClassIDFK, f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesRaceIDFK, f.ResultEntriesResultEntriesTeamIDFK,
 	}
 }
 
@@ -471,11 +603,13 @@ type resultEntryChecks struct {
 	ResultEntriesCompletedLapsCheck    check
 	ResultEntriesFastestLapTimeMSCheck check
 	ResultEntriesIncidentsCheck        check
+	ResultEntriesQualiLapTimeMSCheck   check
 	ResultEntriesStateCheck            check
+	ResultEntriesTotalTimeMSCheck      check
 }
 
 func (c resultEntryChecks) AsSlice() []check {
 	return []check{
-		c.ResultEntriesCompletedLapsCheck, c.ResultEntriesFastestLapTimeMSCheck, c.ResultEntriesIncidentsCheck, c.ResultEntriesStateCheck,
+		c.ResultEntriesCompletedLapsCheck, c.ResultEntriesFastestLapTimeMSCheck, c.ResultEntriesIncidentsCheck, c.ResultEntriesQualiLapTimeMSCheck, c.ResultEntriesStateCheck, c.ResultEntriesTotalTimeMSCheck,
 	}
 }

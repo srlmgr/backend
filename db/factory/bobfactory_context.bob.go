@@ -22,15 +22,26 @@ var (
 	carBrandRelManufacturerCarManufacturerCtx = newContextual[bool]("car_brands.car_manufacturers.car_brands.car_brands_manufacturer_id_fk")
 	carBrandRelBrandCarModelsCtx              = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
 
+	// Relationship Contexts for car_classes
+	carClassWithParentsCascadingCtx     = newContextual[bool]("carClassWithParentsCascading")
+	carClassRelCarClassesToCarModelsCtx = newContextual[bool]("car_classes.car_classes_to_car_models.car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk")
+	carClassRelResultEntriesCtx         = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
+
+	// Relationship Contexts for car_classes_to_car_models
+	carClassesToCarModelWithParentsCascadingCtx = newContextual[bool]("carClassesToCarModelWithParentsCascading")
+	carClassesToCarModelRelCarClassCtx          = newContextual[bool]("car_classes.car_classes_to_car_models.car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk")
+	carClassesToCarModelRelCarModelCtx          = newContextual[bool]("car_classes_to_car_models.car_models.car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk")
+
 	// Relationship Contexts for car_manufacturers
 	carManufacturerWithParentsCascadingCtx     = newContextual[bool]("carManufacturerWithParentsCascading")
 	carManufacturerRelManufacturerCarBrandsCtx = newContextual[bool]("car_brands.car_manufacturers.car_brands.car_brands_manufacturer_id_fk")
 
 	// Relationship Contexts for car_models
-	carModelWithParentsCascadingCtx    = newContextual[bool]("carModelWithParentsCascading")
-	carModelRelBrandCarBrandCtx        = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
-	carModelRelResultEntriesCtx        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
-	carModelRelSimulationCarAliasesCtx = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
+	carModelWithParentsCascadingCtx     = newContextual[bool]("carModelWithParentsCascading")
+	carModelRelCarClassesToCarModelsCtx = newContextual[bool]("car_classes_to_car_models.car_models.car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk")
+	carModelRelBrandCarBrandCtx         = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
+	carModelRelResultEntriesCtx         = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
+	carModelRelSimulationCarAliasesCtx  = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
 
 	// Relationship Contexts for drivers
 	driverWithParentsCascadingCtx       = newContextual[bool]("driverWithParentsCascading")
@@ -98,9 +109,11 @@ var (
 	// Relationship Contexts for result_entries
 	resultEntryWithParentsCascadingCtx               = newContextual[bool]("resultEntryWithParentsCascading")
 	resultEntryRelSourceResultEntryBookingEntriesCtx = newContextual[bool]("booking_entries.result_entries.booking_entries.booking_entries_source_result_entry_id_fk")
+	resultEntryRelCarClassCtx                        = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
 	resultEntryRelCarModelCtx                        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
 	resultEntryRelDriverCtx                          = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
 	resultEntryRelRaceCtx                            = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
+	resultEntryRelTeamCtx                            = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 
 	// Relationship Contexts for season_driver_standings
 	seasonDriverStandingWithParentsCascadingCtx = newContextual[bool]("seasonDriverStandingWithParentsCascading")
@@ -152,6 +165,7 @@ var (
 	teamWithParentsCascadingCtx   = newContextual[bool]("teamWithParentsCascading")
 	teamRelBookingEntriesCtx      = newContextual[bool]("booking_entries.teams.booking_entries.booking_entries_team_id_fk")
 	teamRelEventTeamStandingsCtx  = newContextual[bool]("event_team_standings.teams.event_team_standings.event_team_standings_team_id_fk")
+	teamRelResultEntriesCtx       = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 	teamRelSeasonTeamStandingsCtx = newContextual[bool]("season_team_standings.teams.season_team_standings.season_team_standings_team_id_fk")
 	teamRelTeamDriversCtx         = newContextual[bool]("team_drivers.teams.team_drivers.team_drivers_team_id_fk")
 	teamRelSeasonCtx              = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")

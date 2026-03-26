@@ -52,11 +52,16 @@ type CarModelTemplate struct {
 }
 
 type carModelR struct {
-	BrandCarBrand        *carModelRBrandCarBrandR
-	ResultEntries        []*carModelRResultEntriesR
-	SimulationCarAliases []*carModelRSimulationCarAliasesR
+	CarClassesToCarModels []*carModelRCarClassesToCarModelsR
+	BrandCarBrand         *carModelRBrandCarBrandR
+	ResultEntries         []*carModelRResultEntriesR
+	SimulationCarAliases  []*carModelRSimulationCarAliasesR
 }
 
+type carModelRCarClassesToCarModelsR struct {
+	number int
+	o      *CarClassesToCarModelTemplate
+}
 type carModelRBrandCarBrandR struct {
 	o *CarBrandTemplate
 }
@@ -79,6 +84,19 @@ func (o *CarModelTemplate) Apply(ctx context.Context, mods ...CarModelMod) {
 // setModelRels creates and sets the relationships on *models.CarModel
 // according to the relationships in the template. Nothing is inserted into the db
 func (t CarModelTemplate) setModelRels(o *models.CarModel) {
+	if t.r.CarClassesToCarModels != nil {
+		rel := models.CarClassesToCarModelSlice{}
+		for _, r := range t.r.CarClassesToCarModels {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.CarModelID = o.ID // h2
+				rel.R.CarModel = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.CarClassesToCarModels = rel
+	}
+
 	if t.r.BrandCarBrand != nil {
 		rel := t.r.BrandCarBrand.o.Build()
 		rel.R.BrandCarModels = append(rel.R.BrandCarModels, o)
@@ -232,6 +250,26 @@ func ensureCreatableCarModel(m *models.CarModelSetter) {
 func (o *CarModelTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.CarModel) error {
 	var err error
 
+	isCarClassesToCarModelsDone, _ := carModelRelCarClassesToCarModelsCtx.Value(ctx)
+	if !isCarClassesToCarModelsDone && o.r.CarClassesToCarModels != nil {
+		ctx = carModelRelCarClassesToCarModelsCtx.WithValue(ctx, true)
+		for _, r := range o.r.CarClassesToCarModels {
+			if r.o.alreadyPersisted {
+				m.R.CarClassesToCarModels = append(m.R.CarClassesToCarModels, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachCarClassesToCarModels(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isResultEntriesDone, _ := carModelRelResultEntriesCtx.Value(ctx)
 	if !isResultEntriesDone && o.r.ResultEntries != nil {
 		ctx = carModelRelResultEntriesCtx.WithValue(ctx, true)
@@ -239,12 +277,12 @@ func (o *CarModelTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
 			} else {
-				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachResultEntries(ctx, exec, rel1...)
+				err = m.AttachResultEntries(ctx, exec, rel2...)
 				if err != nil {
 					return err
 				}
@@ -259,12 +297,12 @@ func (o *CarModelTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.SimulationCarAliases = append(m.R.SimulationCarAliases, r.o.Build())
 			} else {
-				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSimulationCarAliases(ctx, exec, rel2...)
+				err = m.AttachSimulationCarAliases(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -286,25 +324,25 @@ func (o *CarModelTemplate) Create(ctx context.Context, exec bob.Executor) (*mode
 		CarModelMods.WithNewBrandCarBrand().Apply(ctx, o)
 	}
 
-	var rel0 *models.CarBrand
+	var rel1 *models.CarBrand
 
 	if o.r.BrandCarBrand.o.alreadyPersisted {
-		rel0 = o.r.BrandCarBrand.o.Build()
+		rel1 = o.r.BrandCarBrand.o.Build()
 	} else {
-		rel0, err = o.r.BrandCarBrand.o.Create(ctx, exec)
+		rel1, err = o.r.BrandCarBrand.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.BrandID = omit.From(rel0.ID)
+	opt.BrandID = omit.From(rel1.ID)
 
 	m, err := models.CarModels.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.BrandCarBrand = rel0
+	m.R.BrandCarBrand = rel1
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -683,6 +721,54 @@ func (m carModelMods) WithExistingBrandCarBrand(em *models.CarBrand) CarModelMod
 func (m carModelMods) WithoutBrandCarBrand() CarModelMod {
 	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
 		o.r.BrandCarBrand = nil
+	})
+}
+
+func (m carModelMods) WithCarClassesToCarModels(number int, related *CarClassesToCarModelTemplate) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.CarClassesToCarModels = []*carModelRCarClassesToCarModelsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m carModelMods) WithNewCarClassesToCarModels(number int, mods ...CarClassesToCarModelMod) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		related := o.f.NewCarClassesToCarModelWithContext(ctx, mods...)
+		m.WithCarClassesToCarModels(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carModelMods) AddCarClassesToCarModels(number int, related *CarClassesToCarModelTemplate) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.CarClassesToCarModels = append(o.r.CarClassesToCarModels, &carModelRCarClassesToCarModelsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m carModelMods) AddNewCarClassesToCarModels(number int, mods ...CarClassesToCarModelMod) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		related := o.f.NewCarClassesToCarModelWithContext(ctx, mods...)
+		m.AddCarClassesToCarModels(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carModelMods) AddExistingCarClassesToCarModels(existingModels ...*models.CarClassesToCarModel) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		for _, em := range existingModels {
+			o.r.CarClassesToCarModels = append(o.r.CarClassesToCarModels, &carModelRCarClassesToCarModelsR{
+				o: o.f.FromExistingCarClassesToCarModel(em),
+			})
+		}
+	})
+}
+
+func (m carModelMods) WithoutCarClassesToCarModels() CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.CarClassesToCarModels = nil
 	})
 }
 

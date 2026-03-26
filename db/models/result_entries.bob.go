@@ -5,7 +5,6 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -23,32 +22,37 @@ import (
 	"github.com/stephenafamo/bob/expr"
 	"github.com/stephenafamo/bob/mods"
 	"github.com/stephenafamo/bob/orm"
-	"github.com/stephenafamo/bob/types"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // ResultEntry is an object representing the database table.
 type ResultEntry struct {
-	ID                int32                       `db:"id,pk" `
-	FrontendID        uuid.UUID                   `db:"frontend_id" `
-	RaceID            int32                       `db:"race_id" `
-	DriverID          null.Val[int32]             `db:"driver_id" `
-	DriverName        string                      `db:"driver_name" `
-	CarModelID        null.Val[int32]             `db:"car_model_id" `
-	CarName           null.Val[string]            `db:"car_name" `
-	FinishingPosition int32                       `db:"finishing_position" `
-	CompletedLaps     int32                       `db:"completed_laps" `
-	FastestLapTimeMS  null.Val[int32]             `db:"fastest_lap_time_ms" `
-	Incidents         null.Val[int32]             `db:"incidents" `
-	State             string                      `db:"state" `
-	SourceRowNumber   null.Val[int32]             `db:"source_row_number" `
-	RawPayload        types.JSON[json.RawMessage] `db:"raw_payload" `
-	AdminNotes        null.Val[string]            `db:"admin_notes" `
-	LockedAt          null.Val[time.Time]         `db:"locked_at" `
-	CreatedAt         time.Time                   `db:"created_at" `
-	UpdatedAt         time.Time                   `db:"updated_at" `
-	CreatedBy         string                      `db:"created_by" `
-	UpdatedBy         string                      `db:"updated_by" `
+	ID                int32               `db:"id,pk" `
+	FrontendID        uuid.UUID           `db:"frontend_id" `
+	RaceID            int32               `db:"race_id" `
+	DriverID          null.Val[int32]     `db:"driver_id" `
+	TeamID            null.Val[int32]     `db:"team_id" `
+	CarModelID        null.Val[int32]     `db:"car_model_id" `
+	CarClassID        null.Val[int32]     `db:"car_class_id" `
+	RawCarName        null.Val[string]    `db:"raw_car_name" `
+	RawDriverName     null.Val[string]    `db:"raw_driver_name" `
+	RawTeamName       null.Val[string]    `db:"raw_team_name" `
+	CarNumber         null.Val[string]    `db:"car_number" `
+	IsGuestDriver     bool                `db:"is_guest_driver" `
+	StartingPosition  null.Val[int32]     `db:"starting_position" `
+	FinishingPosition int32               `db:"finishing_position" `
+	CompletedLaps     int32               `db:"completed_laps" `
+	QualiLapTimeMS    null.Val[int32]     `db:"quali_lap_time_ms" `
+	FastestLapTimeMS  null.Val[int32]     `db:"fastest_lap_time_ms" `
+	TotalTimeMS       null.Val[int32]     `db:"total_time_ms" `
+	Incidents         null.Val[int32]     `db:"incidents" `
+	State             string              `db:"state" `
+	AdminNotes        null.Val[string]    `db:"admin_notes" `
+	LockedAt          null.Val[time.Time] `db:"locked_at" `
+	CreatedAt         time.Time           `db:"created_at" `
+	UpdatedAt         time.Time           `db:"updated_at" `
+	CreatedBy         string              `db:"created_by" `
+	UpdatedBy         string              `db:"updated_by" `
 
 	R resultEntryR `db:"-" `
 }
@@ -66,31 +70,39 @@ type ResultEntriesQuery = *psql.ViewQuery[*ResultEntry, ResultEntrySlice]
 // resultEntryR is where relationships are stored.
 type resultEntryR struct {
 	SourceResultEntryBookingEntries BookingEntrySlice // booking_entries.booking_entries_source_result_entry_id_fk
+	CarClass                        *CarClass         // result_entries.result_entries_car_class_id_fk
 	CarModel                        *CarModel         // result_entries.result_entries_car_model_id_fk
 	Driver                          *Driver           // result_entries.result_entries_driver_id_fk
 	Race                            *Race             // result_entries.result_entries_race_id_fk
+	Team                            *Team             // result_entries.result_entries_team_id_fk
 }
 
 func buildResultEntryColumns(alias string) resultEntryColumns {
 	return resultEntryColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "race_id", "driver_id", "driver_name", "car_model_id", "car_name", "finishing_position", "completed_laps", "fastest_lap_time_ms", "incidents", "state", "source_row_number", "raw_payload", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "race_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "starting_position", "finishing_position", "completed_laps", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("result_entries"),
 		tableAlias:        alias,
 		ID:                psql.Quote(alias, "id"),
 		FrontendID:        psql.Quote(alias, "frontend_id"),
 		RaceID:            psql.Quote(alias, "race_id"),
 		DriverID:          psql.Quote(alias, "driver_id"),
-		DriverName:        psql.Quote(alias, "driver_name"),
+		TeamID:            psql.Quote(alias, "team_id"),
 		CarModelID:        psql.Quote(alias, "car_model_id"),
-		CarName:           psql.Quote(alias, "car_name"),
+		CarClassID:        psql.Quote(alias, "car_class_id"),
+		RawCarName:        psql.Quote(alias, "raw_car_name"),
+		RawDriverName:     psql.Quote(alias, "raw_driver_name"),
+		RawTeamName:       psql.Quote(alias, "raw_team_name"),
+		CarNumber:         psql.Quote(alias, "car_number"),
+		IsGuestDriver:     psql.Quote(alias, "is_guest_driver"),
+		StartingPosition:  psql.Quote(alias, "starting_position"),
 		FinishingPosition: psql.Quote(alias, "finishing_position"),
 		CompletedLaps:     psql.Quote(alias, "completed_laps"),
+		QualiLapTimeMS:    psql.Quote(alias, "quali_lap_time_ms"),
 		FastestLapTimeMS:  psql.Quote(alias, "fastest_lap_time_ms"),
+		TotalTimeMS:       psql.Quote(alias, "total_time_ms"),
 		Incidents:         psql.Quote(alias, "incidents"),
 		State:             psql.Quote(alias, "state"),
-		SourceRowNumber:   psql.Quote(alias, "source_row_number"),
-		RawPayload:        psql.Quote(alias, "raw_payload"),
 		AdminNotes:        psql.Quote(alias, "admin_notes"),
 		LockedAt:          psql.Quote(alias, "locked_at"),
 		CreatedAt:         psql.Quote(alias, "created_at"),
@@ -107,16 +119,22 @@ type resultEntryColumns struct {
 	FrontendID        psql.Expression
 	RaceID            psql.Expression
 	DriverID          psql.Expression
-	DriverName        psql.Expression
+	TeamID            psql.Expression
 	CarModelID        psql.Expression
-	CarName           psql.Expression
+	CarClassID        psql.Expression
+	RawCarName        psql.Expression
+	RawDriverName     psql.Expression
+	RawTeamName       psql.Expression
+	CarNumber         psql.Expression
+	IsGuestDriver     psql.Expression
+	StartingPosition  psql.Expression
 	FinishingPosition psql.Expression
 	CompletedLaps     psql.Expression
+	QualiLapTimeMS    psql.Expression
 	FastestLapTimeMS  psql.Expression
+	TotalTimeMS       psql.Expression
 	Incidents         psql.Expression
 	State             psql.Expression
-	SourceRowNumber   psql.Expression
-	RawPayload        psql.Expression
 	AdminNotes        psql.Expression
 	LockedAt          psql.Expression
 	CreatedAt         psql.Expression
@@ -137,30 +155,36 @@ func (resultEntryColumns) AliasedAs(alias string) resultEntryColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type ResultEntrySetter struct {
-	ID                omit.Val[int32]                       `db:"id,pk" `
-	FrontendID        omit.Val[uuid.UUID]                   `db:"frontend_id" `
-	RaceID            omit.Val[int32]                       `db:"race_id" `
-	DriverID          omitnull.Val[int32]                   `db:"driver_id" `
-	DriverName        omit.Val[string]                      `db:"driver_name" `
-	CarModelID        omitnull.Val[int32]                   `db:"car_model_id" `
-	CarName           omitnull.Val[string]                  `db:"car_name" `
-	FinishingPosition omit.Val[int32]                       `db:"finishing_position" `
-	CompletedLaps     omit.Val[int32]                       `db:"completed_laps" `
-	FastestLapTimeMS  omitnull.Val[int32]                   `db:"fastest_lap_time_ms" `
-	Incidents         omitnull.Val[int32]                   `db:"incidents" `
-	State             omit.Val[string]                      `db:"state" `
-	SourceRowNumber   omitnull.Val[int32]                   `db:"source_row_number" `
-	RawPayload        omit.Val[types.JSON[json.RawMessage]] `db:"raw_payload" `
-	AdminNotes        omitnull.Val[string]                  `db:"admin_notes" `
-	LockedAt          omitnull.Val[time.Time]               `db:"locked_at" `
-	CreatedAt         omit.Val[time.Time]                   `db:"created_at" `
-	UpdatedAt         omit.Val[time.Time]                   `db:"updated_at" `
-	CreatedBy         omit.Val[string]                      `db:"created_by" `
-	UpdatedBy         omit.Val[string]                      `db:"updated_by" `
+	ID                omit.Val[int32]         `db:"id,pk" `
+	FrontendID        omit.Val[uuid.UUID]     `db:"frontend_id" `
+	RaceID            omit.Val[int32]         `db:"race_id" `
+	DriverID          omitnull.Val[int32]     `db:"driver_id" `
+	TeamID            omitnull.Val[int32]     `db:"team_id" `
+	CarModelID        omitnull.Val[int32]     `db:"car_model_id" `
+	CarClassID        omitnull.Val[int32]     `db:"car_class_id" `
+	RawCarName        omitnull.Val[string]    `db:"raw_car_name" `
+	RawDriverName     omitnull.Val[string]    `db:"raw_driver_name" `
+	RawTeamName       omitnull.Val[string]    `db:"raw_team_name" `
+	CarNumber         omitnull.Val[string]    `db:"car_number" `
+	IsGuestDriver     omit.Val[bool]          `db:"is_guest_driver" `
+	StartingPosition  omitnull.Val[int32]     `db:"starting_position" `
+	FinishingPosition omit.Val[int32]         `db:"finishing_position" `
+	CompletedLaps     omit.Val[int32]         `db:"completed_laps" `
+	QualiLapTimeMS    omitnull.Val[int32]     `db:"quali_lap_time_ms" `
+	FastestLapTimeMS  omitnull.Val[int32]     `db:"fastest_lap_time_ms" `
+	TotalTimeMS       omitnull.Val[int32]     `db:"total_time_ms" `
+	Incidents         omitnull.Val[int32]     `db:"incidents" `
+	State             omit.Val[string]        `db:"state" `
+	AdminNotes        omitnull.Val[string]    `db:"admin_notes" `
+	LockedAt          omitnull.Val[time.Time] `db:"locked_at" `
+	CreatedAt         omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt         omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy         omit.Val[string]        `db:"created_by" `
+	UpdatedBy         omit.Val[string]        `db:"updated_by" `
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 20)
+	vals := make([]string, 0, 26)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -173,14 +197,32 @@ func (s ResultEntrySetter) SetColumns() []string {
 	if !s.DriverID.IsUnset() {
 		vals = append(vals, "driver_id")
 	}
-	if s.DriverName.IsValue() {
-		vals = append(vals, "driver_name")
+	if !s.TeamID.IsUnset() {
+		vals = append(vals, "team_id")
 	}
 	if !s.CarModelID.IsUnset() {
 		vals = append(vals, "car_model_id")
 	}
-	if !s.CarName.IsUnset() {
-		vals = append(vals, "car_name")
+	if !s.CarClassID.IsUnset() {
+		vals = append(vals, "car_class_id")
+	}
+	if !s.RawCarName.IsUnset() {
+		vals = append(vals, "raw_car_name")
+	}
+	if !s.RawDriverName.IsUnset() {
+		vals = append(vals, "raw_driver_name")
+	}
+	if !s.RawTeamName.IsUnset() {
+		vals = append(vals, "raw_team_name")
+	}
+	if !s.CarNumber.IsUnset() {
+		vals = append(vals, "car_number")
+	}
+	if s.IsGuestDriver.IsValue() {
+		vals = append(vals, "is_guest_driver")
+	}
+	if !s.StartingPosition.IsUnset() {
+		vals = append(vals, "starting_position")
 	}
 	if s.FinishingPosition.IsValue() {
 		vals = append(vals, "finishing_position")
@@ -188,20 +230,20 @@ func (s ResultEntrySetter) SetColumns() []string {
 	if s.CompletedLaps.IsValue() {
 		vals = append(vals, "completed_laps")
 	}
+	if !s.QualiLapTimeMS.IsUnset() {
+		vals = append(vals, "quali_lap_time_ms")
+	}
 	if !s.FastestLapTimeMS.IsUnset() {
 		vals = append(vals, "fastest_lap_time_ms")
+	}
+	if !s.TotalTimeMS.IsUnset() {
+		vals = append(vals, "total_time_ms")
 	}
 	if !s.Incidents.IsUnset() {
 		vals = append(vals, "incidents")
 	}
 	if s.State.IsValue() {
 		vals = append(vals, "state")
-	}
-	if !s.SourceRowNumber.IsUnset() {
-		vals = append(vals, "source_row_number")
-	}
-	if s.RawPayload.IsValue() {
-		vals = append(vals, "raw_payload")
 	}
 	if !s.AdminNotes.IsUnset() {
 		vals = append(vals, "admin_notes")
@@ -237,14 +279,32 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if !s.DriverID.IsUnset() {
 		t.DriverID = s.DriverID.MustGetNull()
 	}
-	if s.DriverName.IsValue() {
-		t.DriverName = s.DriverName.MustGet()
+	if !s.TeamID.IsUnset() {
+		t.TeamID = s.TeamID.MustGetNull()
 	}
 	if !s.CarModelID.IsUnset() {
 		t.CarModelID = s.CarModelID.MustGetNull()
 	}
-	if !s.CarName.IsUnset() {
-		t.CarName = s.CarName.MustGetNull()
+	if !s.CarClassID.IsUnset() {
+		t.CarClassID = s.CarClassID.MustGetNull()
+	}
+	if !s.RawCarName.IsUnset() {
+		t.RawCarName = s.RawCarName.MustGetNull()
+	}
+	if !s.RawDriverName.IsUnset() {
+		t.RawDriverName = s.RawDriverName.MustGetNull()
+	}
+	if !s.RawTeamName.IsUnset() {
+		t.RawTeamName = s.RawTeamName.MustGetNull()
+	}
+	if !s.CarNumber.IsUnset() {
+		t.CarNumber = s.CarNumber.MustGetNull()
+	}
+	if s.IsGuestDriver.IsValue() {
+		t.IsGuestDriver = s.IsGuestDriver.MustGet()
+	}
+	if !s.StartingPosition.IsUnset() {
+		t.StartingPosition = s.StartingPosition.MustGetNull()
 	}
 	if s.FinishingPosition.IsValue() {
 		t.FinishingPosition = s.FinishingPosition.MustGet()
@@ -252,20 +312,20 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if s.CompletedLaps.IsValue() {
 		t.CompletedLaps = s.CompletedLaps.MustGet()
 	}
+	if !s.QualiLapTimeMS.IsUnset() {
+		t.QualiLapTimeMS = s.QualiLapTimeMS.MustGetNull()
+	}
 	if !s.FastestLapTimeMS.IsUnset() {
 		t.FastestLapTimeMS = s.FastestLapTimeMS.MustGetNull()
+	}
+	if !s.TotalTimeMS.IsUnset() {
+		t.TotalTimeMS = s.TotalTimeMS.MustGetNull()
 	}
 	if !s.Incidents.IsUnset() {
 		t.Incidents = s.Incidents.MustGetNull()
 	}
 	if s.State.IsValue() {
 		t.State = s.State.MustGet()
-	}
-	if !s.SourceRowNumber.IsUnset() {
-		t.SourceRowNumber = s.SourceRowNumber.MustGetNull()
-	}
-	if s.RawPayload.IsValue() {
-		t.RawPayload = s.RawPayload.MustGet()
 	}
 	if !s.AdminNotes.IsUnset() {
 		t.AdminNotes = s.AdminNotes.MustGetNull()
@@ -293,7 +353,7 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 20)
+		vals := make([]bob.Expression, 26)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -318,8 +378,8 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.DriverName.IsValue() {
-			vals[4] = psql.Arg(s.DriverName.MustGet())
+		if !s.TeamID.IsUnset() {
+			vals[4] = psql.Arg(s.TeamID.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
@@ -330,88 +390,124 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarName.IsUnset() {
-			vals[6] = psql.Arg(s.CarName.MustGetNull())
+		if !s.CarClassID.IsUnset() {
+			vals[6] = psql.Arg(s.CarClassID.MustGetNull())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.FinishingPosition.IsValue() {
-			vals[7] = psql.Arg(s.FinishingPosition.MustGet())
+		if !s.RawCarName.IsUnset() {
+			vals[7] = psql.Arg(s.RawCarName.MustGetNull())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.CompletedLaps.IsValue() {
-			vals[8] = psql.Arg(s.CompletedLaps.MustGet())
+		if !s.RawDriverName.IsUnset() {
+			vals[8] = psql.Arg(s.RawDriverName.MustGetNull())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FastestLapTimeMS.IsUnset() {
-			vals[9] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
+		if !s.RawTeamName.IsUnset() {
+			vals[9] = psql.Arg(s.RawTeamName.MustGetNull())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Incidents.IsUnset() {
-			vals[10] = psql.Arg(s.Incidents.MustGetNull())
+		if !s.CarNumber.IsUnset() {
+			vals[10] = psql.Arg(s.CarNumber.MustGetNull())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.State.IsValue() {
-			vals[11] = psql.Arg(s.State.MustGet())
+		if s.IsGuestDriver.IsValue() {
+			vals[11] = psql.Arg(s.IsGuestDriver.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if !s.SourceRowNumber.IsUnset() {
-			vals[12] = psql.Arg(s.SourceRowNumber.MustGetNull())
+		if !s.StartingPosition.IsUnset() {
+			vals[12] = psql.Arg(s.StartingPosition.MustGetNull())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if s.RawPayload.IsValue() {
-			vals[13] = psql.Arg(s.RawPayload.MustGet())
+		if s.FinishingPosition.IsValue() {
+			vals[13] = psql.Arg(s.FinishingPosition.MustGet())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if !s.AdminNotes.IsUnset() {
-			vals[14] = psql.Arg(s.AdminNotes.MustGetNull())
+		if s.CompletedLaps.IsValue() {
+			vals[14] = psql.Arg(s.CompletedLaps.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LockedAt.IsUnset() {
-			vals[15] = psql.Arg(s.LockedAt.MustGetNull())
+		if !s.QualiLapTimeMS.IsUnset() {
+			vals[15] = psql.Arg(s.QualiLapTimeMS.MustGetNull())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[16] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.FastestLapTimeMS.IsUnset() {
+			vals[16] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
 		} else {
 			vals[16] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[17] = psql.Arg(s.UpdatedAt.MustGet())
+		if !s.TotalTimeMS.IsUnset() {
+			vals[17] = psql.Arg(s.TotalTimeMS.MustGetNull())
 		} else {
 			vals[17] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[18] = psql.Arg(s.CreatedBy.MustGet())
+		if !s.Incidents.IsUnset() {
+			vals[18] = psql.Arg(s.Incidents.MustGetNull())
 		} else {
 			vals[18] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[19] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.State.IsValue() {
+			vals[19] = psql.Arg(s.State.MustGet())
 		} else {
 			vals[19] = psql.Raw("DEFAULT")
+		}
+
+		if !s.AdminNotes.IsUnset() {
+			vals[20] = psql.Arg(s.AdminNotes.MustGetNull())
+		} else {
+			vals[20] = psql.Raw("DEFAULT")
+		}
+
+		if !s.LockedAt.IsUnset() {
+			vals[21] = psql.Arg(s.LockedAt.MustGetNull())
+		} else {
+			vals[21] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedAt.IsValue() {
+			vals[22] = psql.Arg(s.CreatedAt.MustGet())
+		} else {
+			vals[22] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedAt.IsValue() {
+			vals[23] = psql.Arg(s.UpdatedAt.MustGet())
+		} else {
+			vals[23] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedBy.IsValue() {
+			vals[24] = psql.Arg(s.CreatedBy.MustGet())
+		} else {
+			vals[24] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[25] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[25] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -423,7 +519,7 @@ func (s ResultEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 20)
+	exprs := make([]bob.Expression, 0, 26)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -453,10 +549,10 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.DriverName.IsValue() {
+	if !s.TeamID.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "driver_name")...),
-			psql.Arg(s.DriverName),
+			psql.Quote(append(prefix, "team_id")...),
+			psql.Arg(s.TeamID),
 		}})
 	}
 
@@ -467,10 +563,52 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if !s.CarName.IsUnset() {
+	if !s.CarClassID.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "car_name")...),
-			psql.Arg(s.CarName),
+			psql.Quote(append(prefix, "car_class_id")...),
+			psql.Arg(s.CarClassID),
+		}})
+	}
+
+	if !s.RawCarName.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "raw_car_name")...),
+			psql.Arg(s.RawCarName),
+		}})
+	}
+
+	if !s.RawDriverName.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "raw_driver_name")...),
+			psql.Arg(s.RawDriverName),
+		}})
+	}
+
+	if !s.RawTeamName.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "raw_team_name")...),
+			psql.Arg(s.RawTeamName),
+		}})
+	}
+
+	if !s.CarNumber.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "car_number")...),
+			psql.Arg(s.CarNumber),
+		}})
+	}
+
+	if s.IsGuestDriver.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "is_guest_driver")...),
+			psql.Arg(s.IsGuestDriver),
+		}})
+	}
+
+	if !s.StartingPosition.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "starting_position")...),
+			psql.Arg(s.StartingPosition),
 		}})
 	}
 
@@ -488,10 +626,24 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if !s.QualiLapTimeMS.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "quali_lap_time_ms")...),
+			psql.Arg(s.QualiLapTimeMS),
+		}})
+	}
+
 	if !s.FastestLapTimeMS.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "fastest_lap_time_ms")...),
 			psql.Arg(s.FastestLapTimeMS),
+		}})
+	}
+
+	if !s.TotalTimeMS.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "total_time_ms")...),
+			psql.Arg(s.TotalTimeMS),
 		}})
 	}
 
@@ -506,20 +658,6 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "state")...),
 			psql.Arg(s.State),
-		}})
-	}
-
-	if !s.SourceRowNumber.IsUnset() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "source_row_number")...),
-			psql.Arg(s.SourceRowNumber),
-		}})
-	}
-
-	if s.RawPayload.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "raw_payload")...),
-			psql.Arg(s.RawPayload),
 		}})
 	}
 
@@ -815,6 +953,30 @@ func (os ResultEntrySlice) SourceResultEntryBookingEntries(mods ...bob.Mod[*dial
 	)...)
 }
 
+// CarClass starts a query for related objects on car_classes
+func (o *ResultEntry) CarClass(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesQuery {
+	return CarClasses.Query(append(mods,
+		sm.Where(CarClasses.Columns.ID.EQ(psql.Arg(o.CarClassID))),
+	)...)
+}
+
+func (os ResultEntrySlice) CarClass(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesQuery {
+	pkCarClassID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkCarClassID = append(pkCarClassID, o.CarClassID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkCarClassID), "integer[]")),
+	))
+
+	return CarClasses.Query(append(mods,
+		sm.Where(psql.Group(CarClasses.Columns.ID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // CarModel starts a query for related objects on car_models
 func (o *ResultEntry) CarModel(mods ...bob.Mod[*dialect.SelectQuery]) CarModelsQuery {
 	return CarModels.Query(append(mods,
@@ -887,6 +1049,30 @@ func (os ResultEntrySlice) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuer
 	)...)
 }
 
+// Team starts a query for related objects on teams
+func (o *ResultEntry) Team(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQuery {
+	return Teams.Query(append(mods,
+		sm.Where(Teams.Columns.ID.EQ(psql.Arg(o.TeamID))),
+	)...)
+}
+
+func (os ResultEntrySlice) Team(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQuery {
+	pkTeamID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkTeamID = append(pkTeamID, o.TeamID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkTeamID), "integer[]")),
+	))
+
+	return Teams.Query(append(mods,
+		sm.Where(psql.Group(Teams.Columns.ID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 func insertResultEntrySourceResultEntryBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, resultEntry0 *ResultEntry) (BookingEntrySlice, error) {
 	for i := range bookingEntries1 {
 		bookingEntries1[i].SourceResultEntryID = omitnull.From(resultEntry0.ID)
@@ -951,6 +1137,54 @@ func (resultEntry0 *ResultEntry) AttachSourceResultEntryBookingEntries(ctx conte
 	for _, rel := range related {
 		rel.R.SourceResultEntryResultEntry = resultEntry0
 	}
+
+	return nil
+}
+
+func attachResultEntryCarClass0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, carClass1 *CarClass) (*ResultEntry, error) {
+	setter := &ResultEntrySetter{
+		CarClassID: omitnull.From(carClass1.ID),
+	}
+
+	err := resultEntry0.Update(ctx, exec, setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachResultEntryCarClass0: %w", err)
+	}
+
+	return resultEntry0, nil
+}
+
+func (resultEntry0 *ResultEntry) InsertCarClass(ctx context.Context, exec bob.Executor, related *CarClassSetter) error {
+	var err error
+
+	carClass1, err := CarClasses.Insert(related).One(ctx, exec)
+	if err != nil {
+		return fmt.Errorf("inserting related objects: %w", err)
+	}
+
+	_, err = attachResultEntryCarClass0(ctx, exec, 1, resultEntry0, carClass1)
+	if err != nil {
+		return err
+	}
+
+	resultEntry0.R.CarClass = carClass1
+
+	carClass1.R.ResultEntries = append(carClass1.R.ResultEntries, resultEntry0)
+
+	return nil
+}
+
+func (resultEntry0 *ResultEntry) AttachCarClass(ctx context.Context, exec bob.Executor, carClass1 *CarClass) error {
+	var err error
+
+	_, err = attachResultEntryCarClass0(ctx, exec, 1, resultEntry0, carClass1)
+	if err != nil {
+		return err
+	}
+
+	resultEntry0.R.CarClass = carClass1
+
+	carClass1.R.ResultEntries = append(carClass1.R.ResultEntries, resultEntry0)
 
 	return nil
 }
@@ -1099,21 +1333,75 @@ func (resultEntry0 *ResultEntry) AttachRace(ctx context.Context, exec bob.Execut
 	return nil
 }
 
+func attachResultEntryTeam0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, team1 *Team) (*ResultEntry, error) {
+	setter := &ResultEntrySetter{
+		TeamID: omitnull.From(team1.ID),
+	}
+
+	err := resultEntry0.Update(ctx, exec, setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachResultEntryTeam0: %w", err)
+	}
+
+	return resultEntry0, nil
+}
+
+func (resultEntry0 *ResultEntry) InsertTeam(ctx context.Context, exec bob.Executor, related *TeamSetter) error {
+	var err error
+
+	team1, err := Teams.Insert(related).One(ctx, exec)
+	if err != nil {
+		return fmt.Errorf("inserting related objects: %w", err)
+	}
+
+	_, err = attachResultEntryTeam0(ctx, exec, 1, resultEntry0, team1)
+	if err != nil {
+		return err
+	}
+
+	resultEntry0.R.Team = team1
+
+	team1.R.ResultEntries = append(team1.R.ResultEntries, resultEntry0)
+
+	return nil
+}
+
+func (resultEntry0 *ResultEntry) AttachTeam(ctx context.Context, exec bob.Executor, team1 *Team) error {
+	var err error
+
+	_, err = attachResultEntryTeam0(ctx, exec, 1, resultEntry0, team1)
+	if err != nil {
+		return err
+	}
+
+	resultEntry0.R.Team = team1
+
+	team1.R.ResultEntries = append(team1.R.ResultEntries, resultEntry0)
+
+	return nil
+}
+
 type resultEntryWhere[Q psql.Filterable] struct {
 	ID                psql.WhereMod[Q, int32]
 	FrontendID        psql.WhereMod[Q, uuid.UUID]
 	RaceID            psql.WhereMod[Q, int32]
 	DriverID          psql.WhereNullMod[Q, int32]
-	DriverName        psql.WhereMod[Q, string]
+	TeamID            psql.WhereNullMod[Q, int32]
 	CarModelID        psql.WhereNullMod[Q, int32]
-	CarName           psql.WhereNullMod[Q, string]
+	CarClassID        psql.WhereNullMod[Q, int32]
+	RawCarName        psql.WhereNullMod[Q, string]
+	RawDriverName     psql.WhereNullMod[Q, string]
+	RawTeamName       psql.WhereNullMod[Q, string]
+	CarNumber         psql.WhereNullMod[Q, string]
+	IsGuestDriver     psql.WhereMod[Q, bool]
+	StartingPosition  psql.WhereNullMod[Q, int32]
 	FinishingPosition psql.WhereMod[Q, int32]
 	CompletedLaps     psql.WhereMod[Q, int32]
+	QualiLapTimeMS    psql.WhereNullMod[Q, int32]
 	FastestLapTimeMS  psql.WhereNullMod[Q, int32]
+	TotalTimeMS       psql.WhereNullMod[Q, int32]
 	Incidents         psql.WhereNullMod[Q, int32]
 	State             psql.WhereMod[Q, string]
-	SourceRowNumber   psql.WhereNullMod[Q, int32]
-	RawPayload        psql.WhereMod[Q, types.JSON[json.RawMessage]]
 	AdminNotes        psql.WhereNullMod[Q, string]
 	LockedAt          psql.WhereNullMod[Q, time.Time]
 	CreatedAt         psql.WhereMod[Q, time.Time]
@@ -1132,16 +1420,22 @@ func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEnt
 		FrontendID:        psql.Where[Q, uuid.UUID](cols.FrontendID),
 		RaceID:            psql.Where[Q, int32](cols.RaceID),
 		DriverID:          psql.WhereNull[Q, int32](cols.DriverID),
-		DriverName:        psql.Where[Q, string](cols.DriverName),
+		TeamID:            psql.WhereNull[Q, int32](cols.TeamID),
 		CarModelID:        psql.WhereNull[Q, int32](cols.CarModelID),
-		CarName:           psql.WhereNull[Q, string](cols.CarName),
+		CarClassID:        psql.WhereNull[Q, int32](cols.CarClassID),
+		RawCarName:        psql.WhereNull[Q, string](cols.RawCarName),
+		RawDriverName:     psql.WhereNull[Q, string](cols.RawDriverName),
+		RawTeamName:       psql.WhereNull[Q, string](cols.RawTeamName),
+		CarNumber:         psql.WhereNull[Q, string](cols.CarNumber),
+		IsGuestDriver:     psql.Where[Q, bool](cols.IsGuestDriver),
+		StartingPosition:  psql.WhereNull[Q, int32](cols.StartingPosition),
 		FinishingPosition: psql.Where[Q, int32](cols.FinishingPosition),
 		CompletedLaps:     psql.Where[Q, int32](cols.CompletedLaps),
+		QualiLapTimeMS:    psql.WhereNull[Q, int32](cols.QualiLapTimeMS),
 		FastestLapTimeMS:  psql.WhereNull[Q, int32](cols.FastestLapTimeMS),
+		TotalTimeMS:       psql.WhereNull[Q, int32](cols.TotalTimeMS),
 		Incidents:         psql.WhereNull[Q, int32](cols.Incidents),
 		State:             psql.Where[Q, string](cols.State),
-		SourceRowNumber:   psql.WhereNull[Q, int32](cols.SourceRowNumber),
-		RawPayload:        psql.Where[Q, types.JSON[json.RawMessage]](cols.RawPayload),
 		AdminNotes:        psql.WhereNull[Q, string](cols.AdminNotes),
 		LockedAt:          psql.WhereNull[Q, time.Time](cols.LockedAt),
 		CreatedAt:         psql.Where[Q, time.Time](cols.CreatedAt),
@@ -1169,6 +1463,18 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 			if rel != nil {
 				rel.R.SourceResultEntryResultEntry = o
 			}
+		}
+		return nil
+	case "CarClass":
+		rel, ok := retrieved.(*CarClass)
+		if !ok {
+			return fmt.Errorf("resultEntry cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.CarClass = rel
+
+		if rel != nil {
+			rel.R.ResultEntries = ResultEntrySlice{o}
 		}
 		return nil
 	case "CarModel":
@@ -1207,19 +1513,46 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 			rel.R.ResultEntries = ResultEntrySlice{o}
 		}
 		return nil
+	case "Team":
+		rel, ok := retrieved.(*Team)
+		if !ok {
+			return fmt.Errorf("resultEntry cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.Team = rel
+
+		if rel != nil {
+			rel.R.ResultEntries = ResultEntrySlice{o}
+		}
+		return nil
 	default:
 		return fmt.Errorf("resultEntry has no relationship %q", name)
 	}
 }
 
 type resultEntryPreloader struct {
+	CarClass func(...psql.PreloadOption) psql.Preloader
 	CarModel func(...psql.PreloadOption) psql.Preloader
 	Driver   func(...psql.PreloadOption) psql.Preloader
 	Race     func(...psql.PreloadOption) psql.Preloader
+	Team     func(...psql.PreloadOption) psql.Preloader
 }
 
 func buildResultEntryPreloader() resultEntryPreloader {
 	return resultEntryPreloader{
+		CarClass: func(opts ...psql.PreloadOption) psql.Preloader {
+			return psql.Preload[*CarClass, CarClassSlice](psql.PreloadRel{
+				Name: "CarClass",
+				Sides: []psql.PreloadSide{
+					{
+						From:        ResultEntries,
+						To:          CarClasses,
+						FromColumns: []string{"car_class_id"},
+						ToColumns:   []string{"id"},
+					},
+				},
+			}, CarClasses.Columns.Names(), opts...)
+		},
 		CarModel: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*CarModel, CarModelSlice](psql.PreloadRel{
 				Name: "CarModel",
@@ -1259,19 +1592,37 @@ func buildResultEntryPreloader() resultEntryPreloader {
 				},
 			}, Races.Columns.Names(), opts...)
 		},
+		Team: func(opts ...psql.PreloadOption) psql.Preloader {
+			return psql.Preload[*Team, TeamSlice](psql.PreloadRel{
+				Name: "Team",
+				Sides: []psql.PreloadSide{
+					{
+						From:        ResultEntries,
+						To:          Teams,
+						FromColumns: []string{"team_id"},
+						ToColumns:   []string{"id"},
+					},
+				},
+			}, Teams.Columns.Names(), opts...)
+		},
 	}
 }
 
 type resultEntryThenLoader[Q orm.Loadable] struct {
 	SourceResultEntryBookingEntries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	CarClass                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	CarModel                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Driver                          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Race                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Team                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 	type SourceResultEntryBookingEntriesLoadInterface interface {
 		LoadSourceResultEntryBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type CarClassLoadInterface interface {
+		LoadCarClass(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type CarModelLoadInterface interface {
 		LoadCarModel(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1282,12 +1633,21 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 	type RaceLoadInterface interface {
 		LoadRace(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
+	type TeamLoadInterface interface {
+		LoadTeam(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 
 	return resultEntryThenLoader[Q]{
 		SourceResultEntryBookingEntries: thenLoadBuilder[Q](
 			"SourceResultEntryBookingEntries",
 			func(ctx context.Context, exec bob.Executor, retrieved SourceResultEntryBookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadSourceResultEntryBookingEntries(ctx, exec, mods...)
+			},
+		),
+		CarClass: thenLoadBuilder[Q](
+			"CarClass",
+			func(ctx context.Context, exec bob.Executor, retrieved CarClassLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCarClass(ctx, exec, mods...)
 			},
 		),
 		CarModel: thenLoadBuilder[Q](
@@ -1306,6 +1666,12 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 			"Race",
 			func(ctx context.Context, exec bob.Executor, retrieved RaceLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadRace(ctx, exec, mods...)
+			},
+		),
+		Team: thenLoadBuilder[Q](
+			"Team",
+			func(ctx context.Context, exec bob.Executor, retrieved TeamLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadTeam(ctx, exec, mods...)
 			},
 		),
 	}
@@ -1369,6 +1735,61 @@ func (os ResultEntrySlice) LoadSourceResultEntryBookingEntries(ctx context.Conte
 			rel.R.SourceResultEntryResultEntry = o
 
 			o.R.SourceResultEntryBookingEntries = append(o.R.SourceResultEntryBookingEntries, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadCarClass loads the resultEntry's CarClass into the .R struct
+func (o *ResultEntry) LoadCarClass(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.CarClass = nil
+
+	related, err := o.CarClass(mods...).One(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	related.R.ResultEntries = ResultEntrySlice{o}
+
+	o.R.CarClass = related
+	return nil
+}
+
+// LoadCarClass loads the resultEntry's CarClass into the .R struct
+func (os ResultEntrySlice) LoadCarClass(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	carClasses, err := os.CarClass(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range carClasses {
+			if !o.CarClassID.IsValue() {
+				continue
+			}
+
+			if !(o.CarClassID.IsValue() && o.CarClassID.MustGet() == rel.ID) {
+				continue
+			}
+
+			rel.R.ResultEntries = append(rel.R.ResultEntries, o)
+
+			o.R.CarClass = rel
+			break
 		}
 	}
 
@@ -1537,12 +1958,69 @@ func (os ResultEntrySlice) LoadRace(ctx context.Context, exec bob.Executor, mods
 	return nil
 }
 
+// LoadTeam loads the resultEntry's Team into the .R struct
+func (o *ResultEntry) LoadTeam(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.Team = nil
+
+	related, err := o.Team(mods...).One(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	related.R.ResultEntries = ResultEntrySlice{o}
+
+	o.R.Team = related
+	return nil
+}
+
+// LoadTeam loads the resultEntry's Team into the .R struct
+func (os ResultEntrySlice) LoadTeam(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	teams, err := os.Team(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range teams {
+			if !o.TeamID.IsValue() {
+				continue
+			}
+
+			if !(o.TeamID.IsValue() && o.TeamID.MustGet() == rel.ID) {
+				continue
+			}
+
+			rel.R.ResultEntries = append(rel.R.ResultEntries, o)
+
+			o.R.Team = rel
+			break
+		}
+	}
+
+	return nil
+}
+
 type resultEntryJoins[Q dialect.Joinable] struct {
 	typ                             string
 	SourceResultEntryBookingEntries modAs[Q, bookingEntryColumns]
+	CarClass                        modAs[Q, carClassColumns]
 	CarModel                        modAs[Q, carModelColumns]
 	Driver                          modAs[Q, driverColumns]
 	Race                            modAs[Q, raceColumns]
+	Team                            modAs[Q, teamColumns]
 }
 
 func (j resultEntryJoins[Q]) aliasedAs(alias string) resultEntryJoins[Q] {
@@ -1560,6 +2038,20 @@ func buildResultEntryJoins[Q dialect.Joinable](cols resultEntryColumns, typ stri
 				{
 					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
 						to.SourceResultEntryID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		CarClass: modAs[Q, carClassColumns]{
+			c: CarClasses.Columns,
+			f: func(to carClassColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, CarClasses.Name().As(to.Alias())).On(
+						to.ID.EQ(cols.CarClassID),
 					))
 				}
 
@@ -1602,6 +2094,20 @@ func buildResultEntryJoins[Q dialect.Joinable](cols resultEntryColumns, typ stri
 				{
 					mods = append(mods, dialect.Join[Q](typ, Races.Name().As(to.Alias())).On(
 						to.ID.EQ(cols.RaceID),
+					))
+				}
+
+				return mods
+			},
+		},
+		Team: modAs[Q, teamColumns]{
+			c: Teams.Columns,
+			f: func(to teamColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, Teams.Name().As(to.Alias())).On(
+						to.ID.EQ(cols.TeamID),
 					))
 				}
 

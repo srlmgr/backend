@@ -49,11 +49,10 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 		entry := &models.ResultEntry{
 			FinishingPosition: int32(row.FinPos),
 			CompletedLaps:     int32(row.Laps),
-			DriverName:        row.Name,
-			CarName:           null.From(row.Car),
+			RawDriverName:     null.From(row.Name),
+			RawCarName:        null.From(row.Car),
 			Incidents:         null.From(int32(row.Incidents)),
 			State:             conversion.ResultStateNormal,
-			SourceRowNumber:   null.From(int32(i + 1)),
 		}
 
 		driverID, err := r.entityResolver.ResolveDriver(row.DriverID, row.Name)
@@ -114,22 +113,22 @@ func (r *Resolver) ResolveNonMapped(
 			continue
 		}
 		entryHasUnresolved := false
-		driverID, err := r.entityResolver.ResolveDriver("", entry.DriverName)
+		driverID, err := r.entityResolver.ResolveDriver("", entry.RawDriverName.GetOr(""))
 		if err != nil {
 			entryHasUnresolved = true
 			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: entry.DriverName,
+				SourceValue: entry.RawDriverName.GetOr(""),
 				MappingType: "driver",
 			})
 		} else {
 			entry.DriverID = null.From(int32(driverID))
 		}
 
-		carID, err := r.entityResolver.ResolveCar("", entry.CarName.GetOr(""))
+		carID, err := r.entityResolver.ResolveCar("", entry.RawCarName.GetOr(""))
 		if err != nil {
 			entryHasUnresolved = true
 			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: entry.CarName.GetOr(""),
+				SourceValue: entry.RawCarName.GetOr(""),
 				MappingType: "car",
 			})
 		} else {

@@ -19,6 +19,8 @@ var Preload = getPreloaders()
 type preloaders struct {
 	BookingEntry               bookingEntryPreloader
 	CarBrand                   carBrandPreloader
+	CarClass                   carClassPreloader
+	CarClassesToCarModel       carClassesToCarModelPreloader
 	CarManufacturer            carManufacturerPreloader
 	CarModel                   carModelPreloader
 	Driver                     driverPreloader
@@ -49,6 +51,8 @@ func getPreloaders() preloaders {
 	return preloaders{
 		BookingEntry:               buildBookingEntryPreloader(),
 		CarBrand:                   buildCarBrandPreloader(),
+		CarClass:                   buildCarClassPreloader(),
+		CarClassesToCarModel:       buildCarClassesToCarModelPreloader(),
 		CarManufacturer:            buildCarManufacturerPreloader(),
 		CarModel:                   buildCarModelPreloader(),
 		Driver:                     buildDriverPreloader(),
@@ -85,6 +89,8 @@ var (
 type thenLoaders[Q orm.Loadable] struct {
 	BookingEntry               bookingEntryThenLoader[Q]
 	CarBrand                   carBrandThenLoader[Q]
+	CarClass                   carClassThenLoader[Q]
+	CarClassesToCarModel       carClassesToCarModelThenLoader[Q]
 	CarManufacturer            carManufacturerThenLoader[Q]
 	CarModel                   carModelThenLoader[Q]
 	Driver                     driverThenLoader[Q]
@@ -115,6 +121,8 @@ func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 	return thenLoaders[Q]{
 		BookingEntry:               buildBookingEntryThenLoader[Q](),
 		CarBrand:                   buildCarBrandThenLoader[Q](),
+		CarClass:                   buildCarClassThenLoader[Q](),
+		CarClassesToCarModel:       buildCarClassesToCarModelThenLoader[Q](),
 		CarManufacturer:            buildCarManufacturerThenLoader[Q](),
 		CarModel:                   buildCarModelThenLoader[Q](),
 		Driver:                     buildDriverThenLoader[Q](),

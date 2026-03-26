@@ -5,16 +5,22 @@ CREATE TABLE result_entries (
     frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
     race_id integer NOT NULL,
     driver_id integer,
-    driver_name text NOT NULL,
+    team_id integer,
     car_model_id integer,
-    car_name text,
+    car_class_id integer,
+    raw_car_name text,
+    raw_driver_name text,
+    raw_team_name text,
+    car_number text,
+    is_guest_driver boolean NOT NULL DEFAULT false,
+    starting_position integer,
     finishing_position integer NOT NULL,
     completed_laps integer NOT NULL DEFAULT 0,
+    quali_lap_time_ms integer,
     fastest_lap_time_ms integer,
+    total_time_ms integer,
     incidents integer,
     state text NOT NULL DEFAULT 'normal',
-    source_row_number integer,
-    raw_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
     admin_notes text,
     locked_at timestamp with time zone,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -39,12 +45,28 @@ ALTER TABLE result_entries
     FOREIGN KEY (car_model_id) REFERENCES car_models (id);
 
 ALTER TABLE result_entries
+    ADD CONSTRAINT result_entries_car_class_id_fk
+    FOREIGN KEY (car_class_id) REFERENCES car_classes (id);
+
+ALTER TABLE result_entries
+    ADD CONSTRAINT result_entries_team_id_fk
+    FOREIGN KEY (team_id) REFERENCES teams (id);
+
+ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_completed_laps_check
     CHECK (completed_laps >= 0);
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_fastest_lap_time_ms_check
     CHECK (fastest_lap_time_ms IS NULL OR fastest_lap_time_ms > 0);
+
+ALTER TABLE result_entries
+    ADD CONSTRAINT result_entries_quali_lap_time_ms_check
+    CHECK (quali_lap_time_ms IS NULL OR quali_lap_time_ms > 0);
+
+ALTER TABLE result_entries
+    ADD CONSTRAINT result_entries_total_time_ms_check
+    CHECK (total_time_ms IS NULL OR total_time_ms > 0);
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_incidents_check
@@ -61,6 +83,8 @@ CREATE UNIQUE INDEX idx_result_entries_race_id_driver_id_unique
 CREATE INDEX idx_result_entries_race_id ON result_entries (race_id);
 CREATE INDEX idx_result_entries_driver_id ON result_entries (driver_id);
 CREATE INDEX idx_result_entries_car_model_id ON result_entries (car_model_id);
+CREATE INDEX idx_result_entries_car_class_id ON result_entries (car_class_id);
+CREATE INDEX idx_result_entries_team_id ON result_entries (team_id);
 CREATE INDEX idx_result_entries_state ON result_entries (state);
 
 COMMIT;

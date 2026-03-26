@@ -89,6 +89,7 @@ func ClearAllTables(pool *pgxpool.Pool) error {
 		"events",
 		"season_driver_standings",
 		"teams",
+		"car_classes_to_car_models",
 		"simulation_car_aliases",
 		"seasons",
 		"simulation_track_layout_aliases",
@@ -102,6 +103,7 @@ func ClearAllTables(pool *pgxpool.Pool) error {
 		"point_systems",
 		"tracks",
 		"car_manufacturers",
+		"car_classes",
 		"drivers",
 	}
 	err := clearTables(pool, tables)

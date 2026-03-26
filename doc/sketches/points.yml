@@ -1,0 +1,71 @@
+season:
+  name: VRFantasy 2026
+  description: |
+    Showcase for point system.
+    Use case:
+    - multiple races per event
+    - multiple grids per race
+    - award points per position in class
+    - supports different points for different grids
+    - last entry in grid_points is default for any grid not explicitly listed
+    The (rather artificial) example wants:
+    - Race 1 supports a different point system for the top grid
+    - Other grids in Race 1 use the same diffent point system
+    - for Race 2 all grids use the same point system
+  car_classes:
+    - name: LMP # reference to global car class entity
+    - name: GT3
+  standings:
+    skip_results: 2
+    per_class: true
+    supported_types:
+      - name: driver
+      - name: team
+      - name: rookie
+
+  point_system:
+    eligibility:
+      guests: false
+      race_dist_pct: 75
+
+    policies:
+      - name: Race 1,Top grid
+        points:
+          finish_position: [10, 8, 6, 4, 2, 1]
+          quali_position: [3, 2, 1]
+          finish_bonus: [5, 3, 1]
+          fastest_lap_bonus: [1]
+          incident_bonus: [3, 2, 1]
+      - name: Race 1,other
+        points:
+          finish_position: [5, 4, 3, 2, 1]
+          quali_position: [3, 2, 1]
+          finish_bonus: [5, 3, 1]
+          fastest_lap_bonus: [1]
+          incident_bonus: [3, 2, 1]
+      - name: "Race 2" #  common for all grids
+        points:
+          finish_position: [20, 15, 12, 10, 8, 6, 4, 2, 1]
+          quali_position: []
+          finish_bonus: []
+          fastest_lap_bonus: [1]
+          incident_bonus: [3, 2, 1]
+
+    races:
+      - name: Race 1
+        uses:
+          - finish_position
+          - quali_position
+          - finish_bonus
+          - fastest_lap_bonus
+          - incident_bonus
+        grid_points: # references entry in points section
+          - Race 1,Top grid
+          - Race 1,other
+
+      - name: Race 2
+        uses:
+          - finish_position
+          - incident_bonus
+        grid_points:
+          - Race 2

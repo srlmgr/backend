@@ -49,15 +49,15 @@ func (s *service) GetPreprocessPreview(
 	// Build unresolved mappings from entries missing canonical IDs.
 	var unresolvedMappings []*commonv1.UnresolvedMapping
 	for _, entry := range entries {
-		if entry.DriverID.IsNull() && entry.DriverName != "" {
+		if entry.DriverID.IsNull() && entry.RawDriverName.GetOr("") != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
-				SourceValue: entry.DriverName,
+				SourceValue: entry.RawDriverName.GetOr(""),
 				MappingType: "driver",
 			})
 		}
-		if entry.CarModelID.IsNull() && entry.CarName.GetOr("") != "" {
+		if entry.CarModelID.IsNull() && entry.RawCarName.GetOr("") != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
-				SourceValue: entry.CarName.GetOr(""),
+				SourceValue: entry.RawCarName.GetOr(""),
 				MappingType: "car_model",
 			})
 		}
