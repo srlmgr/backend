@@ -352,23 +352,32 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		Id:                uint32(model.ID),
 		RaceId:            uint32(model.RaceID),
 		DriverId:          uint32(model.DriverID.GetOr(0)),
+		TeamId:            uint32(model.TeamID.GetOr(0)),
 		CarModelId:        uint32(model.CarModelID.GetOr(0)),
+		CarClassId:        uint32(model.CarClassID.GetOr(0)),
+		CarNumber:         model.CarNumber.GetOr(""),
+		StartingPosition:  model.StartingPosition.GetOr(0),
 		FinishingPosition: model.FinishingPosition,
 		CompletedLaps:     model.CompletedLaps,
+		QualiTimeMs:       model.QualiLapTimeMS.GetOr(0),
 		FastestLapTimeMs:  model.FastestLapTimeMS.GetOr(0),
+		TotalTimeMs:       model.TotalTimeMS.GetOr(0),
 		Incidents:         model.Incidents.GetOr(0),
 		AdminNotes:        model.AdminNotes.GetOr(""),
+		RawDriverName:     model.RawDriverName.GetOr(""),
+		RawTeamName:       model.RawTeamName.GetOr(""),
+		IsGuestDriver:     model.IsGuestDriver,
 	}
 
 	switch model.State {
 	case ResultStateNormal:
-		entry.State = commonv1.ResultState_RESULT_STATE_NORMAL
+		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL
 	case ResultStateDQ:
-		entry.State = commonv1.ResultState_RESULT_STATE_DQ
+		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ
 	case ResultStateMappingError:
-		entry.State = commonv1.ResultState_RESULT_STATE_MAPPING_ERROR
+		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_MAPPING_ERROR
 	default:
-		entry.State = commonv1.ResultState_RESULT_STATE_UNSPECIFIED
+		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_UNSPECIFIED
 	}
 
 	return entry

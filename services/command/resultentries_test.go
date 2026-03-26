@@ -31,7 +31,7 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 		CompletedLaps:     25,
 		FastestLapTimeMs:  90000,
 		Incidents:         2,
-		State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 		AdminNotes:        "test note",
 	})
 
@@ -68,7 +68,7 @@ func TestResultEntrySetterBuilderBuildDQState(t *testing.T) {
 	t.Parallel()
 
 	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
-		State: commonv1.ResultState_RESULT_STATE_DQ,
+		State: commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
 	})
 
 	if !setter.State.IsValue() || setter.State.MustGet() != conversion.ResultStateDQ {
@@ -87,7 +87,7 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 		CompletedLaps:     0,
 		FastestLapTimeMs:  0,
 		Incidents:         0,
-		State:             commonv1.ResultState_RESULT_STATE_UNSPECIFIED,
+		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_UNSPECIFIED,
 		AdminNotes:        "",
 	})
 
@@ -133,7 +133,7 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 		DriverId:          1,
 		FinishingPosition: 2,
 		CompletedLaps:     20,
-		State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -150,7 +150,7 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 			resp.Msg.GetResultEntry().GetFinishingPosition(),
 		)
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultState_RESULT_STATE_NORMAL {
+	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL {
 		t.Fatalf("unexpected state: got %v", resp.Msg.GetResultEntry().GetState())
 	}
 
@@ -190,7 +190,7 @@ func TestCreateResultEntryFailureDuplicateRaceDriver(t *testing.T) {
 			DriverId:          1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
-			State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+			State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 		}),
 	)
 	if err == nil {
@@ -214,7 +214,7 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 		DriverId:          1,
 		FinishingPosition: 1,
 		CompletedLaps:     20,
-		State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error creating first entry: %v", err)
@@ -225,7 +225,7 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 		DriverId:          2,
 		FinishingPosition: 2,
 		CompletedLaps:     20,
-		State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error creating second entry with different driver: %v", err)
@@ -247,7 +247,7 @@ func TestCreateResultEntryFailureTransactionError(t *testing.T) {
 			RaceId:            1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
-			State:             commonv1.ResultState_RESULT_STATE_NORMAL,
+			State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
 		}),
 	)
 	if err == nil {
@@ -285,7 +285,7 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 
 	resp, err := svc.UpdateResultEntry(ctx, connect.NewRequest(&v1.UpdateResultEntryRequest{
 		ResultEntryId: uint32(initial.ID),
-		State:         commonv1.ResultState_RESULT_STATE_DQ,
+		State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
 		AdminNotes:    "disqualified for contact",
 	}))
 	if err != nil {
@@ -294,7 +294,7 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	if resp.Msg.GetResultEntry() == nil {
 		t.Fatal("expected non-nil result entry in response")
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultState_RESULT_STATE_DQ {
+	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
 		t.Fatalf("unexpected state: got %v", resp.Msg.GetResultEntry().GetState())
 	}
 	if resp.Msg.GetResultEntry().GetAdminNotes() != "disqualified for contact" {
@@ -331,7 +331,7 @@ func TestUpdateResultEntryFailureNotFound(t *testing.T) {
 		context.Background(),
 		connect.NewRequest(&v1.UpdateResultEntryRequest{
 			ResultEntryId: 999999,
-			State:         commonv1.ResultState_RESULT_STATE_DQ,
+			State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
 		}),
 	)
 	if err == nil {
@@ -359,13 +359,13 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 		context.Background(),
 		connect.NewRequest(&v1.UpdateResultEntryRequest{
 			ResultEntryId: uint32(entry.ID),
-			State:         commonv1.ResultState_RESULT_STATE_DQ,
+			State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
 		}),
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultState_RESULT_STATE_DQ {
+	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
 		t.Fatalf("expected dq state, got: %v", resp.Msg.GetResultEntry().GetState())
 	}
 
