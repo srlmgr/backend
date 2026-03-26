@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aarondl/opt/null"
 	"github.com/gofrs/uuid/v5"
 	"github.com/lib/pq"
 
@@ -1292,7 +1293,7 @@ func New() rootrepo.Repository {
 				ID:                1,
 				FrontendID:        mustUUID("00000000-0000-0000-0000-000000000010"),
 				RaceID:            1,
-				DriverName:        "Alex Driver",
+				RawDriverName:     null.From("Alex Driver"),
 				FinishingPosition: 1,
 				CompletedLaps:     25,
 				State:             "pending",

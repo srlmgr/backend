@@ -56,6 +56,54 @@ func TestCreateCarBrand(t *testing.T) {
 	}
 }
 
+func TestCreateCarClass(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewCarClassWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarClass: %v", err)
+	}
+}
+
+func TestCreateCarClassesToCarModel(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewCarClassesToCarModelWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarClassesToCarModel: %v", err)
+	}
+}
+
 func TestCreateCarManufacturer(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")

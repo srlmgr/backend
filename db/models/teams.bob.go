@@ -53,6 +53,7 @@ type TeamsQuery = *psql.ViewQuery[*Team, TeamSlice]
 type teamR struct {
 	BookingEntries      BookingEntrySlice       // booking_entries.booking_entries_team_id_fk
 	EventTeamStandings  EventTeamStandingSlice  // event_team_standings.event_team_standings_team_id_fk
+	ResultEntries       ResultEntrySlice        // result_entries.result_entries_team_id_fk
 	SeasonTeamStandings SeasonTeamStandingSlice // season_team_standings.season_team_standings_team_id_fk
 	TeamDrivers         TeamDriverSlice         // team_drivers.team_drivers_team_id_fk
 	Season              *Season                 // teams.teams_season_id_fk
@@ -584,6 +585,30 @@ func (os TeamSlice) EventTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) Ev
 	)...)
 }
 
+// ResultEntries starts a query for related objects on result_entries
+func (o *Team) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) ResultEntriesQuery {
+	return ResultEntries.Query(append(mods,
+		sm.Where(ResultEntries.Columns.TeamID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os TeamSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) ResultEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return ResultEntries.Query(append(mods,
+		sm.Where(psql.Group(ResultEntries.Columns.TeamID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // SeasonTeamStandings starts a query for related objects on season_team_standings
 func (o *Team) SeasonTeamStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonTeamStandingsQuery {
 	return SeasonTeamStandings.Query(append(mods,
@@ -784,6 +809,74 @@ func (team0 *Team) AttachEventTeamStandings(ctx context.Context, exec bob.Execut
 	}
 
 	team0.R.EventTeamStandings = append(team0.R.EventTeamStandings, eventTeamStandings1...)
+
+	for _, rel := range related {
+		rel.R.Team = team0
+	}
+
+	return nil
+}
+
+func insertTeamResultEntries0(ctx context.Context, exec bob.Executor, resultEntries1 []*ResultEntrySetter, team0 *Team) (ResultEntrySlice, error) {
+	for i := range resultEntries1 {
+		resultEntries1[i].TeamID = omitnull.From(team0.ID)
+	}
+
+	ret, err := ResultEntries.Insert(bob.ToMods(resultEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertTeamResultEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachTeamResultEntries0(ctx context.Context, exec bob.Executor, count int, resultEntries1 ResultEntrySlice, team0 *Team) (ResultEntrySlice, error) {
+	setter := &ResultEntrySetter{
+		TeamID: omitnull.From(team0.ID),
+	}
+
+	err := resultEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachTeamResultEntries0: %w", err)
+	}
+
+	return resultEntries1, nil
+}
+
+func (team0 *Team) InsertResultEntries(ctx context.Context, exec bob.Executor, related ...*ResultEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	resultEntries1, err := insertTeamResultEntries0(ctx, exec, related, team0)
+	if err != nil {
+		return err
+	}
+
+	team0.R.ResultEntries = append(team0.R.ResultEntries, resultEntries1...)
+
+	for _, rel := range resultEntries1 {
+		rel.R.Team = team0
+	}
+	return nil
+}
+
+func (team0 *Team) AttachResultEntries(ctx context.Context, exec bob.Executor, related ...*ResultEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	resultEntries1 := ResultEntrySlice(related)
+
+	_, err = attachTeamResultEntries0(ctx, exec, len(related), resultEntries1, team0)
+	if err != nil {
+		return err
+	}
+
+	team0.R.ResultEntries = append(team0.R.ResultEntries, resultEntries1...)
 
 	for _, rel := range related {
 		rel.R.Team = team0
@@ -1040,6 +1133,20 @@ func (o *Team) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "ResultEntries":
+		rels, ok := retrieved.(ResultEntrySlice)
+		if !ok {
+			return fmt.Errorf("team cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.ResultEntries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Team = o
+			}
+		}
+		return nil
 	case "SeasonTeamStandings":
 		rels, ok := retrieved.(SeasonTeamStandingSlice)
 		if !ok {
@@ -1110,6 +1217,7 @@ func buildTeamPreloader() teamPreloader {
 type teamThenLoader[Q orm.Loadable] struct {
 	BookingEntries      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	EventTeamStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ResultEntries       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonTeamStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	TeamDrivers         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Season              func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
@@ -1121,6 +1229,9 @@ func buildTeamThenLoader[Q orm.Loadable]() teamThenLoader[Q] {
 	}
 	type EventTeamStandingsLoadInterface interface {
 		LoadEventTeamStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type ResultEntriesLoadInterface interface {
+		LoadResultEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type SeasonTeamStandingsLoadInterface interface {
 		LoadSeasonTeamStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1143,6 +1254,12 @@ func buildTeamThenLoader[Q orm.Loadable]() teamThenLoader[Q] {
 			"EventTeamStandings",
 			func(ctx context.Context, exec bob.Executor, retrieved EventTeamStandingsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadEventTeamStandings(ctx, exec, mods...)
+			},
+		),
+		ResultEntries: thenLoadBuilder[Q](
+			"ResultEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved ResultEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadResultEntries(ctx, exec, mods...)
 			},
 		),
 		SeasonTeamStandings: thenLoadBuilder[Q](
@@ -1285,6 +1402,70 @@ func (os TeamSlice) LoadEventTeamStandings(ctx context.Context, exec bob.Executo
 			rel.R.Team = o
 
 			o.R.EventTeamStandings = append(o.R.EventTeamStandings, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadResultEntries loads the team's ResultEntries into the .R struct
+func (o *Team) LoadResultEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.ResultEntries = nil
+
+	related, err := o.ResultEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Team = o
+	}
+
+	o.R.ResultEntries = related
+	return nil
+}
+
+// LoadResultEntries loads the team's ResultEntries into the .R struct
+func (os TeamSlice) LoadResultEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	resultEntries, err := os.ResultEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.ResultEntries = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range resultEntries {
+
+			if !rel.TeamID.IsValue() {
+				continue
+			}
+			if !(rel.TeamID.IsValue() && o.ID == rel.TeamID.MustGet()) {
+				continue
+			}
+
+			rel.R.Team = o
+
+			o.R.ResultEntries = append(o.R.ResultEntries, rel)
 		}
 	}
 
@@ -1469,6 +1650,7 @@ type teamJoins[Q dialect.Joinable] struct {
 	typ                 string
 	BookingEntries      modAs[Q, bookingEntryColumns]
 	EventTeamStandings  modAs[Q, eventTeamStandingColumns]
+	ResultEntries       modAs[Q, resultEntryColumns]
 	SeasonTeamStandings modAs[Q, seasonTeamStandingColumns]
 	TeamDrivers         modAs[Q, teamDriverColumns]
 	Season              modAs[Q, seasonColumns]
@@ -1502,6 +1684,20 @@ func buildTeamJoins[Q dialect.Joinable](cols teamColumns, typ string) teamJoins[
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, EventTeamStandings.Name().As(to.Alias())).On(
+						to.TeamID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		ResultEntries: modAs[Q, resultEntryColumns]{
+			c: ResultEntries.Columns,
+			f: func(to resultEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, ResultEntries.Name().As(to.Alias())).On(
 						to.TeamID.EQ(cols.ID),
 					))
 				}

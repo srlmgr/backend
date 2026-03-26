@@ -19,6 +19,8 @@ var (
 func Where[Q psql.Filterable]() struct {
 	BookingEntries               bookingEntryWhere[Q]
 	CarBrands                    carBrandWhere[Q]
+	CarClasses                   carClassWhere[Q]
+	CarClassesToCarModels        carClassesToCarModelWhere[Q]
 	CarManufacturers             carManufacturerWhere[Q]
 	CarModels                    carModelWhere[Q]
 	Drivers                      driverWhere[Q]
@@ -47,6 +49,8 @@ func Where[Q psql.Filterable]() struct {
 	return struct {
 		BookingEntries               bookingEntryWhere[Q]
 		CarBrands                    carBrandWhere[Q]
+		CarClasses                   carClassWhere[Q]
+		CarClassesToCarModels        carClassesToCarModelWhere[Q]
 		CarManufacturers             carManufacturerWhere[Q]
 		CarModels                    carModelWhere[Q]
 		Drivers                      driverWhere[Q]
@@ -74,6 +78,8 @@ func Where[Q psql.Filterable]() struct {
 	}{
 		BookingEntries:               buildBookingEntryWhere[Q](BookingEntries.Columns),
 		CarBrands:                    buildCarBrandWhere[Q](CarBrands.Columns),
+		CarClasses:                   buildCarClassWhere[Q](CarClasses.Columns),
+		CarClassesToCarModels:        buildCarClassesToCarModelWhere[Q](CarClassesToCarModels.Columns),
 		CarManufacturers:             buildCarManufacturerWhere[Q](CarManufacturers.Columns),
 		CarModels:                    buildCarModelWhere[Q](CarModels.Columns),
 		Drivers:                      buildDriverWhere[Q](Drivers.Columns),

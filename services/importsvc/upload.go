@@ -296,7 +296,6 @@ func buildResultEntryCreateSetter(
 ) *models.ResultEntrySetter {
 	setter := &models.ResultEntrySetter{
 		RaceID:            omit.From(batch.RaceID),
-		DriverName:        omit.From(entry.DriverName),
 		FinishingPosition: omit.From(entry.FinishingPosition),
 		CompletedLaps:     omit.From(entry.CompletedLaps),
 		State:             omit.From(entry.State),
@@ -307,20 +306,20 @@ func buildResultEntryCreateSetter(
 	if !entry.DriverID.IsNull() {
 		setter.DriverID = omitnull.From(entry.DriverID.GetOr(0))
 	}
+	if !entry.RawDriverName.IsNull() {
+		setter.RawDriverName = omitnull.From(entry.RawDriverName.GetOr(""))
+	}
 	if !entry.CarModelID.IsNull() {
 		setter.CarModelID = omitnull.From(entry.CarModelID.GetOr(0))
 	}
-	if !entry.CarName.IsNull() {
-		setter.CarName = omitnull.From(entry.CarName.GetOr(""))
+	if !entry.RawCarName.IsNull() {
+		setter.RawCarName = omitnull.From(entry.RawCarName.GetOr(""))
 	}
 	if !entry.FastestLapTimeMS.IsNull() {
 		setter.FastestLapTimeMS = omitnull.From(entry.FastestLapTimeMS.GetOr(0))
 	}
 	if !entry.Incidents.IsNull() {
 		setter.Incidents = omitnull.From(entry.Incidents.GetOr(0))
-	}
-	if !entry.SourceRowNumber.IsNull() {
-		setter.SourceRowNumber = omitnull.From(entry.SourceRowNumber.GetOr(0))
 	}
 	if !entry.AdminNotes.IsNull() {
 		setter.AdminNotes = omitnull.From(entry.AdminNotes.GetOr(""))

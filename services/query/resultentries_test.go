@@ -8,6 +8,7 @@ import (
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
@@ -52,7 +53,7 @@ func seedResultEntry(
 	entry, err := repo.ResultEntries().Create(
 		context.Background(), &models.ResultEntrySetter{
 			RaceID:            omit.From(raceID),
-			DriverName:        omit.From(driverName),
+			RawDriverName:     omitnull.From(driverName),
 			FinishingPosition: omit.From(finishingPosition),
 			CompletedLaps:     omit.From(int32(0)),
 			State:             omit.From(conversion.ResultStateNormal),

@@ -32,6 +32,23 @@ CREATE TABLE car_models (
     updated_by text NOT NULL DEFAULT 'system'
 );
 
+CREATE TABLE car_classes (
+    id serial PRIMARY KEY,
+    name text NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    created_by text NOT NULL DEFAULT 'system',
+    updated_by text NOT NULL DEFAULT 'system'
+);
+
+CREATE TABLE car_classes_to_car_models (
+	-- ugly workaround. don't need a pk here, but bob runs into errors creating dberrors text without it
+	id serial PRIMARY KEY,
+    car_class_id integer NOT NULL,
+    car_model_id integer NOT NULL
+);
+
 CREATE TABLE simulation_car_aliases (
     id serial PRIMARY KEY,
     car_model_id integer NOT NULL,
@@ -62,6 +79,21 @@ ALTER TABLE car_models
     ADD CONSTRAINT car_models_brand_id_name_unique
     UNIQUE (brand_id, name);
 
+ALTER TABLE car_classes
+    ADD CONSTRAINT car_classes_name_unique UNIQUE (name);
+
+ALTER TABLE car_classes_to_car_models
+    ADD CONSTRAINT car_classes_to_car_models_car_class_id_fk
+    FOREIGN KEY (car_class_id) REFERENCES car_classes (id);
+
+ALTER TABLE car_classes_to_car_models
+    ADD CONSTRAINT car_classes_to_car_models_car_model_id_fk
+    FOREIGN KEY (car_model_id) REFERENCES car_models (id);
+
+ALTER TABLE car_classes_to_car_models
+    ADD CONSTRAINT car_classes_to_car_models_car_class_id_car_model_id_unique
+    UNIQUE (car_class_id, car_model_id);
+
 ALTER TABLE simulation_car_aliases
     ADD CONSTRAINT simulation_car_aliases_car_model_id_fk
     FOREIGN KEY (car_model_id) REFERENCES car_models (id);
@@ -83,6 +115,9 @@ CREATE INDEX idx_car_brands_manufacturer_id ON car_brands (manufacturer_id);
 CREATE INDEX idx_car_brands_is_active ON car_brands (is_active);
 CREATE INDEX idx_car_models_brand_id ON car_models (brand_id);
 CREATE INDEX idx_car_models_is_active ON car_models (is_active);
+CREATE INDEX idx_car_classes_is_active ON car_classes (is_active);
+CREATE INDEX idx_car_classes_to_car_models_car_class_id ON car_classes_to_car_models (car_class_id);
+CREATE INDEX idx_car_classes_to_car_models_car_model_id ON car_classes_to_car_models (car_model_id);
 CREATE INDEX idx_simulation_car_aliases_car_model_id ON simulation_car_aliases (car_model_id);
 CREATE INDEX idx_simulation_car_aliases_simulation_id ON simulation_car_aliases (simulation_id);
 

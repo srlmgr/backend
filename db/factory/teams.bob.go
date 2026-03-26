@@ -56,6 +56,7 @@ type TeamTemplate struct {
 type teamR struct {
 	BookingEntries      []*teamRBookingEntriesR
 	EventTeamStandings  []*teamREventTeamStandingsR
+	ResultEntries       []*teamRResultEntriesR
 	SeasonTeamStandings []*teamRSeasonTeamStandingsR
 	TeamDrivers         []*teamRTeamDriversR
 	Season              *teamRSeasonR
@@ -68,6 +69,10 @@ type teamRBookingEntriesR struct {
 type teamREventTeamStandingsR struct {
 	number int
 	o      *EventTeamStandingTemplate
+}
+type teamRResultEntriesR struct {
+	number int
+	o      *ResultEntryTemplate
 }
 type teamRSeasonTeamStandingsR struct {
 	number int
@@ -115,6 +120,19 @@ func (t TeamTemplate) setModelRels(o *models.Team) {
 			rel = append(rel, related...)
 		}
 		o.R.EventTeamStandings = rel
+	}
+
+	if t.r.ResultEntries != nil {
+		rel := models.ResultEntrySlice{}
+		for _, r := range t.r.ResultEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.TeamID = null.From(o.ID) // h2
+				rel.R.Team = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.ResultEntries = rel
 	}
 
 	if t.r.SeasonTeamStandings != nil {
@@ -317,6 +335,26 @@ func (o *TeamTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 		}
 	}
 
+	isResultEntriesDone, _ := teamRelResultEntriesCtx.Value(ctx)
+	if !isResultEntriesDone && o.r.ResultEntries != nil {
+		ctx = teamRelResultEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.ResultEntries {
+			if r.o.alreadyPersisted {
+				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
+			} else {
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachResultEntries(ctx, exec, rel2...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isSeasonTeamStandingsDone, _ := teamRelSeasonTeamStandingsCtx.Value(ctx)
 	if !isSeasonTeamStandingsDone && o.r.SeasonTeamStandings != nil {
 		ctx = teamRelSeasonTeamStandingsCtx.WithValue(ctx, true)
@@ -324,12 +362,12 @@ func (o *TeamTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 			if r.o.alreadyPersisted {
 				m.R.SeasonTeamStandings = append(m.R.SeasonTeamStandings, r.o.Build())
 			} else {
-				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSeasonTeamStandings(ctx, exec, rel2...)
+				err = m.AttachSeasonTeamStandings(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -344,12 +382,12 @@ func (o *TeamTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 			if r.o.alreadyPersisted {
 				m.R.TeamDrivers = append(m.R.TeamDrivers, r.o.Build())
 			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				rel4, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachTeamDrivers(ctx, exec, rel3...)
+				err = m.AttachTeamDrivers(ctx, exec, rel4...)
 				if err != nil {
 					return err
 				}
@@ -371,25 +409,25 @@ func (o *TeamTemplate) Create(ctx context.Context, exec bob.Executor) (*models.T
 		TeamMods.WithNewSeason().Apply(ctx, o)
 	}
 
-	var rel4 *models.Season
+	var rel5 *models.Season
 
 	if o.r.Season.o.alreadyPersisted {
-		rel4 = o.r.Season.o.Build()
+		rel5 = o.r.Season.o.Build()
 	} else {
-		rel4, err = o.r.Season.o.Create(ctx, exec)
+		rel5, err = o.r.Season.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.SeasonID = omit.From(rel4.ID)
+	opt.SeasonID = omit.From(rel5.ID)
 
 	m, err := models.Teams.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Season = rel4
+	m.R.Season = rel5
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -896,6 +934,54 @@ func (m teamMods) AddExistingEventTeamStandings(existingModels ...*models.EventT
 func (m teamMods) WithoutEventTeamStandings() TeamMod {
 	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
 		o.r.EventTeamStandings = nil
+	})
+}
+
+func (m teamMods) WithResultEntries(number int, related *ResultEntryTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.ResultEntries = []*teamRResultEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m teamMods) WithNewResultEntries(number int, mods ...ResultEntryMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewResultEntryWithContext(ctx, mods...)
+		m.WithResultEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddResultEntries(number int, related *ResultEntryTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.ResultEntries = append(o.r.ResultEntries, &teamRResultEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m teamMods) AddNewResultEntries(number int, mods ...ResultEntryMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewResultEntryWithContext(ctx, mods...)
+		m.AddResultEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) AddExistingResultEntries(existingModels ...*models.ResultEntry) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		for _, em := range existingModels {
+			o.r.ResultEntries = append(o.r.ResultEntries, &teamRResultEntriesR{
+				o: o.f.FromExistingResultEntry(em),
+			})
+		}
+	})
+}
+
+func (m teamMods) WithoutResultEntries() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.ResultEntries = nil
 	})
 }
 

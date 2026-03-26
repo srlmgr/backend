@@ -98,8 +98,8 @@ func TestResolveInput(t *testing.T) {
 			wantEntry: models.ResultEntry{
 				FinishingPosition: 2,
 				CompletedLaps:     34,
-				DriverName:        "Driver One",
-				CarName:           null.From("GT3"),
+				RawDriverName:     null.From("Driver One"),
+				RawCarName:        null.From("GT3"),
 				Incidents:         null.From(int32(0)),
 				State:             "normal",
 				DriverID:          null.From(int32(101)),
@@ -137,8 +137,8 @@ func TestResolveInput(t *testing.T) {
 			wantEntry: models.ResultEntry{
 				FinishingPosition: 6,
 				CompletedLaps:     20,
-				DriverName:        "Unknown Driver",
-				CarName:           null.From("LMP2"),
+				RawDriverName:     null.From("Unknown Driver"),
+				RawCarName:        null.From("LMP2"),
 				Incidents:         null.From(int32(0)),
 				State:             "mapping_error",
 				CarModelID:        null.From(int32(303)),
@@ -179,8 +179,8 @@ func TestResolveInput(t *testing.T) {
 			wantEntry: models.ResultEntry{
 				FinishingPosition: 1,
 				CompletedLaps:     18,
-				DriverName:        "Driver Three",
-				CarName:           null.From("Unknown Car"),
+				RawDriverName:     null.From("Driver Three"),
+				RawCarName:        null.From("Unknown Car"),
 				Incidents:         null.From(int32(0)),
 				State:             "mapping_error",
 				DriverID:          null.From(int32(404)),
@@ -250,18 +250,18 @@ func TestResolveInput(t *testing.T) {
 					tc.wantEntry.CarModelID,
 				)
 			}
-			if got.DriverName != tc.wantEntry.DriverName {
+			if got.RawDriverName != tc.wantEntry.RawDriverName {
 				t.Fatalf(
-					"unexpected driver name: got %q want %q",
-					got.DriverName,
-					tc.wantEntry.DriverName,
+					"unexpected driver name: got %v want %v",
+					got.RawDriverName,
+					tc.wantEntry.RawDriverName,
 				)
 			}
-			if got.CarName != tc.wantEntry.CarName {
+			if got.RawCarName != tc.wantEntry.RawCarName {
 				t.Fatalf(
 					"unexpected car name: got %v want %v",
-					got.CarName,
-					tc.wantEntry.CarName,
+					got.RawCarName,
+					tc.wantEntry.RawCarName,
 				)
 			}
 

@@ -5,7 +5,6 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/types"
 )
 
 type ResultEntryMod interface {
@@ -44,16 +42,22 @@ type ResultEntryTemplate struct {
 	FrontendID        func() uuid.UUID
 	RaceID            func() int32
 	DriverID          func() null.Val[int32]
-	DriverName        func() string
+	TeamID            func() null.Val[int32]
 	CarModelID        func() null.Val[int32]
-	CarName           func() null.Val[string]
+	CarClassID        func() null.Val[int32]
+	RawCarName        func() null.Val[string]
+	RawDriverName     func() null.Val[string]
+	RawTeamName       func() null.Val[string]
+	CarNumber         func() null.Val[string]
+	IsGuestDriver     func() bool
+	StartingPosition  func() null.Val[int32]
 	FinishingPosition func() int32
 	CompletedLaps     func() int32
+	QualiLapTimeMS    func() null.Val[int32]
 	FastestLapTimeMS  func() null.Val[int32]
+	TotalTimeMS       func() null.Val[int32]
 	Incidents         func() null.Val[int32]
 	State             func() string
-	SourceRowNumber   func() null.Val[int32]
-	RawPayload        func() types.JSON[json.RawMessage]
 	AdminNotes        func() null.Val[string]
 	LockedAt          func() null.Val[time.Time]
 	CreatedAt         func() time.Time
@@ -69,14 +73,19 @@ type ResultEntryTemplate struct {
 
 type resultEntryR struct {
 	SourceResultEntryBookingEntries []*resultEntryRSourceResultEntryBookingEntriesR
+	CarClass                        *resultEntryRCarClassR
 	CarModel                        *resultEntryRCarModelR
 	Driver                          *resultEntryRDriverR
 	Race                            *resultEntryRRaceR
+	Team                            *resultEntryRTeamR
 }
 
 type resultEntryRSourceResultEntryBookingEntriesR struct {
 	number int
 	o      *BookingEntryTemplate
+}
+type resultEntryRCarClassR struct {
+	o *CarClassTemplate
 }
 type resultEntryRCarModelR struct {
 	o *CarModelTemplate
@@ -86,6 +95,9 @@ type resultEntryRDriverR struct {
 }
 type resultEntryRRaceR struct {
 	o *RaceTemplate
+}
+type resultEntryRTeamR struct {
+	o *TeamTemplate
 }
 
 // Apply mods to the ResultEntryTemplate
@@ -111,6 +123,13 @@ func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
 		o.R.SourceResultEntryBookingEntries = rel
 	}
 
+	if t.r.CarClass != nil {
+		rel := t.r.CarClass.o.Build()
+		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
+		o.CarClassID = null.From(rel.ID) // h2
+		o.R.CarClass = rel
+	}
+
 	if t.r.CarModel != nil {
 		rel := t.r.CarModel.o.Build()
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
@@ -130,6 +149,13 @@ func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
 		o.RaceID = rel.ID // h2
 		o.R.Race = rel
+	}
+
+	if t.r.Team != nil {
+		rel := t.r.Team.o.Build()
+		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
+		o.TeamID = null.From(rel.ID) // h2
+		o.R.Team = rel
 	}
 }
 
@@ -154,17 +180,41 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.DriverID()
 		m.DriverID = omitnull.FromNull(val)
 	}
-	if o.DriverName != nil {
-		val := o.DriverName()
-		m.DriverName = omit.From(val)
+	if o.TeamID != nil {
+		val := o.TeamID()
+		m.TeamID = omitnull.FromNull(val)
 	}
 	if o.CarModelID != nil {
 		val := o.CarModelID()
 		m.CarModelID = omitnull.FromNull(val)
 	}
-	if o.CarName != nil {
-		val := o.CarName()
-		m.CarName = omitnull.FromNull(val)
+	if o.CarClassID != nil {
+		val := o.CarClassID()
+		m.CarClassID = omitnull.FromNull(val)
+	}
+	if o.RawCarName != nil {
+		val := o.RawCarName()
+		m.RawCarName = omitnull.FromNull(val)
+	}
+	if o.RawDriverName != nil {
+		val := o.RawDriverName()
+		m.RawDriverName = omitnull.FromNull(val)
+	}
+	if o.RawTeamName != nil {
+		val := o.RawTeamName()
+		m.RawTeamName = omitnull.FromNull(val)
+	}
+	if o.CarNumber != nil {
+		val := o.CarNumber()
+		m.CarNumber = omitnull.FromNull(val)
+	}
+	if o.IsGuestDriver != nil {
+		val := o.IsGuestDriver()
+		m.IsGuestDriver = omit.From(val)
+	}
+	if o.StartingPosition != nil {
+		val := o.StartingPosition()
+		m.StartingPosition = omitnull.FromNull(val)
 	}
 	if o.FinishingPosition != nil {
 		val := o.FinishingPosition()
@@ -174,9 +224,17 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.CompletedLaps()
 		m.CompletedLaps = omit.From(val)
 	}
+	if o.QualiLapTimeMS != nil {
+		val := o.QualiLapTimeMS()
+		m.QualiLapTimeMS = omitnull.FromNull(val)
+	}
 	if o.FastestLapTimeMS != nil {
 		val := o.FastestLapTimeMS()
 		m.FastestLapTimeMS = omitnull.FromNull(val)
+	}
+	if o.TotalTimeMS != nil {
+		val := o.TotalTimeMS()
+		m.TotalTimeMS = omitnull.FromNull(val)
 	}
 	if o.Incidents != nil {
 		val := o.Incidents()
@@ -185,14 +243,6 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 	if o.State != nil {
 		val := o.State()
 		m.State = omit.From(val)
-	}
-	if o.SourceRowNumber != nil {
-		val := o.SourceRowNumber()
-		m.SourceRowNumber = omitnull.FromNull(val)
-	}
-	if o.RawPayload != nil {
-		val := o.RawPayload()
-		m.RawPayload = omit.From(val)
 	}
 	if o.AdminNotes != nil {
 		val := o.AdminNotes()
@@ -252,14 +302,32 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.DriverID != nil {
 		m.DriverID = o.DriverID()
 	}
-	if o.DriverName != nil {
-		m.DriverName = o.DriverName()
+	if o.TeamID != nil {
+		m.TeamID = o.TeamID()
 	}
 	if o.CarModelID != nil {
 		m.CarModelID = o.CarModelID()
 	}
-	if o.CarName != nil {
-		m.CarName = o.CarName()
+	if o.CarClassID != nil {
+		m.CarClassID = o.CarClassID()
+	}
+	if o.RawCarName != nil {
+		m.RawCarName = o.RawCarName()
+	}
+	if o.RawDriverName != nil {
+		m.RawDriverName = o.RawDriverName()
+	}
+	if o.RawTeamName != nil {
+		m.RawTeamName = o.RawTeamName()
+	}
+	if o.CarNumber != nil {
+		m.CarNumber = o.CarNumber()
+	}
+	if o.IsGuestDriver != nil {
+		m.IsGuestDriver = o.IsGuestDriver()
+	}
+	if o.StartingPosition != nil {
+		m.StartingPosition = o.StartingPosition()
 	}
 	if o.FinishingPosition != nil {
 		m.FinishingPosition = o.FinishingPosition()
@@ -267,20 +335,20 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.CompletedLaps != nil {
 		m.CompletedLaps = o.CompletedLaps()
 	}
+	if o.QualiLapTimeMS != nil {
+		m.QualiLapTimeMS = o.QualiLapTimeMS()
+	}
 	if o.FastestLapTimeMS != nil {
 		m.FastestLapTimeMS = o.FastestLapTimeMS()
+	}
+	if o.TotalTimeMS != nil {
+		m.TotalTimeMS = o.TotalTimeMS()
 	}
 	if o.Incidents != nil {
 		m.Incidents = o.Incidents()
 	}
 	if o.State != nil {
 		m.State = o.State()
-	}
-	if o.SourceRowNumber != nil {
-		m.SourceRowNumber = o.SourceRowNumber()
-	}
-	if o.RawPayload != nil {
-		m.RawPayload = o.RawPayload()
 	}
 	if o.AdminNotes != nil {
 		m.AdminNotes = o.AdminNotes()
@@ -324,10 +392,6 @@ func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
 		val := random_int32(nil)
 		m.RaceID = omit.From(val)
 	}
-	if !(m.DriverName.IsValue()) {
-		val := random_string(nil)
-		m.DriverName = omit.From(val)
-	}
 	if !(m.FinishingPosition.IsValue()) {
 		val := random_int32(nil)
 		m.FinishingPosition = omit.From(val)
@@ -360,18 +424,37 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		}
 	}
 
+	isCarClassDone, _ := resultEntryRelCarClassCtx.Value(ctx)
+	if !isCarClassDone && o.r.CarClass != nil {
+		ctx = resultEntryRelCarClassCtx.WithValue(ctx, true)
+		if o.r.CarClass.o.alreadyPersisted {
+			m.R.CarClass = o.r.CarClass.o.Build()
+		} else {
+			var rel1 *models.CarClass
+			rel1, err = o.r.CarClass.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachCarClass(ctx, exec, rel1)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
 	isCarModelDone, _ := resultEntryRelCarModelCtx.Value(ctx)
 	if !isCarModelDone && o.r.CarModel != nil {
 		ctx = resultEntryRelCarModelCtx.WithValue(ctx, true)
 		if o.r.CarModel.o.alreadyPersisted {
 			m.R.CarModel = o.r.CarModel.o.Build()
 		} else {
-			var rel1 *models.CarModel
-			rel1, err = o.r.CarModel.o.Create(ctx, exec)
+			var rel2 *models.CarModel
+			rel2, err = o.r.CarModel.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachCarModel(ctx, exec, rel1)
+			err = m.AttachCarModel(ctx, exec, rel2)
 			if err != nil {
 				return err
 			}
@@ -385,12 +468,31 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.Driver.o.alreadyPersisted {
 			m.R.Driver = o.r.Driver.o.Build()
 		} else {
-			var rel2 *models.Driver
-			rel2, err = o.r.Driver.o.Create(ctx, exec)
+			var rel3 *models.Driver
+			rel3, err = o.r.Driver.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachDriver(ctx, exec, rel2)
+			err = m.AttachDriver(ctx, exec, rel3)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	isTeamDone, _ := resultEntryRelTeamCtx.Value(ctx)
+	if !isTeamDone && o.r.Team != nil {
+		ctx = resultEntryRelTeamCtx.WithValue(ctx, true)
+		if o.r.Team.o.alreadyPersisted {
+			m.R.Team = o.r.Team.o.Build()
+		} else {
+			var rel5 *models.Team
+			rel5, err = o.r.Team.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachTeam(ctx, exec, rel5)
 			if err != nil {
 				return err
 			}
@@ -412,25 +514,25 @@ func (o *ResultEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 		ResultEntryMods.WithNewRace().Apply(ctx, o)
 	}
 
-	var rel3 *models.Race
+	var rel4 *models.Race
 
 	if o.r.Race.o.alreadyPersisted {
-		rel3 = o.r.Race.o.Build()
+		rel4 = o.r.Race.o.Build()
 	} else {
-		rel3, err = o.r.Race.o.Create(ctx, exec)
+		rel4, err = o.r.Race.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceID = omit.From(rel3.ID)
+	opt.RaceID = omit.From(rel4.ID)
 
 	m, err := models.ResultEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Race = rel3
+	m.R.Race = rel4
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -513,16 +615,22 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 		ResultEntryMods.RandomFrontendID(f),
 		ResultEntryMods.RandomRaceID(f),
 		ResultEntryMods.RandomDriverID(f),
-		ResultEntryMods.RandomDriverName(f),
+		ResultEntryMods.RandomTeamID(f),
 		ResultEntryMods.RandomCarModelID(f),
-		ResultEntryMods.RandomCarName(f),
+		ResultEntryMods.RandomCarClassID(f),
+		ResultEntryMods.RandomRawCarName(f),
+		ResultEntryMods.RandomRawDriverName(f),
+		ResultEntryMods.RandomRawTeamName(f),
+		ResultEntryMods.RandomCarNumber(f),
+		ResultEntryMods.RandomIsGuestDriver(f),
+		ResultEntryMods.RandomStartingPosition(f),
 		ResultEntryMods.RandomFinishingPosition(f),
 		ResultEntryMods.RandomCompletedLaps(f),
+		ResultEntryMods.RandomQualiLapTimeMS(f),
 		ResultEntryMods.RandomFastestLapTimeMS(f),
+		ResultEntryMods.RandomTotalTimeMS(f),
 		ResultEntryMods.RandomIncidents(f),
 		ResultEntryMods.RandomState(f),
-		ResultEntryMods.RandomSourceRowNumber(f),
-		ResultEntryMods.RandomRawPayload(f),
 		ResultEntryMods.RandomAdminNotes(f),
 		ResultEntryMods.RandomLockedAt(f),
 		ResultEntryMods.RandomCreatedAt(f),
@@ -679,32 +787,54 @@ func (m resultEntryMods) RandomDriverIDNotNull(f *faker.Faker) ResultEntryMod {
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) DriverName(val string) ResultEntryMod {
+func (m resultEntryMods) TeamID(val null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.DriverName = func() string { return val }
+		o.TeamID = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) DriverNameFunc(f func() string) ResultEntryMod {
+func (m resultEntryMods) TeamIDFunc(f func() null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.DriverName = f
+		o.TeamID = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetDriverName() ResultEntryMod {
+func (m resultEntryMods) UnsetTeamID() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.DriverName = nil
+		o.TeamID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomDriverName(f *faker.Faker) ResultEntryMod {
+// The generated value is sometimes null
+func (m resultEntryMods) RandomTeamID(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.DriverName = func() string {
-			return random_string(f)
+		o.TeamID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomTeamIDNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
 		}
 	})
 }
@@ -763,32 +893,85 @@ func (m resultEntryMods) RandomCarModelIDNotNull(f *faker.Faker) ResultEntryMod 
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) CarName(val null.Val[string]) ResultEntryMod {
+func (m resultEntryMods) CarClassID(val null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CarName = func() null.Val[string] { return val }
+		o.CarClassID = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) CarNameFunc(f func() null.Val[string]) ResultEntryMod {
+func (m resultEntryMods) CarClassIDFunc(f func() null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CarName = f
+		o.CarClassID = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetCarName() ResultEntryMod {
+func (m resultEntryMods) UnsetCarClassID() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CarName = nil
+		o.CarClassID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is sometimes null
-func (m resultEntryMods) RandomCarName(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomCarClassID(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CarName = func() null.Val[string] {
+		o.CarClassID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomCarClassIDNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarClassID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) RawCarName(val null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawCarName = func() null.Val[string] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) RawCarNameFunc(f func() null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawCarName = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetRawCarName() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawCarName = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomRawCarName(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawCarName = func() null.Val[string] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -802,14 +985,257 @@ func (m resultEntryMods) RandomCarName(f *faker.Faker) ResultEntryMod {
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is never null
-func (m resultEntryMods) RandomCarNameNotNull(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomRawCarNameNotNull(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CarName = func() null.Val[string] {
+		o.RawCarName = func() null.Val[string] {
 			if f == nil {
 				f = &defaultFaker
 			}
 
 			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) RawDriverName(val null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawDriverName = func() null.Val[string] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) RawDriverNameFunc(f func() null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawDriverName = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetRawDriverName() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawDriverName = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomRawDriverName(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawDriverName = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomRawDriverNameNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawDriverName = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) RawTeamName(val null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawTeamName = func() null.Val[string] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) RawTeamNameFunc(f func() null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawTeamName = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetRawTeamName() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawTeamName = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomRawTeamName(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawTeamName = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomRawTeamNameNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.RawTeamName = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) CarNumber(val null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarNumber = func() null.Val[string] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) CarNumberFunc(f func() null.Val[string]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarNumber = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetCarNumber() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarNumber = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomCarNumber(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarNumber = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomCarNumberNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.CarNumber = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) IsGuestDriver(val bool) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.IsGuestDriver = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) IsGuestDriverFunc(f func() bool) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.IsGuestDriver = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetIsGuestDriver() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.IsGuestDriver = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m resultEntryMods) RandomIsGuestDriver(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.IsGuestDriver = func() bool {
+			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) StartingPosition(val null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.StartingPosition = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) StartingPositionFunc(f func() null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.StartingPosition = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetStartingPosition() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.StartingPosition = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomStartingPosition(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.StartingPosition = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomStartingPositionNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.StartingPosition = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
 			return null.From(val)
 		}
 	})
@@ -878,6 +1304,59 @@ func (m resultEntryMods) RandomCompletedLaps(f *faker.Faker) ResultEntryMod {
 }
 
 // Set the model columns to this value
+func (m resultEntryMods) QualiLapTimeMS(val null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.QualiLapTimeMS = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) QualiLapTimeMSFunc(f func() null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.QualiLapTimeMS = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetQualiLapTimeMS() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.QualiLapTimeMS = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomQualiLapTimeMS(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.QualiLapTimeMS = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomQualiLapTimeMSNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.QualiLapTimeMS = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
 func (m resultEntryMods) FastestLapTimeMS(val null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.FastestLapTimeMS = func() null.Val[int32] { return val }
@@ -920,6 +1399,59 @@ func (m resultEntryMods) RandomFastestLapTimeMS(f *faker.Faker) ResultEntryMod {
 func (m resultEntryMods) RandomFastestLapTimeMSNotNull(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.FastestLapTimeMS = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) TotalTimeMS(val null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TotalTimeMS = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) TotalTimeMSFunc(f func() null.Val[int32]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TotalTimeMS = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetTotalTimeMS() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TotalTimeMS = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomTotalTimeMS(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TotalTimeMS = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomTotalTimeMSNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TotalTimeMS = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1010,90 +1542,6 @@ func (m resultEntryMods) RandomState(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.State = func() string {
 			return random_string(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m resultEntryMods) SourceRowNumber(val null.Val[int32]) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.SourceRowNumber = func() null.Val[int32] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m resultEntryMods) SourceRowNumberFunc(f func() null.Val[int32]) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.SourceRowNumber = f
-	})
-}
-
-// Clear any values for the column
-func (m resultEntryMods) UnsetSourceRowNumber() ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.SourceRowNumber = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m resultEntryMods) RandomSourceRowNumber(f *faker.Faker) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.SourceRowNumber = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m resultEntryMods) RandomSourceRowNumberNotNull(f *faker.Faker) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.SourceRowNumber = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m resultEntryMods) RawPayload(val types.JSON[json.RawMessage]) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RawPayload = func() types.JSON[json.RawMessage] { return val }
-	})
-}
-
-// Set the Column from the function
-func (m resultEntryMods) RawPayloadFunc(f func() types.JSON[json.RawMessage]) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RawPayload = f
-	})
-}
-
-// Clear any values for the column
-func (m resultEntryMods) UnsetRawPayload() ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RawPayload = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m resultEntryMods) RandomRawPayload(f *faker.Faker) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RawPayload = func() types.JSON[json.RawMessage] {
-			return random_types_JSON_json_RawMessage_(f)
 		}
 	})
 }
@@ -1336,6 +1784,11 @@ func (m resultEntryMods) WithParentsCascading() ResultEntryMod {
 		ctx = resultEntryWithParentsCascadingCtx.WithValue(ctx, true)
 		{
 
+			related := o.f.NewCarClassWithContext(ctx, CarClassMods.WithParentsCascading())
+			m.WithCarClass(related).Apply(ctx, o)
+		}
+		{
+
 			related := o.f.NewCarModelWithContext(ctx, CarModelMods.WithParentsCascading())
 			m.WithCarModel(related).Apply(ctx, o)
 		}
@@ -1349,6 +1802,41 @@ func (m resultEntryMods) WithParentsCascading() ResultEntryMod {
 			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
 			m.WithRace(related).Apply(ctx, o)
 		}
+		{
+
+			related := o.f.NewTeamWithContext(ctx, TeamMods.WithParentsCascading())
+			m.WithTeam(related).Apply(ctx, o)
+		}
+	})
+}
+
+func (m resultEntryMods) WithCarClass(rel *CarClassTemplate) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.CarClass = &resultEntryRCarClassR{
+			o: rel,
+		}
+	})
+}
+
+func (m resultEntryMods) WithNewCarClass(mods ...CarClassMod) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		related := o.f.NewCarClassWithContext(ctx, mods...)
+
+		m.WithCarClass(related).Apply(ctx, o)
+	})
+}
+
+func (m resultEntryMods) WithExistingCarClass(em *models.CarClass) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.CarClass = &resultEntryRCarClassR{
+			o: o.f.FromExistingCarClass(em),
+		}
+	})
+}
+
+func (m resultEntryMods) WithoutCarClass() ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.CarClass = nil
 	})
 }
 
@@ -1439,6 +1927,36 @@ func (m resultEntryMods) WithExistingRace(em *models.Race) ResultEntryMod {
 func (m resultEntryMods) WithoutRace() ResultEntryMod {
 	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
 		o.r.Race = nil
+	})
+}
+
+func (m resultEntryMods) WithTeam(rel *TeamTemplate) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.Team = &resultEntryRTeamR{
+			o: rel,
+		}
+	})
+}
+
+func (m resultEntryMods) WithNewTeam(mods ...TeamMod) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		related := o.f.NewTeamWithContext(ctx, mods...)
+
+		m.WithTeam(related).Apply(ctx, o)
+	})
+}
+
+func (m resultEntryMods) WithExistingTeam(em *models.Team) ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.Team = &resultEntryRTeamR{
+			o: o.f.FromExistingTeam(em),
+		}
+	})
+}
+
+func (m resultEntryMods) WithoutTeam() ResultEntryMod {
+	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
+		o.r.Team = nil
 	})
 }
 

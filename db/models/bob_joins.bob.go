@@ -34,6 +34,8 @@ func (j joinSet[Q]) AliasedAs(alias string) joinSet[Q] {
 type joins[Q dialect.Joinable] struct {
 	BookingEntries               joinSet[bookingEntryJoins[Q]]
 	CarBrands                    joinSet[carBrandJoins[Q]]
+	CarClasses                   joinSet[carClassJoins[Q]]
+	CarClassesToCarModels        joinSet[carClassesToCarModelJoins[Q]]
 	CarManufacturers             joinSet[carManufacturerJoins[Q]]
 	CarModels                    joinSet[carModelJoins[Q]]
 	Drivers                      joinSet[driverJoins[Q]]
@@ -72,6 +74,8 @@ func getJoins[Q dialect.Joinable]() joins[Q] {
 	return joins[Q]{
 		BookingEntries:               buildJoinSet[bookingEntryJoins[Q]](BookingEntries.Columns, buildBookingEntryJoins),
 		CarBrands:                    buildJoinSet[carBrandJoins[Q]](CarBrands.Columns, buildCarBrandJoins),
+		CarClasses:                   buildJoinSet[carClassJoins[Q]](CarClasses.Columns, buildCarClassJoins),
+		CarClassesToCarModels:        buildJoinSet[carClassesToCarModelJoins[Q]](CarClassesToCarModels.Columns, buildCarClassesToCarModelJoins),
 		CarManufacturers:             buildJoinSet[carManufacturerJoins[Q]](CarManufacturers.Columns, buildCarManufacturerJoins),
 		CarModels:                    buildJoinSet[carModelJoins[Q]](CarModels.Columns, buildCarModelJoins),
 		Drivers:                      buildJoinSet[driverJoins[Q]](Drivers.Columns, buildDriverJoins),
