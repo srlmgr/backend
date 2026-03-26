@@ -26,7 +26,7 @@ type resultEntryRequest interface {
 	GetCompletedLaps() int32
 	GetFastestLapTimeMs() int32
 	GetIncidents() int32
-	GetState() commonv1.ResultState
+	GetState() commonv1.ResultEntryState
 	GetAdminNotes() string
 }
 
@@ -34,6 +34,7 @@ type resultEntrySetter = models.ResultEntrySetter
 
 type resultEntrySetterBuilder struct{}
 
+//nolint:lll // readability
 func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySetter {
 	setter := &resultEntrySetter{}
 
@@ -65,7 +66,7 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 		setter.Incidents = omitnull.From(incidents)
 	}
 
-	if state := msg.GetState(); state != commonv1.ResultState_RESULT_STATE_UNSPECIFIED {
+	if state := msg.GetState(); state != commonv1.ResultEntryState_RESULT_ENTRY_STATE_UNSPECIFIED {
 		setter.State = omit.From(resultStateToString(state))
 	}
 
@@ -77,11 +78,11 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 }
 
 //nolint:exhaustive // by design
-func resultStateToString(state commonv1.ResultState) string {
+func resultStateToString(state commonv1.ResultEntryState) string {
 	switch state {
-	case commonv1.ResultState_RESULT_STATE_NORMAL:
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL:
 		return conversion.ResultStateNormal
-	case commonv1.ResultState_RESULT_STATE_DQ:
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ:
 		return conversion.ResultStateDQ
 	default:
 		return ""

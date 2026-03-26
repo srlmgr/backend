@@ -144,7 +144,7 @@ func (s *service) ApplyResultEdits(
 	}), nil
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,lll // editor/linter issue
 func buildResultEntrySetterFromProto(
 	row *commonv1.ResultEntry,
 	execUser string,
@@ -178,7 +178,7 @@ func buildResultEntrySetterFromProto(
 		setter.Incidents = omitnull.From(incidents)
 	}
 
-	if state := row.GetState(); state != commonv1.ResultState_RESULT_STATE_UNSPECIFIED {
+	if state := row.GetState(); state != commonv1.ResultEntryState_RESULT_ENTRY_STATE_UNSPECIFIED {
 		setter.State = omit.From(resultStateToStr(state))
 	}
 
@@ -190,11 +190,11 @@ func buildResultEntrySetterFromProto(
 }
 
 //nolint:exhaustive // by design
-func resultStateToStr(state commonv1.ResultState) string {
+func resultStateToStr(state commonv1.ResultEntryState) string {
 	switch state {
-	case commonv1.ResultState_RESULT_STATE_NORMAL:
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL:
 		return conversion.ResultStateNormal
-	case commonv1.ResultState_RESULT_STATE_DQ:
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ:
 		return conversion.ResultStateDQ
 	default:
 		return ""
