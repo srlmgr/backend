@@ -31,6 +31,7 @@ func Where[Q psql.Filterable]() struct {
 	ImportBatches                importBatchWhere[Q]
 	PointRules                   pointRuleWhere[Q]
 	PointSystems                 pointSystemWhere[Q]
+	RaceGrids                    raceGridWhere[Q]
 	Races                        raceWhere[Q]
 	RacingSims                   racingSimWhere[Q]
 	ResultEntries                resultEntryWhere[Q]
@@ -61,6 +62,7 @@ func Where[Q psql.Filterable]() struct {
 		ImportBatches                importBatchWhere[Q]
 		PointRules                   pointRuleWhere[Q]
 		PointSystems                 pointSystemWhere[Q]
+		RaceGrids                    raceGridWhere[Q]
 		Races                        raceWhere[Q]
 		RacingSims                   racingSimWhere[Q]
 		ResultEntries                resultEntryWhere[Q]
@@ -90,6 +92,7 @@ func Where[Q psql.Filterable]() struct {
 		ImportBatches:                buildImportBatchWhere[Q](ImportBatches.Columns),
 		PointRules:                   buildPointRuleWhere[Q](PointRules.Columns),
 		PointSystems:                 buildPointSystemWhere[Q](PointSystems.Columns),
+		RaceGrids:                    buildRaceGridWhere[Q](RaceGrids.Columns),
 		Races:                        buildRaceWhere[Q](Races.Columns),
 		RacingSims:                   buildRacingSimWhere[Q](RacingSims.Columns),
 		ResultEntries:                buildResultEntryWhere[Q](ResultEntries.Columns),

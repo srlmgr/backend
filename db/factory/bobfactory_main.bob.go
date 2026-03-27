@@ -32,6 +32,7 @@ type Factory struct {
 	baseImportBatchMods                ImportBatchModSlice
 	basePointRuleMods                  PointRuleModSlice
 	basePointSystemMods                PointSystemModSlice
+	baseRaceGridMods                   RaceGridModSlice
 	baseRaceMods                       RaceModSlice
 	baseRacingSimMods                  RacingSimModSlice
 	baseResultEntryMods                ResultEntryModSlice
@@ -670,6 +671,46 @@ func (f *Factory) FromExistingPointSystem(m *models.PointSystem) *PointSystemTem
 	return o
 }
 
+func (f *Factory) NewRaceGrid(mods ...RaceGridMod) *RaceGridTemplate {
+	return f.NewRaceGridWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewRaceGridWithContext(ctx context.Context, mods ...RaceGridMod) *RaceGridTemplate {
+	o := &RaceGridTemplate{f: f}
+
+	if f != nil {
+		f.baseRaceGridMods.Apply(ctx, o)
+	}
+
+	RaceGridModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingRaceGrid(m *models.RaceGrid) *RaceGridTemplate {
+	o := &RaceGridTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.RaceID = func() int32 { return m.RaceID }
+	o.Name = func() string { return m.Name }
+	o.SessionType = func() string { return m.SessionType }
+	o.SequenceNo = func() int32 { return m.SequenceNo }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	ctx := context.Background()
+	if m.R.Race != nil {
+		RaceGridMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	}
+	if len(m.R.ResultEntries) > 0 {
+		RaceGridMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+
+	return o
+}
+
 func (f *Factory) NewRace(mods ...RaceMod) *RaceTemplate {
 	return f.NewRaceWithContext(context.Background(), mods...)
 }
@@ -702,6 +743,9 @@ func (f *Factory) FromExistingRace(m *models.Race) *RaceTemplate {
 	ctx := context.Background()
 	if len(m.R.ImportBatches) > 0 {
 		RaceMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	}
+	if len(m.R.RaceGrids) > 0 {
+		RaceMods.AddExistingRaceGrids(m.R.RaceGrids...).Apply(ctx, o)
 	}
 	if m.R.Event != nil {
 		RaceMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
@@ -781,6 +825,7 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.RaceID = func() int32 { return m.RaceID }
+	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
 	o.CarModelID = func() null.Val[int32] { return m.CarModelID }
@@ -817,6 +862,9 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.Driver != nil {
 		ResultEntryMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
+	}
+	if m.R.RaceGrid != nil {
+		ResultEntryMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
 	}
 	if m.R.Race != nil {
 		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
@@ -1422,6 +1470,14 @@ func (f *Factory) ClearBasePointSystemMods() {
 
 func (f *Factory) AddBasePointSystemMod(mods ...PointSystemMod) {
 	f.basePointSystemMods = append(f.basePointSystemMods, mods...)
+}
+
+func (f *Factory) ClearBaseRaceGridMods() {
+	f.baseRaceGridMods = nil
+}
+
+func (f *Factory) AddBaseRaceGridMod(mods ...RaceGridMod) {
+	f.baseRaceGridMods = append(f.baseRaceGridMods, mods...)
 }
 
 func (f *Factory) ClearBaseRaceMods() {

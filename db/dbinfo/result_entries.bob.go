@@ -42,6 +42,15 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		RaceGridID: column{
+			Name:      "race_grid_id",
+			DBType:    "integer",
+			Default:   "",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		DriverID: column{
 			Name:      "driver_id",
 			DBType:    "integer",
@@ -319,6 +328,45 @@ var ResultEntries = Table[
 			Where:         "",
 			Include:       []string{},
 		},
+		IdxResultEntriesRaceGridID: index{
+			Type: "btree",
+			Name: "idx_result_entries_race_grid_id",
+			Columns: []indexColumn{
+				{
+					Name:         "race_grid_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxResultEntriesRaceGridIDDriverIDUnique: index{
+			Type: "btree",
+			Name: "idx_result_entries_race_grid_id_driver_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "race_grid_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+				{
+					Name:         "driver_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false, false},
+			NullsDistinct: false,
+			Where:         "(driver_id IS NOT NULL)",
+			Include:       []string{},
+		},
 		IdxResultEntriesRaceID: index{
 			Type: "btree",
 			Name: "idx_result_entries_race_id",
@@ -443,6 +491,15 @@ var ResultEntries = Table[
 			ForeignTable:   "drivers",
 			ForeignColumns: []string{"id"},
 		},
+		ResultEntriesResultEntriesRaceGridIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "result_entries.result_entries_race_grid_id_fk",
+				Columns: []string{"race_grid_id"},
+				Comment: "",
+			},
+			ForeignTable:   "race_grids",
+			ForeignColumns: []string{"id"},
+		},
 		ResultEntriesResultEntriesRaceIDFK: foreignKey{
 			constraint: constraint{
 				Name:    "result_entries.result_entries_race_id_fk",
@@ -526,6 +583,7 @@ type resultEntryColumns struct {
 	ID                column
 	FrontendID        column
 	RaceID            column
+	RaceGridID        column
 	DriverID          column
 	TeamID            column
 	CarModelID        column
@@ -553,25 +611,27 @@ type resultEntryColumns struct {
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartingPosition, c.FinishingPosition, c.CompletedLaps, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartingPosition, c.FinishingPosition, c.CompletedLaps, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type resultEntryIndexes struct {
-	ResultEntriesPkey                    index
-	IdxResultEntriesCarClassID           index
-	IdxResultEntriesCarModelID           index
-	IdxResultEntriesDriverID             index
-	IdxResultEntriesRaceID               index
-	IdxResultEntriesRaceIDDriverIDUnique index
-	IdxResultEntriesState                index
-	IdxResultEntriesTeamID               index
-	ResultEntriesFrontendIDUnique        index
+	ResultEntriesPkey                        index
+	IdxResultEntriesCarClassID               index
+	IdxResultEntriesCarModelID               index
+	IdxResultEntriesDriverID                 index
+	IdxResultEntriesRaceGridID               index
+	IdxResultEntriesRaceGridIDDriverIDUnique index
+	IdxResultEntriesRaceID                   index
+	IdxResultEntriesRaceIDDriverIDUnique     index
+	IdxResultEntriesState                    index
+	IdxResultEntriesTeamID                   index
+	ResultEntriesFrontendIDUnique            index
 }
 
 func (i resultEntryIndexes) AsSlice() []index {
 	return []index{
-		i.ResultEntriesPkey, i.IdxResultEntriesCarClassID, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.IdxResultEntriesTeamID, i.ResultEntriesFrontendIDUnique,
+		i.ResultEntriesPkey, i.IdxResultEntriesCarClassID, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceGridID, i.IdxResultEntriesRaceGridIDDriverIDUnique, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.IdxResultEntriesTeamID, i.ResultEntriesFrontendIDUnique,
 	}
 }
 
@@ -579,13 +639,14 @@ type resultEntryForeignKeys struct {
 	ResultEntriesResultEntriesCarClassIDFK foreignKey
 	ResultEntriesResultEntriesCarModelIDFK foreignKey
 	ResultEntriesResultEntriesDriverIDFK   foreignKey
+	ResultEntriesResultEntriesRaceGridIDFK foreignKey
 	ResultEntriesResultEntriesRaceIDFK     foreignKey
 	ResultEntriesResultEntriesTeamIDFK     foreignKey
 }
 
 func (f resultEntryForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.ResultEntriesResultEntriesCarClassIDFK, f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesRaceIDFK, f.ResultEntriesResultEntriesTeamIDFK,
+		f.ResultEntriesResultEntriesCarClassIDFK, f.ResultEntriesResultEntriesCarModelIDFK, f.ResultEntriesResultEntriesDriverIDFK, f.ResultEntriesResultEntriesRaceGridIDFK, f.ResultEntriesResultEntriesRaceIDFK, f.ResultEntriesResultEntriesTeamIDFK,
 	}
 }
 

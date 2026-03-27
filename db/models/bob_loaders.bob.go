@@ -31,6 +31,7 @@ type preloaders struct {
 	ImportBatch                importBatchPreloader
 	PointRule                  pointRulePreloader
 	PointSystem                pointSystemPreloader
+	RaceGrid                   raceGridPreloader
 	Race                       racePreloader
 	RacingSim                  racingSimPreloader
 	ResultEntry                resultEntryPreloader
@@ -63,6 +64,7 @@ func getPreloaders() preloaders {
 		ImportBatch:                buildImportBatchPreloader(),
 		PointRule:                  buildPointRulePreloader(),
 		PointSystem:                buildPointSystemPreloader(),
+		RaceGrid:                   buildRaceGridPreloader(),
 		Race:                       buildRacePreloader(),
 		RacingSim:                  buildRacingSimPreloader(),
 		ResultEntry:                buildResultEntryPreloader(),
@@ -101,6 +103,7 @@ type thenLoaders[Q orm.Loadable] struct {
 	ImportBatch                importBatchThenLoader[Q]
 	PointRule                  pointRuleThenLoader[Q]
 	PointSystem                pointSystemThenLoader[Q]
+	RaceGrid                   raceGridThenLoader[Q]
 	Race                       raceThenLoader[Q]
 	RacingSim                  racingSimThenLoader[Q]
 	ResultEntry                resultEntryThenLoader[Q]
@@ -133,6 +136,7 @@ func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 		ImportBatch:                buildImportBatchThenLoader[Q](),
 		PointRule:                  buildPointRuleThenLoader[Q](),
 		PointSystem:                buildPointSystemThenLoader[Q](),
+		RaceGrid:                   buildRaceGridThenLoader[Q](),
 		Race:                       buildRaceThenLoader[Q](),
 		RacingSim:                  buildRacingSimThenLoader[Q](),
 		ResultEntry:                buildResultEntryThenLoader[Q](),
