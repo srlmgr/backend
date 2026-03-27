@@ -84,6 +84,7 @@ func ClearAllTables(pool *pgxpool.Pool) error {
 		"event_team_standings",
 		"event_driver_standings",
 		"season_team_standings",
+		"race_grids",
 		"races",
 		"team_drivers",
 		"events",

@@ -1,5 +1,6 @@
 BEGIN;
 
+DROP TABLE IF EXISTS race_grids;
 DROP TABLE IF EXISTS races;
 
 COMMIT;
