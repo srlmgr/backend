@@ -29,7 +29,7 @@ func seedRace(
 	sequenceNo int32,
 ) *models.Race {
 	t.Helper()
-	race, err := repo.Races().Create(context.Background(), &models.RaceSetter{
+	race, err := repo.Races().Races().Create(context.Background(), &models.RaceSetter{
 		EventID:     omit.From(eventID),
 		Name:        omit.From(name),
 		SessionType: omit.From(sessionType),
@@ -145,7 +145,7 @@ func TestCreateRaceSuccess(t *testing.T) {
 	}
 
 	id := int32(resp.Msg.GetRace().GetId())
-	stored, err := repo.Races().LoadByID(context.Background(), id)
+	stored, err := repo.Races().Races().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created race: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestUpdateRaceSuccess(t *testing.T) {
 	initial := seedRace(t, repo, event.ID, "Qualifying 1", conversion.RaceSessionTypeQualifying, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
-	before, err := repo.Races().LoadByID(context.Background(), initial.ID)
+	before, err := repo.Races().Races().LoadByID(context.Background(), initial.ID)
 	if err != nil {
 		t.Fatalf("failed to load initial race: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestUpdateRaceSuccess(t *testing.T) {
 		t.Fatalf("unexpected sequence_no: got %d want 2", resp.Msg.GetRace().GetSequenceNo())
 	}
 
-	after, err := repo.Races().LoadByID(context.Background(), initial.ID)
+	after, err := repo.Races().Races().LoadByID(context.Background(), initial.ID)
 	if err != nil {
 		t.Fatalf("failed to load updated race: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestUpdateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeAlreadyExists)
 	}
 
-	stored, loadErr := repo.Races().LoadByID(context.Background(), second.ID)
+	stored, loadErr := repo.Races().Races().LoadByID(context.Background(), second.ID)
 	if loadErr != nil {
 		t.Fatalf("failed to load race after duplicate update: %v", loadErr)
 	}
@@ -451,7 +451,7 @@ func TestDeleteRaceSuccess(t *testing.T) {
 		t.Fatal("expected deleted=true")
 	}
 
-	_, err = repo.Races().LoadByID(context.Background(), initial.ID)
+	_, err = repo.Races().Races().LoadByID(context.Background(), initial.ID)
 	if !errors.Is(err, repoerrors.ErrNotFound) {
 		t.Fatalf("expected not found after delete, got: %v", err)
 	}

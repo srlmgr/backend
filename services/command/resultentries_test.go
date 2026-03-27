@@ -271,8 +271,9 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	initial := seedResultEntry(t, repo, race.ID, "Alex Tester", 1)
+	initial := seedResultEntry(t, repo, race.ID, grid.ID, "Alex Tester", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 	_ = batch
 	before, err := repo.ResultEntries().LoadByID(context.Background(), initial.ID)
@@ -352,8 +353,9 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "GP Layout")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, "Bob Racer", 3)
+	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Bob Racer", 3)
 	_ = batch
 	resp, err := svc.UpdateResultEntry(
 		context.Background(),
@@ -388,8 +390,9 @@ func TestDeleteResultEntrySuccess(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "GP Layout")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 3")
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, "Charlie Speed", 1)
+	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Charlie Speed", 1)
 	_ = batch
 	resp, err := svc.DeleteResultEntry(
 		context.Background(),

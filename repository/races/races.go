@@ -1,6 +1,6 @@
 // Package races provides repositories for the races migration group.
 //
-//nolint:lll,whitespace // repository implementations can be verbose
+//nolint:lll,dupl,whitespace // repository implementations can be verbose
 package races
 
 import (
@@ -21,8 +21,8 @@ import (
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
 
-// Repository defines persistence operations for Race entities.
-type Repository interface {
+// RacesRepository defines persistence operations for Race entities.
+type RacesRepository interface {
 	LoadAll(ctx context.Context) ([]*models.Race, error)
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.Race, error)
 	LoadByID(ctx context.Context, id int32) (*models.Race, error)
@@ -31,12 +31,42 @@ type Repository interface {
 	Update(ctx context.Context, id int32, input *models.RaceSetter) (*models.Race, error)
 }
 
-type racesRepository struct{ exec *pgbob.Executor }
+// RaceGridsRepository defines persistence operations for RaceGrid entities.
+type RaceGridsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.RaceGrid, error)
+	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.RaceGrid, error)
+	LoadByID(ctx context.Context, id int32) (*models.RaceGrid, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(ctx context.Context, input *models.RaceGridSetter) (*models.RaceGrid, error)
+	Update(ctx context.Context, id int32, input *models.RaceGridSetter) (*models.RaceGrid, error)
+}
+
+// Repository exposes repositories for the races migration group.
+type Repository interface {
+	Races() RacesRepository
+	RaceGrids() RaceGridsRepository
+}
+
+type repository struct {
+	races     RacesRepository
+	raceGrids RaceGridsRepository
+}
+
+type (
+	racesRepository     struct{ exec *pgbob.Executor }
+	raceGridsRepository struct{ exec *pgbob.Executor }
+)
 
 // New returns a postgres-backed Repository.
 func New(pool *pgxpool.Pool) Repository {
-	return &racesRepository{exec: pgbob.New(pool)}
+	return &repository{
+		races:     &racesRepository{exec: pgbob.New(pool)},
+		raceGrids: &raceGridsRepository{exec: pgbob.New(pool)},
+	}
 }
+
+func (r *repository) Races() RacesRepository         { return r.races }
+func (r *repository) RaceGrids() RaceGridsRepository { return r.raceGrids }
 
 func (r *racesRepository) LoadAll(ctx context.Context) ([]*models.Race, error) {
 	return models.Races.Query().All(ctx, r.getExecutor(ctx))
@@ -89,6 +119,63 @@ func (r *racesRepository) Update(
 }
 
 func (r *racesRepository) getExecutor(ctx context.Context) bob.Executor {
+	if executor := pgbob.FromContext(ctx); executor != nil {
+		return executor
+	}
+	return r.exec
+}
+
+func (r *raceGridsRepository) LoadAll(ctx context.Context) ([]*models.RaceGrid, error) {
+	return models.RaceGrids.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *raceGridsRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.RaceGrid, error) {
+	return models.RaceGrids.Query(
+		sm.Where(models.RaceGrids.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *raceGridsRepository) LoadByID(ctx context.Context, id int32) (*models.RaceGrid, error) {
+	entity, err := models.RaceGrids.Query(sm.Where(models.RaceGrids.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("race grid %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *raceGridsRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.RaceGrids.Delete(dm.Where(models.RaceGrids.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *raceGridsRepository) Create(
+	ctx context.Context,
+	input *models.RaceGridSetter,
+) (*models.RaceGrid, error) {
+	return models.RaceGrids.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *raceGridsRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.RaceGridSetter,
+) (*models.RaceGrid, error) {
+	entity, err := models.RaceGrids.Update(
+		input.UpdateMod(),
+		um.Where(models.RaceGrids.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("race grid %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *raceGridsRepository) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor
 	}

@@ -24,7 +24,7 @@ func seedRace(
 	sequenceNo int32,
 ) *models.Race {
 	t.Helper()
-	race, err := repo.Races().Create(context.Background(), &models.RaceSetter{
+	race, err := repo.Races().Races().Create(context.Background(), &models.RaceSetter{
 		EventID:     omit.From(eventID),
 		Name:        omit.From(name),
 		SessionType: omit.From(sessionType),

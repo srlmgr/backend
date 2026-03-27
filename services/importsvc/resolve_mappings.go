@@ -44,7 +44,7 @@ func (s *service) ResolveMappings(
 			return err
 		}
 
-		race, err := s.repo.Races().LoadByID(ctx, batch.RaceID)
+		race, err := s.repo.Races().Races().LoadByID(ctx, batch.RaceID)
 		if err != nil {
 			return err
 		}

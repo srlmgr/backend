@@ -55,7 +55,7 @@ func (s *service) UploadResultsFile(
 	importFormat := formats[0]
 
 	// Validate race belongs to event.
-	race, err := s.repo.Races().LoadByID(ctx, raceID)
+	race, err := s.repo.Races().Races().LoadByID(ctx, raceID)
 	if err != nil {
 		l.Error("failed to load race", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")

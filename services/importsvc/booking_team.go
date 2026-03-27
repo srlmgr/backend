@@ -41,7 +41,7 @@ func (s *service) ComputeTeamBookingEntries(
 	seasonID := event.SeasonID
 
 	// Collect result entries across all races for this event.
-	races, err := s.repo.Races().LoadByEventID(ctx, eventID)
+	races, err := s.repo.Races().Races().LoadByEventID(ctx, eventID)
 	if err != nil {
 		l.Error("failed to load races", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load races")
