@@ -426,9 +426,8 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 	awards := map[PointPolicyType][]PointType{
 		PointsPolicyFinishPos: {25, 18},
 	}
-	penalties := map[PointPolicyType]PointPenaltySettings{
-		PointsPolicyIncidentsExceeded: {
-			Name:       "incident penalty",
+	penalties := map[PointPolicyType]any{
+		PointsPolicyIncidentsExceeded: ThresholdPenaltySettings{
 			Threshold:  3,
 			PenaltyPct: 0.1,
 		},

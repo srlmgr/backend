@@ -88,7 +88,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 	inputs []Input,
 	policies []PointPolicyType,
 	awardSettings map[PointPolicyType][]PointType,
-	penaltySettings map[PointPolicyType]PointPenaltySettings,
+	penaltySettings map[PointPolicyType]any,
 ) ([]Output, error) {
 	ret := make([]Output, 0)
 	byClass := lo.GroupBy(inputs, func(item Input) int32 { return item.ClassID() })
@@ -144,7 +144,10 @@ func (p *PointSystemProcessor) ProcessPoints(
 			//nolint:exhaustive,gocritic // may be extended with addition policies
 			switch policyType {
 			case PointsPolicyIncidentsExceeded:
-				polSettings := penaltySettings[policyType]
+				polSettings, ok := penaltySettings[policyType].(ThresholdPenaltySettings)
+				if !ok {
+					continue
+				}
 				ret = append(
 					ret,
 					p.handleIncidentsExceededPolicy(ret, polSettings, eligibleInputs)...)
@@ -157,7 +160,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 
 // uses already produced outputs from previous steps
 func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
-	outputs []Output, settings PointPenaltySettings, inputs []Input,
+	outputs []Output, settings ThresholdPenaltySettings, inputs []Input,
 ) []Output {
 	// here we are interested in output produced by PointsPolicyFinishPos
 	filtered := lo.Filter(outputs, func(output Output, _ int) bool {

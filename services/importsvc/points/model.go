@@ -29,7 +29,10 @@ type (
 		Points map[PointPolicyType][]PointType
 	}
 	PointPenaltySettings struct {
-		Name       string
+		Name      string
+		Arguments map[PointPolicyType]any
+	}
+	ThresholdPenaltySettings struct {
 		Threshold  int32
 		PenaltyPct float64
 	}
@@ -39,6 +42,7 @@ type (
 		AwardSettings   []RankedPolicySettings
 		PenaltySettings []PointPenaltySettings
 	}
+
 	PointPolicyType int
 	PointPolicy     interface {
 		Type() PointPolicyType
