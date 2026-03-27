@@ -88,7 +88,7 @@ func (s *service) CreateRace(
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		setter.CreatedBy = omit.From(s.execUser(ctx))
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
-		newRace, err = s.repo.Races().Create(ctx, setter)
+		newRace, err = s.repo.Races().Races().Create(ctx, setter)
 		return err
 	}); txErr != nil {
 		l.Error("failed to create race", log.ErrorField(txErr))
@@ -120,7 +120,7 @@ func (s *service) UpdateRace(
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		setter.UpdatedAt = omit.From(time.Now())
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
-		newRace, err = s.repo.Races().Update(
+		newRace, err = s.repo.Races().Races().Update(
 			ctx,
 			int32(req.Msg.GetRaceId()),
 			setter,
@@ -148,7 +148,7 @@ func (s *service) DeleteRace(
 	l.Debug("DeleteRace")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
-		err = s.repo.Races().DeleteByID(
+		err = s.repo.Races().Races().DeleteByID(
 			ctx,
 			int32(req.Msg.GetRaceId()),
 		)

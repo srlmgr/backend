@@ -46,6 +46,7 @@ type joins[Q dialect.Joinable] struct {
 	ImportBatches                joinSet[importBatchJoins[Q]]
 	PointRules                   joinSet[pointRuleJoins[Q]]
 	PointSystems                 joinSet[pointSystemJoins[Q]]
+	RaceGrids                    joinSet[raceGridJoins[Q]]
 	Races                        joinSet[raceJoins[Q]]
 	RacingSims                   joinSet[racingSimJoins[Q]]
 	ResultEntries                joinSet[resultEntryJoins[Q]]
@@ -86,6 +87,7 @@ func getJoins[Q dialect.Joinable]() joins[Q] {
 		ImportBatches:                buildJoinSet[importBatchJoins[Q]](ImportBatches.Columns, buildImportBatchJoins),
 		PointRules:                   buildJoinSet[pointRuleJoins[Q]](PointRules.Columns, buildPointRuleJoins),
 		PointSystems:                 buildJoinSet[pointSystemJoins[Q]](PointSystems.Columns, buildPointSystemJoins),
+		RaceGrids:                    buildJoinSet[raceGridJoins[Q]](RaceGrids.Columns, buildRaceGridJoins),
 		Races:                        buildJoinSet[raceJoins[Q]](Races.Columns, buildRaceJoins),
 		RacingSims:                   buildJoinSet[racingSimJoins[Q]](RacingSims.Columns, buildRacingSimJoins),
 		ResultEntries:                buildJoinSet[resultEntryJoins[Q]](ResultEntries.Columns, buildResultEntryJoins),

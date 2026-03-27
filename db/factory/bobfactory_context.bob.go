@@ -93,9 +93,15 @@ var (
 	pointSystemRelPointRulesCtx        = newContextual[bool]("point_rules.point_systems.point_rules.point_rules_point_system_id_fk")
 	pointSystemRelSeasonsCtx           = newContextual[bool]("point_systems.seasons.seasons.seasons_point_system_id_fk")
 
+	// Relationship Contexts for race_grids
+	raceGridWithParentsCascadingCtx = newContextual[bool]("raceGridWithParentsCascading")
+	raceGridRelRaceCtx              = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
+	raceGridRelResultEntriesCtx     = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
+
 	// Relationship Contexts for races
 	raceWithParentsCascadingCtx = newContextual[bool]("raceWithParentsCascading")
 	raceRelImportBatchesCtx     = newContextual[bool]("import_batches.races.import_batches.import_batches_race_id_fk")
+	raceRelRaceGridsCtx         = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
 	raceRelEventCtx             = newContextual[bool]("events.races.races.races_event_id_fk")
 	raceRelResultEntriesCtx     = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
 
@@ -112,6 +118,7 @@ var (
 	resultEntryRelCarClassCtx                        = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
 	resultEntryRelCarModelCtx                        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
 	resultEntryRelDriverCtx                          = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
+	resultEntryRelRaceGridCtx                        = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
 	resultEntryRelRaceCtx                            = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
 	resultEntryRelTeamCtx                            = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 

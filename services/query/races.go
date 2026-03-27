@@ -24,7 +24,7 @@ func (s *service) ListRaces(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListRaces", log.Uint32("event_id", req.Msg.GetEventId()))
 
-	racesRepo := s.repo.Races()
+	racesRepo := s.repo.Races().Races()
 
 	var (
 		raceItems []*models.Race
@@ -64,7 +64,7 @@ func (s *service) GetRace(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("GetRace", log.Uint32("id", req.Msg.GetId()))
 
-	item, err := s.repo.Races().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Races().Races().LoadByID(ctx, int32(req.Msg.GetId()))
 	if err != nil {
 		l.Error("failed to load race", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")

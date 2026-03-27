@@ -389,10 +389,34 @@ func seedImportBatch(
 }
 
 //nolint:whitespace // multiline signature style
+func seedRaceGrid(
+	t *testing.T,
+	repo rootrepo.Repository,
+	raceID int32,
+	name, sessionType string,
+	sequenceNo int32,
+) *models.RaceGrid {
+	t.Helper()
+	raceGrid, err := repo.Races().RaceGrids().Create(context.Background(), &models.RaceGridSetter{
+		RaceID:      omit.From(raceID),
+		Name:        omit.From(name),
+		SessionType: omit.From(sessionType),
+		SequenceNo:  omit.From(sequenceNo),
+		CreatedBy:   omit.From(testUserSeed),
+		UpdatedBy:   omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed race grid %q: %v", name, err)
+	}
+	return raceGrid
+}
+
+//nolint:whitespace // multiline signature style
 func seedResultEntry(
 	t *testing.T,
 	repo rootrepo.Repository,
 	raceID int32,
+	raceGridID int32,
 	driverName string,
 	finishingPosition int32,
 ) (
@@ -403,6 +427,7 @@ func seedResultEntry(
 	var err error
 	entry, err = repo.ResultEntries().Create(context.Background(), &models.ResultEntrySetter{
 		RaceID:            omit.From(raceID),
+		RaceGridID:        omit.From(raceGridID),
 		RawDriverName:     omitnull.From(driverName),
 		FinishingPosition: omit.From(finishingPosition),
 		CompletedLaps:     omit.From(int32(0)),

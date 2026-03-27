@@ -551,6 +551,31 @@ func (r *racesEntityRepo) LoadByEventID(
 	return filtered, nil
 }
 
+type raceGridsEntityRepo struct {
+	*mapEntityRepo[models.RaceGrid, models.RaceGridSetter]
+}
+
+//nolint:whitespace // multiline signature style
+func (r *raceGridsEntityRepo) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.RaceGrid, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.RaceGrid, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
 type teamsEntityRepo struct {
 	*mapEntityRepo[models.Team, models.TeamSetter]
 }
@@ -676,6 +701,27 @@ func (r *resultEntriesEntityRepo) LoadByRaceID(
 	filtered := make([]*models.ResultEntry, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.RaceID != raceID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *resultEntriesEntityRepo) LoadByRaceGridID(
+	ctx context.Context,
+	raceGridID int32,
+) ([]*models.ResultEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.ResultEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.RaceGridID != raceGridID {
 			continue
 		}
 		filtered = append(filtered, item)
@@ -901,6 +947,14 @@ type teamsGroup struct {
 
 func (g *teamsGroup) Teams() teams.TeamsRepository             { return g.teams }
 func (g *teamsGroup) TeamDrivers() teams.TeamDriversRepository { return g.teamDrivers }
+
+type racesGroup struct {
+	races     races.RacesRepository
+	raceGrids races.RaceGridsRepository
+}
+
+func (g *racesGroup) Races() races.RacesRepository         { return g.races }
+func (g *racesGroup) RaceGrids() races.RaceGridsRepository { return g.raceGrids }
 
 type standingsGroup struct {
 	seasonDriver standings.SeasonDriverStandingsRepository
@@ -1229,6 +1283,13 @@ func New() rootrepo.Repository {
 			},
 		),
 	}
+	raceGridsRepo := &raceGridsEntityRepo{
+		newMapEntityRepo(
+			func(m *models.RaceGrid) int32 { return m.ID },
+			func(m *models.RaceGrid, id int32) { m.ID = id },
+			func(m *models.RaceGrid, s *models.RaceGridSetter) { s.Overwrite(m) },
+		),
+	}
 	teamsRepo := &teamsEntityRepo{
 		newMapEntityRepo(
 			func(m *models.Team) int32 { return m.ID },
@@ -1452,7 +1513,7 @@ func New() rootrepo.Repository {
 		series:               seriesRepo,
 		seasons:              seasonsRepo,
 		events:               eventsRepo,
-		races:                racesRepo,
+		races:                &racesGroup{races: racesRepo, raceGrids: raceGridsRepo},
 		teams:                &teamsGroup{teams: teamsRepo, teamDrivers: teamDriversRepo},
 		importBatches:        importBatchesRepo,
 		resultEntries:        resultEntriesRepo,

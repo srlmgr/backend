@@ -65,7 +65,7 @@ func (s *service) FinalizeEventProcessing(
 	finalizedAt := time.Now()
 
 	// Resolve the latest import batch across all races for the event.
-	races, err := s.repo.Races().LoadByEventID(ctx, eventID)
+	races, err := s.repo.Races().Races().LoadByEventID(ctx, eventID)
 	if err != nil {
 		l.Error("failed to load races", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load races")

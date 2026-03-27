@@ -53,6 +53,7 @@ type RaceTemplate struct {
 
 type raceR struct {
 	ImportBatches []*raceRImportBatchesR
+	RaceGrids     []*raceRRaceGridsR
 	Event         *raceREventR
 	ResultEntries []*raceRResultEntriesR
 }
@@ -60,6 +61,10 @@ type raceR struct {
 type raceRImportBatchesR struct {
 	number int
 	o      *ImportBatchTemplate
+}
+type raceRRaceGridsR struct {
+	number int
+	o      *RaceGridTemplate
 }
 type raceREventR struct {
 	o *EventTemplate
@@ -90,6 +95,19 @@ func (t RaceTemplate) setModelRels(o *models.Race) {
 			rel = append(rel, related...)
 		}
 		o.R.ImportBatches = rel
+	}
+
+	if t.r.RaceGrids != nil {
+		rel := models.RaceGridSlice{}
+		for _, r := range t.r.RaceGrids {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.RaceID = o.ID // h2
+				rel.R.Race = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.RaceGrids = rel
 	}
 
 	if t.r.Event != nil {
@@ -267,6 +285,26 @@ func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 		}
 	}
 
+	isRaceGridsDone, _ := raceRelRaceGridsCtx.Value(ctx)
+	if !isRaceGridsDone && o.r.RaceGrids != nil {
+		ctx = raceRelRaceGridsCtx.WithValue(ctx, true)
+		for _, r := range o.r.RaceGrids {
+			if r.o.alreadyPersisted {
+				m.R.RaceGrids = append(m.R.RaceGrids, r.o.Build())
+			} else {
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachRaceGrids(ctx, exec, rel1...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isResultEntriesDone, _ := raceRelResultEntriesCtx.Value(ctx)
 	if !isResultEntriesDone && o.r.ResultEntries != nil {
 		ctx = raceRelResultEntriesCtx.WithValue(ctx, true)
@@ -274,12 +312,12 @@ func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 			if r.o.alreadyPersisted {
 				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
 			} else {
-				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachResultEntries(ctx, exec, rel2...)
+				err = m.AttachResultEntries(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -301,25 +339,25 @@ func (o *RaceTemplate) Create(ctx context.Context, exec bob.Executor) (*models.R
 		RaceMods.WithNewEvent().Apply(ctx, o)
 	}
 
-	var rel1 *models.Event
+	var rel2 *models.Event
 
 	if o.r.Event.o.alreadyPersisted {
-		rel1 = o.r.Event.o.Build()
+		rel2 = o.r.Event.o.Build()
 	} else {
-		rel1, err = o.r.Event.o.Create(ctx, exec)
+		rel2, err = o.r.Event.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.EventID = omit.From(rel1.ID)
+	opt.EventID = omit.From(rel2.ID)
 
 	m, err := models.Races.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Event = rel1
+	m.R.Event = rel2
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -778,6 +816,54 @@ func (m raceMods) AddExistingImportBatches(existingModels ...*models.ImportBatch
 func (m raceMods) WithoutImportBatches() RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
 		o.r.ImportBatches = nil
+	})
+}
+
+func (m raceMods) WithRaceGrids(number int, related *RaceGridTemplate) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.RaceGrids = []*raceRRaceGridsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m raceMods) WithNewRaceGrids(number int, mods ...RaceGridMod) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		related := o.f.NewRaceGridWithContext(ctx, mods...)
+		m.WithRaceGrids(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceMods) AddRaceGrids(number int, related *RaceGridTemplate) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.RaceGrids = append(o.r.RaceGrids, &raceRRaceGridsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m raceMods) AddNewRaceGrids(number int, mods ...RaceGridMod) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		related := o.f.NewRaceGridWithContext(ctx, mods...)
+		m.AddRaceGrids(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceMods) AddExistingRaceGrids(existingModels ...*models.RaceGrid) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		for _, em := range existingModels {
+			o.r.RaceGrids = append(o.r.RaceGrids, &raceRRaceGridsR{
+				o: o.f.FromExistingRaceGrid(em),
+			})
+		}
+	})
+}
+
+func (m raceMods) WithoutRaceGrids() RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.RaceGrids = nil
 	})
 }
 

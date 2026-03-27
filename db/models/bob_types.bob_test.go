@@ -61,6 +61,9 @@ var _ bob.HookableType = &PointRule{}
 // Make sure the type PointSystem runs hooks after queries
 var _ bob.HookableType = &PointSystem{}
 
+// Make sure the type RaceGrid runs hooks after queries
+var _ bob.HookableType = &RaceGrid{}
+
 // Make sure the type Race runs hooks after queries
 var _ bob.HookableType = &Race{}
 

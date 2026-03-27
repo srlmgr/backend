@@ -41,10 +41,35 @@ func seedImportBatch(
 }
 
 //nolint:whitespace // multiline signature style
+func seedRaceGrid(
+	t *testing.T,
+	repo rootrepo.Repository,
+	raceID int32,
+	name, sessionType string,
+	sequenceNo int32,
+) *models.RaceGrid {
+	t.Helper()
+	ctx := context.Background()
+	raceGrid, err := repo.Races().RaceGrids().Create(ctx, &models.RaceGridSetter{
+		RaceID:      omit.From(raceID),
+		Name:        omit.From(name),
+		SessionType: omit.From(sessionType),
+		SequenceNo:  omit.From(sequenceNo),
+		CreatedBy:   omit.From(testUserSeed),
+		UpdatedBy:   omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed race grid %q: %v", name, err)
+	}
+	return raceGrid
+}
+
+//nolint:whitespace // multiline signature style
 func seedResultEntry(
 	t *testing.T,
 	repo rootrepo.Repository,
 	raceID int32,
+	raceGridID int32,
 	driverName string,
 	finishingPosition int32,
 ) *models.ResultEntry {
@@ -53,6 +78,7 @@ func seedResultEntry(
 	entry, err := repo.ResultEntries().Create(
 		context.Background(), &models.ResultEntrySetter{
 			RaceID:            omit.From(raceID),
+			RaceGridID:        omit.From(raceGridID),
 			RawDriverName:     omitnull.From(driverName),
 			FinishingPosition: omit.From(finishingPosition),
 			CompletedLaps:     omit.From(int32(0)),
@@ -78,8 +104,9 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	race := seedRace(t, repo, event.ID, "Feature Race", "race", 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", "race", 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, "Alice", 1)
+	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Alice", 1)
 	_ = batch // batch is not directly relevant to this test, but seeded for completeness
 	resp, err := svc.GetResultEntry(
 		context.Background(),
