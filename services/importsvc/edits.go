@@ -163,11 +163,11 @@ func buildResultEntrySetterFromProto(
 	}
 
 	if pos := row.GetFinishingPosition(); pos != 0 {
-		setter.FinishingPosition = omit.From(pos)
+		setter.FinishPosition = omit.From(pos)
 	}
 
 	if laps := row.GetCompletedLaps(); laps != 0 {
-		setter.CompletedLaps = omit.From(laps)
+		setter.LapsCompleted = omit.From(laps)
 	}
 
 	if lapTimeMs := row.GetFastestLapTimeMs(); lapTimeMs != 0 {

@@ -51,11 +51,11 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 	}
 
 	if pos := msg.GetFinishingPosition(); pos != 0 {
-		setter.FinishingPosition = omit.From(pos)
+		setter.FinishPosition = omit.From(pos)
 	}
 
 	if laps := msg.GetCompletedLaps(); laps != 0 {
-		setter.CompletedLaps = omit.From(laps)
+		setter.LapsCompleted = omit.From(laps)
 	}
 
 	if lapTimeMs := msg.GetFastestLapTimeMs(); lapTimeMs != 0 {

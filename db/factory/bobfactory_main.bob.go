@@ -835,9 +835,9 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.RawTeamName = func() null.Val[string] { return m.RawTeamName }
 	o.CarNumber = func() null.Val[string] { return m.CarNumber }
 	o.IsGuestDriver = func() bool { return m.IsGuestDriver }
-	o.StartingPosition = func() null.Val[int32] { return m.StartingPosition }
-	o.FinishingPosition = func() int32 { return m.FinishingPosition }
-	o.CompletedLaps = func() int32 { return m.CompletedLaps }
+	o.StartPosition = func() null.Val[int32] { return m.StartPosition }
+	o.FinishPosition = func() int32 { return m.FinishPosition }
+	o.LapsCompleted = func() int32 { return m.LapsCompleted }
 	o.QualiLapTimeMS = func() null.Val[int32] { return m.QualiLapTimeMS }
 	o.FastestLapTimeMS = func() null.Val[int32] { return m.FastestLapTimeMS }
 	o.TotalTimeMS = func() null.Val[int32] { return m.TotalTimeMS }

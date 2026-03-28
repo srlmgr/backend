@@ -27,33 +27,33 @@ import (
 
 // ResultEntry is an object representing the database table.
 type ResultEntry struct {
-	ID                int32               `db:"id,pk" `
-	FrontendID        uuid.UUID           `db:"frontend_id" `
-	RaceID            int32               `db:"race_id" `
-	RaceGridID        int32               `db:"race_grid_id" `
-	DriverID          null.Val[int32]     `db:"driver_id" `
-	TeamID            null.Val[int32]     `db:"team_id" `
-	CarModelID        null.Val[int32]     `db:"car_model_id" `
-	CarClassID        null.Val[int32]     `db:"car_class_id" `
-	RawCarName        null.Val[string]    `db:"raw_car_name" `
-	RawDriverName     null.Val[string]    `db:"raw_driver_name" `
-	RawTeamName       null.Val[string]    `db:"raw_team_name" `
-	CarNumber         null.Val[string]    `db:"car_number" `
-	IsGuestDriver     bool                `db:"is_guest_driver" `
-	StartingPosition  null.Val[int32]     `db:"starting_position" `
-	FinishingPosition int32               `db:"finishing_position" `
-	CompletedLaps     int32               `db:"completed_laps" `
-	QualiLapTimeMS    null.Val[int32]     `db:"quali_lap_time_ms" `
-	FastestLapTimeMS  null.Val[int32]     `db:"fastest_lap_time_ms" `
-	TotalTimeMS       null.Val[int32]     `db:"total_time_ms" `
-	Incidents         null.Val[int32]     `db:"incidents" `
-	State             string              `db:"state" `
-	AdminNotes        null.Val[string]    `db:"admin_notes" `
-	LockedAt          null.Val[time.Time] `db:"locked_at" `
-	CreatedAt         time.Time           `db:"created_at" `
-	UpdatedAt         time.Time           `db:"updated_at" `
-	CreatedBy         string              `db:"created_by" `
-	UpdatedBy         string              `db:"updated_by" `
+	ID               int32               `db:"id,pk" `
+	FrontendID       uuid.UUID           `db:"frontend_id" `
+	RaceID           int32               `db:"race_id" `
+	RaceGridID       int32               `db:"race_grid_id" `
+	DriverID         null.Val[int32]     `db:"driver_id" `
+	TeamID           null.Val[int32]     `db:"team_id" `
+	CarModelID       null.Val[int32]     `db:"car_model_id" `
+	CarClassID       null.Val[int32]     `db:"car_class_id" `
+	RawCarName       null.Val[string]    `db:"raw_car_name" `
+	RawDriverName    null.Val[string]    `db:"raw_driver_name" `
+	RawTeamName      null.Val[string]    `db:"raw_team_name" `
+	CarNumber        null.Val[string]    `db:"car_number" `
+	IsGuestDriver    bool                `db:"is_guest_driver" `
+	StartPosition    null.Val[int32]     `db:"start_position" `
+	FinishPosition   int32               `db:"finish_position" `
+	LapsCompleted    int32               `db:"laps_completed" `
+	QualiLapTimeMS   null.Val[int32]     `db:"quali_lap_time_ms" `
+	FastestLapTimeMS null.Val[int32]     `db:"fastest_lap_time_ms" `
+	TotalTimeMS      null.Val[int32]     `db:"total_time_ms" `
+	Incidents        null.Val[int32]     `db:"incidents" `
+	State            string              `db:"state" `
+	AdminNotes       null.Val[string]    `db:"admin_notes" `
+	LockedAt         null.Val[time.Time] `db:"locked_at" `
+	CreatedAt        time.Time           `db:"created_at" `
+	UpdatedAt        time.Time           `db:"updated_at" `
+	CreatedBy        string              `db:"created_by" `
+	UpdatedBy        string              `db:"updated_by" `
 
 	R resultEntryR `db:"-" `
 }
@@ -82,69 +82,69 @@ type resultEntryR struct {
 func buildResultEntryColumns(alias string) resultEntryColumns {
 	return resultEntryColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "race_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "starting_position", "finishing_position", "completed_laps", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "race_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("result_entries"),
-		tableAlias:        alias,
-		ID:                psql.Quote(alias, "id"),
-		FrontendID:        psql.Quote(alias, "frontend_id"),
-		RaceID:            psql.Quote(alias, "race_id"),
-		RaceGridID:        psql.Quote(alias, "race_grid_id"),
-		DriverID:          psql.Quote(alias, "driver_id"),
-		TeamID:            psql.Quote(alias, "team_id"),
-		CarModelID:        psql.Quote(alias, "car_model_id"),
-		CarClassID:        psql.Quote(alias, "car_class_id"),
-		RawCarName:        psql.Quote(alias, "raw_car_name"),
-		RawDriverName:     psql.Quote(alias, "raw_driver_name"),
-		RawTeamName:       psql.Quote(alias, "raw_team_name"),
-		CarNumber:         psql.Quote(alias, "car_number"),
-		IsGuestDriver:     psql.Quote(alias, "is_guest_driver"),
-		StartingPosition:  psql.Quote(alias, "starting_position"),
-		FinishingPosition: psql.Quote(alias, "finishing_position"),
-		CompletedLaps:     psql.Quote(alias, "completed_laps"),
-		QualiLapTimeMS:    psql.Quote(alias, "quali_lap_time_ms"),
-		FastestLapTimeMS:  psql.Quote(alias, "fastest_lap_time_ms"),
-		TotalTimeMS:       psql.Quote(alias, "total_time_ms"),
-		Incidents:         psql.Quote(alias, "incidents"),
-		State:             psql.Quote(alias, "state"),
-		AdminNotes:        psql.Quote(alias, "admin_notes"),
-		LockedAt:          psql.Quote(alias, "locked_at"),
-		CreatedAt:         psql.Quote(alias, "created_at"),
-		UpdatedAt:         psql.Quote(alias, "updated_at"),
-		CreatedBy:         psql.Quote(alias, "created_by"),
-		UpdatedBy:         psql.Quote(alias, "updated_by"),
+		tableAlias:       alias,
+		ID:               psql.Quote(alias, "id"),
+		FrontendID:       psql.Quote(alias, "frontend_id"),
+		RaceID:           psql.Quote(alias, "race_id"),
+		RaceGridID:       psql.Quote(alias, "race_grid_id"),
+		DriverID:         psql.Quote(alias, "driver_id"),
+		TeamID:           psql.Quote(alias, "team_id"),
+		CarModelID:       psql.Quote(alias, "car_model_id"),
+		CarClassID:       psql.Quote(alias, "car_class_id"),
+		RawCarName:       psql.Quote(alias, "raw_car_name"),
+		RawDriverName:    psql.Quote(alias, "raw_driver_name"),
+		RawTeamName:      psql.Quote(alias, "raw_team_name"),
+		CarNumber:        psql.Quote(alias, "car_number"),
+		IsGuestDriver:    psql.Quote(alias, "is_guest_driver"),
+		StartPosition:    psql.Quote(alias, "start_position"),
+		FinishPosition:   psql.Quote(alias, "finish_position"),
+		LapsCompleted:    psql.Quote(alias, "laps_completed"),
+		QualiLapTimeMS:   psql.Quote(alias, "quali_lap_time_ms"),
+		FastestLapTimeMS: psql.Quote(alias, "fastest_lap_time_ms"),
+		TotalTimeMS:      psql.Quote(alias, "total_time_ms"),
+		Incidents:        psql.Quote(alias, "incidents"),
+		State:            psql.Quote(alias, "state"),
+		AdminNotes:       psql.Quote(alias, "admin_notes"),
+		LockedAt:         psql.Quote(alias, "locked_at"),
+		CreatedAt:        psql.Quote(alias, "created_at"),
+		UpdatedAt:        psql.Quote(alias, "updated_at"),
+		CreatedBy:        psql.Quote(alias, "created_by"),
+		UpdatedBy:        psql.Quote(alias, "updated_by"),
 	}
 }
 
 type resultEntryColumns struct {
 	expr.ColumnsExpr
-	tableAlias        string
-	ID                psql.Expression
-	FrontendID        psql.Expression
-	RaceID            psql.Expression
-	RaceGridID        psql.Expression
-	DriverID          psql.Expression
-	TeamID            psql.Expression
-	CarModelID        psql.Expression
-	CarClassID        psql.Expression
-	RawCarName        psql.Expression
-	RawDriverName     psql.Expression
-	RawTeamName       psql.Expression
-	CarNumber         psql.Expression
-	IsGuestDriver     psql.Expression
-	StartingPosition  psql.Expression
-	FinishingPosition psql.Expression
-	CompletedLaps     psql.Expression
-	QualiLapTimeMS    psql.Expression
-	FastestLapTimeMS  psql.Expression
-	TotalTimeMS       psql.Expression
-	Incidents         psql.Expression
-	State             psql.Expression
-	AdminNotes        psql.Expression
-	LockedAt          psql.Expression
-	CreatedAt         psql.Expression
-	UpdatedAt         psql.Expression
-	CreatedBy         psql.Expression
-	UpdatedBy         psql.Expression
+	tableAlias       string
+	ID               psql.Expression
+	FrontendID       psql.Expression
+	RaceID           psql.Expression
+	RaceGridID       psql.Expression
+	DriverID         psql.Expression
+	TeamID           psql.Expression
+	CarModelID       psql.Expression
+	CarClassID       psql.Expression
+	RawCarName       psql.Expression
+	RawDriverName    psql.Expression
+	RawTeamName      psql.Expression
+	CarNumber        psql.Expression
+	IsGuestDriver    psql.Expression
+	StartPosition    psql.Expression
+	FinishPosition   psql.Expression
+	LapsCompleted    psql.Expression
+	QualiLapTimeMS   psql.Expression
+	FastestLapTimeMS psql.Expression
+	TotalTimeMS      psql.Expression
+	Incidents        psql.Expression
+	State            psql.Expression
+	AdminNotes       psql.Expression
+	LockedAt         psql.Expression
+	CreatedAt        psql.Expression
+	UpdatedAt        psql.Expression
+	CreatedBy        psql.Expression
+	UpdatedBy        psql.Expression
 }
 
 func (c resultEntryColumns) Alias() string {
@@ -159,33 +159,33 @@ func (resultEntryColumns) AliasedAs(alias string) resultEntryColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type ResultEntrySetter struct {
-	ID                omit.Val[int32]         `db:"id,pk" `
-	FrontendID        omit.Val[uuid.UUID]     `db:"frontend_id" `
-	RaceID            omit.Val[int32]         `db:"race_id" `
-	RaceGridID        omit.Val[int32]         `db:"race_grid_id" `
-	DriverID          omitnull.Val[int32]     `db:"driver_id" `
-	TeamID            omitnull.Val[int32]     `db:"team_id" `
-	CarModelID        omitnull.Val[int32]     `db:"car_model_id" `
-	CarClassID        omitnull.Val[int32]     `db:"car_class_id" `
-	RawCarName        omitnull.Val[string]    `db:"raw_car_name" `
-	RawDriverName     omitnull.Val[string]    `db:"raw_driver_name" `
-	RawTeamName       omitnull.Val[string]    `db:"raw_team_name" `
-	CarNumber         omitnull.Val[string]    `db:"car_number" `
-	IsGuestDriver     omit.Val[bool]          `db:"is_guest_driver" `
-	StartingPosition  omitnull.Val[int32]     `db:"starting_position" `
-	FinishingPosition omit.Val[int32]         `db:"finishing_position" `
-	CompletedLaps     omit.Val[int32]         `db:"completed_laps" `
-	QualiLapTimeMS    omitnull.Val[int32]     `db:"quali_lap_time_ms" `
-	FastestLapTimeMS  omitnull.Val[int32]     `db:"fastest_lap_time_ms" `
-	TotalTimeMS       omitnull.Val[int32]     `db:"total_time_ms" `
-	Incidents         omitnull.Val[int32]     `db:"incidents" `
-	State             omit.Val[string]        `db:"state" `
-	AdminNotes        omitnull.Val[string]    `db:"admin_notes" `
-	LockedAt          omitnull.Val[time.Time] `db:"locked_at" `
-	CreatedAt         omit.Val[time.Time]     `db:"created_at" `
-	UpdatedAt         omit.Val[time.Time]     `db:"updated_at" `
-	CreatedBy         omit.Val[string]        `db:"created_by" `
-	UpdatedBy         omit.Val[string]        `db:"updated_by" `
+	ID               omit.Val[int32]         `db:"id,pk" `
+	FrontendID       omit.Val[uuid.UUID]     `db:"frontend_id" `
+	RaceID           omit.Val[int32]         `db:"race_id" `
+	RaceGridID       omit.Val[int32]         `db:"race_grid_id" `
+	DriverID         omitnull.Val[int32]     `db:"driver_id" `
+	TeamID           omitnull.Val[int32]     `db:"team_id" `
+	CarModelID       omitnull.Val[int32]     `db:"car_model_id" `
+	CarClassID       omitnull.Val[int32]     `db:"car_class_id" `
+	RawCarName       omitnull.Val[string]    `db:"raw_car_name" `
+	RawDriverName    omitnull.Val[string]    `db:"raw_driver_name" `
+	RawTeamName      omitnull.Val[string]    `db:"raw_team_name" `
+	CarNumber        omitnull.Val[string]    `db:"car_number" `
+	IsGuestDriver    omit.Val[bool]          `db:"is_guest_driver" `
+	StartPosition    omitnull.Val[int32]     `db:"start_position" `
+	FinishPosition   omit.Val[int32]         `db:"finish_position" `
+	LapsCompleted    omit.Val[int32]         `db:"laps_completed" `
+	QualiLapTimeMS   omitnull.Val[int32]     `db:"quali_lap_time_ms" `
+	FastestLapTimeMS omitnull.Val[int32]     `db:"fastest_lap_time_ms" `
+	TotalTimeMS      omitnull.Val[int32]     `db:"total_time_ms" `
+	Incidents        omitnull.Val[int32]     `db:"incidents" `
+	State            omit.Val[string]        `db:"state" `
+	AdminNotes       omitnull.Val[string]    `db:"admin_notes" `
+	LockedAt         omitnull.Val[time.Time] `db:"locked_at" `
+	CreatedAt        omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt        omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy        omit.Val[string]        `db:"created_by" `
+	UpdatedBy        omit.Val[string]        `db:"updated_by" `
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
@@ -229,14 +229,14 @@ func (s ResultEntrySetter) SetColumns() []string {
 	if s.IsGuestDriver.IsValue() {
 		vals = append(vals, "is_guest_driver")
 	}
-	if !s.StartingPosition.IsUnset() {
-		vals = append(vals, "starting_position")
+	if !s.StartPosition.IsUnset() {
+		vals = append(vals, "start_position")
 	}
-	if s.FinishingPosition.IsValue() {
-		vals = append(vals, "finishing_position")
+	if s.FinishPosition.IsValue() {
+		vals = append(vals, "finish_position")
 	}
-	if s.CompletedLaps.IsValue() {
-		vals = append(vals, "completed_laps")
+	if s.LapsCompleted.IsValue() {
+		vals = append(vals, "laps_completed")
 	}
 	if !s.QualiLapTimeMS.IsUnset() {
 		vals = append(vals, "quali_lap_time_ms")
@@ -314,14 +314,14 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if s.IsGuestDriver.IsValue() {
 		t.IsGuestDriver = s.IsGuestDriver.MustGet()
 	}
-	if !s.StartingPosition.IsUnset() {
-		t.StartingPosition = s.StartingPosition.MustGetNull()
+	if !s.StartPosition.IsUnset() {
+		t.StartPosition = s.StartPosition.MustGetNull()
 	}
-	if s.FinishingPosition.IsValue() {
-		t.FinishingPosition = s.FinishingPosition.MustGet()
+	if s.FinishPosition.IsValue() {
+		t.FinishPosition = s.FinishPosition.MustGet()
 	}
-	if s.CompletedLaps.IsValue() {
-		t.CompletedLaps = s.CompletedLaps.MustGet()
+	if s.LapsCompleted.IsValue() {
+		t.LapsCompleted = s.LapsCompleted.MustGet()
 	}
 	if !s.QualiLapTimeMS.IsUnset() {
 		t.QualiLapTimeMS = s.QualiLapTimeMS.MustGetNull()
@@ -443,20 +443,20 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartingPosition.IsUnset() {
-			vals[13] = psql.Arg(s.StartingPosition.MustGetNull())
+		if !s.StartPosition.IsUnset() {
+			vals[13] = psql.Arg(s.StartPosition.MustGetNull())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.FinishingPosition.IsValue() {
-			vals[14] = psql.Arg(s.FinishingPosition.MustGet())
+		if s.FinishPosition.IsValue() {
+			vals[14] = psql.Arg(s.FinishPosition.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if s.CompletedLaps.IsValue() {
-			vals[15] = psql.Arg(s.CompletedLaps.MustGet())
+		if s.LapsCompleted.IsValue() {
+			vals[15] = psql.Arg(s.LapsCompleted.MustGet())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
 		}
@@ -629,24 +629,24 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if !s.StartingPosition.IsUnset() {
+	if !s.StartPosition.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "starting_position")...),
-			psql.Arg(s.StartingPosition),
+			psql.Quote(append(prefix, "start_position")...),
+			psql.Arg(s.StartPosition),
 		}})
 	}
 
-	if s.FinishingPosition.IsValue() {
+	if s.FinishPosition.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "finishing_position")...),
-			psql.Arg(s.FinishingPosition),
+			psql.Quote(append(prefix, "finish_position")...),
+			psql.Arg(s.FinishPosition),
 		}})
 	}
 
-	if s.CompletedLaps.IsValue() {
+	if s.LapsCompleted.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "completed_laps")...),
-			psql.Arg(s.CompletedLaps),
+			psql.Quote(append(prefix, "laps_completed")...),
+			psql.Arg(s.LapsCompleted),
 		}})
 	}
 
@@ -1478,33 +1478,33 @@ func (resultEntry0 *ResultEntry) AttachTeam(ctx context.Context, exec bob.Execut
 }
 
 type resultEntryWhere[Q psql.Filterable] struct {
-	ID                psql.WhereMod[Q, int32]
-	FrontendID        psql.WhereMod[Q, uuid.UUID]
-	RaceID            psql.WhereMod[Q, int32]
-	RaceGridID        psql.WhereMod[Q, int32]
-	DriverID          psql.WhereNullMod[Q, int32]
-	TeamID            psql.WhereNullMod[Q, int32]
-	CarModelID        psql.WhereNullMod[Q, int32]
-	CarClassID        psql.WhereNullMod[Q, int32]
-	RawCarName        psql.WhereNullMod[Q, string]
-	RawDriverName     psql.WhereNullMod[Q, string]
-	RawTeamName       psql.WhereNullMod[Q, string]
-	CarNumber         psql.WhereNullMod[Q, string]
-	IsGuestDriver     psql.WhereMod[Q, bool]
-	StartingPosition  psql.WhereNullMod[Q, int32]
-	FinishingPosition psql.WhereMod[Q, int32]
-	CompletedLaps     psql.WhereMod[Q, int32]
-	QualiLapTimeMS    psql.WhereNullMod[Q, int32]
-	FastestLapTimeMS  psql.WhereNullMod[Q, int32]
-	TotalTimeMS       psql.WhereNullMod[Q, int32]
-	Incidents         psql.WhereNullMod[Q, int32]
-	State             psql.WhereMod[Q, string]
-	AdminNotes        psql.WhereNullMod[Q, string]
-	LockedAt          psql.WhereNullMod[Q, time.Time]
-	CreatedAt         psql.WhereMod[Q, time.Time]
-	UpdatedAt         psql.WhereMod[Q, time.Time]
-	CreatedBy         psql.WhereMod[Q, string]
-	UpdatedBy         psql.WhereMod[Q, string]
+	ID               psql.WhereMod[Q, int32]
+	FrontendID       psql.WhereMod[Q, uuid.UUID]
+	RaceID           psql.WhereMod[Q, int32]
+	RaceGridID       psql.WhereMod[Q, int32]
+	DriverID         psql.WhereNullMod[Q, int32]
+	TeamID           psql.WhereNullMod[Q, int32]
+	CarModelID       psql.WhereNullMod[Q, int32]
+	CarClassID       psql.WhereNullMod[Q, int32]
+	RawCarName       psql.WhereNullMod[Q, string]
+	RawDriverName    psql.WhereNullMod[Q, string]
+	RawTeamName      psql.WhereNullMod[Q, string]
+	CarNumber        psql.WhereNullMod[Q, string]
+	IsGuestDriver    psql.WhereMod[Q, bool]
+	StartPosition    psql.WhereNullMod[Q, int32]
+	FinishPosition   psql.WhereMod[Q, int32]
+	LapsCompleted    psql.WhereMod[Q, int32]
+	QualiLapTimeMS   psql.WhereNullMod[Q, int32]
+	FastestLapTimeMS psql.WhereNullMod[Q, int32]
+	TotalTimeMS      psql.WhereNullMod[Q, int32]
+	Incidents        psql.WhereNullMod[Q, int32]
+	State            psql.WhereMod[Q, string]
+	AdminNotes       psql.WhereNullMod[Q, string]
+	LockedAt         psql.WhereNullMod[Q, time.Time]
+	CreatedAt        psql.WhereMod[Q, time.Time]
+	UpdatedAt        psql.WhereMod[Q, time.Time]
+	CreatedBy        psql.WhereMod[Q, string]
+	UpdatedBy        psql.WhereMod[Q, string]
 }
 
 func (resultEntryWhere[Q]) AliasedAs(alias string) resultEntryWhere[Q] {
@@ -1513,33 +1513,33 @@ func (resultEntryWhere[Q]) AliasedAs(alias string) resultEntryWhere[Q] {
 
 func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEntryWhere[Q] {
 	return resultEntryWhere[Q]{
-		ID:                psql.Where[Q, int32](cols.ID),
-		FrontendID:        psql.Where[Q, uuid.UUID](cols.FrontendID),
-		RaceID:            psql.Where[Q, int32](cols.RaceID),
-		RaceGridID:        psql.Where[Q, int32](cols.RaceGridID),
-		DriverID:          psql.WhereNull[Q, int32](cols.DriverID),
-		TeamID:            psql.WhereNull[Q, int32](cols.TeamID),
-		CarModelID:        psql.WhereNull[Q, int32](cols.CarModelID),
-		CarClassID:        psql.WhereNull[Q, int32](cols.CarClassID),
-		RawCarName:        psql.WhereNull[Q, string](cols.RawCarName),
-		RawDriverName:     psql.WhereNull[Q, string](cols.RawDriverName),
-		RawTeamName:       psql.WhereNull[Q, string](cols.RawTeamName),
-		CarNumber:         psql.WhereNull[Q, string](cols.CarNumber),
-		IsGuestDriver:     psql.Where[Q, bool](cols.IsGuestDriver),
-		StartingPosition:  psql.WhereNull[Q, int32](cols.StartingPosition),
-		FinishingPosition: psql.Where[Q, int32](cols.FinishingPosition),
-		CompletedLaps:     psql.Where[Q, int32](cols.CompletedLaps),
-		QualiLapTimeMS:    psql.WhereNull[Q, int32](cols.QualiLapTimeMS),
-		FastestLapTimeMS:  psql.WhereNull[Q, int32](cols.FastestLapTimeMS),
-		TotalTimeMS:       psql.WhereNull[Q, int32](cols.TotalTimeMS),
-		Incidents:         psql.WhereNull[Q, int32](cols.Incidents),
-		State:             psql.Where[Q, string](cols.State),
-		AdminNotes:        psql.WhereNull[Q, string](cols.AdminNotes),
-		LockedAt:          psql.WhereNull[Q, time.Time](cols.LockedAt),
-		CreatedAt:         psql.Where[Q, time.Time](cols.CreatedAt),
-		UpdatedAt:         psql.Where[Q, time.Time](cols.UpdatedAt),
-		CreatedBy:         psql.Where[Q, string](cols.CreatedBy),
-		UpdatedBy:         psql.Where[Q, string](cols.UpdatedBy),
+		ID:               psql.Where[Q, int32](cols.ID),
+		FrontendID:       psql.Where[Q, uuid.UUID](cols.FrontendID),
+		RaceID:           psql.Where[Q, int32](cols.RaceID),
+		RaceGridID:       psql.Where[Q, int32](cols.RaceGridID),
+		DriverID:         psql.WhereNull[Q, int32](cols.DriverID),
+		TeamID:           psql.WhereNull[Q, int32](cols.TeamID),
+		CarModelID:       psql.WhereNull[Q, int32](cols.CarModelID),
+		CarClassID:       psql.WhereNull[Q, int32](cols.CarClassID),
+		RawCarName:       psql.WhereNull[Q, string](cols.RawCarName),
+		RawDriverName:    psql.WhereNull[Q, string](cols.RawDriverName),
+		RawTeamName:      psql.WhereNull[Q, string](cols.RawTeamName),
+		CarNumber:        psql.WhereNull[Q, string](cols.CarNumber),
+		IsGuestDriver:    psql.Where[Q, bool](cols.IsGuestDriver),
+		StartPosition:    psql.WhereNull[Q, int32](cols.StartPosition),
+		FinishPosition:   psql.Where[Q, int32](cols.FinishPosition),
+		LapsCompleted:    psql.Where[Q, int32](cols.LapsCompleted),
+		QualiLapTimeMS:   psql.WhereNull[Q, int32](cols.QualiLapTimeMS),
+		FastestLapTimeMS: psql.WhereNull[Q, int32](cols.FastestLapTimeMS),
+		TotalTimeMS:      psql.WhereNull[Q, int32](cols.TotalTimeMS),
+		Incidents:        psql.WhereNull[Q, int32](cols.Incidents),
+		State:            psql.Where[Q, string](cols.State),
+		AdminNotes:       psql.WhereNull[Q, string](cols.AdminNotes),
+		LockedAt:         psql.WhereNull[Q, time.Time](cols.LockedAt),
+		CreatedAt:        psql.Where[Q, time.Time](cols.CreatedAt),
+		UpdatedAt:        psql.Where[Q, time.Time](cols.UpdatedAt),
+		CreatedBy:        psql.Where[Q, string](cols.CreatedBy),
+		UpdatedBy:        psql.Where[Q, string](cols.UpdatedBy),
 	}
 }
 

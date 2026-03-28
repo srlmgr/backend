@@ -38,33 +38,33 @@ func (mods ResultEntryModSlice) Apply(ctx context.Context, n *ResultEntryTemplat
 // ResultEntryTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type ResultEntryTemplate struct {
-	ID                func() int32
-	FrontendID        func() uuid.UUID
-	RaceID            func() int32
-	RaceGridID        func() int32
-	DriverID          func() null.Val[int32]
-	TeamID            func() null.Val[int32]
-	CarModelID        func() null.Val[int32]
-	CarClassID        func() null.Val[int32]
-	RawCarName        func() null.Val[string]
-	RawDriverName     func() null.Val[string]
-	RawTeamName       func() null.Val[string]
-	CarNumber         func() null.Val[string]
-	IsGuestDriver     func() bool
-	StartingPosition  func() null.Val[int32]
-	FinishingPosition func() int32
-	CompletedLaps     func() int32
-	QualiLapTimeMS    func() null.Val[int32]
-	FastestLapTimeMS  func() null.Val[int32]
-	TotalTimeMS       func() null.Val[int32]
-	Incidents         func() null.Val[int32]
-	State             func() string
-	AdminNotes        func() null.Val[string]
-	LockedAt          func() null.Val[time.Time]
-	CreatedAt         func() time.Time
-	UpdatedAt         func() time.Time
-	CreatedBy         func() string
-	UpdatedBy         func() string
+	ID               func() int32
+	FrontendID       func() uuid.UUID
+	RaceID           func() int32
+	RaceGridID       func() int32
+	DriverID         func() null.Val[int32]
+	TeamID           func() null.Val[int32]
+	CarModelID       func() null.Val[int32]
+	CarClassID       func() null.Val[int32]
+	RawCarName       func() null.Val[string]
+	RawDriverName    func() null.Val[string]
+	RawTeamName      func() null.Val[string]
+	CarNumber        func() null.Val[string]
+	IsGuestDriver    func() bool
+	StartPosition    func() null.Val[int32]
+	FinishPosition   func() int32
+	LapsCompleted    func() int32
+	QualiLapTimeMS   func() null.Val[int32]
+	FastestLapTimeMS func() null.Val[int32]
+	TotalTimeMS      func() null.Val[int32]
+	Incidents        func() null.Val[int32]
+	State            func() string
+	AdminNotes       func() null.Val[string]
+	LockedAt         func() null.Val[time.Time]
+	CreatedAt        func() time.Time
+	UpdatedAt        func() time.Time
+	CreatedBy        func() string
+	UpdatedBy        func() string
 
 	r resultEntryR
 	f *Factory
@@ -228,17 +228,17 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.IsGuestDriver()
 		m.IsGuestDriver = omit.From(val)
 	}
-	if o.StartingPosition != nil {
-		val := o.StartingPosition()
-		m.StartingPosition = omitnull.FromNull(val)
+	if o.StartPosition != nil {
+		val := o.StartPosition()
+		m.StartPosition = omitnull.FromNull(val)
 	}
-	if o.FinishingPosition != nil {
-		val := o.FinishingPosition()
-		m.FinishingPosition = omit.From(val)
+	if o.FinishPosition != nil {
+		val := o.FinishPosition()
+		m.FinishPosition = omit.From(val)
 	}
-	if o.CompletedLaps != nil {
-		val := o.CompletedLaps()
-		m.CompletedLaps = omit.From(val)
+	if o.LapsCompleted != nil {
+		val := o.LapsCompleted()
+		m.LapsCompleted = omit.From(val)
 	}
 	if o.QualiLapTimeMS != nil {
 		val := o.QualiLapTimeMS()
@@ -345,14 +345,14 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.IsGuestDriver != nil {
 		m.IsGuestDriver = o.IsGuestDriver()
 	}
-	if o.StartingPosition != nil {
-		m.StartingPosition = o.StartingPosition()
+	if o.StartPosition != nil {
+		m.StartPosition = o.StartPosition()
 	}
-	if o.FinishingPosition != nil {
-		m.FinishingPosition = o.FinishingPosition()
+	if o.FinishPosition != nil {
+		m.FinishPosition = o.FinishPosition()
 	}
-	if o.CompletedLaps != nil {
-		m.CompletedLaps = o.CompletedLaps()
+	if o.LapsCompleted != nil {
+		m.LapsCompleted = o.LapsCompleted()
 	}
 	if o.QualiLapTimeMS != nil {
 		m.QualiLapTimeMS = o.QualiLapTimeMS()
@@ -415,9 +415,9 @@ func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
 		val := random_int32(nil)
 		m.RaceGridID = omit.From(val)
 	}
-	if !(m.FinishingPosition.IsValue()) {
+	if !(m.FinishPosition.IsValue()) {
 		val := random_int32(nil)
-		m.FinishingPosition = omit.From(val)
+		m.FinishPosition = omit.From(val)
 	}
 }
 
@@ -665,9 +665,9 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 		ResultEntryMods.RandomRawTeamName(f),
 		ResultEntryMods.RandomCarNumber(f),
 		ResultEntryMods.RandomIsGuestDriver(f),
-		ResultEntryMods.RandomStartingPosition(f),
-		ResultEntryMods.RandomFinishingPosition(f),
-		ResultEntryMods.RandomCompletedLaps(f),
+		ResultEntryMods.RandomStartPosition(f),
+		ResultEntryMods.RandomFinishPosition(f),
+		ResultEntryMods.RandomLapsCompleted(f),
 		ResultEntryMods.RandomQualiLapTimeMS(f),
 		ResultEntryMods.RandomFastestLapTimeMS(f),
 		ResultEntryMods.RandomTotalTimeMS(f),
@@ -1262,32 +1262,32 @@ func (m resultEntryMods) RandomIsGuestDriver(f *faker.Faker) ResultEntryMod {
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) StartingPosition(val null.Val[int32]) ResultEntryMod {
+func (m resultEntryMods) StartPosition(val null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] { return val }
+		o.StartPosition = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) StartingPositionFunc(f func() null.Val[int32]) ResultEntryMod {
+func (m resultEntryMods) StartPositionFunc(f func() null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = f
+		o.StartPosition = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetStartingPosition() ResultEntryMod {
+func (m resultEntryMods) UnsetStartPosition() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = nil
+		o.StartPosition = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is sometimes null
-func (m resultEntryMods) RandomStartingPosition(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomStartPosition(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] {
+		o.StartPosition = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1301,9 +1301,9 @@ func (m resultEntryMods) RandomStartingPosition(f *faker.Faker) ResultEntryMod {
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is never null
-func (m resultEntryMods) RandomStartingPositionNotNull(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomStartPositionNotNull(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] {
+		o.StartPosition = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1315,62 +1315,62 @@ func (m resultEntryMods) RandomStartingPositionNotNull(f *faker.Faker) ResultEnt
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) FinishingPosition(val int32) ResultEntryMod {
+func (m resultEntryMods) FinishPosition(val int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = func() int32 { return val }
+		o.FinishPosition = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) FinishingPositionFunc(f func() int32) ResultEntryMod {
+func (m resultEntryMods) FinishPositionFunc(f func() int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = f
+		o.FinishPosition = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetFinishingPosition() ResultEntryMod {
+func (m resultEntryMods) UnsetFinishPosition() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = nil
+		o.FinishPosition = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomFinishingPosition(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomFinishPosition(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = func() int32 {
+		o.FinishPosition = func() int32 {
 			return random_int32(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) CompletedLaps(val int32) ResultEntryMod {
+func (m resultEntryMods) LapsCompleted(val int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = func() int32 { return val }
+		o.LapsCompleted = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) CompletedLapsFunc(f func() int32) ResultEntryMod {
+func (m resultEntryMods) LapsCompletedFunc(f func() int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = f
+		o.LapsCompleted = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetCompletedLaps() ResultEntryMod {
+func (m resultEntryMods) UnsetLapsCompleted() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = nil
+		o.LapsCompleted = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomCompletedLaps(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomLapsCompleted(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = func() int32 {
+		o.LapsCompleted = func() int32 {
 			return random_int32(f)
 		}
 	})

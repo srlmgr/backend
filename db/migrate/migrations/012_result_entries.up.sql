@@ -14,9 +14,9 @@ CREATE TABLE result_entries (
     raw_team_name text,
     car_number text,
     is_guest_driver boolean NOT NULL DEFAULT false,
-    starting_position integer,
-    finishing_position integer NOT NULL,
-    completed_laps integer NOT NULL DEFAULT 0,
+    start_position integer,
+    finish_position integer NOT NULL,
+    laps_completed integer NOT NULL DEFAULT 0,
     quali_lap_time_ms integer,
     fastest_lap_time_ms integer,
     total_time_ms integer,
@@ -60,8 +60,8 @@ ALTER TABLE result_entries
     FOREIGN KEY (team_id) REFERENCES teams (id);
 
 ALTER TABLE result_entries
-    ADD CONSTRAINT result_entries_completed_laps_check
-    CHECK (completed_laps >= 0);
+    ADD CONSTRAINT result_entries_laps_completed_check
+    CHECK (laps_completed >= 0);
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_fastest_lap_time_ms_check
@@ -91,6 +91,9 @@ CREATE UNIQUE INDEX idx_result_entries_race_id_driver_id_unique
 CREATE UNIQUE INDEX idx_result_entries_race_grid_id_driver_id_unique
     ON result_entries (race_grid_id, driver_id)
     WHERE driver_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_result_entries_race_grid_id_team_id_unique
+    ON result_entries (race_grid_id, team_id)
+    WHERE team_id IS NOT NULL;
 
 --TODO: deprecated, may be removed
 CREATE INDEX idx_result_entries_race_id ON result_entries (race_id);

@@ -295,12 +295,12 @@ func buildResultEntryCreateSetter(
 	execUser string,
 ) *models.ResultEntrySetter {
 	setter := &models.ResultEntrySetter{
-		RaceID:            omit.From(batch.RaceID),
-		FinishingPosition: omit.From(entry.FinishingPosition),
-		CompletedLaps:     omit.From(entry.CompletedLaps),
-		State:             omit.From(entry.State),
-		CreatedBy:         omit.From(execUser),
-		UpdatedBy:         omit.From(execUser),
+		RaceID:         omit.From(batch.RaceID),
+		FinishPosition: omit.From(entry.FinishPosition),
+		LapsCompleted:  omit.From(entry.LapsCompleted),
+		State:          omit.From(entry.State),
+		CreatedBy:      omit.From(execUser),
+		UpdatedBy:      omit.From(execUser),
 	}
 
 	if !entry.DriverID.IsNull() {

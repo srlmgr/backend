@@ -426,14 +426,14 @@ func seedResultEntry(
 
 	var err error
 	entry, err = repo.ResultEntries().Create(context.Background(), &models.ResultEntrySetter{
-		RaceID:            omit.From(raceID),
-		RaceGridID:        omit.From(raceGridID),
-		RawDriverName:     omitnull.From(driverName),
-		FinishingPosition: omit.From(finishingPosition),
-		CompletedLaps:     omit.From(int32(0)),
-		State:             omit.From(conversion.ResultStateNormal),
-		CreatedBy:         omit.From(testUserSeed),
-		UpdatedBy:         omit.From(testUserSeed),
+		RaceID:         omit.From(raceID),
+		RaceGridID:     omit.From(raceGridID),
+		RawDriverName:  omitnull.From(driverName),
+		FinishPosition: omit.From(finishingPosition),
+		LapsCompleted:  omit.From(int32(0)),
+		State:          omit.From(conversion.ResultStateNormal),
+		CreatedBy:      omit.From(testUserSeed),
+		UpdatedBy:      omit.From(testUserSeed),
 	})
 	if err != nil {
 		t.Fatalf("failed to seed result entry: %v", err)

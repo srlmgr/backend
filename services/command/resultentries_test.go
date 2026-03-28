@@ -44,11 +44,11 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.CarModelID.IsValue() || setter.CarModelID.MustGet() != 3 {
 		t.Fatalf("unexpected car_model_id setter value: %+v", setter.CarModelID)
 	}
-	if !setter.FinishingPosition.IsValue() || setter.FinishingPosition.MustGet() != 1 {
-		t.Fatalf("unexpected finishing_position setter value: %+v", setter.FinishingPosition)
+	if !setter.FinishPosition.IsValue() || setter.FinishPosition.MustGet() != 1 {
+		t.Fatalf("unexpected finish_position setter value: %+v", setter.FinishPosition)
 	}
-	if !setter.CompletedLaps.IsValue() || setter.CompletedLaps.MustGet() != 25 {
-		t.Fatalf("unexpected completed_laps setter value: %+v", setter.CompletedLaps)
+	if !setter.LapsCompleted.IsValue() || setter.LapsCompleted.MustGet() != 25 {
+		t.Fatalf("unexpected laps_completed setter value: %+v", setter.LapsCompleted)
 	}
 	if !setter.FastestLapTimeMS.IsValue() || setter.FastestLapTimeMS.MustGet() != 90000 {
 		t.Fatalf("unexpected fastest_lap_time_ms setter value: %+v", setter.FastestLapTimeMS)
@@ -100,11 +100,11 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	if setter.CarModelID.IsValue() {
 		t.Fatalf("expected car_model_id to be unset, got: %+v", setter.CarModelID)
 	}
-	if setter.FinishingPosition.IsValue() {
-		t.Fatalf("expected finishing_position to be unset, got: %+v", setter.FinishingPosition)
+	if setter.FinishPosition.IsValue() {
+		t.Fatalf("expected finish_position to be unset, got: %+v", setter.FinishPosition)
 	}
-	if setter.CompletedLaps.IsValue() {
-		t.Fatalf("expected completed_laps to be unset, got: %+v", setter.CompletedLaps)
+	if setter.LapsCompleted.IsValue() {
+		t.Fatalf("expected laps_completed to be unset, got: %+v", setter.LapsCompleted)
 	}
 	if setter.FastestLapTimeMS.IsValue() {
 		t.Fatalf("expected fastest_lap_time_ms to be unset, got: %+v", setter.FastestLapTimeMS)

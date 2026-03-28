@@ -15,11 +15,11 @@ func (c *Converter) ResultEntryToInput(re *models.ResultEntry) Input {
 		WithDriverID(re.DriverID.GetOrZero()),
 		WithTeamID(re.TeamID.GetOrZero()),
 		WithClassID(re.CarClassID.GetOrZero()),
-		WithFinishPosition(re.FinishingPosition),
-		WithQualiPosition(re.StartingPosition.GetOrZero()),
+		WithFinishPosition(re.FinishPosition),
+		WithQualiPosition(re.StartPosition.GetOrZero()),
 		WithIsGuest(re.IsGuestDriver),
 		WithIncidents(re.Incidents.GetOrZero()),
-		WithLapsCompleted(re.CompletedLaps),
+		WithLapsCompleted(re.LapsCompleted),
 		WithFastestLap(re.FastestLapTimeMS.GetOrZero()),
 	)
 }

@@ -132,8 +132,8 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		StartingPosition: column{
-			Name:      "starting_position",
+		StartPosition: column{
+			Name:      "start_position",
 			DBType:    "integer",
 			Default:   "NULL",
 			Comment:   "",
@@ -141,8 +141,8 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		FinishingPosition: column{
-			Name:      "finishing_position",
+		FinishPosition: column{
+			Name:      "finish_position",
 			DBType:    "integer",
 			Default:   "",
 			Comment:   "",
@@ -150,8 +150,8 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		CompletedLaps: column{
-			Name:      "completed_laps",
+		LapsCompleted: column{
+			Name:      "laps_completed",
 			DBType:    "integer",
 			Default:   "0",
 			Comment:   "",
@@ -367,6 +367,28 @@ var ResultEntries = Table[
 			Where:         "(driver_id IS NOT NULL)",
 			Include:       []string{},
 		},
+		IdxResultEntriesRaceGridIDTeamIDUnique: index{
+			Type: "btree",
+			Name: "idx_result_entries_race_grid_id_team_id_unique",
+			Columns: []indexColumn{
+				{
+					Name:         "race_grid_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+				{
+					Name:         "team_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        true,
+			Comment:       "",
+			NullsFirst:    []bool{false, false},
+			NullsDistinct: false,
+			Where:         "(team_id IS NOT NULL)",
+			Include:       []string{},
+		},
 		IdxResultEntriesRaceID: index{
 			Type: "btree",
 			Name: "idx_result_entries_race_id",
@@ -527,14 +549,6 @@ var ResultEntries = Table[
 		},
 	},
 	Checks: resultEntryChecks{
-		ResultEntriesCompletedLapsCheck: check{
-			constraint: constraint{
-				Name:    "result_entries_completed_laps_check",
-				Columns: []string{"completed_laps"},
-				Comment: "",
-			},
-			Expression: "(completed_laps >= 0)",
-		},
 		ResultEntriesFastestLapTimeMSCheck: check{
 			constraint: constraint{
 				Name:    "result_entries_fastest_lap_time_ms_check",
@@ -550,6 +564,14 @@ var ResultEntries = Table[
 				Comment: "",
 			},
 			Expression: "((incidents IS NULL) OR (incidents >= 0))",
+		},
+		ResultEntriesLapsCompletedCheck: check{
+			constraint: constraint{
+				Name:    "result_entries_laps_completed_check",
+				Columns: []string{"laps_completed"},
+				Comment: "",
+			},
+			Expression: "(laps_completed >= 0)",
 		},
 		ResultEntriesQualiLapTimeMSCheck: check{
 			constraint: constraint{
@@ -580,38 +602,38 @@ var ResultEntries = Table[
 }
 
 type resultEntryColumns struct {
-	ID                column
-	FrontendID        column
-	RaceID            column
-	RaceGridID        column
-	DriverID          column
-	TeamID            column
-	CarModelID        column
-	CarClassID        column
-	RawCarName        column
-	RawDriverName     column
-	RawTeamName       column
-	CarNumber         column
-	IsGuestDriver     column
-	StartingPosition  column
-	FinishingPosition column
-	CompletedLaps     column
-	QualiLapTimeMS    column
-	FastestLapTimeMS  column
-	TotalTimeMS       column
-	Incidents         column
-	State             column
-	AdminNotes        column
-	LockedAt          column
-	CreatedAt         column
-	UpdatedAt         column
-	CreatedBy         column
-	UpdatedBy         column
+	ID               column
+	FrontendID       column
+	RaceID           column
+	RaceGridID       column
+	DriverID         column
+	TeamID           column
+	CarModelID       column
+	CarClassID       column
+	RawCarName       column
+	RawDriverName    column
+	RawTeamName      column
+	CarNumber        column
+	IsGuestDriver    column
+	StartPosition    column
+	FinishPosition   column
+	LapsCompleted    column
+	QualiLapTimeMS   column
+	FastestLapTimeMS column
+	TotalTimeMS      column
+	Incidents        column
+	State            column
+	AdminNotes       column
+	LockedAt         column
+	CreatedAt        column
+	UpdatedAt        column
+	CreatedBy        column
+	UpdatedBy        column
 }
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartingPosition, c.FinishingPosition, c.CompletedLaps, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartPosition, c.FinishPosition, c.LapsCompleted, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
@@ -622,6 +644,7 @@ type resultEntryIndexes struct {
 	IdxResultEntriesDriverID                 index
 	IdxResultEntriesRaceGridID               index
 	IdxResultEntriesRaceGridIDDriverIDUnique index
+	IdxResultEntriesRaceGridIDTeamIDUnique   index
 	IdxResultEntriesRaceID                   index
 	IdxResultEntriesRaceIDDriverIDUnique     index
 	IdxResultEntriesState                    index
@@ -631,7 +654,7 @@ type resultEntryIndexes struct {
 
 func (i resultEntryIndexes) AsSlice() []index {
 	return []index{
-		i.ResultEntriesPkey, i.IdxResultEntriesCarClassID, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceGridID, i.IdxResultEntriesRaceGridIDDriverIDUnique, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.IdxResultEntriesTeamID, i.ResultEntriesFrontendIDUnique,
+		i.ResultEntriesPkey, i.IdxResultEntriesCarClassID, i.IdxResultEntriesCarModelID, i.IdxResultEntriesDriverID, i.IdxResultEntriesRaceGridID, i.IdxResultEntriesRaceGridIDDriverIDUnique, i.IdxResultEntriesRaceGridIDTeamIDUnique, i.IdxResultEntriesRaceID, i.IdxResultEntriesRaceIDDriverIDUnique, i.IdxResultEntriesState, i.IdxResultEntriesTeamID, i.ResultEntriesFrontendIDUnique,
 	}
 }
 
@@ -661,9 +684,9 @@ func (u resultEntryUniques) AsSlice() []constraint {
 }
 
 type resultEntryChecks struct {
-	ResultEntriesCompletedLapsCheck    check
 	ResultEntriesFastestLapTimeMSCheck check
 	ResultEntriesIncidentsCheck        check
+	ResultEntriesLapsCompletedCheck    check
 	ResultEntriesQualiLapTimeMSCheck   check
 	ResultEntriesStateCheck            check
 	ResultEntriesTotalTimeMSCheck      check
@@ -671,6 +694,6 @@ type resultEntryChecks struct {
 
 func (c resultEntryChecks) AsSlice() []check {
 	return []check{
-		c.ResultEntriesCompletedLapsCheck, c.ResultEntriesFastestLapTimeMSCheck, c.ResultEntriesIncidentsCheck, c.ResultEntriesQualiLapTimeMSCheck, c.ResultEntriesStateCheck, c.ResultEntriesTotalTimeMSCheck,
+		c.ResultEntriesFastestLapTimeMSCheck, c.ResultEntriesIncidentsCheck, c.ResultEntriesLapsCompletedCheck, c.ResultEntriesQualiLapTimeMSCheck, c.ResultEntriesStateCheck, c.ResultEntriesTotalTimeMSCheck,
 	}
 }
