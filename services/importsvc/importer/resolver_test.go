@@ -1,5 +1,5 @@
 //nolint:lll // test code can be verbose
-package processor
+package importer
 
 import (
 	"errors"

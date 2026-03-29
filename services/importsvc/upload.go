@@ -21,7 +21,7 @@ import (
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
-	"github.com/srlmgr/backend/services/importsvc/processor"
+	processor "github.com/srlmgr/backend/services/importsvc/importer"
 )
 
 //nolint:whitespace,funlen,gocyclo // editor/linter issue

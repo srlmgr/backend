@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/srlmgr/backend/services/conversion"
-	"github.com/srlmgr/backend/services/importsvc/processor"
+	processor "github.com/srlmgr/backend/services/importsvc/importer"
 )
 
 // Processor handles imports for Assetto Corsa Competizione simulations.

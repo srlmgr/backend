@@ -1,5 +1,5 @@
-// Package processor defines simulation-specific import processors.
-package processor
+// package importer defines simulation-specific import processors.
+package importer
 
 import (
 	"context"

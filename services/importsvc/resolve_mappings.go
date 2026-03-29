@@ -16,7 +16,7 @@ import (
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
-	"github.com/srlmgr/backend/services/importsvc/processor"
+	"github.com/srlmgr/backend/services/importsvc/importer"
 )
 
 //nolint:whitespace,funlen,gocyclo // editor/linter issue
@@ -60,10 +60,10 @@ func (s *service) ResolveMappings(
 		}
 
 		importFormat := string(batch.ImportFormat)
-		if !processor.SupportsFormat(importProcessor, importFormat) {
+		if !importer.SupportsFormat(importProcessor, importFormat) {
 			return fmt.Errorf(
 				"%w: simulation=%q format=%q",
-				processor.ErrUnsupportedFormat,
+				importer.ErrUnsupportedFormat,
 				simulation.Name,
 				importFormat,
 			)
@@ -79,8 +79,8 @@ func (s *service) ResolveMappings(
 			return err
 		}
 
-		resolver := processor.NewResolver(
-			processor.NewRepositoryEntityResolver(ctx, s.repo, simulation),
+		resolver := importer.NewResolver(
+			importer.NewRepositoryEntityResolver(ctx, s.repo, simulation),
 		)
 		resolved, err := resolver.ResolveNonMapped(input, existing)
 		if err != nil {
