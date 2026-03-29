@@ -526,6 +526,14 @@ func (r *eventsEntityRepo) LoadBySeasonID(
 	return filtered, nil
 }
 
+//nolint:whitespace // multiline signature style
+func (r *eventsEntityRepo) LoadByGridID(
+	ctx context.Context,
+	gridID int32,
+) (*models.Event, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 type racesEntityRepo struct {
 	*mapEntityRepo[models.Race, models.RaceSetter]
 }

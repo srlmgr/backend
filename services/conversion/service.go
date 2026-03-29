@@ -1,3 +1,4 @@
+//nolint:dupl // due to nature of conversion code
 package conversion
 
 import (
@@ -409,6 +410,38 @@ func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 	return &commonv1.Race{
 		Id:          uint32(model.ID),
 		EventId:     uint32(model.EventID),
+		Name:        model.Name,
+		SessionType: sessionType,
+		SequenceNo:  model.SequenceNo,
+	}
+}
+
+// RaceGridToRaceGrid converts a RaceGrid model to a RaceGrid message.
+// Unknown session_type strings map to UNSPECIFIED and emit a warning log.
+func (s *Service) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid {
+	if model == nil {
+		return nil
+	}
+
+	var sessionType commonv1.RaceSessionType
+	switch model.SessionType {
+	case RaceSessionTypeQualifying:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
+	case RaceSessionTypeHeat:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
+	case RaceSessionTypeRace:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
+	default:
+		s.logger.Warn("unknown race grid session_type, mapping to UNSPECIFIED",
+			log.String("session_type", model.SessionType),
+			log.Int32("race_grid_id", model.ID),
+		)
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED
+	}
+
+	return &commonv1.RaceGrid{
+		Id:          uint32(model.ID),
+		RaceId:      uint32(model.RaceID),
 		Name:        model.Name,
 		SessionType: sessionType,
 		SequenceNo:  model.SequenceNo,

@@ -192,3 +192,95 @@ func TestGetRaceNotFound(t *testing.T) {
 		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
 	}
 }
+
+func TestListRaceGridsEmpty(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	resp, err := svc.ListRaceGrids(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListRaceGridsRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Msg.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	}
+}
+
+func TestListRaceGridsReturnsAll(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3 Series")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
+	track := seedTrack(t, repo, "Daytona")
+	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	race := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
+	grid1 := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
+	grid2 := seedRaceGrid(t, repo, race.ID, "Grid 2", conversion.RaceSessionTypeHeat, 2)
+
+	resp, err := svc.ListRaceGrids(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListRaceGridsRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := resp.Msg.GetItems()
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+
+	ids := make(map[uint32]bool)
+	for _, item := range items {
+		ids[item.GetId()] = true
+	}
+
+	if !ids[uint32(grid1.ID)] {
+		t.Errorf("grid1 (id=%d) not found in response", grid1.ID)
+	}
+	if !ids[uint32(grid2.ID)] {
+		t.Errorf("grid2 (id=%d) not found in response", grid2.ID)
+	}
+}
+
+func TestListRaceGridsByRaceID(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3 Series")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
+	track := seedTrack(t, repo, "Daytona")
+	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	race1 := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
+	race2 := seedRace(t, repo, event.ID, "Sprint Race", conversion.RaceSessionTypeRace, 2)
+	grid1 := seedRaceGrid(t, repo, race1.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
+	seedRaceGrid(t, repo, race2.ID, "Grid 2", conversion.RaceSessionTypeRace, 1)
+
+	resp, err := svc.ListRaceGrids(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListRaceGridsRequest{
+			RaceId: uint32(race1.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := resp.Msg.GetItems()
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+	if items[0].GetRaceId() != uint32(race1.ID) {
+		t.Errorf("expected race_id %d, got %d", race1.ID, items[0].GetRaceId())
+	}
+	if items[0].GetId() != uint32(grid1.ID) {
+		t.Errorf("expected id %d, got %d", grid1.ID, items[0].GetId())
+	}
+}

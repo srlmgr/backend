@@ -388,7 +388,7 @@ func seedImportBatch(
 	return batch
 }
 
-//nolint:whitespace // multiline signature style
+//nolint:whitespace,unparam // multiline signature style
 func seedRaceGrid(
 	t *testing.T,
 	repo rootrepo.Repository,

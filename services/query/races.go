@@ -76,3 +76,43 @@ func (s *service) GetRace(
 		Race: s.conversion.RaceToRace(item),
 	}), nil
 }
+
+// ListRaceGrids returns a list of race grids.
+//
+//nolint:whitespace // editor/linter issue
+func (s *service) ListRaceGrids(
+	ctx context.Context,
+	req *connect.Request[queryv1.ListRaceGridsRequest],
+) (*connect.Response[queryv1.ListRaceGridsResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("ListRaceGrids", log.Uint32("race_id", req.Msg.GetRaceId()))
+
+	raceGridsRepo := s.repo.Races().RaceGrids()
+
+	var (
+		raceGridItems []*models.RaceGrid
+		err           error
+	)
+
+	if raceID := int32(req.Msg.GetRaceId()); raceID != 0 {
+		raceGridItems, err = raceGridsRepo.LoadByRaceID(ctx, raceID)
+	} else {
+		raceGridItems, err = raceGridsRepo.LoadAll(ctx)
+	}
+
+	if err != nil {
+		l.Error("failed to load race grids", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race grids")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	items := make([]*commonv1.RaceGrid, 0, len(raceGridItems))
+	for _, item := range raceGridItems {
+		if converted := s.conversion.RaceGridToRaceGrid(item); converted != nil {
+			items = append(items, converted)
+		}
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race grids loaded")
+	return connect.NewResponse(&queryv1.ListRaceGridsResponse{Items: items}), nil
+}
