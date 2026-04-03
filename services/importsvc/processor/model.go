@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/samber/lo"
+
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository"
 	"github.com/srlmgr/backend/services/importsvc/points"
@@ -32,6 +33,7 @@ func NewEventProcInfoCollector(repos repository.Repository) *EventProcInfoCollec
 	}
 }
 
+//nolint:whitespace //editor/linter issue
 func (e *EventProcInfoCollector) ForEvent(ctx context.Context, eventID int32) (
 	*EventProcInfo, error,
 ) {
