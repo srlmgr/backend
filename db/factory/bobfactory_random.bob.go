@@ -89,7 +89,7 @@ func random_mytypes_SourceType(f *faker.Faker, limits ...string) mytypes.SourceT
 		f = &defaultFaker
 	}
 
-	return "position"
+	return "finish_pos"
 }
 
 func random_mytypes_TargetType(f *faker.Faker, limits ...string) mytypes.TargetType {

@@ -82,7 +82,7 @@ var (
 	// Relationship Contexts for import_batches
 	importBatchWithParentsCascadingCtx     = newContextual[bool]("importBatchWithParentsCascading")
 	importBatchRelEventProcessingAuditsCtx = newContextual[bool]("event_processing_audit.import_batches.event_processing_audit.event_processing_audit_import_batch_id_fk")
-	importBatchRelRaceCtx                  = newContextual[bool]("import_batches.races.import_batches.import_batches_race_id_fk")
+	importBatchRelRaceGridCtx              = newContextual[bool]("import_batches.race_grids.import_batches.import_batches_race_grid_id_fk")
 
 	// Relationship Contexts for point_rules
 	pointRuleWithParentsCascadingCtx = newContextual[bool]("pointRuleWithParentsCascading")
@@ -95,15 +95,14 @@ var (
 
 	// Relationship Contexts for race_grids
 	raceGridWithParentsCascadingCtx = newContextual[bool]("raceGridWithParentsCascading")
+	raceGridRelImportBatchesCtx     = newContextual[bool]("import_batches.race_grids.import_batches.import_batches_race_grid_id_fk")
 	raceGridRelRaceCtx              = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
 	raceGridRelResultEntriesCtx     = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
 
 	// Relationship Contexts for races
 	raceWithParentsCascadingCtx = newContextual[bool]("raceWithParentsCascading")
-	raceRelImportBatchesCtx     = newContextual[bool]("import_batches.races.import_batches.import_batches_race_id_fk")
 	raceRelRaceGridsCtx         = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
 	raceRelEventCtx             = newContextual[bool]("events.races.races.races_event_id_fk")
-	raceRelResultEntriesCtx     = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
 
 	// Relationship Contexts for racing_sims
 	racingSimWithParentsCascadingCtx                      = newContextual[bool]("racingSimWithParentsCascading")
@@ -119,7 +118,6 @@ var (
 	resultEntryRelCarModelCtx                        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
 	resultEntryRelDriverCtx                          = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
 	resultEntryRelRaceGridCtx                        = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
-	resultEntryRelRaceCtx                            = newContextual[bool]("races.result_entries.result_entries.result_entries_race_id_fk")
 	resultEntryRelTeamCtx                            = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 
 	// Relationship Contexts for season_driver_standings

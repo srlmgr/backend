@@ -198,7 +198,6 @@ func seedEventFixture(t *testing.T, ctx context.Context, suffix string) eventFix
 	base.resultEntry = testhelpers.SeedResultEntryContext(
 		t,
 		ctx,
-		base.race.ID,
 		base.raceGrid.ID,
 		"Driver "+suffix,
 		1,
@@ -214,7 +213,7 @@ func seedEventFixture(t *testing.T, ctx context.Context, suffix string) eventFix
 	base.importBatch = testhelpers.SeedImportBatchContext(
 		t,
 		ctx,
-		base.race.ID,
+		base.raceGrid.ID,
 		suffix+".json",
 	)
 

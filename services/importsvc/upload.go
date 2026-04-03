@@ -34,11 +34,11 @@ func (s *service) UploadResultsFile(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UploadResultsFile")
 
-	raceID := int32(req.Msg.GetRaceId())
+	gridID := int32(req.Msg.GetRaceGridId())
 
-	if raceID == 0 {
+	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("race_id is required"))
+			errors.New("race_grid_id is required"))
 	}
 	if len(req.Msg.GetPayload()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
@@ -54,17 +54,8 @@ func (s *service) UploadResultsFile(
 	}
 	importFormat := formats[0]
 
-	// Validate race belongs to event.
-	race, err := s.repo.Races().Races().LoadByID(ctx, raceID)
-	if err != nil {
-		l.Error("failed to load race", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
-	}
-	eventID := race.EventID
-
 	// Load event to get current processing state.
-	event, err := s.repo.Events().LoadByID(ctx, eventID)
+	event, err := s.repo.Events().LoadByGridID(ctx, gridID)
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
@@ -124,7 +115,7 @@ func (s *service) UploadResultsFile(
 
 	var batch *models.ImportBatch
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		if cleanupErr := s.cleanupExistingImportBatch(ctx, raceID); cleanupErr != nil {
+		if cleanupErr := s.cleanupExistingImportBatch(ctx, gridID); cleanupErr != nil {
 			l.Error("failed to cleanup existing import batch", log.ErrorField(cleanupErr))
 			trace.SpanFromContext(ctx).
 				SetStatus(codes.Error, "failed to cleanup existing import batch")
@@ -134,7 +125,7 @@ func (s *service) UploadResultsFile(
 		// TODO: support Upsert for ImportBatch
 		var createErr error
 		batch, createErr = s.repo.ImportBatches().Create(ctx, &models.ImportBatchSetter{
-			RaceID:          omit.From(raceID),
+			RaceGridID:      omit.From(gridID),
 			ImportFormat:    omit.From(mytypes.ImportFormat(importFormat)),
 			Payload:         omit.From(req.Msg.GetPayload()),
 			ProcessingState: omit.From(toState),
@@ -178,7 +169,7 @@ func (s *service) UploadResultsFile(
 		}
 
 		// Advance event processing state.
-		_, createErr = s.repo.Events().Update(ctx, eventID, &models.EventSetter{
+		_, createErr = s.repo.Events().Update(ctx, event.ID, &models.EventSetter{
 			ProcessingState: omit.From(toState),
 			UpdatedAt:       omit.From(time.Now()),
 			UpdatedBy:       omit.From(execUser),
@@ -191,7 +182,7 @@ func (s *service) UploadResultsFile(
 		_, createErr = s.repo.EventProcessingAudit().Create(
 			ctx,
 			&models.EventProcessingAuditSetter{
-				EventID:       omit.From(eventID),
+				EventID:       omit.From(event.ID),
 				ImportBatchID: omitnull.From(batch.ID),
 				FromState:     omitnull.From(fromState),
 				ToState:       omit.From(toState),
@@ -209,23 +200,23 @@ func (s *service) UploadResultsFile(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "results file uploaded")
 	return connect.NewResponse(&importv1.UploadResultsFileResponse{
-		RaceId:          uint32(batch.RaceID),
+		RaceGridId:      uint32(batch.RaceGridID),
 		ProcessingState: toState,
 	}), nil
 }
 
-func (s *service) cleanupExistingImportBatch(ctx context.Context, raceID int32) error {
-	importBatch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
+func (s *service) cleanupExistingImportBatch(ctx context.Context, gridID int32) error {
+	importBatch, err := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
 	if err == nil && importBatch != nil {
 		if err := s.repo.EventProcessingAudit().DeleteByImportBatchID(
 			ctx, importBatch.ID); err != nil {
 			return fmt.Errorf("delete existing event processing audits: %w", err)
 		}
 	}
-	if err := s.repo.ResultEntries().DeleteByRaceID(ctx, raceID); err != nil {
+	if err := s.repo.ResultEntries().DeleteByRaceGridID(ctx, gridID); err != nil {
 		return fmt.Errorf("delete existing result entries: %w", err)
 	}
-	if err := s.repo.ImportBatches().DeleteByRaceID(ctx, raceID); err != nil {
+	if err := s.repo.ImportBatches().DeleteByRaceGridID(ctx, gridID); err != nil {
 		return fmt.Errorf("delete existing import batch: %w", err)
 	}
 	return nil
@@ -266,9 +257,10 @@ func (s *service) replaceResultEntriesForBatch(
 	entries []*models.ResultEntry,
 	execUser string,
 ) error {
-	existing, err := s.repo.ResultEntries().LoadByRaceID(ctx, batch.RaceID)
+	// TODO: change to RaceGridID when that is supported in ImportBatch
+	existing, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, batch.RaceGridID)
 	if err != nil {
-		return fmt.Errorf("load result entries for race %d: %w", batch.RaceID, err)
+		return fmt.Errorf("load result entries for race grid %d: %w", batch.RaceGridID, err)
 	}
 
 	for _, item := range existing {
@@ -295,7 +287,7 @@ func buildResultEntryCreateSetter(
 	execUser string,
 ) *models.ResultEntrySetter {
 	setter := &models.ResultEntrySetter{
-		RaceID:         omit.From(batch.RaceID),
+		RaceGridID:     omit.From(batch.RaceGridID),
 		FinishPosition: omit.From(entry.FinishPosition),
 		LapsCompleted:  omit.From(entry.LapsCompleted),
 		State:          omit.From(entry.State),

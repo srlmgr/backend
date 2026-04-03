@@ -365,7 +365,7 @@ var BookingEntries = Table[
 				Columns: []string{"source_type"},
 				Comment: "",
 			},
-			Expression: "(source_type = ANY (ARRAY['position'::text, 'bonus'::text, 'manual_adjustment'::text]))",
+			Expression: "(source_type = ANY (ARRAY['finish_pos'::text, 'fastest_lap'::text, 'least_incidents'::text, 'incidents_exceeded'::text, 'qualification_pos'::text, 'top_n_finishers'::text, 'custom'::text, 'manual_adjustment'::text]))",
 		},
 		BookingEntriesTargetTypeCheck: check{
 			constraint: constraint{

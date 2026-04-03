@@ -106,12 +106,14 @@ func DeleteEventResultEntries(
 		return ErrNoBobExecutorInContext
 	}
 	subQuery := psql.Select(
-		sm.Columns(models.Races.Columns.ID),
-		sm.From(models.Races.Name()),
+		sm.Columns(models.RaceGrids.Columns.ID),
+		sm.From(models.RaceGrids.Name()),
+		models.SelectJoins.RaceGrids.InnerJoin.Race,
 		models.SelectWhere.Races.EventID.EQ(eventID),
 	)
+
 	_, err := models.ResultEntries.Delete(
-		dm.Where(models.ResultEntries.Columns.RaceID.In(subQuery)),
+		dm.Where(models.ResultEntries.Columns.RaceGridID.In(subQuery)),
 	).Exec(ctx, executor)
 	return err
 }
@@ -126,12 +128,13 @@ func DeleteEventImportBatches(
 		return ErrNoBobExecutorInContext
 	}
 	subQuery := psql.Select(
-		sm.Columns(models.Races.Columns.ID),
-		sm.From(models.Races.Name()),
+		sm.Columns(models.RaceGrids.Columns.ID),
+		sm.From(models.RaceGrids.Name()),
+		models.SelectJoins.RaceGrids.InnerJoin.Race,
 		models.SelectWhere.Races.EventID.EQ(eventID),
 	)
 	_, err := models.ImportBatches.Delete(
-		dm.Where(models.ImportBatches.Columns.RaceID.In(subQuery)),
+		dm.Where(models.ImportBatches.Columns.RaceGridID.In(subQuery)),
 	).Exec(ctx, executor)
 	return err
 }

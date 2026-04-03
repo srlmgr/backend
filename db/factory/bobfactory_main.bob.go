@@ -573,7 +573,7 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.RaceID = func() int32 { return m.RaceID }
+	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.ImportFormat = func() mytypes.ImportFormat { return m.ImportFormat }
 	o.Payload = func() []byte { return m.Payload }
 	o.SourceFilename = func() null.Val[string] { return m.SourceFilename }
@@ -589,8 +589,8 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 	if len(m.R.EventProcessingAudits) > 0 {
 		ImportBatchMods.AddExistingEventProcessingAudits(m.R.EventProcessingAudits...).Apply(ctx, o)
 	}
-	if m.R.Race != nil {
-		ImportBatchMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	if m.R.RaceGrid != nil {
+		ImportBatchMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
 	}
 
 	return o
@@ -701,6 +701,9 @@ func (f *Factory) FromExistingRaceGrid(m *models.RaceGrid) *RaceGridTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.ImportBatches) > 0 {
+		RaceGridMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	}
 	if m.R.Race != nil {
 		RaceGridMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
@@ -741,17 +744,11 @@ func (f *Factory) FromExistingRace(m *models.Race) *RaceTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
-	if len(m.R.ImportBatches) > 0 {
-		RaceMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
-	}
 	if len(m.R.RaceGrids) > 0 {
 		RaceMods.AddExistingRaceGrids(m.R.RaceGrids...).Apply(ctx, o)
 	}
 	if m.R.Event != nil {
 		RaceMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
-	}
-	if len(m.R.ResultEntries) > 0 {
-		RaceMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
 	}
 
 	return o
@@ -824,7 +821,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.RaceID = func() int32 { return m.RaceID }
 	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -865,9 +861,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.RaceGrid != nil {
 		ResultEntryMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
-	}
-	if m.R.Race != nil {
-		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
 	if m.R.Team != nil {
 		ResultEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)

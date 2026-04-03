@@ -351,7 +351,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 
 	entry := &commonv1.ResultEntry{
 		Id:                uint32(model.ID),
-		RaceId:            uint32(model.RaceID),
+		RaceGridId:        uint32(model.RaceGridID),
 		DriverId:          uint32(model.DriverID.GetOr(0)),
 		TeamId:            uint32(model.TeamID.GetOr(0)),
 		CarModelId:        uint32(model.CarModelID.GetOr(0)),

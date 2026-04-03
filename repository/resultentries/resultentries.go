@@ -25,11 +25,10 @@ import (
 type Repository interface {
 	LoadAll(ctx context.Context) ([]*models.ResultEntry, error)
 	LoadByID(ctx context.Context, id int32) (*models.ResultEntry, error)
-	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.ResultEntry, error)
 	LoadByRaceGridID(ctx context.Context, raceGridID int32) ([]*models.ResultEntry, error)
 	LoadByState(ctx context.Context, state string) ([]*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
-	DeleteByRaceID(ctx context.Context, raceID int32) error
+	DeleteByRaceGridID(ctx context.Context, gridID int32) error
 	Create(ctx context.Context, input *models.ResultEntrySetter) (*models.ResultEntry, error)
 	CreateMany(
 		ctx context.Context,
@@ -65,15 +64,6 @@ func (r *resultEntriesRepository) LoadAll(ctx context.Context) ([]*models.Result
 	return models.ResultEntries.Query().All(ctx, r.getExecutor(ctx))
 }
 
-func (r *resultEntriesRepository) LoadByRaceID(
-	ctx context.Context,
-	raceID int32,
-) ([]*models.ResultEntry, error) {
-	return models.ResultEntries.Query(
-		sm.Where(models.ResultEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
-	).All(ctx, r.getExecutor(ctx))
-}
-
 func (r *resultEntriesRepository) LoadByRaceGridID(
 	ctx context.Context,
 	raceGridID int32,
@@ -98,8 +88,8 @@ func (r *resultEntriesRepository) DeleteByID(ctx context.Context, id int32) erro
 	return err
 }
 
-func (r *resultEntriesRepository) DeleteByRaceID(ctx context.Context, raceID int32) error {
-	_, err := models.ResultEntries.Delete(dm.Where(models.ResultEntries.Columns.RaceID.EQ(psql.Arg(raceID)))).
+func (r *resultEntriesRepository) DeleteByRaceGridID(ctx context.Context, gridID int32) error {
+	_, err := models.ResultEntries.Delete(dm.Where(models.ResultEntries.Columns.RaceGridID.EQ(psql.Arg(gridID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

@@ -29,7 +29,6 @@ import (
 type ResultEntry struct {
 	ID               int32               `db:"id,pk" `
 	FrontendID       uuid.UUID           `db:"frontend_id" `
-	RaceID           int32               `db:"race_id" `
 	RaceGridID       int32               `db:"race_grid_id" `
 	DriverID         null.Val[int32]     `db:"driver_id" `
 	TeamID           null.Val[int32]     `db:"team_id" `
@@ -75,19 +74,17 @@ type resultEntryR struct {
 	CarModel                        *CarModel         // result_entries.result_entries_car_model_id_fk
 	Driver                          *Driver           // result_entries.result_entries_driver_id_fk
 	RaceGrid                        *RaceGrid         // result_entries.result_entries_race_grid_id_fk
-	Race                            *Race             // result_entries.result_entries_race_id_fk
 	Team                            *Team             // result_entries.result_entries_team_id_fk
 }
 
 func buildResultEntryColumns(alias string) resultEntryColumns {
 	return resultEntryColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "race_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("result_entries"),
 		tableAlias:       alias,
 		ID:               psql.Quote(alias, "id"),
 		FrontendID:       psql.Quote(alias, "frontend_id"),
-		RaceID:           psql.Quote(alias, "race_id"),
 		RaceGridID:       psql.Quote(alias, "race_grid_id"),
 		DriverID:         psql.Quote(alias, "driver_id"),
 		TeamID:           psql.Quote(alias, "team_id"),
@@ -120,7 +117,6 @@ type resultEntryColumns struct {
 	tableAlias       string
 	ID               psql.Expression
 	FrontendID       psql.Expression
-	RaceID           psql.Expression
 	RaceGridID       psql.Expression
 	DriverID         psql.Expression
 	TeamID           psql.Expression
@@ -161,7 +157,6 @@ func (resultEntryColumns) AliasedAs(alias string) resultEntryColumns {
 type ResultEntrySetter struct {
 	ID               omit.Val[int32]         `db:"id,pk" `
 	FrontendID       omit.Val[uuid.UUID]     `db:"frontend_id" `
-	RaceID           omit.Val[int32]         `db:"race_id" `
 	RaceGridID       omit.Val[int32]         `db:"race_grid_id" `
 	DriverID         omitnull.Val[int32]     `db:"driver_id" `
 	TeamID           omitnull.Val[int32]     `db:"team_id" `
@@ -189,15 +184,12 @@ type ResultEntrySetter struct {
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 27)
+	vals := make([]string, 0, 26)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
 	if s.FrontendID.IsValue() {
 		vals = append(vals, "frontend_id")
-	}
-	if s.RaceID.IsValue() {
-		vals = append(vals, "race_id")
 	}
 	if s.RaceGridID.IsValue() {
 		vals = append(vals, "race_grid_id")
@@ -281,9 +273,6 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if s.FrontendID.IsValue() {
 		t.FrontendID = s.FrontendID.MustGet()
 	}
-	if s.RaceID.IsValue() {
-		t.RaceID = s.RaceID.MustGet()
-	}
 	if s.RaceGridID.IsValue() {
 		t.RaceGridID = s.RaceGridID.MustGet()
 	}
@@ -364,7 +353,7 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 27)
+		vals := make([]bob.Expression, 26)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -377,154 +366,148 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.RaceID.IsValue() {
-			vals[2] = psql.Arg(s.RaceID.MustGet())
+		if s.RaceGridID.IsValue() {
+			vals[2] = psql.Arg(s.RaceGridID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.RaceGridID.IsValue() {
-			vals[3] = psql.Arg(s.RaceGridID.MustGet())
+		if !s.DriverID.IsUnset() {
+			vals[3] = psql.Arg(s.DriverID.MustGetNull())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if !s.DriverID.IsUnset() {
-			vals[4] = psql.Arg(s.DriverID.MustGetNull())
+		if !s.TeamID.IsUnset() {
+			vals[4] = psql.Arg(s.TeamID.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if !s.TeamID.IsUnset() {
-			vals[5] = psql.Arg(s.TeamID.MustGetNull())
+		if !s.CarModelID.IsUnset() {
+			vals[5] = psql.Arg(s.CarModelID.MustGetNull())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarModelID.IsUnset() {
-			vals[6] = psql.Arg(s.CarModelID.MustGetNull())
+		if !s.CarClassID.IsUnset() {
+			vals[6] = psql.Arg(s.CarClassID.MustGetNull())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarClassID.IsUnset() {
-			vals[7] = psql.Arg(s.CarClassID.MustGetNull())
+		if !s.RawCarName.IsUnset() {
+			vals[7] = psql.Arg(s.RawCarName.MustGetNull())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if !s.RawCarName.IsUnset() {
-			vals[8] = psql.Arg(s.RawCarName.MustGetNull())
+		if !s.RawDriverName.IsUnset() {
+			vals[8] = psql.Arg(s.RawDriverName.MustGetNull())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if !s.RawDriverName.IsUnset() {
-			vals[9] = psql.Arg(s.RawDriverName.MustGetNull())
+		if !s.RawTeamName.IsUnset() {
+			vals[9] = psql.Arg(s.RawTeamName.MustGetNull())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if !s.RawTeamName.IsUnset() {
-			vals[10] = psql.Arg(s.RawTeamName.MustGetNull())
+		if !s.CarNumber.IsUnset() {
+			vals[10] = psql.Arg(s.CarNumber.MustGetNull())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if !s.CarNumber.IsUnset() {
-			vals[11] = psql.Arg(s.CarNumber.MustGetNull())
+		if s.IsGuestDriver.IsValue() {
+			vals[11] = psql.Arg(s.IsGuestDriver.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsGuestDriver.IsValue() {
-			vals[12] = psql.Arg(s.IsGuestDriver.MustGet())
+		if !s.StartPosition.IsUnset() {
+			vals[12] = psql.Arg(s.StartPosition.MustGetNull())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartPosition.IsUnset() {
-			vals[13] = psql.Arg(s.StartPosition.MustGetNull())
+		if s.FinishPosition.IsValue() {
+			vals[13] = psql.Arg(s.FinishPosition.MustGet())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.FinishPosition.IsValue() {
-			vals[14] = psql.Arg(s.FinishPosition.MustGet())
+		if s.LapsCompleted.IsValue() {
+			vals[14] = psql.Arg(s.LapsCompleted.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if s.LapsCompleted.IsValue() {
-			vals[15] = psql.Arg(s.LapsCompleted.MustGet())
+		if !s.QualiLapTimeMS.IsUnset() {
+			vals[15] = psql.Arg(s.QualiLapTimeMS.MustGetNull())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
 		}
 
-		if !s.QualiLapTimeMS.IsUnset() {
-			vals[16] = psql.Arg(s.QualiLapTimeMS.MustGetNull())
+		if !s.FastestLapTimeMS.IsUnset() {
+			vals[16] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
 		} else {
 			vals[16] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FastestLapTimeMS.IsUnset() {
-			vals[17] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
+		if !s.TotalTimeMS.IsUnset() {
+			vals[17] = psql.Arg(s.TotalTimeMS.MustGetNull())
 		} else {
 			vals[17] = psql.Raw("DEFAULT")
 		}
 
-		if !s.TotalTimeMS.IsUnset() {
-			vals[18] = psql.Arg(s.TotalTimeMS.MustGetNull())
+		if !s.Incidents.IsUnset() {
+			vals[18] = psql.Arg(s.Incidents.MustGetNull())
 		} else {
 			vals[18] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Incidents.IsUnset() {
-			vals[19] = psql.Arg(s.Incidents.MustGetNull())
+		if s.State.IsValue() {
+			vals[19] = psql.Arg(s.State.MustGet())
 		} else {
 			vals[19] = psql.Raw("DEFAULT")
 		}
 
-		if s.State.IsValue() {
-			vals[20] = psql.Arg(s.State.MustGet())
+		if !s.AdminNotes.IsUnset() {
+			vals[20] = psql.Arg(s.AdminNotes.MustGetNull())
 		} else {
 			vals[20] = psql.Raw("DEFAULT")
 		}
 
-		if !s.AdminNotes.IsUnset() {
-			vals[21] = psql.Arg(s.AdminNotes.MustGetNull())
+		if !s.LockedAt.IsUnset() {
+			vals[21] = psql.Arg(s.LockedAt.MustGetNull())
 		} else {
 			vals[21] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LockedAt.IsUnset() {
-			vals[22] = psql.Arg(s.LockedAt.MustGetNull())
+		if s.CreatedAt.IsValue() {
+			vals[22] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[22] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[23] = psql.Arg(s.CreatedAt.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[23] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[23] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[24] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[24] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[24] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[25] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedBy.IsValue() {
+			vals[25] = psql.Arg(s.UpdatedBy.MustGet())
 		} else {
 			vals[25] = psql.Raw("DEFAULT")
-		}
-
-		if s.UpdatedBy.IsValue() {
-			vals[26] = psql.Arg(s.UpdatedBy.MustGet())
-		} else {
-			vals[26] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -536,7 +519,7 @@ func (s ResultEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 27)
+	exprs := make([]bob.Expression, 0, 26)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -549,13 +532,6 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "frontend_id")...),
 			psql.Arg(s.FrontendID),
-		}})
-	}
-
-	if s.RaceID.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "race_id")...),
-			psql.Arg(s.RaceID),
 		}})
 	}
 
@@ -1073,30 +1049,6 @@ func (os ResultEntrySlice) RaceGrid(mods ...bob.Mod[*dialect.SelectQuery]) RaceG
 	)...)
 }
 
-// Race starts a query for related objects on races
-func (o *ResultEntry) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
-	return Races.Query(append(mods,
-		sm.Where(Races.Columns.ID.EQ(psql.Arg(o.RaceID))),
-	)...)
-}
-
-func (os ResultEntrySlice) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
-	pkRaceID := make(pgtypes.Array[int32], 0, len(os))
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-		pkRaceID = append(pkRaceID, o.RaceID)
-	}
-	PKArgExpr := psql.Select(sm.Columns(
-		psql.F("unnest", psql.Cast(psql.Arg(pkRaceID), "integer[]")),
-	))
-
-	return Races.Query(append(mods,
-		sm.Where(psql.Group(Races.Columns.ID).OP("IN", PKArgExpr)),
-	)...)
-}
-
 // Team starts a query for related objects on teams
 func (o *ResultEntry) Team(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQuery {
 	return Teams.Query(append(mods,
@@ -1381,54 +1333,6 @@ func (resultEntry0 *ResultEntry) AttachRaceGrid(ctx context.Context, exec bob.Ex
 	return nil
 }
 
-func attachResultEntryRace0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, race1 *Race) (*ResultEntry, error) {
-	setter := &ResultEntrySetter{
-		RaceID: omit.From(race1.ID),
-	}
-
-	err := resultEntry0.Update(ctx, exec, setter)
-	if err != nil {
-		return nil, fmt.Errorf("attachResultEntryRace0: %w", err)
-	}
-
-	return resultEntry0, nil
-}
-
-func (resultEntry0 *ResultEntry) InsertRace(ctx context.Context, exec bob.Executor, related *RaceSetter) error {
-	var err error
-
-	race1, err := Races.Insert(related).One(ctx, exec)
-	if err != nil {
-		return fmt.Errorf("inserting related objects: %w", err)
-	}
-
-	_, err = attachResultEntryRace0(ctx, exec, 1, resultEntry0, race1)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.Race = race1
-
-	race1.R.ResultEntries = append(race1.R.ResultEntries, resultEntry0)
-
-	return nil
-}
-
-func (resultEntry0 *ResultEntry) AttachRace(ctx context.Context, exec bob.Executor, race1 *Race) error {
-	var err error
-
-	_, err = attachResultEntryRace0(ctx, exec, 1, resultEntry0, race1)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.Race = race1
-
-	race1.R.ResultEntries = append(race1.R.ResultEntries, resultEntry0)
-
-	return nil
-}
-
 func attachResultEntryTeam0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, team1 *Team) (*ResultEntry, error) {
 	setter := &ResultEntrySetter{
 		TeamID: omitnull.From(team1.ID),
@@ -1480,7 +1384,6 @@ func (resultEntry0 *ResultEntry) AttachTeam(ctx context.Context, exec bob.Execut
 type resultEntryWhere[Q psql.Filterable] struct {
 	ID               psql.WhereMod[Q, int32]
 	FrontendID       psql.WhereMod[Q, uuid.UUID]
-	RaceID           psql.WhereMod[Q, int32]
 	RaceGridID       psql.WhereMod[Q, int32]
 	DriverID         psql.WhereNullMod[Q, int32]
 	TeamID           psql.WhereNullMod[Q, int32]
@@ -1515,7 +1418,6 @@ func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEnt
 	return resultEntryWhere[Q]{
 		ID:               psql.Where[Q, int32](cols.ID),
 		FrontendID:       psql.Where[Q, uuid.UUID](cols.FrontendID),
-		RaceID:           psql.Where[Q, int32](cols.RaceID),
 		RaceGridID:       psql.Where[Q, int32](cols.RaceGridID),
 		DriverID:         psql.WhereNull[Q, int32](cols.DriverID),
 		TeamID:           psql.WhereNull[Q, int32](cols.TeamID),
@@ -1611,18 +1513,6 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 			rel.R.ResultEntries = ResultEntrySlice{o}
 		}
 		return nil
-	case "Race":
-		rel, ok := retrieved.(*Race)
-		if !ok {
-			return fmt.Errorf("resultEntry cannot load %T as %q", retrieved, name)
-		}
-
-		o.R.Race = rel
-
-		if rel != nil {
-			rel.R.ResultEntries = ResultEntrySlice{o}
-		}
-		return nil
 	case "Team":
 		rel, ok := retrieved.(*Team)
 		if !ok {
@@ -1645,7 +1535,6 @@ type resultEntryPreloader struct {
 	CarModel func(...psql.PreloadOption) psql.Preloader
 	Driver   func(...psql.PreloadOption) psql.Preloader
 	RaceGrid func(...psql.PreloadOption) psql.Preloader
-	Race     func(...psql.PreloadOption) psql.Preloader
 	Team     func(...psql.PreloadOption) psql.Preloader
 }
 
@@ -1703,19 +1592,6 @@ func buildResultEntryPreloader() resultEntryPreloader {
 				},
 			}, RaceGrids.Columns.Names(), opts...)
 		},
-		Race: func(opts ...psql.PreloadOption) psql.Preloader {
-			return psql.Preload[*Race, RaceSlice](psql.PreloadRel{
-				Name: "Race",
-				Sides: []psql.PreloadSide{
-					{
-						From:        ResultEntries,
-						To:          Races,
-						FromColumns: []string{"race_id"},
-						ToColumns:   []string{"id"},
-					},
-				},
-			}, Races.Columns.Names(), opts...)
-		},
 		Team: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*Team, TeamSlice](psql.PreloadRel{
 				Name: "Team",
@@ -1738,7 +1614,6 @@ type resultEntryThenLoader[Q orm.Loadable] struct {
 	CarModel                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Driver                          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	RaceGrid                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	Race                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Team                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
@@ -1757,9 +1632,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 	}
 	type RaceGridLoadInterface interface {
 		LoadRaceGrid(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
-	}
-	type RaceLoadInterface interface {
-		LoadRace(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type TeamLoadInterface interface {
 		LoadTeam(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1794,12 +1666,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 			"RaceGrid",
 			func(ctx context.Context, exec bob.Executor, retrieved RaceGridLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadRaceGrid(ctx, exec, mods...)
-			},
-		),
-		Race: thenLoadBuilder[Q](
-			"Race",
-			func(ctx context.Context, exec bob.Executor, retrieved RaceLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
-				return retrieved.LoadRace(ctx, exec, mods...)
 			},
 		),
 		Team: thenLoadBuilder[Q](
@@ -2092,58 +1958,6 @@ func (os ResultEntrySlice) LoadRaceGrid(ctx context.Context, exec bob.Executor, 
 	return nil
 }
 
-// LoadRace loads the resultEntry's Race into the .R struct
-func (o *ResultEntry) LoadRace(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if o == nil {
-		return nil
-	}
-
-	// Reset the relationship
-	o.R.Race = nil
-
-	related, err := o.Race(mods...).One(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	related.R.ResultEntries = ResultEntrySlice{o}
-
-	o.R.Race = related
-	return nil
-}
-
-// LoadRace loads the resultEntry's Race into the .R struct
-func (os ResultEntrySlice) LoadRace(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if len(os) == 0 {
-		return nil
-	}
-
-	races, err := os.Race(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		for _, rel := range races {
-
-			if !(o.RaceID == rel.ID) {
-				continue
-			}
-
-			rel.R.ResultEntries = append(rel.R.ResultEntries, o)
-
-			o.R.Race = rel
-			break
-		}
-	}
-
-	return nil
-}
-
 // LoadTeam loads the resultEntry's Team into the .R struct
 func (o *ResultEntry) LoadTeam(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
@@ -2206,7 +2020,6 @@ type resultEntryJoins[Q dialect.Joinable] struct {
 	CarModel                        modAs[Q, carModelColumns]
 	Driver                          modAs[Q, driverColumns]
 	RaceGrid                        modAs[Q, raceGridColumns]
-	Race                            modAs[Q, raceColumns]
 	Team                            modAs[Q, teamColumns]
 }
 
@@ -2281,20 +2094,6 @@ func buildResultEntryJoins[Q dialect.Joinable](cols resultEntryColumns, typ stri
 				{
 					mods = append(mods, dialect.Join[Q](typ, RaceGrids.Name().As(to.Alias())).On(
 						to.ID.EQ(cols.RaceGridID),
-					))
-				}
-
-				return mods
-			},
-		},
-		Race: modAs[Q, raceColumns]{
-			c: Races.Columns,
-			f: func(to raceColumns) bob.Mod[Q] {
-				mods := make(mods.QueryMods[Q], 0, 1)
-
-				{
-					mods = append(mods, dialect.Join[Q](typ, Races.Name().As(to.Alias())).On(
-						to.ID.EQ(cols.RaceID),
 					))
 				}
 

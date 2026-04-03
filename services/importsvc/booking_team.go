@@ -40,17 +40,17 @@ func (s *service) ComputeTeamBookingEntries(
 
 	seasonID := event.SeasonID
 
-	// Collect result entries across all races for this event.
-	races, err := s.repo.Races().Races().LoadByEventID(ctx, eventID)
+	// Collect result entries across all grids for this event.
+	grids, err := s.repo.Races().RaceGrids().LoadByEventID(ctx, eventID)
 	if err != nil {
-		l.Error("failed to load races", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load races")
+		l.Error("failed to load race grids", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race grids")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
 	var resultEntries []*models.ResultEntry
-	for _, race := range races {
-		entries, loadErr := s.repo.ResultEntries().LoadByRaceID(ctx, race.ID)
+	for _, grid := range grids {
+		entries, loadErr := s.repo.ResultEntries().LoadByRaceGridID(ctx, grid.ID)
 		if loadErr != nil {
 			l.Error("failed to load result entries", log.ErrorField(loadErr))
 			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load result entries")

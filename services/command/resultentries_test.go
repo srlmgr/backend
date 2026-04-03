@@ -24,7 +24,7 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
 
 	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
-		RaceId:            10,
+		RaceGridId:        10,
 		DriverId:          5,
 		CarModelId:        3,
 		FinishingPosition: 1,
@@ -35,8 +35,8 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 		AdminNotes:        "test note",
 	})
 
-	if !setter.RaceID.IsValue() || setter.RaceID.MustGet() != 10 {
-		t.Fatalf("unexpected race_id setter value: %+v", setter.RaceID)
+	if !setter.RaceGridID.IsValue() || setter.RaceGridID.MustGet() != 10 {
+		t.Fatalf("unexpected race_grid_id setter value: %+v", setter.RaceGridID)
 	}
 	if !setter.DriverID.IsValue() || setter.DriverID.MustGet() != 5 {
 		t.Fatalf("unexpected driver_id setter value: %+v", setter.DriverID)
@@ -80,7 +80,7 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	t.Parallel()
 
 	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
-		RaceId:            0,
+		RaceGridId:        0,
 		DriverId:          0,
 		CarModelId:        0,
 		FinishingPosition: 0,
@@ -91,8 +91,8 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 		AdminNotes:        "",
 	})
 
-	if setter.RaceID.IsValue() {
-		t.Fatalf("expected race_id to be unset, got: %+v", setter.RaceID)
+	if setter.RaceGridID.IsValue() {
+		t.Fatalf("expected race_grid_id to be unset, got: %+v", setter.RaceGridID)
 	}
 	if setter.DriverID.IsValue() {
 		t.Fatalf("expected driver_id to be unset, got: %+v", setter.DriverID)
@@ -129,7 +129,7 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceId:            1,
+		RaceGridId:        1,
 		DriverId:          1,
 		FinishingPosition: 2,
 		CompletedLaps:     20,
@@ -141,8 +141,8 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 	if resp.Msg.GetResultEntry() == nil {
 		t.Fatal("expected non-nil result entry in response")
 	}
-	if resp.Msg.GetResultEntry().GetRaceId() != 1 {
-		t.Fatalf("unexpected race_id: got %d want 1", resp.Msg.GetResultEntry().GetRaceId())
+	if resp.Msg.GetResultEntry().GetRaceGridId() != 1 {
+		t.Fatalf("unexpected race_grid_id: got %d want 1", resp.Msg.GetResultEntry().GetRaceGridId())
 	}
 	if resp.Msg.GetResultEntry().GetFinishingPosition() != 2 {
 		t.Fatalf(
@@ -186,7 +186,7 @@ func TestCreateResultEntryFailureDuplicateRaceDriver(t *testing.T) {
 	_, err := svc.CreateResultEntry(
 		context.Background(),
 		connect.NewRequest(&v1.CreateResultEntryRequest{
-			RaceId:            1,
+			RaceGridId:        1,
 			DriverId:          1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
@@ -210,7 +210,7 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	_, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceId:            1,
+		RaceGridId:        1,
 		DriverId:          1,
 		FinishingPosition: 1,
 		CompletedLaps:     20,
@@ -221,7 +221,7 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 	}
 
 	_, err = svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceId:            1,
+		RaceGridId:        1,
 		DriverId:          2,
 		FinishingPosition: 2,
 		CompletedLaps:     20,
@@ -244,7 +244,7 @@ func TestCreateResultEntryFailureTransactionError(t *testing.T) {
 	_, err := svc.CreateResultEntry(
 		context.Background(),
 		connect.NewRequest(&v1.CreateResultEntryRequest{
-			RaceId:            1,
+			RaceGridId:        1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
 			State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
@@ -272,7 +272,7 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
-	batch := seedImportBatch(t, repo, race.ID)
+	batch := seedImportBatch(t, repo, grid.ID)
 	initial := seedResultEntry(t, repo, race.ID, grid.ID, "Alex Tester", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 	_ = batch

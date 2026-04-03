@@ -29,27 +29,22 @@ func (s *service) ResolveMappings(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ResolveMappings")
 
-	raceID := int32(req.Msg.GetRaceId())
-	if raceID == 0 {
+	gridID := int32(req.Msg.GetRaceGridId())
+	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("race_id is required"))
+			errors.New("race_grid_id is required"))
 	}
 
 	execUser := s.execUser(ctx)
 	var unresolvedMappings int32
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		batch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
+		batch, err := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
 		if err != nil {
 			return err
 		}
 
-		race, err := s.repo.Races().Races().LoadByID(ctx, batch.RaceID)
-		if err != nil {
-			return err
-		}
-
-		event, err := s.repo.Events().LoadByID(ctx, race.EventID)
+		event, err := s.repo.Events().LoadByGridID(ctx, batch.RaceGridID)
 		if err != nil {
 			return err
 		}
@@ -74,7 +69,7 @@ func (s *service) ResolveMappings(
 			return fmt.Errorf("process import payload: %w", err)
 		}
 
-		existing, err := s.repo.ResultEntries().LoadByRaceID(ctx, raceID)
+		existing, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, gridID)
 		if err != nil {
 			return err
 		}

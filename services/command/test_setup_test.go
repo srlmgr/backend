@@ -366,7 +366,7 @@ func seedTeam(
 func seedImportBatch(
 	t *testing.T,
 	repo rootrepo.Repository,
-	raceID int32,
+	gridID int32,
 ) (
 	batch *models.ImportBatch,
 ) {
@@ -374,7 +374,7 @@ func seedImportBatch(
 
 	var err error
 	batch, err = repo.ImportBatches().Create(context.Background(), &models.ImportBatchSetter{
-		RaceID:          omit.From(raceID),
+		RaceGridID:      omit.From(gridID),
 		ImportFormat:    omit.From(mytypes.ImportFormat(conversion.ImportFormatCSV)),
 		Payload:         omit.From([]byte("{}")),
 		ProcessingState: omit.From(conversion.EventProcessingStateRawImported),
@@ -426,7 +426,6 @@ func seedResultEntry(
 
 	var err error
 	entry, err = repo.ResultEntries().Create(context.Background(), &models.ResultEntrySetter{
-		RaceID:         omit.From(raceID),
 		RaceGridID:     omit.From(raceGridID),
 		RawDriverName:  omitnull.From(driverName),
 		FinishPosition: omit.From(finishingPosition),

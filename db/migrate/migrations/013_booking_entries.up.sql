@@ -50,7 +50,7 @@ ALTER TABLE booking_entries
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_source_type_check
-    CHECK (source_type IN ('position', 'bonus', 'manual_adjustment'));
+    CHECK (source_type IN ('finish_pos', 'fastest_lap', 'least_incidents','incidents_exceeded','qualification_pos','top_n_finishers','custom','manual_adjustment'));
 
 
 CREATE INDEX idx_booking_entries_event_id ON booking_entries (event_id);

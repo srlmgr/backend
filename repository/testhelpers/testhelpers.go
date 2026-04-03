@@ -347,7 +347,6 @@ func SeedRaceGridContext(
 
 func SeedResultEntry(
 	t *testing.T,
-	raceID int32,
 	raceGridID int32,
 	driverName string,
 	finishPosition int32,
@@ -356,7 +355,6 @@ func SeedResultEntry(
 	return SeedResultEntryContext(
 		t,
 		context.Background(),
-		raceID,
 		raceGridID,
 		driverName,
 		finishPosition,
@@ -366,7 +364,6 @@ func SeedResultEntry(
 func SeedResultEntryContext(
 	t *testing.T,
 	ctx context.Context,
-	raceID int32,
 	raceGridID int32,
 	driverName string,
 	finishPosition int32,
@@ -374,7 +371,6 @@ func SeedResultEntryContext(
 	t.Helper()
 
 	entry, err := models.ResultEntries.Insert(&models.ResultEntrySetter{
-		RaceID:         omit.From(raceID),
 		RaceGridID:     omit.From(raceGridID),
 		RawDriverName:  omitnull.From(driverName),
 		FinishPosition: omit.From(finishPosition),
@@ -422,7 +418,7 @@ func SeedBookingEntryContext(
 		EventID:             omit.From(eventID),
 		SourceResultEntryID: omitnull.From(sourceResultEntryID),
 		TargetType:          omit.From(mytypes.TargetType("driver")),
-		SourceType:          omit.From(mytypes.SourceType("position")),
+		SourceType:          omit.From(mytypes.SourceType("finish_pos")),
 		Points:              omit.From(points),
 		Description:         omit.From(description),
 		IsManual:            omit.From(false),
@@ -439,23 +435,23 @@ func SeedBookingEntryContext(
 
 func SeedImportBatch(
 	t *testing.T,
-	raceID int32,
+	gridID int32,
 	sourceFilename string,
 ) *models.ImportBatch {
 	t.Helper()
-	return SeedImportBatchContext(t, context.Background(), raceID, sourceFilename)
+	return SeedImportBatchContext(t, context.Background(), gridID, sourceFilename)
 }
 
 func SeedImportBatchContext(
 	t *testing.T,
 	ctx context.Context,
-	raceID int32,
+	gridID int32,
 	sourceFilename string,
 ) *models.ImportBatch {
 	t.Helper()
 
 	batch, err := models.ImportBatches.Insert(&models.ImportBatchSetter{
-		RaceID:          omit.From(raceID),
+		RaceGridID:      omit.From(gridID),
 		ImportFormat:    omit.From(mytypes.ImportFormat("json")),
 		Payload:         omit.From([]byte(`{"entries":[]}`)),
 		SourceFilename:  omitnull.From(sourceFilename),
