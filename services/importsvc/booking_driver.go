@@ -95,30 +95,31 @@ func (s *service) ComputeDriverBookingEntries(
 
 		// Create one position-based driver booking entry per result entry
 		// with a resolved driver.
-		for _, entry := range resultEntries {
-			if entry.DriverID.IsNull() {
-				continue
-			}
+		for i := range outputs {
+			gridOutput := outputs[i]
+			for j := range gridOutput.Outputs {
+				output := gridOutput.Outputs[j]
 
-			_, createErr := s.repo.BookingEntries().Create(
-				ctx,
-				&models.BookingEntrySetter{
-					EventID:             omit.From(eventID),
-					SourceResultEntryID: omitnull.From(entry.ID),
-					TargetType:          omit.From(mytypes.TargetType("driver")),
-					DriverID:            omitnull.From(entry.DriverID.GetOr(0)),
-					SourceType:          omit.From(mytypes.SourceType("position")),
-					Points:              omit.From(int32(0)),
-					Description:         omit.From("driver position booking"),
-					IsManual:            omit.From(false),
-					MetadataJSON:        omit.From(emptyJSON),
-					CreatedBy:           omit.From(execUser),
-					UpdatedBy:           omit.From(execUser),
-				})
-			if createErr != nil {
-				return createErr
+				_, createErr := s.repo.BookingEntries().Create(
+					ctx,
+					&models.BookingEntrySetter{
+						EventID:    omit.From(eventID),
+						TargetType: omit.From(mytypes.TargetType("driver")),
+						DriverID:   omitnull.From(output.ReferenceID()),
+						// TODO: calc TeamID from driverID + season.ID
+						SourceType:   omit.From(mytypes.SourceType(output.Origin().String())),
+						Points:       omit.From(int32(output.Points())),
+						Description:  omit.From(output.Msg()),
+						IsManual:     omit.From(false),
+						MetadataJSON: omit.From(emptyJSON),
+						CreatedBy:    omit.From(execUser),
+						UpdatedBy:    omit.From(execUser),
+					})
+				if createErr != nil {
+					return createErr
+				}
+				createdEntries++
 			}
-			createdEntries++
 		}
 
 		// Advance event processing state.
@@ -168,7 +169,7 @@ func (s *service) computeEvent(
 		return nil, err
 	}
 
-	pe := points.NewEventProcessor(s.dummyPointSystem())
+	pe := points.NewEventProcessor(epi.PointSystemSettings)
 	conv := points.NewConverter()
 	byGridID := lo.GroupBy(entries, func(item *models.ResultEntry) int32 {
 		return item.RaceGridID
@@ -189,43 +190,4 @@ func (s *service) computeEvent(
 	}
 
 	return pe.ProcessAll(ctx, gridInputs, epi.ResolverFunc(ctx))
-}
-
-func (s *service) dummyPointSystem() *points.PointSystemSettings {
-	settings := &points.PointSystemSettings{
-		Eligibility: points.EligibilitySettings{
-			RaceDistPct: 0.5,
-		},
-		Races: []points.RaceSettings{
-			{
-				Policies: []points.PointPolicyType{
-					points.PointsPolicyFinishPos,
-					points.PointsPolicyIncidentsExceeded,
-				},
-				AwardSettings: []points.RankedPolicySettings{
-					{
-						Points: map[points.PointPolicyType][]points.PointType{
-							points.PointsPolicyFinishPos: {200, 150},
-						},
-					},
-					{
-						Points: map[points.PointPolicyType][]points.PointType{
-							points.PointsPolicyFinishPos: {100, 70},
-						},
-					},
-				},
-				PenaltySettings: []points.PointPenaltySettings{
-					{
-						Arguments: map[points.PointPolicyType]any{
-							points.PointsPolicyIncidentsExceeded: points.ThresholdPenaltySettings{
-								Threshold:  3,
-								PenaltyPct: 0.1,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	return settings
 }

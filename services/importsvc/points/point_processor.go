@@ -132,7 +132,12 @@ func (p *PointSystemProcessor) ProcessPoints(
 				pInput := lo.Clone(eligibleInputs)
 				slices.SortFunc(
 					pInput, func(a, b Input) int {
-						return int(a.Incidents() - b.Incidents())
+						ret := a.Incidents() - b.Incidents()
+						if ret == 0 {
+							// tiebreaker: finish position
+							return int(a.FinishPosition() - b.FinishPosition())
+						}
+						return int(ret)
 					})
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
