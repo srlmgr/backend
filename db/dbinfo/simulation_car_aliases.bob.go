@@ -140,28 +140,6 @@ var SimulationCarAliases = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		SimulationCarAliasesCarModelIDSimulationIDUnique: index{
-			Type: "btree",
-			Name: "simulation_car_aliases_car_model_id_simulation_id_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "car_model_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-				{
-					Name:         "simulation_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false, false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 		SimulationCarAliasesSimulationIDExternalNameUnique: index{
 			Type: "btree",
 			Name: "simulation_car_aliases_simulation_id_external_name_unique",
@@ -211,11 +189,6 @@ var SimulationCarAliases = Table[
 		},
 	},
 	Uniques: simulationCarAliasUniques{
-		SimulationCarAliasesCarModelIDSimulationIDUnique: constraint{
-			Name:    "simulation_car_aliases_car_model_id_simulation_id_unique",
-			Columns: []string{"car_model_id", "simulation_id"},
-			Comment: "",
-		},
 		SimulationCarAliasesSimulationIDExternalNameUnique: constraint{
 			Name:    "simulation_car_aliases_simulation_id_external_name_unique",
 			Columns: []string{"simulation_id", "external_name"},
@@ -247,13 +220,12 @@ type simulationCarAliasIndexes struct {
 	SimulationCarAliasesPkey                           index
 	IdxSimulationCarAliasesCarModelID                  index
 	IdxSimulationCarAliasesSimulationID                index
-	SimulationCarAliasesCarModelIDSimulationIDUnique   index
 	SimulationCarAliasesSimulationIDExternalNameUnique index
 }
 
 func (i simulationCarAliasIndexes) AsSlice() []index {
 	return []index{
-		i.SimulationCarAliasesPkey, i.IdxSimulationCarAliasesCarModelID, i.IdxSimulationCarAliasesSimulationID, i.SimulationCarAliasesCarModelIDSimulationIDUnique, i.SimulationCarAliasesSimulationIDExternalNameUnique,
+		i.SimulationCarAliasesPkey, i.IdxSimulationCarAliasesCarModelID, i.IdxSimulationCarAliasesSimulationID, i.SimulationCarAliasesSimulationIDExternalNameUnique,
 	}
 }
 
@@ -269,13 +241,12 @@ func (f simulationCarAliasForeignKeys) AsSlice() []foreignKey {
 }
 
 type simulationCarAliasUniques struct {
-	SimulationCarAliasesCarModelIDSimulationIDUnique   constraint
 	SimulationCarAliasesSimulationIDExternalNameUnique constraint
 }
 
 func (u simulationCarAliasUniques) AsSlice() []constraint {
 	return []constraint{
-		u.SimulationCarAliasesCarModelIDSimulationIDUnique, u.SimulationCarAliasesSimulationIDExternalNameUnique,
+		u.SimulationCarAliasesSimulationIDExternalNameUnique,
 	}
 }
 

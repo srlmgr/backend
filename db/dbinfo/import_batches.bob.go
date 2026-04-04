@@ -33,8 +33,8 @@ var ImportBatches = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		RaceID: column{
-			Name:      "race_id",
+		RaceGridID: column{
+			Name:      "race_grid_id",
 			DBType:    "integer",
 			Default:   "",
 			Comment:   "",
@@ -168,12 +168,12 @@ var ImportBatches = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxImportBatchesRaceID: index{
+		IdxImportBatchesRaceGridID: index{
 			Type: "btree",
-			Name: "idx_import_batches_race_id",
+			Name: "idx_import_batches_race_grid_id",
 			Columns: []indexColumn{
 				{
-					Name:         "race_id",
+					Name:         "race_grid_id",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -209,13 +209,13 @@ var ImportBatches = Table[
 		Comment: "",
 	},
 	ForeignKeys: importBatchForeignKeys{
-		ImportBatchesImportBatchesRaceIDFK: foreignKey{
+		ImportBatchesImportBatchesRaceGridIDFK: foreignKey{
 			constraint: constraint{
-				Name:    "import_batches.import_batches_race_id_fk",
-				Columns: []string{"race_id"},
+				Name:    "import_batches.import_batches_race_grid_id_fk",
+				Columns: []string{"race_grid_id"},
 				Comment: "",
 			},
-			ForeignTable:   "races",
+			ForeignTable:   "race_grids",
 			ForeignColumns: []string{"id"},
 		},
 	},
@@ -250,7 +250,7 @@ var ImportBatches = Table[
 type importBatchColumns struct {
 	ID              column
 	FrontendID      column
-	RaceID          column
+	RaceGridID      column
 	ImportFormat    column
 	Payload         column
 	SourceFilename  column
@@ -265,30 +265,30 @@ type importBatchColumns struct {
 
 func (c importBatchColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceID, c.ImportFormat, c.Payload, c.SourceFilename, c.ProcessingState, c.MetadataJSON, c.ProcessedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceGridID, c.ImportFormat, c.Payload, c.SourceFilename, c.ProcessingState, c.MetadataJSON, c.ProcessedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type importBatchIndexes struct {
 	ImportBatchesPkey               index
 	IdxImportBatchesProcessingState index
-	IdxImportBatchesRaceID          index
+	IdxImportBatchesRaceGridID      index
 	ImportBatchesFrontendIDUnique   index
 }
 
 func (i importBatchIndexes) AsSlice() []index {
 	return []index{
-		i.ImportBatchesPkey, i.IdxImportBatchesProcessingState, i.IdxImportBatchesRaceID, i.ImportBatchesFrontendIDUnique,
+		i.ImportBatchesPkey, i.IdxImportBatchesProcessingState, i.IdxImportBatchesRaceGridID, i.ImportBatchesFrontendIDUnique,
 	}
 }
 
 type importBatchForeignKeys struct {
-	ImportBatchesImportBatchesRaceIDFK foreignKey
+	ImportBatchesImportBatchesRaceGridIDFK foreignKey
 }
 
 func (f importBatchForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.ImportBatchesImportBatchesRaceIDFK,
+		f.ImportBatchesImportBatchesRaceGridIDFK,
 	}
 }
 

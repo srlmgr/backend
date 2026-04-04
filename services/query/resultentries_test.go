@@ -20,13 +20,13 @@ import (
 func seedImportBatch(
 	t *testing.T,
 	repo rootrepo.Repository,
-	raceID int32,
+	gridID int32,
 ) *models.ImportBatch {
 	t.Helper()
 
 	batch, err := repo.ImportBatches().Create(
 		context.Background(), &models.ImportBatchSetter{
-			RaceID:          omit.From(raceID),
+			RaceGridID:      omit.From(gridID),
 			ImportFormat:    omit.From(mytypes.ImportFormat(conversion.ImportFormatCSV)),
 			Payload:         omit.From([]byte("{}")),
 			ProcessingState: omit.From(conversion.EventProcessingStateRawImported),
@@ -68,8 +68,7 @@ func seedRaceGrid(
 func seedResultEntry(
 	t *testing.T,
 	repo rootrepo.Repository,
-	raceID int32,
-	raceGridID int32,
+	gridID int32,
 	driverName string,
 	finishingPosition int32,
 ) *models.ResultEntry {
@@ -77,14 +76,13 @@ func seedResultEntry(
 
 	entry, err := repo.ResultEntries().Create(
 		context.Background(), &models.ResultEntrySetter{
-			RaceID:            omit.From(raceID),
-			RaceGridID:        omit.From(raceGridID),
-			RawDriverName:     omitnull.From(driverName),
-			FinishingPosition: omit.From(finishingPosition),
-			CompletedLaps:     omit.From(int32(0)),
-			State:             omit.From(conversion.ResultStateNormal),
-			CreatedBy:         omit.From(testUserSeed),
-			UpdatedBy:         omit.From(testUserSeed),
+			RaceGridID:     omit.From(gridID),
+			RawDriverName:  omitnull.From(driverName),
+			FinishPosition: omit.From(finishingPosition),
+			LapsCompleted:  omit.From(int32(0)),
+			State:          omit.From(conversion.ResultStateNormal),
+			CreatedBy:      omit.From(testUserSeed),
+			UpdatedBy:      omit.From(testUserSeed),
 		})
 	if err != nil {
 		t.Fatalf("failed to seed result entry for %q: %v", driverName, err)
@@ -105,8 +103,8 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
 	race := seedRace(t, repo, event.ID, "Feature Race", "race", 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", "race", 1)
-	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Alice", 1)
+	batch := seedImportBatch(t, repo, grid.ID)
+	entry := seedResultEntry(t, repo, grid.ID, "Alice", 1)
 	_ = batch // batch is not directly relevant to this test, but seeded for completeness
 	resp, err := svc.GetResultEntry(
 		context.Background(),
@@ -122,8 +120,8 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	if got.GetId() != uint32(entry.ID) {
 		t.Errorf("expected id %d, got %d", entry.ID, got.GetId())
 	}
-	if got.GetRaceId() != uint32(race.ID) {
-		t.Errorf("expected race_id %d, got %d", race.ID, got.GetRaceId())
+	if got.GetRaceGridId() != uint32(grid.ID) {
+		t.Errorf("expected race_grid_id %d, got %d", grid.ID, got.GetRaceGridId())
 	}
 	if got.GetFinishingPosition() != 1 {
 		t.Errorf("expected finishing_position 1, got %d", got.GetFinishingPosition())

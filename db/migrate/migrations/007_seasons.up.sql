@@ -8,15 +8,21 @@ CREATE TABLE seasons (
     name text NOT NULL,
     starts_at timestamp with time zone,
     ends_at timestamp with time zone,
-    has_teams boolean NOT NULL DEFAULT false,
     skip_events integer NOT NULL DEFAULT 0,
+    has_teams boolean NOT NULL DEFAULT false,
     team_points_top_n integer,
+	is_team_based boolean NOT NULL DEFAULT false,
+	is_multiclass boolean NOT NULL DEFAULT false,
     status text NOT NULL DEFAULT 'planned',
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
     created_by text NOT NULL DEFAULT 'system',
     updated_by text NOT NULL DEFAULT 'system'
 );
+COMMENT ON COLUMN seasons.team_points_top_n IS 'Top N team members considered for points';
+COMMENT ON COLUMN seasons.has_teams IS 'Indicates team standings are supported';
+COMMENT ON COLUMN seasons.is_team_based IS 'Primary entity for processing is a team';
+COMMENT ON COLUMN seasons.is_multiclass IS 'Indicates if multiple classes are supported';
 
 ALTER TABLE seasons
     ADD CONSTRAINT seasons_frontend_id_unique UNIQUE (frontend_id);

@@ -132,11 +132,11 @@ func newConnectLoggingInterceptor(logger *log.Logger) connect.Interceptor {
 				log.String("protocol", req.Peer().Protocol),
 				log.String("peer_address", req.Peer().Addr),
 				log.String("http_method", req.HTTPMethod()),
-				log.String("code", connect.CodeOf(err).String()),
 				log.Duration("duration", time.Since(start)),
 			}
 
 			if err != nil {
+				fields = append(fields, log.String("code", connect.CodeOf(err).String()))
 				l.Error("rpc failed", append(fields, log.ErrorField(err))...)
 				return resp, err
 			}

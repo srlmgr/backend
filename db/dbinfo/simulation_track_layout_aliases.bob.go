@@ -162,28 +162,6 @@ var SimulationTrackLayoutAliases = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU: index{
-			Type: "btree",
-			Name: "simulation_track_layout_aliases_track_layout_id_simulation_id_u",
-			Columns: []indexColumn{
-				{
-					Name:         "track_layout_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-				{
-					Name:         "simulation_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false, false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 	},
 	PrimaryKey: &constraint{
 		Name:    "simulation_track_layout_aliases_pkey",
@@ -216,11 +194,6 @@ var SimulationTrackLayoutAliases = Table[
 			Columns: []string{"simulation_id", "external_name"},
 			Comment: "",
 		},
-		SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU: constraint{
-			Name:    "simulation_track_layout_aliases_track_layout_id_simulation_id_u",
-			Columns: []string{"track_layout_id", "simulation_id"},
-			Comment: "",
-		},
 	},
 
 	Comment: "",
@@ -248,12 +221,11 @@ type simulationTrackLayoutAliasIndexes struct {
 	IdxSimulationTrackLayoutAliasesSimulationID             index
 	IdxSimulationTrackLayoutAliasesTrackLayoutID            index
 	SimulationTrackLayoutAliasesSimulationIDExternalNameUni index
-	SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU  index
 }
 
 func (i simulationTrackLayoutAliasIndexes) AsSlice() []index {
 	return []index{
-		i.SimulationTrackLayoutAliasesPkey, i.IdxSimulationTrackLayoutAliasesSimulationID, i.IdxSimulationTrackLayoutAliasesTrackLayoutID, i.SimulationTrackLayoutAliasesSimulationIDExternalNameUni, i.SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU,
+		i.SimulationTrackLayoutAliasesPkey, i.IdxSimulationTrackLayoutAliasesSimulationID, i.IdxSimulationTrackLayoutAliasesTrackLayoutID, i.SimulationTrackLayoutAliasesSimulationIDExternalNameUni,
 	}
 }
 
@@ -270,12 +242,11 @@ func (f simulationTrackLayoutAliasForeignKeys) AsSlice() []foreignKey {
 
 type simulationTrackLayoutAliasUniques struct {
 	SimulationTrackLayoutAliasesSimulationIDExternalNameUni constraint
-	SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU  constraint
 }
 
 func (u simulationTrackLayoutAliasUniques) AsSlice() []constraint {
 	return []constraint{
-		u.SimulationTrackLayoutAliasesSimulationIDExternalNameUni, u.SimulationTrackLayoutAliasesTrackLayoutIDSimulationIDU,
+		u.SimulationTrackLayoutAliasesSimulationIDExternalNameUni,
 	}
 }
 

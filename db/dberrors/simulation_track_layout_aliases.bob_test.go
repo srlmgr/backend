@@ -61,25 +61,6 @@ func TestSimulationTrackLayoutAliasUniqueConstraintErrors(t *testing.T) {
 				}
 			},
 		},
-		{
-			name:        "ErrUniqueSimulationTrackLayoutAliasesTrackLayoutIdSimulationIdU",
-			expectedErr: SimulationTrackLayoutAliasErrors.ErrUniqueSimulationTrackLayoutAliasesTrackLayoutIdSimulationIdU,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.SimulationTrackLayoutAlias) factory.SimulationTrackLayoutAliasModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.SimulationTrackLayoutAliasModSlice, 0, 2)
-
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewSimulationTrackLayoutAliasWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.SimulationTrackLayoutAliasModSlice{
-					factory.SimulationTrackLayoutAliasMods.TrackLayoutID(obj.TrackLayoutID),
-					factory.SimulationTrackLayoutAliasMods.SimulationID(obj.SimulationID),
-				}
-			},
-		},
 	}
 
 	for _, tt := range tests {

@@ -1,3 +1,4 @@
+//nolint:dupl // due to nature of conversion code
 package conversion
 
 import (
@@ -128,13 +129,16 @@ func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
 	}
 
 	return &commonv1.Season{
-		Id:            uint32(model.ID),
-		SeriesId:      uint32(model.SeriesID),
-		Name:          model.Name,
-		PointSystemId: uint32(model.PointSystemID),
-		HasTeams:      model.HasTeams,
-		SkipEvents:    model.SkipEvents,
-		Status:        model.Status,
+		Id:             uint32(model.ID),
+		SeriesId:       uint32(model.SeriesID),
+		Name:           model.Name,
+		PointSystemId:  uint32(model.PointSystemID),
+		HasTeams:       model.HasTeams,
+		IsTeamBased:    model.IsTeamBased,
+		IsMulticlass:   model.IsMulticlass,
+		TeamPointsTopN: model.TeamPointsTopN.GetOrZero(),
+		SkipEvents:     model.SkipEvents,
+		Status:         model.Status,
 	}
 }
 
@@ -350,15 +354,15 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 
 	entry := &commonv1.ResultEntry{
 		Id:                uint32(model.ID),
-		RaceId:            uint32(model.RaceID),
+		RaceGridId:        uint32(model.RaceGridID),
 		DriverId:          uint32(model.DriverID.GetOr(0)),
 		TeamId:            uint32(model.TeamID.GetOr(0)),
 		CarModelId:        uint32(model.CarModelID.GetOr(0)),
 		CarClassId:        uint32(model.CarClassID.GetOr(0)),
 		CarNumber:         model.CarNumber.GetOr(""),
-		StartingPosition:  model.StartingPosition.GetOr(0),
-		FinishingPosition: model.FinishingPosition,
-		CompletedLaps:     model.CompletedLaps,
+		StartingPosition:  model.StartPosition.GetOr(0),
+		FinishingPosition: model.FinishPosition,
+		CompletedLaps:     model.LapsCompleted,
 		QualiTimeMs:       model.QualiLapTimeMS.GetOr(0),
 		FastestLapTimeMs:  model.FastestLapTimeMS.GetOr(0),
 		TotalTimeMs:       model.TotalTimeMS.GetOr(0),
@@ -409,6 +413,38 @@ func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 	return &commonv1.Race{
 		Id:          uint32(model.ID),
 		EventId:     uint32(model.EventID),
+		Name:        model.Name,
+		SessionType: sessionType,
+		SequenceNo:  model.SequenceNo,
+	}
+}
+
+// RaceGridToRaceGrid converts a RaceGrid model to a RaceGrid message.
+// Unknown session_type strings map to UNSPECIFIED and emit a warning log.
+func (s *Service) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid {
+	if model == nil {
+		return nil
+	}
+
+	var sessionType commonv1.RaceSessionType
+	switch model.SessionType {
+	case RaceSessionTypeQualifying:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING
+	case RaceSessionTypeHeat:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT
+	case RaceSessionTypeRace:
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
+	default:
+		s.logger.Warn("unknown race grid session_type, mapping to UNSPECIFIED",
+			log.String("session_type", model.SessionType),
+			log.Int32("race_grid_id", model.ID),
+		)
+		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_UNSPECIFIED
+	}
+
+	return &commonv1.RaceGrid{
+		Id:          uint32(model.ID),
+		RaceId:      uint32(model.RaceID),
 		Name:        model.Name,
 		SessionType: sessionType,
 		SequenceNo:  model.SequenceNo,

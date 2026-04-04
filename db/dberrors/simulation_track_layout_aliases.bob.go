@@ -17,19 +17,10 @@ var SimulationTrackLayoutAliasErrors = &simulationTrackLayoutAliasErrors{
 		columns: []string{"simulation_id", "external_name"},
 		s:       "simulation_track_layout_aliases_simulation_id_external_name_uni",
 	},
-
-	ErrUniqueSimulationTrackLayoutAliasesTrackLayoutIdSimulationIdU: &UniqueConstraintError{
-		schema:  "",
-		table:   "simulation_track_layout_aliases",
-		columns: []string{"track_layout_id", "simulation_id"},
-		s:       "simulation_track_layout_aliases_track_layout_id_simulation_id_u",
-	},
 }
 
 type simulationTrackLayoutAliasErrors struct {
 	ErrUniqueSimulationTrackLayoutAliasesPkey *UniqueConstraintError
 
 	ErrUniqueSimulationTrackLayoutAliasesSimulationIdExternalNameUni *UniqueConstraintError
-
-	ErrUniqueSimulationTrackLayoutAliasesTrackLayoutIdSimulationIdU *UniqueConstraintError
 }

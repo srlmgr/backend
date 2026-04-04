@@ -2,10 +2,10 @@ BEGIN;
 
 CREATE TABLE booking_entries (
     id serial PRIMARY KEY,
-    frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
     event_id integer NOT NULL,
-    source_result_entry_id integer,
-    source_booking_entry_id integer,
+	race_id integer not null,
+	race_grid_id integer not null,
+
     target_type text NOT NULL,
     driver_id integer,
     team_id integer,
@@ -21,20 +21,18 @@ CREATE TABLE booking_entries (
     updated_by text NOT NULL DEFAULT 'system'
 );
 
-ALTER TABLE booking_entries
-    ADD CONSTRAINT booking_entries_frontend_id_unique UNIQUE (frontend_id);
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_event_id_fk
     FOREIGN KEY (event_id) REFERENCES events (id);
 
 ALTER TABLE booking_entries
-    ADD CONSTRAINT booking_entries_source_result_entry_id_fk
-    FOREIGN KEY (source_result_entry_id) REFERENCES result_entries (id);
+    ADD CONSTRAINT booking_entries_race_id_fk
+    FOREIGN KEY (race_id) REFERENCES races (id);
 
 ALTER TABLE booking_entries
-    ADD CONSTRAINT booking_entries_source_booking_entry_id_fk
-    FOREIGN KEY (source_booking_entry_id) REFERENCES booking_entries (id);
+    ADD CONSTRAINT booking_entries_race_grid_id_fk
+    FOREIGN KEY (race_grid_id) REFERENCES race_grids (id);
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_driver_id_fk
@@ -50,10 +48,12 @@ ALTER TABLE booking_entries
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_source_type_check
-    CHECK (source_type IN ('position', 'bonus', 'manual_adjustment'));
+    CHECK (source_type IN ('finish_pos', 'fastest_lap', 'least_incidents','incidents_exceeded','qualification_pos','top_n_finishers','custom','manual_adjustment'));
 
 
 CREATE INDEX idx_booking_entries_event_id ON booking_entries (event_id);
+CREATE INDEX idx_booking_entries_race_id ON booking_entries (race_id);
+CREATE INDEX idx_booking_entries_race_grid_id ON booking_entries (race_grid_id);
 CREATE INDEX idx_booking_entries_target_type ON booking_entries (target_type);
 CREATE INDEX idx_booking_entries_driver_id ON booking_entries (driver_id);
 CREATE INDEX idx_booking_entries_team_id ON booking_entries (team_id);

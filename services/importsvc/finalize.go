@@ -64,20 +64,20 @@ func (s *service) FinalizeEventProcessing(
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 	finalizedAt := time.Now()
 
-	// Resolve the latest import batch across all races for the event.
-	races, err := s.repo.Races().Races().LoadByEventID(ctx, eventID)
+	// Resolve the latest import batch across all grids for the event.
+	grids, err := s.repo.Races().RaceGrids().LoadByEventID(ctx, eventID)
 	if err != nil {
-		l.Error("failed to load races", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load races")
+		l.Error("failed to load grids", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load grids")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		// Finalize the import batch for each race.
-		for _, race := range races {
-			batch, loadErr := s.repo.ImportBatches().LoadByRaceID(ctx, race.ID)
+		// Finalize the import batch for each grid.
+		for _, grid := range grids {
+			batch, loadErr := s.repo.ImportBatches().LoadByRaceGridID(ctx, grid.ID)
 			if loadErr != nil {
-				// If no batch exists for this race, skip it.
+				// If no batch exists for this grid, skip it.
 				continue
 			}
 			_, updateErr := s.repo.ImportBatches().Update(

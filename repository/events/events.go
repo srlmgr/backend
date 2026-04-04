@@ -29,6 +29,7 @@ type Repository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.EventSetter) (*models.Event, error)
 	Update(ctx context.Context, id int32, input *models.EventSetter) (*models.Event, error)
+	LoadByGridID(ctx context.Context, gridID int32) (*models.Event, error)
 }
 
 type eventsRepository struct{ exec *pgbob.Executor }
@@ -49,6 +50,22 @@ func (r *eventsRepository) LoadBySeasonID(
 	return models.Events.Query(
 		sm.Where(models.Events.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *eventsRepository) LoadByGridID(
+	ctx context.Context,
+	gridID int32,
+) (*models.Event, error) {
+	subQuery := psql.Select(
+		sm.Columns(models.Races.Columns.EventID),
+		sm.From(models.Races.Name()),
+		models.SelectJoins.Races.InnerJoin.RaceGrids,
+		models.SelectWhere.RaceGrids.ID.EQ(gridID),
+	)
+
+	return models.Events.Query(
+		sm.Where(models.Events.Columns.ID.In(subQuery)),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *eventsRepository) LoadByID(ctx context.Context, id int32) (*models.Event, error) {

@@ -8,6 +8,7 @@ import (
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -16,11 +17,13 @@ import (
 )
 
 type seasonRequest interface {
-	GetSeriesId() uint32
 	GetName() string
 	GetPointSystemId() uint32
 	GetHasTeams() bool
+	GetIsTeamBased() bool
+	GetIsMulticlass() bool
 	GetSkipEvents() int32
+	GetTeamPointsTopN() int32
 	GetStatus() string
 }
 
@@ -31,10 +34,6 @@ type seasonSetterBuilder struct{}
 func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 	setter := &seasonSetter{}
 
-	if seriesID := msg.GetSeriesId(); seriesID != 0 {
-		setter.SeriesID = omit.From(int32(seriesID))
-	}
-
 	if name := msg.GetName(); name != "" {
 		setter.Name = omit.From(name)
 	}
@@ -44,9 +43,15 @@ func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 	}
 
 	setter.HasTeams = omit.From(msg.GetHasTeams())
+	setter.IsTeamBased = omit.From(msg.GetIsTeamBased())
+	setter.IsMulticlass = omit.From(msg.GetIsMulticlass())
 
 	if skipEvents := msg.GetSkipEvents(); skipEvents != 0 {
 		setter.SkipEvents = omit.From(skipEvents)
+	}
+
+	if teamPointsTopN := msg.GetTeamPointsTopN(); teamPointsTopN != 0 {
+		setter.TeamPointsTopN = omitnull.From(teamPointsTopN)
 	}
 
 	if status := msg.GetStatus(); status != "" {
@@ -68,6 +73,7 @@ func (s *service) CreateSeason(
 
 	var newSeason *models.Season
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		setter.SeriesID = omit.From(int32(req.Msg.GetSeriesId()))
 		setter.CreatedBy = omit.From(s.execUser(ctx))
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newSeason, err = s.repo.Seasons().Create(ctx, setter)

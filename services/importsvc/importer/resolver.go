@@ -1,4 +1,4 @@
-package processor
+package importer
 
 import (
 	"fmt"
@@ -47,12 +47,12 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 	for i := range inp.Results {
 		row := &inp.Results[i]
 		entry := &models.ResultEntry{
-			FinishingPosition: int32(row.FinPos),
-			CompletedLaps:     int32(row.Laps),
-			RawDriverName:     null.From(row.Name),
-			RawCarName:        null.From(row.Car),
-			Incidents:         null.From(int32(row.Incidents)),
-			State:             conversion.ResultStateNormal,
+			FinishPosition: int32(row.FinPos),
+			LapsCompleted:  int32(row.Laps),
+			RawDriverName:  null.From(row.Name),
+			RawCarName:     null.From(row.Car),
+			Incidents:      null.From(int32(row.Incidents)),
+			State:          conversion.ResultStateNormal,
 		}
 
 		driverID, err := r.entityResolver.ResolveDriver(row.DriverID, row.Name)

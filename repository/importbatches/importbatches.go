@@ -24,12 +24,12 @@ import (
 // Repository defines persistence operations for ImportBatch entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.ImportBatch, error)
-	LoadByRaceID(
+	LoadByRaceGridID(
 		ctx context.Context,
-		raceID int32,
+		gridID int32,
 	) (*models.ImportBatch, error)
 	DeleteByID(ctx context.Context, id int32) error
-	DeleteByRaceID(ctx context.Context, raceID int32) error
+	DeleteByRaceGridID(ctx context.Context, gridID int32) error
 	Create(ctx context.Context, input *models.ImportBatchSetter) (*models.ImportBatch, error)
 	Update(
 		ctx context.Context,
@@ -63,8 +63,8 @@ func (r *importBatchesRepository) DeleteByID(ctx context.Context, id int32) erro
 	return err
 }
 
-func (r *importBatchesRepository) DeleteByRaceID(ctx context.Context, raceID int32) error {
-	_, err := models.ImportBatches.Delete(dm.Where(models.ImportBatches.Columns.RaceID.EQ(psql.Arg(raceID)))).
+func (r *importBatchesRepository) DeleteByRaceGridID(ctx context.Context, gridID int32) error {
+	_, err := models.ImportBatches.Delete(dm.Where(models.ImportBatches.Columns.RaceGridID.EQ(psql.Arg(gridID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -91,15 +91,15 @@ func (r *importBatchesRepository) Update(
 	return entity, err
 }
 
-func (r *importBatchesRepository) LoadByRaceID(
+func (r *importBatchesRepository) LoadByRaceGridID(
 	ctx context.Context,
-	raceID int32,
+	gridID int32,
 ) (*models.ImportBatch, error) {
 	entity, err := models.ImportBatches.Query(
-		sm.Where(models.ImportBatches.Columns.RaceID.EQ(psql.Arg(raceID))),
+		sm.Where(models.ImportBatches.Columns.RaceGridID.EQ(psql.Arg(gridID))),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("import batch for race %d: %w", raceID, repoerrors.ErrNotFound)
+		return nil, fmt.Errorf("import batch for race grid %d: %w", gridID, repoerrors.ErrNotFound)
 	}
 	return entity, err
 }

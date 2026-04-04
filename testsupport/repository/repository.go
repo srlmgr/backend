@@ -526,6 +526,14 @@ func (r *eventsEntityRepo) LoadBySeasonID(
 	return filtered, nil
 }
 
+//nolint:whitespace // multiline signature style
+func (r *eventsEntityRepo) LoadByGridID(
+	ctx context.Context,
+	gridID int32,
+) (*models.Event, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 type racesEntityRepo struct {
 	*mapEntityRepo[models.Race, models.RaceSetter]
 }
@@ -574,6 +582,14 @@ func (r *raceGridsEntityRepo) LoadByRaceID(
 	}
 
 	return filtered, nil
+}
+
+//nolint:whitespace // multiline signature style
+func (r *raceGridsEntityRepo) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.RaceGrid, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 type teamsEntityRepo struct {
@@ -631,45 +647,19 @@ type importBatchesEntityRepo struct {
 }
 
 //nolint:whitespace // multiline signature style
-func (r *importBatchesEntityRepo) LoadByRaceID(
+func (r *importBatchesEntityRepo) LoadByRaceGridID(
 	ctx context.Context,
-	raceID int32,
+	gridID int32,
 ) (*models.ImportBatch, error) {
-	items, err := r.LoadAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range items {
-		if item == nil || item.RaceID != raceID {
-			continue
-		}
-		return item, nil
-	}
-
-	return nil, fmt.Errorf("import batch for race %d: %w", raceID, repoerrors.ErrNotFound)
+	return nil, fmt.Errorf("not implemented")
 }
 
 //nolint:whitespace // multiline signature style
-func (r *importBatchesEntityRepo) DeleteByRaceID(
+func (r *importBatchesEntityRepo) DeleteByRaceGridID(
 	ctx context.Context,
-	raceID int32,
+	gridID int32,
 ) error {
-	items, err := r.LoadAll(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, item := range items {
-		if item == nil || item.RaceID != raceID {
-			continue
-		}
-		if err := r.DeleteByID(ctx, item.ID); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 type resultEntriesEntityRepo struct {
@@ -686,27 +676,6 @@ func (r *resultEntriesEntityRepo) CreateMany(
 	}
 
 	return nil, fmt.Errorf("not implemented")
-}
-
-//nolint:whitespace // multiline signature style
-func (r *resultEntriesEntityRepo) LoadByRaceID(
-	ctx context.Context,
-	raceID int32,
-) ([]*models.ResultEntry, error) {
-	items, err := r.LoadAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	filtered := make([]*models.ResultEntry, 0, len(items))
-	for _, item := range items {
-		if item == nil || item.RaceID != raceID {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-
-	return filtered, nil
 }
 
 //nolint:whitespace // multiline signature style
@@ -752,9 +721,9 @@ func (r *resultEntriesEntityRepo) LoadByState(
 }
 
 //nolint:whitespace // multiline signature style
-func (r *resultEntriesEntityRepo) DeleteByRaceID(
+func (r *resultEntriesEntityRepo) DeleteByRaceGridID(
 	ctx context.Context,
-	raceID int32,
+	gridID int32,
 ) error {
 	items, err := r.LoadAll(ctx)
 	if err != nil {
@@ -762,7 +731,7 @@ func (r *resultEntriesEntityRepo) DeleteByRaceID(
 	}
 
 	for _, item := range items {
-		if item == nil || item.RaceID != raceID {
+		if item == nil || item.RaceGridID != gridID {
 			continue
 		}
 		if err := r.DeleteByID(ctx, item.ID); err != nil {
@@ -1334,7 +1303,7 @@ func New() rootrepo.Repository {
 			&models.ImportBatch{
 				ID:              1,
 				FrontendID:      mustUUID("00000000-0000-0000-0000-000000000009"),
-				RaceID:          1,
+				RaceGridID:      1,
 				ImportFormat:    mytypes.ImportFormat("csv"),
 				Payload:         []byte("sample import payload"),
 				ProcessingState: "queued",
@@ -1351,17 +1320,17 @@ func New() rootrepo.Repository {
 			func(m *models.ResultEntry, id int32) { m.ID = id },
 			func(m *models.ResultEntry, s *models.ResultEntrySetter) { s.Overwrite(m) },
 			&models.ResultEntry{
-				ID:                1,
-				FrontendID:        mustUUID("00000000-0000-0000-0000-000000000010"),
-				RaceID:            1,
-				RawDriverName:     null.From("Alex Driver"),
-				FinishingPosition: 1,
-				CompletedLaps:     25,
-				State:             "pending",
-				CreatedAt:         baseTime,
-				UpdatedAt:         baseTime,
-				CreatedBy:         creator,
-				UpdatedBy:         creator,
+				ID:             1,
+				FrontendID:     mustUUID("00000000-0000-0000-0000-000000000010"),
+				RaceGridID:     1,
+				RawDriverName:  null.From("Alex Driver"),
+				FinishPosition: 1,
+				LapsCompleted:  25,
+				State:          "pending",
+				CreatedAt:      baseTime,
+				UpdatedAt:      baseTime,
+				CreatedBy:      creator,
+				UpdatedBy:      creator,
 			},
 		),
 	}
@@ -1372,7 +1341,6 @@ func New() rootrepo.Repository {
 			func(m *models.BookingEntry, s *models.BookingEntrySetter) { s.Overwrite(m) },
 			&models.BookingEntry{
 				ID:          1,
-				FrontendID:  mustUUID("00000000-0000-0000-0000-000000000011"),
 				EventID:     1,
 				TargetType:  mytypes.TargetType("driver"),
 				SourceType:  mytypes.SourceType("result"),

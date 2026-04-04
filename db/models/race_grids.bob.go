@@ -49,8 +49,10 @@ type RaceGridsQuery = *psql.ViewQuery[*RaceGrid, RaceGridSlice]
 
 // raceGridR is where relationships are stored.
 type raceGridR struct {
-	Race          *Race            // race_grids.race_grids_race_id_fk
-	ResultEntries ResultEntrySlice // result_entries.result_entries_race_grid_id_fk
+	BookingEntries BookingEntrySlice // booking_entries.booking_entries_race_grid_id_fk
+	ImportBatches  ImportBatchSlice  // import_batches.import_batches_race_grid_id_fk
+	Race           *Race             // race_grids.race_grids_race_id_fk
+	ResultEntries  ResultEntrySlice  // result_entries.result_entries_race_grid_id_fk
 }
 
 func buildRaceGridColumns(alias string) raceGridColumns {
@@ -531,6 +533,54 @@ func (o RaceGridSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// BookingEntries starts a query for related objects on booking_entries
+func (o *RaceGrid) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	return BookingEntries.Query(append(mods,
+		sm.Where(BookingEntries.Columns.RaceGridID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os RaceGridSlice) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return BookingEntries.Query(append(mods,
+		sm.Where(psql.Group(BookingEntries.Columns.RaceGridID).OP("IN", PKArgExpr)),
+	)...)
+}
+
+// ImportBatches starts a query for related objects on import_batches
+func (o *RaceGrid) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
+	return ImportBatches.Query(append(mods,
+		sm.Where(ImportBatches.Columns.RaceGridID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os RaceGridSlice) ImportBatches(mods ...bob.Mod[*dialect.SelectQuery]) ImportBatchesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return ImportBatches.Query(append(mods,
+		sm.Where(psql.Group(ImportBatches.Columns.RaceGridID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Race starts a query for related objects on races
 func (o *RaceGrid) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
 	return Races.Query(append(mods,
@@ -577,6 +627,142 @@ func (os RaceGridSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) Res
 	return ResultEntries.Query(append(mods,
 		sm.Where(psql.Group(ResultEntries.Columns.RaceGridID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+func insertRaceGridBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, raceGrid0 *RaceGrid) (BookingEntrySlice, error) {
+	for i := range bookingEntries1 {
+		bookingEntries1[i].RaceGridID = omit.From(raceGrid0.ID)
+	}
+
+	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertRaceGridBookingEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachRaceGridBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, raceGrid0 *RaceGrid) (BookingEntrySlice, error) {
+	setter := &BookingEntrySetter{
+		RaceGridID: omit.From(raceGrid0.ID),
+	}
+
+	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachRaceGridBookingEntries0: %w", err)
+	}
+
+	return bookingEntries1, nil
+}
+
+func (raceGrid0 *RaceGrid) InsertBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	bookingEntries1, err := insertRaceGridBookingEntries0(ctx, exec, related, raceGrid0)
+	if err != nil {
+		return err
+	}
+
+	raceGrid0.R.BookingEntries = append(raceGrid0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range bookingEntries1 {
+		rel.R.RaceGrid = raceGrid0
+	}
+	return nil
+}
+
+func (raceGrid0 *RaceGrid) AttachBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	bookingEntries1 := BookingEntrySlice(related)
+
+	_, err = attachRaceGridBookingEntries0(ctx, exec, len(related), bookingEntries1, raceGrid0)
+	if err != nil {
+		return err
+	}
+
+	raceGrid0.R.BookingEntries = append(raceGrid0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range related {
+		rel.R.RaceGrid = raceGrid0
+	}
+
+	return nil
+}
+
+func insertRaceGridImportBatches0(ctx context.Context, exec bob.Executor, importBatches1 []*ImportBatchSetter, raceGrid0 *RaceGrid) (ImportBatchSlice, error) {
+	for i := range importBatches1 {
+		importBatches1[i].RaceGridID = omit.From(raceGrid0.ID)
+	}
+
+	ret, err := ImportBatches.Insert(bob.ToMods(importBatches1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertRaceGridImportBatches0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachRaceGridImportBatches0(ctx context.Context, exec bob.Executor, count int, importBatches1 ImportBatchSlice, raceGrid0 *RaceGrid) (ImportBatchSlice, error) {
+	setter := &ImportBatchSetter{
+		RaceGridID: omit.From(raceGrid0.ID),
+	}
+
+	err := importBatches1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachRaceGridImportBatches0: %w", err)
+	}
+
+	return importBatches1, nil
+}
+
+func (raceGrid0 *RaceGrid) InsertImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatchSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	importBatches1, err := insertRaceGridImportBatches0(ctx, exec, related, raceGrid0)
+	if err != nil {
+		return err
+	}
+
+	raceGrid0.R.ImportBatches = append(raceGrid0.R.ImportBatches, importBatches1...)
+
+	for _, rel := range importBatches1 {
+		rel.R.RaceGrid = raceGrid0
+	}
+	return nil
+}
+
+func (raceGrid0 *RaceGrid) AttachImportBatches(ctx context.Context, exec bob.Executor, related ...*ImportBatch) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	importBatches1 := ImportBatchSlice(related)
+
+	_, err = attachRaceGridImportBatches0(ctx, exec, len(related), importBatches1, raceGrid0)
+	if err != nil {
+		return err
+	}
+
+	raceGrid0.R.ImportBatches = append(raceGrid0.R.ImportBatches, importBatches1...)
+
+	for _, rel := range related {
+		rel.R.RaceGrid = raceGrid0
+	}
+
+	return nil
 }
 
 func attachRaceGridRace0(ctx context.Context, exec bob.Executor, count int, raceGrid0 *RaceGrid, race1 *Race) (*RaceGrid, error) {
@@ -731,6 +917,34 @@ func (o *RaceGrid) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "BookingEntries":
+		rels, ok := retrieved.(BookingEntrySlice)
+		if !ok {
+			return fmt.Errorf("raceGrid cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.BookingEntries = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.RaceGrid = o
+			}
+		}
+		return nil
+	case "ImportBatches":
+		rels, ok := retrieved.(ImportBatchSlice)
+		if !ok {
+			return fmt.Errorf("raceGrid cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.ImportBatches = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.RaceGrid = o
+			}
+		}
+		return nil
 	case "Race":
 		rel, ok := retrieved.(*Race)
 		if !ok {
@@ -785,11 +999,19 @@ func buildRaceGridPreloader() raceGridPreloader {
 }
 
 type raceGridThenLoader[Q orm.Loadable] struct {
-	Race          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	ResultEntries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	BookingEntries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ImportBatches  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Race           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	ResultEntries  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildRaceGridThenLoader[Q orm.Loadable]() raceGridThenLoader[Q] {
+	type BookingEntriesLoadInterface interface {
+		LoadBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type ImportBatchesLoadInterface interface {
+		LoadImportBatches(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type RaceLoadInterface interface {
 		LoadRace(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -798,6 +1020,18 @@ func buildRaceGridThenLoader[Q orm.Loadable]() raceGridThenLoader[Q] {
 	}
 
 	return raceGridThenLoader[Q]{
+		BookingEntries: thenLoadBuilder[Q](
+			"BookingEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadBookingEntries(ctx, exec, mods...)
+			},
+		),
+		ImportBatches: thenLoadBuilder[Q](
+			"ImportBatches",
+			func(ctx context.Context, exec bob.Executor, retrieved ImportBatchesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadImportBatches(ctx, exec, mods...)
+			},
+		),
 		Race: thenLoadBuilder[Q](
 			"Race",
 			func(ctx context.Context, exec bob.Executor, retrieved RaceLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -811,6 +1045,128 @@ func buildRaceGridThenLoader[Q orm.Loadable]() raceGridThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadBookingEntries loads the raceGrid's BookingEntries into the .R struct
+func (o *RaceGrid) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.BookingEntries = nil
+
+	related, err := o.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.RaceGrid = o
+	}
+
+	o.R.BookingEntries = related
+	return nil
+}
+
+// LoadBookingEntries loads the raceGrid's BookingEntries into the .R struct
+func (os RaceGridSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	bookingEntries, err := os.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.BookingEntries = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range bookingEntries {
+
+			if !(o.ID == rel.RaceGridID) {
+				continue
+			}
+
+			rel.R.RaceGrid = o
+
+			o.R.BookingEntries = append(o.R.BookingEntries, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadImportBatches loads the raceGrid's ImportBatches into the .R struct
+func (o *RaceGrid) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.ImportBatches = nil
+
+	related, err := o.ImportBatches(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.RaceGrid = o
+	}
+
+	o.R.ImportBatches = related
+	return nil
+}
+
+// LoadImportBatches loads the raceGrid's ImportBatches into the .R struct
+func (os RaceGridSlice) LoadImportBatches(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	importBatches, err := os.ImportBatches(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.ImportBatches = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range importBatches {
+
+			if !(o.ID == rel.RaceGridID) {
+				continue
+			}
+
+			rel.R.RaceGrid = o
+
+			o.R.ImportBatches = append(o.R.ImportBatches, rel)
+		}
+	}
+
+	return nil
 }
 
 // LoadRace loads the raceGrid's Race into the .R struct
@@ -927,9 +1283,11 @@ func (os RaceGridSlice) LoadResultEntries(ctx context.Context, exec bob.Executor
 }
 
 type raceGridJoins[Q dialect.Joinable] struct {
-	typ           string
-	Race          modAs[Q, raceColumns]
-	ResultEntries modAs[Q, resultEntryColumns]
+	typ            string
+	BookingEntries modAs[Q, bookingEntryColumns]
+	ImportBatches  modAs[Q, importBatchColumns]
+	Race           modAs[Q, raceColumns]
+	ResultEntries  modAs[Q, resultEntryColumns]
 }
 
 func (j raceGridJoins[Q]) aliasedAs(alias string) raceGridJoins[Q] {
@@ -939,6 +1297,34 @@ func (j raceGridJoins[Q]) aliasedAs(alias string) raceGridJoins[Q] {
 func buildRaceGridJoins[Q dialect.Joinable](cols raceGridColumns, typ string) raceGridJoins[Q] {
 	return raceGridJoins[Q]{
 		typ: typ,
+		BookingEntries: modAs[Q, bookingEntryColumns]{
+			c: BookingEntries.Columns,
+			f: func(to bookingEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
+						to.RaceGridID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		ImportBatches: modAs[Q, importBatchColumns]{
+			c: ImportBatches.Columns,
+			f: func(to importBatchColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, ImportBatches.Name().As(to.Alias())).On(
+						to.RaceGridID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		Race: modAs[Q, raceColumns]{
 			c: Races.Columns,
 			f: func(to raceColumns) bob.Mod[Q] {

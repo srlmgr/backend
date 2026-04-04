@@ -43,7 +43,7 @@ func (mods ImportBatchModSlice) Apply(ctx context.Context, n *ImportBatchTemplat
 type ImportBatchTemplate struct {
 	ID              func() int32
 	FrontendID      func() uuid.UUID
-	RaceID          func() int32
+	RaceGridID      func() int32
 	ImportFormat    func() mytypes.ImportFormat
 	Payload         func() []byte
 	SourceFilename  func() null.Val[string]
@@ -63,15 +63,15 @@ type ImportBatchTemplate struct {
 
 type importBatchR struct {
 	EventProcessingAudits []*importBatchREventProcessingAuditsR
-	Race                  *importBatchRRaceR
+	RaceGrid              *importBatchRRaceGridR
 }
 
 type importBatchREventProcessingAuditsR struct {
 	number int
 	o      *EventProcessingAuditTemplate
 }
-type importBatchRRaceR struct {
-	o *RaceTemplate
+type importBatchRRaceGridR struct {
+	o *RaceGridTemplate
 }
 
 // Apply mods to the ImportBatchTemplate
@@ -97,11 +97,11 @@ func (t ImportBatchTemplate) setModelRels(o *models.ImportBatch) {
 		o.R.EventProcessingAudits = rel
 	}
 
-	if t.r.Race != nil {
-		rel := t.r.Race.o.Build()
+	if t.r.RaceGrid != nil {
+		rel := t.r.RaceGrid.o.Build()
 		rel.R.ImportBatches = append(rel.R.ImportBatches, o)
-		o.RaceID = rel.ID // h2
-		o.R.Race = rel
+		o.RaceGridID = rel.ID // h2
+		o.R.RaceGrid = rel
 	}
 }
 
@@ -118,9 +118,9 @@ func (o ImportBatchTemplate) BuildSetter() *models.ImportBatchSetter {
 		val := o.FrontendID()
 		m.FrontendID = omit.From(val)
 	}
-	if o.RaceID != nil {
-		val := o.RaceID()
-		m.RaceID = omit.From(val)
+	if o.RaceGridID != nil {
+		val := o.RaceGridID()
+		m.RaceGridID = omit.From(val)
 	}
 	if o.ImportFormat != nil {
 		val := o.ImportFormat()
@@ -190,8 +190,8 @@ func (o ImportBatchTemplate) Build() *models.ImportBatch {
 	if o.FrontendID != nil {
 		m.FrontendID = o.FrontendID()
 	}
-	if o.RaceID != nil {
-		m.RaceID = o.RaceID()
+	if o.RaceGridID != nil {
+		m.RaceGridID = o.RaceGridID()
 	}
 	if o.ImportFormat != nil {
 		m.ImportFormat = o.ImportFormat()
@@ -243,9 +243,9 @@ func (o ImportBatchTemplate) BuildMany(number int) models.ImportBatchSlice {
 }
 
 func ensureCreatableImportBatch(m *models.ImportBatchSetter) {
-	if !(m.RaceID.IsValue()) {
+	if !(m.RaceGridID.IsValue()) {
 		val := random_int32(nil)
-		m.RaceID = omit.From(val)
+		m.RaceGridID = omit.From(val)
 	}
 	if !(m.ImportFormat.IsValue()) {
 		val := random_mytypes_ImportFormat(nil)
@@ -293,29 +293,29 @@ func (o *ImportBatchTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 	opt := o.BuildSetter()
 	ensureCreatableImportBatch(opt)
 
-	if o.r.Race == nil {
-		ImportBatchMods.WithNewRace().Apply(ctx, o)
+	if o.r.RaceGrid == nil {
+		ImportBatchMods.WithNewRaceGrid().Apply(ctx, o)
 	}
 
-	var rel1 *models.Race
+	var rel1 *models.RaceGrid
 
-	if o.r.Race.o.alreadyPersisted {
-		rel1 = o.r.Race.o.Build()
+	if o.r.RaceGrid.o.alreadyPersisted {
+		rel1 = o.r.RaceGrid.o.Build()
 	} else {
-		rel1, err = o.r.Race.o.Create(ctx, exec)
+		rel1, err = o.r.RaceGrid.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceID = omit.From(rel1.ID)
+	opt.RaceGridID = omit.From(rel1.ID)
 
 	m, err := models.ImportBatches.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Race = rel1
+	m.R.RaceGrid = rel1
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -396,7 +396,7 @@ func (m importBatchMods) RandomizeAllColumns(f *faker.Faker) ImportBatchMod {
 	return ImportBatchModSlice{
 		ImportBatchMods.RandomID(f),
 		ImportBatchMods.RandomFrontendID(f),
-		ImportBatchMods.RandomRaceID(f),
+		ImportBatchMods.RandomRaceGridID(f),
 		ImportBatchMods.RandomImportFormat(f),
 		ImportBatchMods.RandomPayload(f),
 		ImportBatchMods.RandomSourceFilename(f),
@@ -473,31 +473,31 @@ func (m importBatchMods) RandomFrontendID(f *faker.Faker) ImportBatchMod {
 }
 
 // Set the model columns to this value
-func (m importBatchMods) RaceID(val int32) ImportBatchMod {
+func (m importBatchMods) RaceGridID(val int32) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.RaceID = func() int32 { return val }
+		o.RaceGridID = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m importBatchMods) RaceIDFunc(f func() int32) ImportBatchMod {
+func (m importBatchMods) RaceGridIDFunc(f func() int32) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.RaceID = f
+		o.RaceGridID = f
 	})
 }
 
 // Clear any values for the column
-func (m importBatchMods) UnsetRaceID() ImportBatchMod {
+func (m importBatchMods) UnsetRaceGridID() ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.RaceID = nil
+		o.RaceGridID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m importBatchMods) RandomRaceID(f *faker.Faker) ImportBatchMod {
+func (m importBatchMods) RandomRaceGridID(f *faker.Faker) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.RaceID = func() int32 {
+		o.RaceGridID = func() int32 {
 			return random_int32(f)
 		}
 	})
@@ -865,39 +865,39 @@ func (m importBatchMods) WithParentsCascading() ImportBatchMod {
 		ctx = importBatchWithParentsCascadingCtx.WithValue(ctx, true)
 		{
 
-			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
-			m.WithRace(related).Apply(ctx, o)
+			related := o.f.NewRaceGridWithContext(ctx, RaceGridMods.WithParentsCascading())
+			m.WithRaceGrid(related).Apply(ctx, o)
 		}
 	})
 }
 
-func (m importBatchMods) WithRace(rel *RaceTemplate) ImportBatchMod {
+func (m importBatchMods) WithRaceGrid(rel *RaceGridTemplate) ImportBatchMod {
 	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Race = &importBatchRRaceR{
+		o.r.RaceGrid = &importBatchRRaceGridR{
 			o: rel,
 		}
 	})
 }
 
-func (m importBatchMods) WithNewRace(mods ...RaceMod) ImportBatchMod {
+func (m importBatchMods) WithNewRaceGrid(mods ...RaceGridMod) ImportBatchMod {
 	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		related := o.f.NewRaceWithContext(ctx, mods...)
+		related := o.f.NewRaceGridWithContext(ctx, mods...)
 
-		m.WithRace(related).Apply(ctx, o)
+		m.WithRaceGrid(related).Apply(ctx, o)
 	})
 }
 
-func (m importBatchMods) WithExistingRace(em *models.Race) ImportBatchMod {
+func (m importBatchMods) WithExistingRaceGrid(em *models.RaceGrid) ImportBatchMod {
 	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Race = &importBatchRRaceR{
-			o: o.f.FromExistingRace(em),
+		o.r.RaceGrid = &importBatchRRaceGridR{
+			o: o.f.FromExistingRaceGrid(em),
 		}
 	})
 }
 
-func (m importBatchMods) WithoutRace() ImportBatchMod {
+func (m importBatchMods) WithoutRaceGrid() ImportBatchMod {
 	return ImportBatchModFunc(func(ctx context.Context, o *ImportBatchTemplate) {
-		o.r.Race = nil
+		o.r.RaceGrid = nil
 	})
 }
 

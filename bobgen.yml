@@ -53,7 +53,7 @@ types:
     imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
     no_randomization_test: true
     random_expr: |
-      return "position"
+      return "finish_pos"
   "mytypes.TargetType":
     imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
     no_randomization_test: true

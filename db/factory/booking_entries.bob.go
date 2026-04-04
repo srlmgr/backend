@@ -12,7 +12,6 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
@@ -41,24 +40,23 @@ func (mods BookingEntryModSlice) Apply(ctx context.Context, n *BookingEntryTempl
 // BookingEntryTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type BookingEntryTemplate struct {
-	ID                   func() int32
-	FrontendID           func() uuid.UUID
-	EventID              func() int32
-	SourceResultEntryID  func() null.Val[int32]
-	SourceBookingEntryID func() null.Val[int32]
-	TargetType           func() mytypes.TargetType
-	DriverID             func() null.Val[int32]
-	TeamID               func() null.Val[int32]
-	SourceType           func() mytypes.SourceType
-	Points               func() int32
-	Description          func() string
-	IsManual             func() bool
-	LockedAt             func() null.Val[time.Time]
-	MetadataJSON         func() types.JSON[json.RawMessage]
-	CreatedAt            func() time.Time
-	UpdatedAt            func() time.Time
-	CreatedBy            func() string
-	UpdatedBy            func() string
+	ID           func() int32
+	EventID      func() int32
+	RaceID       func() int32
+	RaceGridID   func() int32
+	TargetType   func() mytypes.TargetType
+	DriverID     func() null.Val[int32]
+	TeamID       func() null.Val[int32]
+	SourceType   func() mytypes.SourceType
+	Points       func() int32
+	Description  func() string
+	IsManual     func() bool
+	LockedAt     func() null.Val[time.Time]
+	MetadataJSON func() types.JSON[json.RawMessage]
+	CreatedAt    func() time.Time
+	UpdatedAt    func() time.Time
+	CreatedBy    func() string
+	UpdatedBy    func() string
 
 	r bookingEntryR
 	f *Factory
@@ -67,12 +65,11 @@ type BookingEntryTemplate struct {
 }
 
 type bookingEntryR struct {
-	Driver                       *bookingEntryRDriverR
-	Event                        *bookingEntryREventR
-	SourceBookingEntry           *bookingEntryRSourceBookingEntryR
-	ReverseSourceBookingEntries  []*bookingEntryRReverseSourceBookingEntriesR
-	SourceResultEntryResultEntry *bookingEntryRSourceResultEntryResultEntryR
-	Team                         *bookingEntryRTeamR
+	Driver   *bookingEntryRDriverR
+	Event    *bookingEntryREventR
+	RaceGrid *bookingEntryRRaceGridR
+	Race     *bookingEntryRRaceR
+	Team     *bookingEntryRTeamR
 }
 
 type bookingEntryRDriverR struct {
@@ -81,15 +78,11 @@ type bookingEntryRDriverR struct {
 type bookingEntryREventR struct {
 	o *EventTemplate
 }
-type bookingEntryRSourceBookingEntryR struct {
-	o *BookingEntryTemplate
+type bookingEntryRRaceGridR struct {
+	o *RaceGridTemplate
 }
-type bookingEntryRReverseSourceBookingEntriesR struct {
-	number int
-	o      *BookingEntryTemplate
-}
-type bookingEntryRSourceResultEntryResultEntryR struct {
-	o *ResultEntryTemplate
+type bookingEntryRRaceR struct {
+	o *RaceTemplate
 }
 type bookingEntryRTeamR struct {
 	o *TeamTemplate
@@ -119,31 +112,18 @@ func (t BookingEntryTemplate) setModelRels(o *models.BookingEntry) {
 		o.R.Event = rel
 	}
 
-	if t.r.SourceBookingEntry != nil {
-		rel := t.r.SourceBookingEntry.o.Build()
-		rel.R.SourceBookingEntry = o
-		o.SourceBookingEntryID = null.From(rel.ID) // h2
-		o.R.SourceBookingEntry = rel
+	if t.r.RaceGrid != nil {
+		rel := t.r.RaceGrid.o.Build()
+		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
+		o.RaceGridID = rel.ID // h2
+		o.R.RaceGrid = rel
 	}
 
-	if t.r.ReverseSourceBookingEntries != nil {
-		rel := models.BookingEntrySlice{}
-		for _, r := range t.r.ReverseSourceBookingEntries {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.SourceBookingEntryID = null.From(o.ID) // h2
-				rel.R.ReverseSourceBookingEntries = append(rel.R.ReverseSourceBookingEntries, o)
-			}
-			rel = append(rel, related...)
-		}
-		o.R.ReverseSourceBookingEntries = rel
-	}
-
-	if t.r.SourceResultEntryResultEntry != nil {
-		rel := t.r.SourceResultEntryResultEntry.o.Build()
-		rel.R.SourceResultEntryBookingEntries = append(rel.R.SourceResultEntryBookingEntries, o)
-		o.SourceResultEntryID = null.From(rel.ID) // h2
-		o.R.SourceResultEntryResultEntry = rel
+	if t.r.Race != nil {
+		rel := t.r.Race.o.Build()
+		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
+		o.RaceID = rel.ID // h2
+		o.R.Race = rel
 	}
 
 	if t.r.Team != nil {
@@ -163,21 +143,17 @@ func (o BookingEntryTemplate) BuildSetter() *models.BookingEntrySetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
-	if o.FrontendID != nil {
-		val := o.FrontendID()
-		m.FrontendID = omit.From(val)
-	}
 	if o.EventID != nil {
 		val := o.EventID()
 		m.EventID = omit.From(val)
 	}
-	if o.SourceResultEntryID != nil {
-		val := o.SourceResultEntryID()
-		m.SourceResultEntryID = omitnull.FromNull(val)
+	if o.RaceID != nil {
+		val := o.RaceID()
+		m.RaceID = omit.From(val)
 	}
-	if o.SourceBookingEntryID != nil {
-		val := o.SourceBookingEntryID()
-		m.SourceBookingEntryID = omitnull.FromNull(val)
+	if o.RaceGridID != nil {
+		val := o.RaceGridID()
+		m.RaceGridID = omit.From(val)
 	}
 	if o.TargetType != nil {
 		val := o.TargetType()
@@ -256,17 +232,14 @@ func (o BookingEntryTemplate) Build() *models.BookingEntry {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
-	if o.FrontendID != nil {
-		m.FrontendID = o.FrontendID()
-	}
 	if o.EventID != nil {
 		m.EventID = o.EventID()
 	}
-	if o.SourceResultEntryID != nil {
-		m.SourceResultEntryID = o.SourceResultEntryID()
+	if o.RaceID != nil {
+		m.RaceID = o.RaceID()
 	}
-	if o.SourceBookingEntryID != nil {
-		m.SourceBookingEntryID = o.SourceBookingEntryID()
+	if o.RaceGridID != nil {
+		m.RaceGridID = o.RaceGridID()
 	}
 	if o.TargetType != nil {
 		m.TargetType = o.TargetType()
@@ -331,6 +304,14 @@ func ensureCreatableBookingEntry(m *models.BookingEntrySetter) {
 		val := random_int32(nil)
 		m.EventID = omit.From(val)
 	}
+	if !(m.RaceID.IsValue()) {
+		val := random_int32(nil)
+		m.RaceID = omit.From(val)
+	}
+	if !(m.RaceGridID.IsValue()) {
+		val := random_int32(nil)
+		m.RaceGridID = omit.From(val)
+	}
 	if !(m.TargetType.IsValue()) {
 		val := random_mytypes_TargetType(nil)
 		m.TargetType = omit.From(val)
@@ -370,76 +351,18 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 
 	}
 
-	isSourceBookingEntryDone, _ := bookingEntryRelSourceBookingEntryCtx.Value(ctx)
-	if !isSourceBookingEntryDone && o.r.SourceBookingEntry != nil {
-		ctx = bookingEntryRelSourceBookingEntryCtx.WithValue(ctx, true)
-		if o.r.SourceBookingEntry.o.alreadyPersisted {
-			m.R.SourceBookingEntry = o.r.SourceBookingEntry.o.Build()
-		} else {
-			var rel2 *models.BookingEntry
-			rel2, err = o.r.SourceBookingEntry.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachSourceBookingEntry(ctx, exec, rel2)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
-	isReverseSourceBookingEntriesDone, _ := bookingEntryRelReverseSourceBookingEntriesCtx.Value(ctx)
-	if !isReverseSourceBookingEntriesDone && o.r.ReverseSourceBookingEntries != nil {
-		ctx = bookingEntryRelReverseSourceBookingEntriesCtx.WithValue(ctx, true)
-		for _, r := range o.r.ReverseSourceBookingEntries {
-			if r.o.alreadyPersisted {
-				m.R.ReverseSourceBookingEntries = append(m.R.ReverseSourceBookingEntries, r.o.Build())
-			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachReverseSourceBookingEntries(ctx, exec, rel3...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	isSourceResultEntryResultEntryDone, _ := bookingEntryRelSourceResultEntryResultEntryCtx.Value(ctx)
-	if !isSourceResultEntryResultEntryDone && o.r.SourceResultEntryResultEntry != nil {
-		ctx = bookingEntryRelSourceResultEntryResultEntryCtx.WithValue(ctx, true)
-		if o.r.SourceResultEntryResultEntry.o.alreadyPersisted {
-			m.R.SourceResultEntryResultEntry = o.r.SourceResultEntryResultEntry.o.Build()
-		} else {
-			var rel4 *models.ResultEntry
-			rel4, err = o.r.SourceResultEntryResultEntry.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachSourceResultEntryResultEntry(ctx, exec, rel4)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
 	isTeamDone, _ := bookingEntryRelTeamCtx.Value(ctx)
 	if !isTeamDone && o.r.Team != nil {
 		ctx = bookingEntryRelTeamCtx.WithValue(ctx, true)
 		if o.r.Team.o.alreadyPersisted {
 			m.R.Team = o.r.Team.o.Build()
 		} else {
-			var rel5 *models.Team
-			rel5, err = o.r.Team.o.Create(ctx, exec)
+			var rel4 *models.Team
+			rel4, err = o.r.Team.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachTeam(ctx, exec, rel5)
+			err = m.AttachTeam(ctx, exec, rel4)
 			if err != nil {
 				return err
 			}
@@ -474,12 +397,48 @@ func (o *BookingEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*
 
 	opt.EventID = omit.From(rel1.ID)
 
+	if o.r.RaceGrid == nil {
+		BookingEntryMods.WithNewRaceGrid().Apply(ctx, o)
+	}
+
+	var rel2 *models.RaceGrid
+
+	if o.r.RaceGrid.o.alreadyPersisted {
+		rel2 = o.r.RaceGrid.o.Build()
+	} else {
+		rel2, err = o.r.RaceGrid.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.RaceGridID = omit.From(rel2.ID)
+
+	if o.r.Race == nil {
+		BookingEntryMods.WithNewRace().Apply(ctx, o)
+	}
+
+	var rel3 *models.Race
+
+	if o.r.Race.o.alreadyPersisted {
+		rel3 = o.r.Race.o.Build()
+	} else {
+		rel3, err = o.r.Race.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.RaceID = omit.From(rel3.ID)
+
 	m, err := models.BookingEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
 	m.R.Event = rel1
+	m.R.RaceGrid = rel2
+	m.R.Race = rel3
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -559,10 +518,9 @@ type bookingEntryMods struct{}
 func (m bookingEntryMods) RandomizeAllColumns(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModSlice{
 		BookingEntryMods.RandomID(f),
-		BookingEntryMods.RandomFrontendID(f),
 		BookingEntryMods.RandomEventID(f),
-		BookingEntryMods.RandomSourceResultEntryID(f),
-		BookingEntryMods.RandomSourceBookingEntryID(f),
+		BookingEntryMods.RandomRaceID(f),
+		BookingEntryMods.RandomRaceGridID(f),
 		BookingEntryMods.RandomTargetType(f),
 		BookingEntryMods.RandomDriverID(f),
 		BookingEntryMods.RandomTeamID(f),
@@ -611,37 +569,6 @@ func (m bookingEntryMods) RandomID(f *faker.Faker) BookingEntryMod {
 }
 
 // Set the model columns to this value
-func (m bookingEntryMods) FrontendID(val uuid.UUID) BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.FrontendID = func() uuid.UUID { return val }
-	})
-}
-
-// Set the Column from the function
-func (m bookingEntryMods) FrontendIDFunc(f func() uuid.UUID) BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.FrontendID = f
-	})
-}
-
-// Clear any values for the column
-func (m bookingEntryMods) UnsetFrontendID() BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.FrontendID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m bookingEntryMods) RandomFrontendID(f *faker.Faker) BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.FrontendID = func() uuid.UUID {
-			return random_uuid_UUID(f)
-		}
-	})
-}
-
-// Set the model columns to this value
 func (m bookingEntryMods) EventID(val int32) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
 		o.EventID = func() int32 { return val }
@@ -673,107 +600,63 @@ func (m bookingEntryMods) RandomEventID(f *faker.Faker) BookingEntryMod {
 }
 
 // Set the model columns to this value
-func (m bookingEntryMods) SourceResultEntryID(val null.Val[int32]) BookingEntryMod {
+func (m bookingEntryMods) RaceID(val int32) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceResultEntryID = func() null.Val[int32] { return val }
+		o.RaceID = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m bookingEntryMods) SourceResultEntryIDFunc(f func() null.Val[int32]) BookingEntryMod {
+func (m bookingEntryMods) RaceIDFunc(f func() int32) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceResultEntryID = f
+		o.RaceID = f
 	})
 }
 
 // Clear any values for the column
-func (m bookingEntryMods) UnsetSourceResultEntryID() BookingEntryMod {
+func (m bookingEntryMods) UnsetRaceID() BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceResultEntryID = nil
+		o.RaceID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m bookingEntryMods) RandomSourceResultEntryID(f *faker.Faker) BookingEntryMod {
+func (m bookingEntryMods) RandomRaceID(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceResultEntryID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m bookingEntryMods) RandomSourceResultEntryIDNotNull(f *faker.Faker) BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceResultEntryID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
+		o.RaceID = func() int32 {
+			return random_int32(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m bookingEntryMods) SourceBookingEntryID(val null.Val[int32]) BookingEntryMod {
+func (m bookingEntryMods) RaceGridID(val int32) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceBookingEntryID = func() null.Val[int32] { return val }
+		o.RaceGridID = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m bookingEntryMods) SourceBookingEntryIDFunc(f func() null.Val[int32]) BookingEntryMod {
+func (m bookingEntryMods) RaceGridIDFunc(f func() int32) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceBookingEntryID = f
+		o.RaceGridID = f
 	})
 }
 
 // Clear any values for the column
-func (m bookingEntryMods) UnsetSourceBookingEntryID() BookingEntryMod {
+func (m bookingEntryMods) UnsetRaceGridID() BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceBookingEntryID = nil
+		o.RaceGridID = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
-func (m bookingEntryMods) RandomSourceBookingEntryID(f *faker.Faker) BookingEntryMod {
+func (m bookingEntryMods) RandomRaceGridID(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceBookingEntryID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m bookingEntryMods) RandomSourceBookingEntryIDNotNull(f *faker.Faker) BookingEntryMod {
-	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.SourceBookingEntryID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
+		o.RaceGridID = func() int32 {
+			return random_int32(f)
 		}
 	})
 }
@@ -1265,13 +1148,13 @@ func (m bookingEntryMods) WithParentsCascading() BookingEntryMod {
 		}
 		{
 
-			related := o.f.NewBookingEntryWithContext(ctx, BookingEntryMods.WithParentsCascading())
-			m.WithSourceBookingEntry(related).Apply(ctx, o)
+			related := o.f.NewRaceGridWithContext(ctx, RaceGridMods.WithParentsCascading())
+			m.WithRaceGrid(related).Apply(ctx, o)
 		}
 		{
 
-			related := o.f.NewResultEntryWithContext(ctx, ResultEntryMods.WithParentsCascading())
-			m.WithSourceResultEntryResultEntry(related).Apply(ctx, o)
+			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
+			m.WithRace(related).Apply(ctx, o)
 		}
 		{
 
@@ -1341,63 +1224,63 @@ func (m bookingEntryMods) WithoutEvent() BookingEntryMod {
 	})
 }
 
-func (m bookingEntryMods) WithSourceBookingEntry(rel *BookingEntryTemplate) BookingEntryMod {
+func (m bookingEntryMods) WithRaceGrid(rel *RaceGridTemplate) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceBookingEntry = &bookingEntryRSourceBookingEntryR{
+		o.r.RaceGrid = &bookingEntryRRaceGridR{
 			o: rel,
 		}
 	})
 }
 
-func (m bookingEntryMods) WithNewSourceBookingEntry(mods ...BookingEntryMod) BookingEntryMod {
+func (m bookingEntryMods) WithNewRaceGrid(mods ...RaceGridMod) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		related := o.f.NewRaceGridWithContext(ctx, mods...)
 
-		m.WithSourceBookingEntry(related).Apply(ctx, o)
+		m.WithRaceGrid(related).Apply(ctx, o)
 	})
 }
 
-func (m bookingEntryMods) WithExistingSourceBookingEntry(em *models.BookingEntry) BookingEntryMod {
+func (m bookingEntryMods) WithExistingRaceGrid(em *models.RaceGrid) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceBookingEntry = &bookingEntryRSourceBookingEntryR{
-			o: o.f.FromExistingBookingEntry(em),
+		o.r.RaceGrid = &bookingEntryRRaceGridR{
+			o: o.f.FromExistingRaceGrid(em),
 		}
 	})
 }
 
-func (m bookingEntryMods) WithoutSourceBookingEntry() BookingEntryMod {
+func (m bookingEntryMods) WithoutRaceGrid() BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceBookingEntry = nil
+		o.r.RaceGrid = nil
 	})
 }
 
-func (m bookingEntryMods) WithSourceResultEntryResultEntry(rel *ResultEntryTemplate) BookingEntryMod {
+func (m bookingEntryMods) WithRace(rel *RaceTemplate) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceResultEntryResultEntry = &bookingEntryRSourceResultEntryResultEntryR{
+		o.r.Race = &bookingEntryRRaceR{
 			o: rel,
 		}
 	})
 }
 
-func (m bookingEntryMods) WithNewSourceResultEntryResultEntry(mods ...ResultEntryMod) BookingEntryMod {
+func (m bookingEntryMods) WithNewRace(mods ...RaceMod) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		related := o.f.NewResultEntryWithContext(ctx, mods...)
+		related := o.f.NewRaceWithContext(ctx, mods...)
 
-		m.WithSourceResultEntryResultEntry(related).Apply(ctx, o)
+		m.WithRace(related).Apply(ctx, o)
 	})
 }
 
-func (m bookingEntryMods) WithExistingSourceResultEntryResultEntry(em *models.ResultEntry) BookingEntryMod {
+func (m bookingEntryMods) WithExistingRace(em *models.Race) BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceResultEntryResultEntry = &bookingEntryRSourceResultEntryResultEntryR{
-			o: o.f.FromExistingResultEntry(em),
+		o.r.Race = &bookingEntryRRaceR{
+			o: o.f.FromExistingRace(em),
 		}
 	})
 }
 
-func (m bookingEntryMods) WithoutSourceResultEntryResultEntry() BookingEntryMod {
+func (m bookingEntryMods) WithoutRace() BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.SourceResultEntryResultEntry = nil
+		o.r.Race = nil
 	})
 }
 
@@ -1428,53 +1311,5 @@ func (m bookingEntryMods) WithExistingTeam(em *models.Team) BookingEntryMod {
 func (m bookingEntryMods) WithoutTeam() BookingEntryMod {
 	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
 		o.r.Team = nil
-	})
-}
-
-func (m bookingEntryMods) WithReverseSourceBookingEntries(number int, related *BookingEntryTemplate) BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.ReverseSourceBookingEntries = []*bookingEntryRReverseSourceBookingEntriesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m bookingEntryMods) WithNewReverseSourceBookingEntries(number int, mods ...BookingEntryMod) BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.WithReverseSourceBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m bookingEntryMods) AddReverseSourceBookingEntries(number int, related *BookingEntryTemplate) BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.ReverseSourceBookingEntries = append(o.r.ReverseSourceBookingEntries, &bookingEntryRReverseSourceBookingEntriesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m bookingEntryMods) AddNewReverseSourceBookingEntries(number int, mods ...BookingEntryMod) BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.AddReverseSourceBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m bookingEntryMods) AddExistingReverseSourceBookingEntries(existingModels ...*models.BookingEntry) BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		for _, em := range existingModels {
-			o.r.ReverseSourceBookingEntries = append(o.r.ReverseSourceBookingEntries, &bookingEntryRReverseSourceBookingEntriesR{
-				o: o.f.FromExistingBookingEntry(em),
-			})
-		}
-	})
-}
-
-func (m bookingEntryMods) WithoutReverseSourceBookingEntries() BookingEntryMod {
-	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
-		o.r.ReverseSourceBookingEntries = nil
 	})
 }

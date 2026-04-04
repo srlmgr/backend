@@ -31,9 +31,9 @@ func (s *service) ApplyResultEdits(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ApplyResultEdits")
 
-	raceID := int32(req.Msg.GetRaceId())
+	gridID := int32(req.Msg.GetRaceGridId())
 
-	if raceID == 0 {
+	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			errors.New("race_id is required"))
 	}
@@ -42,7 +42,7 @@ func (s *service) ApplyResultEdits(
 			errors.New("edited_rows must not be empty"))
 	}
 
-	race, err := s.repo.Races().Races().LoadByID(ctx, raceID)
+	race, err := s.repo.Races().Races().LoadByID(ctx, gridID)
 	if err != nil {
 		l.Error("failed to load race", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
@@ -51,7 +51,7 @@ func (s *service) ApplyResultEdits(
 	eventID := race.EventID
 
 	// Resolve the import batch for the race.
-	batch, err := s.repo.ImportBatches().LoadByRaceID(ctx, raceID)
+	batch, err := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
 	if err != nil {
 		l.Error("failed to load import batch", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load import batch")
@@ -77,10 +77,10 @@ func (s *service) ApplyResultEdits(
 			if loadErr != nil {
 				return loadErr
 			}
-			if existing.RaceID != raceID {
+			if existing.RaceGridID != gridID {
 				return connect.NewError(connect.CodeInvalidArgument,
 					fmt.Errorf("result entry %d does not belong to race %d",
-						row.GetId(), raceID))
+						row.GetId(), gridID))
 			}
 
 			setter := buildResultEntrySetterFromProto(row, execUser)
@@ -163,11 +163,11 @@ func buildResultEntrySetterFromProto(
 	}
 
 	if pos := row.GetFinishingPosition(); pos != 0 {
-		setter.FinishingPosition = omit.From(pos)
+		setter.FinishPosition = omit.From(pos)
 	}
 
 	if laps := row.GetCompletedLaps(); laps != 0 {
-		setter.CompletedLaps = omit.From(laps)
+		setter.LapsCompleted = omit.From(laps)
 	}
 
 	if lapTimeMs := row.GetFastestLapTimeMs(); lapTimeMs != 0 {

@@ -3,8 +3,8 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260326122707-07c1d78e8628.2
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260326122707-07c1d78e8628.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260404084507-da7b5d4b21f2.2
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260404084507-da7b5d4b21f2.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
@@ -111,6 +111,7 @@ require (
 	github.com/qdm12/reprint v0.0.0-20200326205758-722754a53494 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
+	github.com/samber/lo v1.53.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect

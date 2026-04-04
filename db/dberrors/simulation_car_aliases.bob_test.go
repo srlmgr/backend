@@ -43,25 +43,6 @@ func TestSimulationCarAliasUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ErrUniqueSimulationCarAliasesCarModelIdSimulationIdUnique",
-			expectedErr: SimulationCarAliasErrors.ErrUniqueSimulationCarAliasesCarModelIdSimulationIdUnique,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.SimulationCarAlias) factory.SimulationCarAliasModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.SimulationCarAliasModSlice, 0, 2)
-
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewSimulationCarAliasWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.SimulationCarAliasModSlice{
-					factory.SimulationCarAliasMods.CarModelID(obj.CarModelID),
-					factory.SimulationCarAliasMods.SimulationID(obj.SimulationID),
-				}
-			},
-		},
-		{
 			name:        "ErrUniqueSimulationCarAliasesSimulationIdExternalNameUnique",
 			expectedErr: SimulationCarAliasErrors.ErrUniqueSimulationCarAliasesSimulationIdExternalNameUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.SimulationCarAlias) factory.SimulationCarAliasModSlice {

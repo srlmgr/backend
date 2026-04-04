@@ -38,33 +38,32 @@ func (mods ResultEntryModSlice) Apply(ctx context.Context, n *ResultEntryTemplat
 // ResultEntryTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type ResultEntryTemplate struct {
-	ID                func() int32
-	FrontendID        func() uuid.UUID
-	RaceID            func() int32
-	RaceGridID        func() int32
-	DriverID          func() null.Val[int32]
-	TeamID            func() null.Val[int32]
-	CarModelID        func() null.Val[int32]
-	CarClassID        func() null.Val[int32]
-	RawCarName        func() null.Val[string]
-	RawDriverName     func() null.Val[string]
-	RawTeamName       func() null.Val[string]
-	CarNumber         func() null.Val[string]
-	IsGuestDriver     func() bool
-	StartingPosition  func() null.Val[int32]
-	FinishingPosition func() int32
-	CompletedLaps     func() int32
-	QualiLapTimeMS    func() null.Val[int32]
-	FastestLapTimeMS  func() null.Val[int32]
-	TotalTimeMS       func() null.Val[int32]
-	Incidents         func() null.Val[int32]
-	State             func() string
-	AdminNotes        func() null.Val[string]
-	LockedAt          func() null.Val[time.Time]
-	CreatedAt         func() time.Time
-	UpdatedAt         func() time.Time
-	CreatedBy         func() string
-	UpdatedBy         func() string
+	ID               func() int32
+	FrontendID       func() uuid.UUID
+	RaceGridID       func() int32
+	DriverID         func() null.Val[int32]
+	TeamID           func() null.Val[int32]
+	CarModelID       func() null.Val[int32]
+	CarClassID       func() null.Val[int32]
+	RawCarName       func() null.Val[string]
+	RawDriverName    func() null.Val[string]
+	RawTeamName      func() null.Val[string]
+	CarNumber        func() null.Val[string]
+	IsGuestDriver    func() bool
+	StartPosition    func() null.Val[int32]
+	FinishPosition   func() int32
+	LapsCompleted    func() int32
+	QualiLapTimeMS   func() null.Val[int32]
+	FastestLapTimeMS func() null.Val[int32]
+	TotalTimeMS      func() null.Val[int32]
+	Incidents        func() null.Val[int32]
+	State            func() string
+	AdminNotes       func() null.Val[string]
+	LockedAt         func() null.Val[time.Time]
+	CreatedAt        func() time.Time
+	UpdatedAt        func() time.Time
+	CreatedBy        func() string
+	UpdatedBy        func() string
 
 	r resultEntryR
 	f *Factory
@@ -73,19 +72,13 @@ type ResultEntryTemplate struct {
 }
 
 type resultEntryR struct {
-	SourceResultEntryBookingEntries []*resultEntryRSourceResultEntryBookingEntriesR
-	CarClass                        *resultEntryRCarClassR
-	CarModel                        *resultEntryRCarModelR
-	Driver                          *resultEntryRDriverR
-	RaceGrid                        *resultEntryRRaceGridR
-	Race                            *resultEntryRRaceR
-	Team                            *resultEntryRTeamR
+	CarClass *resultEntryRCarClassR
+	CarModel *resultEntryRCarModelR
+	Driver   *resultEntryRDriverR
+	RaceGrid *resultEntryRRaceGridR
+	Team     *resultEntryRTeamR
 }
 
-type resultEntryRSourceResultEntryBookingEntriesR struct {
-	number int
-	o      *BookingEntryTemplate
-}
 type resultEntryRCarClassR struct {
 	o *CarClassTemplate
 }
@@ -97,9 +90,6 @@ type resultEntryRDriverR struct {
 }
 type resultEntryRRaceGridR struct {
 	o *RaceGridTemplate
-}
-type resultEntryRRaceR struct {
-	o *RaceTemplate
 }
 type resultEntryRTeamR struct {
 	o *TeamTemplate
@@ -115,19 +105,6 @@ func (o *ResultEntryTemplate) Apply(ctx context.Context, mods ...ResultEntryMod)
 // setModelRels creates and sets the relationships on *models.ResultEntry
 // according to the relationships in the template. Nothing is inserted into the db
 func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
-	if t.r.SourceResultEntryBookingEntries != nil {
-		rel := models.BookingEntrySlice{}
-		for _, r := range t.r.SourceResultEntryBookingEntries {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.SourceResultEntryID = null.From(o.ID) // h2
-				rel.R.SourceResultEntryResultEntry = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.SourceResultEntryBookingEntries = rel
-	}
-
 	if t.r.CarClass != nil {
 		rel := t.r.CarClass.o.Build()
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
@@ -156,13 +133,6 @@ func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
 		o.R.RaceGrid = rel
 	}
 
-	if t.r.Race != nil {
-		rel := t.r.Race.o.Build()
-		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
-		o.RaceID = rel.ID // h2
-		o.R.Race = rel
-	}
-
 	if t.r.Team != nil {
 		rel := t.r.Team.o.Build()
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
@@ -183,10 +153,6 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 	if o.FrontendID != nil {
 		val := o.FrontendID()
 		m.FrontendID = omit.From(val)
-	}
-	if o.RaceID != nil {
-		val := o.RaceID()
-		m.RaceID = omit.From(val)
 	}
 	if o.RaceGridID != nil {
 		val := o.RaceGridID()
@@ -228,17 +194,17 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.IsGuestDriver()
 		m.IsGuestDriver = omit.From(val)
 	}
-	if o.StartingPosition != nil {
-		val := o.StartingPosition()
-		m.StartingPosition = omitnull.FromNull(val)
+	if o.StartPosition != nil {
+		val := o.StartPosition()
+		m.StartPosition = omitnull.FromNull(val)
 	}
-	if o.FinishingPosition != nil {
-		val := o.FinishingPosition()
-		m.FinishingPosition = omit.From(val)
+	if o.FinishPosition != nil {
+		val := o.FinishPosition()
+		m.FinishPosition = omit.From(val)
 	}
-	if o.CompletedLaps != nil {
-		val := o.CompletedLaps()
-		m.CompletedLaps = omit.From(val)
+	if o.LapsCompleted != nil {
+		val := o.LapsCompleted()
+		m.LapsCompleted = omit.From(val)
 	}
 	if o.QualiLapTimeMS != nil {
 		val := o.QualiLapTimeMS()
@@ -312,9 +278,6 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.FrontendID != nil {
 		m.FrontendID = o.FrontendID()
 	}
-	if o.RaceID != nil {
-		m.RaceID = o.RaceID()
-	}
 	if o.RaceGridID != nil {
 		m.RaceGridID = o.RaceGridID()
 	}
@@ -345,14 +308,14 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.IsGuestDriver != nil {
 		m.IsGuestDriver = o.IsGuestDriver()
 	}
-	if o.StartingPosition != nil {
-		m.StartingPosition = o.StartingPosition()
+	if o.StartPosition != nil {
+		m.StartPosition = o.StartPosition()
 	}
-	if o.FinishingPosition != nil {
-		m.FinishingPosition = o.FinishingPosition()
+	if o.FinishPosition != nil {
+		m.FinishPosition = o.FinishPosition()
 	}
-	if o.CompletedLaps != nil {
-		m.CompletedLaps = o.CompletedLaps()
+	if o.LapsCompleted != nil {
+		m.LapsCompleted = o.LapsCompleted()
 	}
 	if o.QualiLapTimeMS != nil {
 		m.QualiLapTimeMS = o.QualiLapTimeMS()
@@ -407,17 +370,13 @@ func (o ResultEntryTemplate) BuildMany(number int) models.ResultEntrySlice {
 }
 
 func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
-	if !(m.RaceID.IsValue()) {
-		val := random_int32(nil)
-		m.RaceID = omit.From(val)
-	}
 	if !(m.RaceGridID.IsValue()) {
 		val := random_int32(nil)
 		m.RaceGridID = omit.From(val)
 	}
-	if !(m.FinishingPosition.IsValue()) {
+	if !(m.FinishPosition.IsValue()) {
 		val := random_int32(nil)
-		m.FinishingPosition = omit.From(val)
+		m.FinishPosition = omit.From(val)
 	}
 }
 
@@ -427,38 +386,18 @@ func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
 func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.ResultEntry) error {
 	var err error
 
-	isSourceResultEntryBookingEntriesDone, _ := resultEntryRelSourceResultEntryBookingEntriesCtx.Value(ctx)
-	if !isSourceResultEntryBookingEntriesDone && o.r.SourceResultEntryBookingEntries != nil {
-		ctx = resultEntryRelSourceResultEntryBookingEntriesCtx.WithValue(ctx, true)
-		for _, r := range o.r.SourceResultEntryBookingEntries {
-			if r.o.alreadyPersisted {
-				m.R.SourceResultEntryBookingEntries = append(m.R.SourceResultEntryBookingEntries, r.o.Build())
-			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachSourceResultEntryBookingEntries(ctx, exec, rel0...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	isCarClassDone, _ := resultEntryRelCarClassCtx.Value(ctx)
 	if !isCarClassDone && o.r.CarClass != nil {
 		ctx = resultEntryRelCarClassCtx.WithValue(ctx, true)
 		if o.r.CarClass.o.alreadyPersisted {
 			m.R.CarClass = o.r.CarClass.o.Build()
 		} else {
-			var rel1 *models.CarClass
-			rel1, err = o.r.CarClass.o.Create(ctx, exec)
+			var rel0 *models.CarClass
+			rel0, err = o.r.CarClass.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachCarClass(ctx, exec, rel1)
+			err = m.AttachCarClass(ctx, exec, rel0)
 			if err != nil {
 				return err
 			}
@@ -472,12 +411,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.CarModel.o.alreadyPersisted {
 			m.R.CarModel = o.r.CarModel.o.Build()
 		} else {
-			var rel2 *models.CarModel
-			rel2, err = o.r.CarModel.o.Create(ctx, exec)
+			var rel1 *models.CarModel
+			rel1, err = o.r.CarModel.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachCarModel(ctx, exec, rel2)
+			err = m.AttachCarModel(ctx, exec, rel1)
 			if err != nil {
 				return err
 			}
@@ -491,12 +430,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.Driver.o.alreadyPersisted {
 			m.R.Driver = o.r.Driver.o.Build()
 		} else {
-			var rel3 *models.Driver
-			rel3, err = o.r.Driver.o.Create(ctx, exec)
+			var rel2 *models.Driver
+			rel2, err = o.r.Driver.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachDriver(ctx, exec, rel3)
+			err = m.AttachDriver(ctx, exec, rel2)
 			if err != nil {
 				return err
 			}
@@ -510,12 +449,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.Team.o.alreadyPersisted {
 			m.R.Team = o.r.Team.o.Build()
 		} else {
-			var rel6 *models.Team
-			rel6, err = o.r.Team.o.Create(ctx, exec)
+			var rel4 *models.Team
+			rel4, err = o.r.Team.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachTeam(ctx, exec, rel6)
+			err = m.AttachTeam(ctx, exec, rel4)
 			if err != nil {
 				return err
 			}
@@ -537,43 +476,25 @@ func (o *ResultEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 		ResultEntryMods.WithNewRaceGrid().Apply(ctx, o)
 	}
 
-	var rel4 *models.RaceGrid
+	var rel3 *models.RaceGrid
 
 	if o.r.RaceGrid.o.alreadyPersisted {
-		rel4 = o.r.RaceGrid.o.Build()
+		rel3 = o.r.RaceGrid.o.Build()
 	} else {
-		rel4, err = o.r.RaceGrid.o.Create(ctx, exec)
+		rel3, err = o.r.RaceGrid.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceGridID = omit.From(rel4.ID)
-
-	if o.r.Race == nil {
-		ResultEntryMods.WithNewRace().Apply(ctx, o)
-	}
-
-	var rel5 *models.Race
-
-	if o.r.Race.o.alreadyPersisted {
-		rel5 = o.r.Race.o.Build()
-	} else {
-		rel5, err = o.r.Race.o.Create(ctx, exec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	opt.RaceID = omit.From(rel5.ID)
+	opt.RaceGridID = omit.From(rel3.ID)
 
 	m, err := models.ResultEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.RaceGrid = rel4
-	m.R.Race = rel5
+	m.R.RaceGrid = rel3
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -654,7 +575,6 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModSlice{
 		ResultEntryMods.RandomID(f),
 		ResultEntryMods.RandomFrontendID(f),
-		ResultEntryMods.RandomRaceID(f),
 		ResultEntryMods.RandomRaceGridID(f),
 		ResultEntryMods.RandomDriverID(f),
 		ResultEntryMods.RandomTeamID(f),
@@ -665,9 +585,9 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 		ResultEntryMods.RandomRawTeamName(f),
 		ResultEntryMods.RandomCarNumber(f),
 		ResultEntryMods.RandomIsGuestDriver(f),
-		ResultEntryMods.RandomStartingPosition(f),
-		ResultEntryMods.RandomFinishingPosition(f),
-		ResultEntryMods.RandomCompletedLaps(f),
+		ResultEntryMods.RandomStartPosition(f),
+		ResultEntryMods.RandomFinishPosition(f),
+		ResultEntryMods.RandomLapsCompleted(f),
 		ResultEntryMods.RandomQualiLapTimeMS(f),
 		ResultEntryMods.RandomFastestLapTimeMS(f),
 		ResultEntryMods.RandomTotalTimeMS(f),
@@ -740,37 +660,6 @@ func (m resultEntryMods) RandomFrontendID(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.FrontendID = func() uuid.UUID {
 			return random_uuid_UUID(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m resultEntryMods) RaceID(val int32) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RaceID = func() int32 { return val }
-	})
-}
-
-// Set the Column from the function
-func (m resultEntryMods) RaceIDFunc(f func() int32) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RaceID = f
-	})
-}
-
-// Clear any values for the column
-func (m resultEntryMods) UnsetRaceID() ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RaceID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m resultEntryMods) RandomRaceID(f *faker.Faker) ResultEntryMod {
-	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.RaceID = func() int32 {
-			return random_int32(f)
 		}
 	})
 }
@@ -1262,32 +1151,32 @@ func (m resultEntryMods) RandomIsGuestDriver(f *faker.Faker) ResultEntryMod {
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) StartingPosition(val null.Val[int32]) ResultEntryMod {
+func (m resultEntryMods) StartPosition(val null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] { return val }
+		o.StartPosition = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) StartingPositionFunc(f func() null.Val[int32]) ResultEntryMod {
+func (m resultEntryMods) StartPositionFunc(f func() null.Val[int32]) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = f
+		o.StartPosition = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetStartingPosition() ResultEntryMod {
+func (m resultEntryMods) UnsetStartPosition() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = nil
+		o.StartPosition = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is sometimes null
-func (m resultEntryMods) RandomStartingPosition(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomStartPosition(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] {
+		o.StartPosition = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1301,9 +1190,9 @@ func (m resultEntryMods) RandomStartingPosition(f *faker.Faker) ResultEntryMod {
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
 // The generated value is never null
-func (m resultEntryMods) RandomStartingPositionNotNull(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomStartPositionNotNull(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.StartingPosition = func() null.Val[int32] {
+		o.StartPosition = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1315,62 +1204,62 @@ func (m resultEntryMods) RandomStartingPositionNotNull(f *faker.Faker) ResultEnt
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) FinishingPosition(val int32) ResultEntryMod {
+func (m resultEntryMods) FinishPosition(val int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = func() int32 { return val }
+		o.FinishPosition = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) FinishingPositionFunc(f func() int32) ResultEntryMod {
+func (m resultEntryMods) FinishPositionFunc(f func() int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = f
+		o.FinishPosition = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetFinishingPosition() ResultEntryMod {
+func (m resultEntryMods) UnsetFinishPosition() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = nil
+		o.FinishPosition = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomFinishingPosition(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomFinishPosition(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.FinishingPosition = func() int32 {
+		o.FinishPosition = func() int32 {
 			return random_int32(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) CompletedLaps(val int32) ResultEntryMod {
+func (m resultEntryMods) LapsCompleted(val int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = func() int32 { return val }
+		o.LapsCompleted = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) CompletedLapsFunc(f func() int32) ResultEntryMod {
+func (m resultEntryMods) LapsCompletedFunc(f func() int32) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = f
+		o.LapsCompleted = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetCompletedLaps() ResultEntryMod {
+func (m resultEntryMods) UnsetLapsCompleted() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = nil
+		o.LapsCompleted = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomCompletedLaps(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomLapsCompleted(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.CompletedLaps = func() int32 {
+		o.LapsCompleted = func() int32 {
 			return random_int32(f)
 		}
 	})
@@ -1877,11 +1766,6 @@ func (m resultEntryMods) WithParentsCascading() ResultEntryMod {
 		}
 		{
 
-			related := o.f.NewRaceWithContext(ctx, RaceMods.WithParentsCascading())
-			m.WithRace(related).Apply(ctx, o)
-		}
-		{
-
 			related := o.f.NewTeamWithContext(ctx, TeamMods.WithParentsCascading())
 			m.WithTeam(related).Apply(ctx, o)
 		}
@@ -2008,36 +1892,6 @@ func (m resultEntryMods) WithoutRaceGrid() ResultEntryMod {
 	})
 }
 
-func (m resultEntryMods) WithRace(rel *RaceTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.Race = &resultEntryRRaceR{
-			o: rel,
-		}
-	})
-}
-
-func (m resultEntryMods) WithNewRace(mods ...RaceMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewRaceWithContext(ctx, mods...)
-
-		m.WithRace(related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) WithExistingRace(em *models.Race) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.Race = &resultEntryRRaceR{
-			o: o.f.FromExistingRace(em),
-		}
-	})
-}
-
-func (m resultEntryMods) WithoutRace() ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.Race = nil
-	})
-}
-
 func (m resultEntryMods) WithTeam(rel *TeamTemplate) ResultEntryMod {
 	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
 		o.r.Team = &resultEntryRTeamR{
@@ -2065,53 +1919,5 @@ func (m resultEntryMods) WithExistingTeam(em *models.Team) ResultEntryMod {
 func (m resultEntryMods) WithoutTeam() ResultEntryMod {
 	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
 		o.r.Team = nil
-	})
-}
-
-func (m resultEntryMods) WithSourceResultEntryBookingEntries(number int, related *BookingEntryTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = []*resultEntryRSourceResultEntryBookingEntriesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m resultEntryMods) WithNewSourceResultEntryBookingEntries(number int, mods ...BookingEntryMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.WithSourceResultEntryBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) AddSourceResultEntryBookingEntries(number int, related *BookingEntryTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = append(o.r.SourceResultEntryBookingEntries, &resultEntryRSourceResultEntryBookingEntriesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m resultEntryMods) AddNewSourceResultEntryBookingEntries(number int, mods ...BookingEntryMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.AddSourceResultEntryBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) AddExistingSourceResultEntryBookingEntries(existingModels ...*models.BookingEntry) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		for _, em := range existingModels {
-			o.r.SourceResultEntryBookingEntries = append(o.r.SourceResultEntryBookingEntries, &resultEntryRSourceResultEntryBookingEntriesR{
-				o: o.f.FromExistingBookingEntry(em),
-			})
-		}
-	})
-}
-
-func (m resultEntryMods) WithoutSourceResultEntryBookingEntries() ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = nil
 	})
 }

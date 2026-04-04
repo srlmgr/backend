@@ -73,10 +73,9 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 	o := &BookingEntryTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.EventID = func() int32 { return m.EventID }
-	o.SourceResultEntryID = func() null.Val[int32] { return m.SourceResultEntryID }
-	o.SourceBookingEntryID = func() null.Val[int32] { return m.SourceBookingEntryID }
+	o.RaceID = func() int32 { return m.RaceID }
+	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.TargetType = func() mytypes.TargetType { return m.TargetType }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -98,14 +97,11 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 	if m.R.Event != nil {
 		BookingEntryMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
 	}
-	if m.R.SourceBookingEntry != nil {
-		BookingEntryMods.WithExistingSourceBookingEntry(m.R.SourceBookingEntry).Apply(ctx, o)
+	if m.R.RaceGrid != nil {
+		BookingEntryMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
 	}
-	if len(m.R.ReverseSourceBookingEntries) > 0 {
-		BookingEntryMods.AddExistingReverseSourceBookingEntries(m.R.ReverseSourceBookingEntries...).Apply(ctx, o)
-	}
-	if m.R.SourceResultEntryResultEntry != nil {
-		BookingEntryMods.WithExistingSourceResultEntryResultEntry(m.R.SourceResultEntryResultEntry).Apply(ctx, o)
+	if m.R.Race != nil {
+		BookingEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
 	if m.R.Team != nil {
 		BookingEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
@@ -573,7 +569,7 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.RaceID = func() int32 { return m.RaceID }
+	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.ImportFormat = func() mytypes.ImportFormat { return m.ImportFormat }
 	o.Payload = func() []byte { return m.Payload }
 	o.SourceFilename = func() null.Val[string] { return m.SourceFilename }
@@ -589,8 +585,8 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 	if len(m.R.EventProcessingAudits) > 0 {
 		ImportBatchMods.AddExistingEventProcessingAudits(m.R.EventProcessingAudits...).Apply(ctx, o)
 	}
-	if m.R.Race != nil {
-		ImportBatchMods.WithExistingRace(m.R.Race).Apply(ctx, o)
+	if m.R.RaceGrid != nil {
+		ImportBatchMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
 	}
 
 	return o
@@ -701,6 +697,12 @@ func (f *Factory) FromExistingRaceGrid(m *models.RaceGrid) *RaceGridTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		RaceGridMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
+	if len(m.R.ImportBatches) > 0 {
+		RaceGridMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	}
 	if m.R.Race != nil {
 		RaceGridMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
@@ -741,17 +743,14 @@ func (f *Factory) FromExistingRace(m *models.Race) *RaceTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
-	if len(m.R.ImportBatches) > 0 {
-		RaceMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
+	if len(m.R.BookingEntries) > 0 {
+		RaceMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
 	}
 	if len(m.R.RaceGrids) > 0 {
 		RaceMods.AddExistingRaceGrids(m.R.RaceGrids...).Apply(ctx, o)
 	}
 	if m.R.Event != nil {
 		RaceMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
-	}
-	if len(m.R.ResultEntries) > 0 {
-		RaceMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
 	}
 
 	return o
@@ -824,7 +823,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 
 	o.ID = func() int32 { return m.ID }
 	o.FrontendID = func() uuid.UUID { return m.FrontendID }
-	o.RaceID = func() int32 { return m.RaceID }
 	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -835,9 +833,9 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.RawTeamName = func() null.Val[string] { return m.RawTeamName }
 	o.CarNumber = func() null.Val[string] { return m.CarNumber }
 	o.IsGuestDriver = func() bool { return m.IsGuestDriver }
-	o.StartingPosition = func() null.Val[int32] { return m.StartingPosition }
-	o.FinishingPosition = func() int32 { return m.FinishingPosition }
-	o.CompletedLaps = func() int32 { return m.CompletedLaps }
+	o.StartPosition = func() null.Val[int32] { return m.StartPosition }
+	o.FinishPosition = func() int32 { return m.FinishPosition }
+	o.LapsCompleted = func() int32 { return m.LapsCompleted }
 	o.QualiLapTimeMS = func() null.Val[int32] { return m.QualiLapTimeMS }
 	o.FastestLapTimeMS = func() null.Val[int32] { return m.FastestLapTimeMS }
 	o.TotalTimeMS = func() null.Val[int32] { return m.TotalTimeMS }
@@ -851,9 +849,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
-	if len(m.R.SourceResultEntryBookingEntries) > 0 {
-		ResultEntryMods.AddExistingSourceResultEntryBookingEntries(m.R.SourceResultEntryBookingEntries...).Apply(ctx, o)
-	}
 	if m.R.CarClass != nil {
 		ResultEntryMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
 	}
@@ -865,9 +860,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.RaceGrid != nil {
 		ResultEntryMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
-	}
-	if m.R.Race != nil {
-		ResultEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
 	if m.R.Team != nil {
 		ResultEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
@@ -988,9 +980,11 @@ func (f *Factory) FromExistingSeason(m *models.Season) *SeasonTemplate {
 	o.Name = func() string { return m.Name }
 	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
 	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
-	o.HasTeams = func() bool { return m.HasTeams }
 	o.SkipEvents = func() int32 { return m.SkipEvents }
+	o.HasTeams = func() bool { return m.HasTeams }
 	o.TeamPointsTopN = func() null.Val[int32] { return m.TeamPointsTopN }
+	o.IsTeamBased = func() bool { return m.IsTeamBased }
+	o.IsMulticlass = func() bool { return m.IsMulticlass }
 	o.Status = func() string { return m.Status }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }

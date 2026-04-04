@@ -1,6 +1,6 @@
 // Package races provides repositories for the races migration group.
 //
-//nolint:lll,dupl,whitespace // repository implementations can be verbose
+//nolint:lll,whitespace // repository implementations can be verbose
 package races
 
 import (
@@ -35,6 +35,7 @@ type RacesRepository interface {
 type RaceGridsRepository interface {
 	LoadAll(ctx context.Context) ([]*models.RaceGrid, error)
 	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.RaceGrid, error)
+	LoadByEventID(ctx context.Context, eventID int32) ([]*models.RaceGrid, error)
 	LoadByID(ctx context.Context, id int32) (*models.RaceGrid, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.RaceGridSetter) (*models.RaceGrid, error)
@@ -135,6 +136,21 @@ func (r *raceGridsRepository) LoadByRaceID(
 ) ([]*models.RaceGrid, error) {
 	return models.RaceGrids.Query(
 		sm.Where(models.RaceGrids.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *raceGridsRepository) LoadByEventID(
+	ctx context.Context,
+	eventID int32,
+) ([]*models.RaceGrid, error) {
+	subQuery := psql.Select(
+		sm.Columns(models.RaceGrids.Columns.ID),
+		sm.From(models.RaceGrids.Name()),
+		models.SelectJoins.RaceGrids.InnerJoin.Race,
+		models.SelectWhere.Races.EventID.EQ(eventID),
+	)
+	return models.RaceGrids.Query(
+		sm.Where(models.RaceGrids.Columns.ID.In(subQuery)),
 	).All(ctx, r.getExecutor(ctx))
 }
 

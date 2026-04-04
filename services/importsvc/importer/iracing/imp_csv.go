@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/srlmgr/backend/services/importsvc/processor"
+	processor "github.com/srlmgr/backend/services/importsvc/importer"
 )
 
 // ParseCSV parses iRacing CSV payloads where two CSV blocks are

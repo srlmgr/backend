@@ -9,7 +9,7 @@ import (
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
 	"github.com/srlmgr/backend/services/conversion"
-	"github.com/srlmgr/backend/services/importsvc/processor"
+	processor "github.com/srlmgr/backend/services/importsvc/importer"
 )
 
 type service struct {

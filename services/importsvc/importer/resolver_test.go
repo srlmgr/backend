@@ -1,5 +1,5 @@
 //nolint:lll // test code can be verbose
-package processor
+package importer
 
 import (
 	"errors"
@@ -96,14 +96,14 @@ func TestResolveInput(t *testing.T) {
 			},
 			wantTrackID: 88,
 			wantEntry: models.ResultEntry{
-				FinishingPosition: 2,
-				CompletedLaps:     34,
-				RawDriverName:     null.From("Driver One"),
-				RawCarName:        null.From("GT3"),
-				Incidents:         null.From(int32(0)),
-				State:             "normal",
-				DriverID:          null.From(int32(101)),
-				CarModelID:        null.From(int32(202)),
+				FinishPosition: 2,
+				LapsCompleted:  34,
+				RawDriverName:  null.From("Driver One"),
+				RawCarName:     null.From("GT3"),
+				Incidents:      null.From(int32(0)),
+				State:          "normal",
+				DriverID:       null.From(int32(101)),
+				CarModelID:     null.From(int32(202)),
 			},
 			wantTrackCalls:  []resolverCall{{id: "Silverstone", name: "Silverstone"}},
 			wantDriverCalls: []resolverCall{{id: "sim-driver-1", name: "Driver One"}},
@@ -135,13 +135,13 @@ func TestResolveInput(t *testing.T) {
 			},
 			wantTrackID: 9,
 			wantEntry: models.ResultEntry{
-				FinishingPosition: 6,
-				CompletedLaps:     20,
-				RawDriverName:     null.From("Unknown Driver"),
-				RawCarName:        null.From("LMP2"),
-				Incidents:         null.From(int32(0)),
-				State:             "mapping_error",
-				CarModelID:        null.From(int32(303)),
+				FinishPosition: 6,
+				LapsCompleted:  20,
+				RawDriverName:  null.From("Unknown Driver"),
+				RawCarName:     null.From("LMP2"),
+				Incidents:      null.From(int32(0)),
+				State:          "mapping_error",
+				CarModelID:     null.From(int32(303)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{{
 				SourceValue: "sim-driver-2 (name: Unknown Driver)",
@@ -177,13 +177,13 @@ func TestResolveInput(t *testing.T) {
 			},
 			wantTrackID: 0,
 			wantEntry: models.ResultEntry{
-				FinishingPosition: 1,
-				CompletedLaps:     18,
-				RawDriverName:     null.From("Driver Three"),
-				RawCarName:        null.From("Unknown Car"),
-				Incidents:         null.From(int32(0)),
-				State:             "mapping_error",
-				DriverID:          null.From(int32(404)),
+				FinishPosition: 1,
+				LapsCompleted:  18,
+				RawDriverName:  null.From("Driver Three"),
+				RawCarName:     null.From("Unknown Car"),
+				Incidents:      null.From(int32(0)),
+				State:          "mapping_error",
+				DriverID:       null.From(int32(404)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{
 				{
@@ -219,18 +219,18 @@ func TestResolveInput(t *testing.T) {
 			}
 
 			got := result.Entries[0]
-			if got.FinishingPosition != tc.wantEntry.FinishingPosition {
+			if got.FinishPosition != tc.wantEntry.FinishPosition {
 				t.Fatalf(
 					"unexpected finishing position: got %d want %d",
-					got.FinishingPosition,
-					tc.wantEntry.FinishingPosition,
+					got.FinishPosition,
+					tc.wantEntry.FinishPosition,
 				)
 			}
-			if got.CompletedLaps != tc.wantEntry.CompletedLaps {
+			if got.LapsCompleted != tc.wantEntry.LapsCompleted {
 				t.Fatalf(
 					"unexpected completed laps: got %d want %d",
-					got.CompletedLaps,
-					tc.wantEntry.CompletedLaps,
+					got.LapsCompleted,
+					tc.wantEntry.LapsCompleted,
 				)
 			}
 			if got.State != tc.wantEntry.State {

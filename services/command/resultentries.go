@@ -19,7 +19,7 @@ import (
 )
 
 type resultEntryRequest interface {
-	GetRaceId() uint32
+	GetRaceGridId() uint32
 	GetDriverId() uint32
 	GetCarModelId() uint32
 	GetFinishingPosition() int32
@@ -38,8 +38,8 @@ type resultEntrySetterBuilder struct{}
 func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySetter {
 	setter := &resultEntrySetter{}
 
-	if raceID := msg.GetRaceId(); raceID != 0 {
-		setter.RaceID = omit.From(int32(raceID))
+	if gridID := msg.GetRaceGridId(); gridID != 0 {
+		setter.RaceGridID = omit.From(int32(gridID))
 	}
 
 	if driverID := msg.GetDriverId(); driverID != 0 {
@@ -51,11 +51,11 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 	}
 
 	if pos := msg.GetFinishingPosition(); pos != 0 {
-		setter.FinishingPosition = omit.From(pos)
+		setter.FinishPosition = omit.From(pos)
 	}
 
 	if laps := msg.GetCompletedLaps(); laps != 0 {
-		setter.CompletedLaps = omit.From(laps)
+		setter.LapsCompleted = omit.From(laps)
 	}
 
 	if lapTimeMs := msg.GetFastestLapTimeMs(); lapTimeMs != 0 {

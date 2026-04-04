@@ -52,15 +52,14 @@ type RaceTemplate struct {
 }
 
 type raceR struct {
-	ImportBatches []*raceRImportBatchesR
-	RaceGrids     []*raceRRaceGridsR
-	Event         *raceREventR
-	ResultEntries []*raceRResultEntriesR
+	BookingEntries []*raceRBookingEntriesR
+	RaceGrids      []*raceRRaceGridsR
+	Event          *raceREventR
 }
 
-type raceRImportBatchesR struct {
+type raceRBookingEntriesR struct {
 	number int
-	o      *ImportBatchTemplate
+	o      *BookingEntryTemplate
 }
 type raceRRaceGridsR struct {
 	number int
@@ -68,10 +67,6 @@ type raceRRaceGridsR struct {
 }
 type raceREventR struct {
 	o *EventTemplate
-}
-type raceRResultEntriesR struct {
-	number int
-	o      *ResultEntryTemplate
 }
 
 // Apply mods to the RaceTemplate
@@ -84,9 +79,9 @@ func (o *RaceTemplate) Apply(ctx context.Context, mods ...RaceMod) {
 // setModelRels creates and sets the relationships on *models.Race
 // according to the relationships in the template. Nothing is inserted into the db
 func (t RaceTemplate) setModelRels(o *models.Race) {
-	if t.r.ImportBatches != nil {
-		rel := models.ImportBatchSlice{}
-		for _, r := range t.r.ImportBatches {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
 				rel.RaceID = o.ID // h2
@@ -94,7 +89,7 @@ func (t RaceTemplate) setModelRels(o *models.Race) {
 			}
 			rel = append(rel, related...)
 		}
-		o.R.ImportBatches = rel
+		o.R.BookingEntries = rel
 	}
 
 	if t.r.RaceGrids != nil {
@@ -115,19 +110,6 @@ func (t RaceTemplate) setModelRels(o *models.Race) {
 		rel.R.Races = append(rel.R.Races, o)
 		o.EventID = rel.ID // h2
 		o.R.Event = rel
-	}
-
-	if t.r.ResultEntries != nil {
-		rel := models.ResultEntrySlice{}
-		for _, r := range t.r.ResultEntries {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.RaceID = o.ID // h2
-				rel.R.Race = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.ResultEntries = rel
 	}
 }
 
@@ -265,19 +247,19 @@ func ensureCreatableRace(m *models.RaceSetter) {
 func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Race) error {
 	var err error
 
-	isImportBatchesDone, _ := raceRelImportBatchesCtx.Value(ctx)
-	if !isImportBatchesDone && o.r.ImportBatches != nil {
-		ctx = raceRelImportBatchesCtx.WithValue(ctx, true)
-		for _, r := range o.r.ImportBatches {
+	isBookingEntriesDone, _ := raceRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = raceRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
 			if r.o.alreadyPersisted {
-				m.R.ImportBatches = append(m.R.ImportBatches, r.o.Build())
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
 			} else {
 				rel0, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachImportBatches(ctx, exec, rel0...)
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
 				if err != nil {
 					return err
 				}
@@ -298,26 +280,6 @@ func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 				}
 
 				err = m.AttachRaceGrids(ctx, exec, rel1...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	isResultEntriesDone, _ := raceRelResultEntriesCtx.Value(ctx)
-	if !isResultEntriesDone && o.r.ResultEntries != nil {
-		ctx = raceRelResultEntriesCtx.WithValue(ctx, true)
-		for _, r := range o.r.ResultEntries {
-			if r.o.alreadyPersisted {
-				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
-			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachResultEntries(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -771,51 +733,51 @@ func (m raceMods) WithoutEvent() RaceMod {
 	})
 }
 
-func (m raceMods) WithImportBatches(number int, related *ImportBatchTemplate) RaceMod {
+func (m raceMods) WithBookingEntries(number int, related *BookingEntryTemplate) RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ImportBatches = []*raceRImportBatchesR{{
+		o.r.BookingEntries = []*raceRBookingEntriesR{{
 			number: number,
 			o:      related,
 		}}
 	})
 }
 
-func (m raceMods) WithNewImportBatches(number int, mods ...ImportBatchMod) RaceMod {
+func (m raceMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		related := o.f.NewImportBatchWithContext(ctx, mods...)
-		m.WithImportBatches(number, related).Apply(ctx, o)
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
 	})
 }
 
-func (m raceMods) AddImportBatches(number int, related *ImportBatchTemplate) RaceMod {
+func (m raceMods) AddBookingEntries(number int, related *BookingEntryTemplate) RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ImportBatches = append(o.r.ImportBatches, &raceRImportBatchesR{
+		o.r.BookingEntries = append(o.r.BookingEntries, &raceRBookingEntriesR{
 			number: number,
 			o:      related,
 		})
 	})
 }
 
-func (m raceMods) AddNewImportBatches(number int, mods ...ImportBatchMod) RaceMod {
+func (m raceMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		related := o.f.NewImportBatchWithContext(ctx, mods...)
-		m.AddImportBatches(number, related).Apply(ctx, o)
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
 	})
 }
 
-func (m raceMods) AddExistingImportBatches(existingModels ...*models.ImportBatch) RaceMod {
+func (m raceMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
 		for _, em := range existingModels {
-			o.r.ImportBatches = append(o.r.ImportBatches, &raceRImportBatchesR{
-				o: o.f.FromExistingImportBatch(em),
+			o.r.BookingEntries = append(o.r.BookingEntries, &raceRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
 			})
 		}
 	})
 }
 
-func (m raceMods) WithoutImportBatches() RaceMod {
+func (m raceMods) WithoutBookingEntries() RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ImportBatches = nil
+		o.r.BookingEntries = nil
 	})
 }
 
@@ -864,53 +826,5 @@ func (m raceMods) AddExistingRaceGrids(existingModels ...*models.RaceGrid) RaceM
 func (m raceMods) WithoutRaceGrids() RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
 		o.r.RaceGrids = nil
-	})
-}
-
-func (m raceMods) WithResultEntries(number int, related *ResultEntryTemplate) RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ResultEntries = []*raceRResultEntriesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m raceMods) WithNewResultEntries(number int, mods ...ResultEntryMod) RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		related := o.f.NewResultEntryWithContext(ctx, mods...)
-		m.WithResultEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m raceMods) AddResultEntries(number int, related *ResultEntryTemplate) RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ResultEntries = append(o.r.ResultEntries, &raceRResultEntriesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m raceMods) AddNewResultEntries(number int, mods ...ResultEntryMod) RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		related := o.f.NewResultEntryWithContext(ctx, mods...)
-		m.AddResultEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m raceMods) AddExistingResultEntries(existingModels ...*models.ResultEntry) RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		for _, em := range existingModels {
-			o.r.ResultEntries = append(o.r.ResultEntries, &raceRResultEntriesR{
-				o: o.f.FromExistingResultEntry(em),
-			})
-		}
-	})
-}
-
-func (m raceMods) WithoutResultEntries() RaceMod {
-	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
-		o.r.ResultEntries = nil
 	})
 }

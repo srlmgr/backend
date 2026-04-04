@@ -64,10 +64,6 @@ ALTER TABLE simulation_track_layout_aliases
     FOREIGN KEY (simulation_id) REFERENCES racing_sims (id);
 
 ALTER TABLE simulation_track_layout_aliases
-    ADD CONSTRAINT simulation_track_layout_aliases_track_layout_id_simulation_id_unique
-    UNIQUE (track_layout_id, simulation_id);
-
-ALTER TABLE simulation_track_layout_aliases
     ADD CONSTRAINT simulation_track_layout_aliases_simulation_id_external_name_unique
     UNIQUE (simulation_id, external_name);
 
