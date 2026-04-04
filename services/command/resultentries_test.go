@@ -142,7 +142,10 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 		t.Fatal("expected non-nil result entry in response")
 	}
 	if resp.Msg.GetResultEntry().GetRaceGridId() != 1 {
-		t.Fatalf("unexpected race_grid_id: got %d want 1", resp.Msg.GetResultEntry().GetRaceGridId())
+		t.Fatalf(
+			"unexpected race_grid_id: got %d want 1",
+			resp.Msg.GetResultEntry().GetRaceGridId(),
+		)
 	}
 	if resp.Msg.GetResultEntry().GetFinishingPosition() != 2 {
 		t.Fatalf(
@@ -273,7 +276,7 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, grid.ID)
-	initial := seedResultEntry(t, repo, race.ID, grid.ID, "Alex Tester", 1)
+	initial := seedResultEntry(t, repo, grid.ID, "Alex Tester", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 	_ = batch
 	before, err := repo.ResultEntries().LoadByID(context.Background(), initial.ID)
@@ -355,7 +358,7 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Bob Racer", 3)
+	entry := seedResultEntry(t, repo, grid.ID, "Bob Racer", 3)
 	_ = batch
 	resp, err := svc.UpdateResultEntry(
 		context.Background(),
@@ -392,7 +395,7 @@ func TestDeleteResultEntrySuccess(t *testing.T) {
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	batch := seedImportBatch(t, repo, race.ID)
-	entry := seedResultEntry(t, repo, race.ID, grid.ID, "Charlie Speed", 1)
+	entry := seedResultEntry(t, repo, grid.ID, "Charlie Speed", 1)
 	_ = batch
 	resp, err := svc.DeleteResultEntry(
 		context.Background(),

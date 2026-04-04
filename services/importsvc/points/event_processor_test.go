@@ -136,13 +136,13 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 		workOutput{
 			refID:  12,
 			points: 5,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  11,
 			points: 3,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -151,13 +151,13 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 		workOutput{
 			refID:  21,
 			points: 20,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  22,
 			points: 15,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -250,13 +250,13 @@ func TestEventProcessorProcessAll_ClampsResolvedIndexesToLastConfiguredRaceAndGr
 		workOutput{
 			refID:  702,
 			points: 50,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  701,
 			points: 40,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -338,13 +338,13 @@ func TestEventProcessorProcessAll_WhenRaceNoIsBeyondConfigured_UsesLastRaceSetti
 		workOutput{
 			refID:  9002,
 			points: 30,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  9001,
 			points: 20,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -442,13 +442,13 @@ func TestEventProcessorProcessAll_WhenGridNoIsBeyondConfigured_UsesLastGridAward
 		workOutput{
 			refID:  9101,
 			points: 100,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  9102,
 			points: 70,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{

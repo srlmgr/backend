@@ -27,21 +27,27 @@ import (
 
 // Season is an object representing the database table.
 type Season struct {
-	ID             int32               `db:"id,pk" `
-	FrontendID     uuid.UUID           `db:"frontend_id" `
-	SeriesID       int32               `db:"series_id" `
-	PointSystemID  int32               `db:"point_system_id" `
-	Name           string              `db:"name" `
-	StartsAt       null.Val[time.Time] `db:"starts_at" `
-	EndsAt         null.Val[time.Time] `db:"ends_at" `
-	HasTeams       bool                `db:"has_teams" `
-	SkipEvents     int32               `db:"skip_events" `
-	TeamPointsTopN null.Val[int32]     `db:"team_points_top_n" `
-	Status         string              `db:"status" `
-	CreatedAt      time.Time           `db:"created_at" `
-	UpdatedAt      time.Time           `db:"updated_at" `
-	CreatedBy      string              `db:"created_by" `
-	UpdatedBy      string              `db:"updated_by" `
+	ID            int32               `db:"id,pk" `
+	FrontendID    uuid.UUID           `db:"frontend_id" `
+	SeriesID      int32               `db:"series_id" `
+	PointSystemID int32               `db:"point_system_id" `
+	Name          string              `db:"name" `
+	StartsAt      null.Val[time.Time] `db:"starts_at" `
+	EndsAt        null.Val[time.Time] `db:"ends_at" `
+	SkipEvents    int32               `db:"skip_events" `
+	// Indicates team standings are supported
+	HasTeams bool `db:"has_teams" `
+	// Top N team members considered for points
+	TeamPointsTopN null.Val[int32] `db:"team_points_top_n" `
+	// Primary entity for processing is a team
+	IsTeamBased bool `db:"is_team_based" `
+	// Indicates if multiple classes are supported
+	IsMulticlass bool      `db:"is_multiclass" `
+	Status       string    `db:"status" `
+	CreatedAt    time.Time `db:"created_at" `
+	UpdatedAt    time.Time `db:"updated_at" `
+	CreatedBy    string    `db:"created_by" `
+	UpdatedBy    string    `db:"updated_by" `
 
 	R seasonR `db:"-" `
 }
@@ -71,7 +77,7 @@ type seasonR struct {
 func buildSeasonColumns(alias string) seasonColumns {
 	return seasonColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "series_id", "point_system_id", "name", "starts_at", "ends_at", "has_teams", "skip_events", "team_points_top_n", "status", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "series_id", "point_system_id", "name", "starts_at", "ends_at", "skip_events", "has_teams", "team_points_top_n", "is_team_based", "is_multiclass", "status", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("seasons"),
 		tableAlias:     alias,
 		ID:             psql.Quote(alias, "id"),
@@ -81,9 +87,11 @@ func buildSeasonColumns(alias string) seasonColumns {
 		Name:           psql.Quote(alias, "name"),
 		StartsAt:       psql.Quote(alias, "starts_at"),
 		EndsAt:         psql.Quote(alias, "ends_at"),
-		HasTeams:       psql.Quote(alias, "has_teams"),
 		SkipEvents:     psql.Quote(alias, "skip_events"),
+		HasTeams:       psql.Quote(alias, "has_teams"),
 		TeamPointsTopN: psql.Quote(alias, "team_points_top_n"),
+		IsTeamBased:    psql.Quote(alias, "is_team_based"),
+		IsMulticlass:   psql.Quote(alias, "is_multiclass"),
 		Status:         psql.Quote(alias, "status"),
 		CreatedAt:      psql.Quote(alias, "created_at"),
 		UpdatedAt:      psql.Quote(alias, "updated_at"),
@@ -102,9 +110,11 @@ type seasonColumns struct {
 	Name           psql.Expression
 	StartsAt       psql.Expression
 	EndsAt         psql.Expression
-	HasTeams       psql.Expression
 	SkipEvents     psql.Expression
+	HasTeams       psql.Expression
 	TeamPointsTopN psql.Expression
+	IsTeamBased    psql.Expression
+	IsMulticlass   psql.Expression
 	Status         psql.Expression
 	CreatedAt      psql.Expression
 	UpdatedAt      psql.Expression
@@ -131,9 +141,11 @@ type SeasonSetter struct {
 	Name           omit.Val[string]        `db:"name" `
 	StartsAt       omitnull.Val[time.Time] `db:"starts_at" `
 	EndsAt         omitnull.Val[time.Time] `db:"ends_at" `
-	HasTeams       omit.Val[bool]          `db:"has_teams" `
 	SkipEvents     omit.Val[int32]         `db:"skip_events" `
+	HasTeams       omit.Val[bool]          `db:"has_teams" `
 	TeamPointsTopN omitnull.Val[int32]     `db:"team_points_top_n" `
+	IsTeamBased    omit.Val[bool]          `db:"is_team_based" `
+	IsMulticlass   omit.Val[bool]          `db:"is_multiclass" `
 	Status         omit.Val[string]        `db:"status" `
 	CreatedAt      omit.Val[time.Time]     `db:"created_at" `
 	UpdatedAt      omit.Val[time.Time]     `db:"updated_at" `
@@ -142,7 +154,7 @@ type SeasonSetter struct {
 }
 
 func (s SeasonSetter) SetColumns() []string {
-	vals := make([]string, 0, 15)
+	vals := make([]string, 0, 17)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -164,14 +176,20 @@ func (s SeasonSetter) SetColumns() []string {
 	if !s.EndsAt.IsUnset() {
 		vals = append(vals, "ends_at")
 	}
-	if s.HasTeams.IsValue() {
-		vals = append(vals, "has_teams")
-	}
 	if s.SkipEvents.IsValue() {
 		vals = append(vals, "skip_events")
 	}
+	if s.HasTeams.IsValue() {
+		vals = append(vals, "has_teams")
+	}
 	if !s.TeamPointsTopN.IsUnset() {
 		vals = append(vals, "team_points_top_n")
+	}
+	if s.IsTeamBased.IsValue() {
+		vals = append(vals, "is_team_based")
+	}
+	if s.IsMulticlass.IsValue() {
+		vals = append(vals, "is_multiclass")
 	}
 	if s.Status.IsValue() {
 		vals = append(vals, "status")
@@ -213,14 +231,20 @@ func (s SeasonSetter) Overwrite(t *Season) {
 	if !s.EndsAt.IsUnset() {
 		t.EndsAt = s.EndsAt.MustGetNull()
 	}
-	if s.HasTeams.IsValue() {
-		t.HasTeams = s.HasTeams.MustGet()
-	}
 	if s.SkipEvents.IsValue() {
 		t.SkipEvents = s.SkipEvents.MustGet()
 	}
+	if s.HasTeams.IsValue() {
+		t.HasTeams = s.HasTeams.MustGet()
+	}
 	if !s.TeamPointsTopN.IsUnset() {
 		t.TeamPointsTopN = s.TeamPointsTopN.MustGetNull()
+	}
+	if s.IsTeamBased.IsValue() {
+		t.IsTeamBased = s.IsTeamBased.MustGet()
+	}
+	if s.IsMulticlass.IsValue() {
+		t.IsMulticlass = s.IsMulticlass.MustGet()
 	}
 	if s.Status.IsValue() {
 		t.Status = s.Status.MustGet()
@@ -245,7 +269,7 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 15)
+		vals := make([]bob.Expression, 17)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -288,14 +312,14 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.HasTeams.IsValue() {
-			vals[7] = psql.Arg(s.HasTeams.MustGet())
+		if s.SkipEvents.IsValue() {
+			vals[7] = psql.Arg(s.SkipEvents.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.SkipEvents.IsValue() {
-			vals[8] = psql.Arg(s.SkipEvents.MustGet())
+		if s.HasTeams.IsValue() {
+			vals[8] = psql.Arg(s.HasTeams.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
@@ -306,34 +330,46 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if s.Status.IsValue() {
-			vals[10] = psql.Arg(s.Status.MustGet())
+		if s.IsTeamBased.IsValue() {
+			vals[10] = psql.Arg(s.IsTeamBased.MustGet())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[11] = psql.Arg(s.CreatedAt.MustGet())
+		if s.IsMulticlass.IsValue() {
+			vals[11] = psql.Arg(s.IsMulticlass.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[12] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.Status.IsValue() {
+			vals[12] = psql.Arg(s.Status.MustGet())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[13] = psql.Arg(s.CreatedBy.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[13] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[14] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[14] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedBy.IsValue() {
+			vals[15] = psql.Arg(s.CreatedBy.MustGet())
+		} else {
+			vals[15] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[16] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[16] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -345,7 +381,7 @@ func (s SeasonSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 15)
+	exprs := make([]bob.Expression, 0, 17)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -396,13 +432,6 @@ func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.HasTeams.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "has_teams")...),
-			psql.Arg(s.HasTeams),
-		}})
-	}
-
 	if s.SkipEvents.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "skip_events")...),
@@ -410,10 +439,31 @@ func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.HasTeams.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "has_teams")...),
+			psql.Arg(s.HasTeams),
+		}})
+	}
+
 	if !s.TeamPointsTopN.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "team_points_top_n")...),
 			psql.Arg(s.TeamPointsTopN),
+		}})
+	}
+
+	if s.IsTeamBased.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "is_team_based")...),
+			psql.Arg(s.IsTeamBased),
+		}})
+	}
+
+	if s.IsMulticlass.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "is_multiclass")...),
+			psql.Arg(s.IsMulticlass),
 		}})
 	}
 
@@ -1382,9 +1432,11 @@ type seasonWhere[Q psql.Filterable] struct {
 	Name           psql.WhereMod[Q, string]
 	StartsAt       psql.WhereNullMod[Q, time.Time]
 	EndsAt         psql.WhereNullMod[Q, time.Time]
-	HasTeams       psql.WhereMod[Q, bool]
 	SkipEvents     psql.WhereMod[Q, int32]
+	HasTeams       psql.WhereMod[Q, bool]
 	TeamPointsTopN psql.WhereNullMod[Q, int32]
+	IsTeamBased    psql.WhereMod[Q, bool]
+	IsMulticlass   psql.WhereMod[Q, bool]
 	Status         psql.WhereMod[Q, string]
 	CreatedAt      psql.WhereMod[Q, time.Time]
 	UpdatedAt      psql.WhereMod[Q, time.Time]
@@ -1405,9 +1457,11 @@ func buildSeasonWhere[Q psql.Filterable](cols seasonColumns) seasonWhere[Q] {
 		Name:           psql.Where[Q, string](cols.Name),
 		StartsAt:       psql.WhereNull[Q, time.Time](cols.StartsAt),
 		EndsAt:         psql.WhereNull[Q, time.Time](cols.EndsAt),
-		HasTeams:       psql.Where[Q, bool](cols.HasTeams),
 		SkipEvents:     psql.Where[Q, int32](cols.SkipEvents),
+		HasTeams:       psql.Where[Q, bool](cols.HasTeams),
 		TeamPointsTopN: psql.WhereNull[Q, int32](cols.TeamPointsTopN),
+		IsTeamBased:    psql.Where[Q, bool](cols.IsTeamBased),
+		IsMulticlass:   psql.Where[Q, bool](cols.IsMulticlass),
 		Status:         psql.Where[Q, string](cols.Status),
 		CreatedAt:      psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:      psql.Where[Q, time.Time](cols.UpdatedAt),

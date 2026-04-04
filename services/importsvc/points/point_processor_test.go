@@ -227,19 +227,19 @@ func TestPointSystemProcessorProcessPoints_FinishPolicySortsByFinishPosition(t *
 		workOutput{
 			refID:  102,
 			points: 25,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  103,
 			points: 18,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  101,
 			points: 15,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 3),
+			msg:    fmt.Sprintf("for pos %d", 3),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -303,13 +303,13 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 		workOutput{
 			refID:  201,
 			points: 25,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  201,
 			points: 5,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyQualificationPos,
 		},
 	}
@@ -371,25 +371,25 @@ func TestPointSystemProcessorProcessPoints_MultipleClassesProcessIndependently(t
 		workOutput{
 			refID:  302,
 			points: 10,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  301,
 			points: 7,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  401,
 			points: 10,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  402,
 			points: 7,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 	}
@@ -447,13 +447,13 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 		workOutput{
 			refID:  501,
 			points: 25,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 1),
+			msg:    fmt.Sprintf("for pos %d", 1),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{
 			refID:  502,
 			points: 18,
-			msg:    fmt.Sprintf("%s for pos %d", PointPolicy(nil), 2),
+			msg:    fmt.Sprintf("for pos %d", 2),
 			origin: PointsPolicyFinishPos,
 		},
 		workOutput{

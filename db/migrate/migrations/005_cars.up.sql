@@ -102,9 +102,6 @@ ALTER TABLE simulation_car_aliases
     ADD CONSTRAINT simulation_car_aliases_simulation_id_fk
     FOREIGN KEY (simulation_id) REFERENCES racing_sims (id);
 
-ALTER TABLE simulation_car_aliases
-    ADD CONSTRAINT simulation_car_aliases_car_model_id_simulation_id_unique
-    UNIQUE (car_model_id, simulation_id);
 
 ALTER TABLE simulation_car_aliases
     ADD CONSTRAINT simulation_car_aliases_simulation_id_external_name_unique

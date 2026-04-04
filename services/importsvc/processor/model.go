@@ -74,6 +74,6 @@ func (epi *EventProcInfo) ResolverFunc(ctx context.Context) points.ResolveGridID
 		if !ok {
 			return 0, 0, ErrRaceNotFound
 		}
-		return race.SequenceNo, grid.SequenceNo, nil
+		return race.SequenceNo - 1, grid.SequenceNo - 1, nil
 	}
 }

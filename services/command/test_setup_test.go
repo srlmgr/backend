@@ -415,7 +415,6 @@ func seedRaceGrid(
 func seedResultEntry(
 	t *testing.T,
 	repo rootrepo.Repository,
-	raceID int32,
 	raceGridID int32,
 	driverName string,
 	finishingPosition int32,

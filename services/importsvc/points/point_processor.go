@@ -70,8 +70,8 @@ func (p *standardPosBasedProcessor) Process(
 		if i >= len(points) {
 			break
 		}
-		var policy PointPolicy
-		msg := fmt.Sprintf("%s for pos %d", policy, i+1)
+
+		msg := fmt.Sprintf("for pos %d", i+1)
 
 		ret = append(ret, workOutput{
 			refID:  input.ReferenceID(),

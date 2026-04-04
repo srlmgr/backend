@@ -5,7 +5,7 @@ import (
 )
 
 type (
-	PointType      float32
+	PointType      float64
 	SeasonSettings struct {
 		Pointsystem PointSystemSettings
 		Standings   StandingsSettings
@@ -120,6 +120,14 @@ func (p *PointPolicyType) UnmarshalText(text []byte) error {
 	}
 	*p = val
 	return nil
+}
+
+func (p PointPolicyType) String() string {
+	str, ok := pointPolicyTypeToString[p]
+	if !ok {
+		return fmt.Sprintf("unknown(%d)", p)
+	}
+	return str
 }
 
 func NewInput(opts ...InputOpt) Input {

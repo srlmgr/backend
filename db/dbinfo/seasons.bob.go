@@ -78,15 +78,6 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		HasTeams: column{
-			Name:      "has_teams",
-			DBType:    "boolean",
-			Default:   "false",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		SkipEvents: column{
 			Name:      "skip_events",
 			DBType:    "integer",
@@ -96,12 +87,39 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		HasTeams: column{
+			Name:      "has_teams",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "Indicates team standings are supported",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		TeamPointsTopN: column{
 			Name:      "team_points_top_n",
 			DBType:    "integer",
 			Default:   "NULL",
-			Comment:   "",
+			Comment:   "Top N team members considered for points",
 			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		IsTeamBased: column{
+			Name:      "is_team_based",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "Primary entity for processing is a team",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		IsMulticlass: column{
+			Name:      "is_multiclass",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "Indicates if multiple classes are supported",
+			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -359,9 +377,11 @@ type seasonColumns struct {
 	Name           column
 	StartsAt       column
 	EndsAt         column
-	HasTeams       column
 	SkipEvents     column
+	HasTeams       column
 	TeamPointsTopN column
+	IsTeamBased    column
+	IsMulticlass   column
 	Status         column
 	CreatedAt      column
 	UpdatedAt      column
@@ -371,7 +391,7 @@ type seasonColumns struct {
 
 func (c seasonColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.SeriesID, c.PointSystemID, c.Name, c.StartsAt, c.EndsAt, c.HasTeams, c.SkipEvents, c.TeamPointsTopN, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeriesID, c.PointSystemID, c.Name, c.StartsAt, c.EndsAt, c.SkipEvents, c.HasTeams, c.TeamPointsTopN, c.IsTeamBased, c.IsMulticlass, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 

@@ -10,8 +10,8 @@ func NewConverter() *Converter {
 	return &Converter{}
 }
 
-func (c *Converter) ResultEntryToInput(re *models.ResultEntry) Input {
-	return NewInput(
+func (c *Converter) ResultEntryToInput(re *models.ResultEntry, opts ...InputOpt) Input {
+	standardOps := []InputOpt{
 		WithDriverID(re.DriverID.GetOrZero()),
 		WithTeamID(re.TeamID.GetOrZero()),
 		WithClassID(re.CarClassID.GetOrZero()),
@@ -21,5 +21,7 @@ func (c *Converter) ResultEntryToInput(re *models.ResultEntry) Input {
 		WithIncidents(re.Incidents.GetOrZero()),
 		WithLapsCompleted(re.LapsCompleted),
 		WithFastestLap(re.FastestLapTimeMS.GetOrZero()),
-	)
+	}
+	standardOps = append(standardOps, opts...)
+	return NewInput(standardOps...)
 }

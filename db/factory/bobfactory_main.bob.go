@@ -981,9 +981,11 @@ func (f *Factory) FromExistingSeason(m *models.Season) *SeasonTemplate {
 	o.Name = func() string { return m.Name }
 	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
 	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
-	o.HasTeams = func() bool { return m.HasTeams }
 	o.SkipEvents = func() int32 { return m.SkipEvents }
+	o.HasTeams = func() bool { return m.HasTeams }
 	o.TeamPointsTopN = func() null.Val[int32] { return m.TeamPointsTopN }
+	o.IsTeamBased = func() bool { return m.IsTeamBased }
+	o.IsMulticlass = func() bool { return m.IsMulticlass }
 	o.Status = func() string { return m.Status }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }

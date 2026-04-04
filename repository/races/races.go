@@ -1,6 +1,6 @@
 // Package races provides repositories for the races migration group.
 //
-//nolint:lll,dupl,whitespace // repository implementations can be verbose
+//nolint:lll,whitespace // repository implementations can be verbose
 package races
 
 import (

@@ -250,7 +250,6 @@ func (s *service) resolveProcessorForEvent(
 	return importProcessor, simulation, nil
 }
 
-//nolint:whitespace // editor/linter issue
 func (s *service) replaceResultEntriesForBatch(
 	ctx context.Context,
 	batch *models.ImportBatch,

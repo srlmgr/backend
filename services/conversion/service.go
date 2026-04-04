@@ -129,13 +129,16 @@ func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
 	}
 
 	return &commonv1.Season{
-		Id:            uint32(model.ID),
-		SeriesId:      uint32(model.SeriesID),
-		Name:          model.Name,
-		PointSystemId: uint32(model.PointSystemID),
-		HasTeams:      model.HasTeams,
-		SkipEvents:    model.SkipEvents,
-		Status:        model.Status,
+		Id:             uint32(model.ID),
+		SeriesId:       uint32(model.SeriesID),
+		Name:           model.Name,
+		PointSystemId:  uint32(model.PointSystemID),
+		HasTeams:       model.HasTeams,
+		IsTeamBased:    model.IsTeamBased,
+		IsMulticlass:   model.IsMulticlass,
+		TeamPointsTopN: model.TeamPointsTopN.GetOrZero(),
+		SkipEvents:     model.SkipEvents,
+		Status:         model.Status,
 	}
 }
 

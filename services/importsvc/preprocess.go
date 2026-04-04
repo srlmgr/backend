@@ -12,7 +12,7 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace // editor/linter issue
 func (s *service) GetPreprocessPreview(
 	ctx context.Context,
 	req *connect.Request[importv1.GetPreprocessPreviewRequest],

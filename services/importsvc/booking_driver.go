@@ -3,11 +3,13 @@ package importsvc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/samber/lo"
 	"github.com/stephenafamo/bob/types"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -16,6 +18,8 @@ import (
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
+	"github.com/srlmgr/backend/services/importsvc/points"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -63,6 +67,23 @@ func (s *service) ComputeDriverBookingEntries(
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 
 	var createdEntries int32
+
+	outputs, err := s.computeEvent(ctx, eventID, resultEntries)
+	if err != nil {
+		l.Error("failed to compute event", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to compute event")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+	l.Debug("event computed", log.Int("num_outputs", len(outputs)))
+	lo.ForEach(outputs, func(output points.GridOutput, _ int) {
+		fmt.Printf("summary for gridID %d\n", output.GridID)
+		lo.ForEach(output.Outputs, func(entry points.Output, _ int) {
+			fmt.Printf(
+				"entry for driverID %d: points=%.1f, origin:%s description=%s\n",
+				entry.ReferenceID(), entry.Points(), entry.Origin(), entry.Msg(),
+			)
+		})
+	})
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		// Delete previously computed driver booking entries for idempotency.
@@ -133,4 +154,78 @@ func (s *service) ComputeDriverBookingEntries(
 	return connect.NewResponse(&importv1.ComputeDriverBookingEntriesResponse{
 		CreatedEntries: createdEntries,
 	}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) computeEvent(
+	ctx context.Context,
+	eventID int32,
+	entries []*models.ResultEntry,
+) ([]points.GridOutput, error) {
+	ep := processor.NewEventProcInfoCollector(s.repo)
+	epi, err := ep.ForEvent(ctx, eventID)
+	if err != nil {
+		return nil, err
+	}
+
+	pe := points.NewEventProcessor(s.dummyPointSystem())
+	conv := points.NewConverter()
+	byGridID := lo.GroupBy(entries, func(item *models.ResultEntry) int32 {
+		return item.RaceGridID
+	})
+	gridInputs := make([]points.GridInput, 0)
+	for gridID := range byGridID {
+		entries := byGridID[gridID]
+		inps := lo.Map(entries, func(item *models.ResultEntry, _ int) points.Input {
+			ret := conv.ResultEntryToInput(item,
+				points.WithReferenceID(item.DriverID.GetOrZero()))
+			return ret
+		})
+
+		gridInputs = append(gridInputs, points.GridInput{
+			GridID: gridID,
+			Inputs: inps,
+		})
+	}
+
+	return pe.ProcessAll(ctx, gridInputs, epi.ResolverFunc(ctx))
+}
+
+func (s *service) dummyPointSystem() *points.PointSystemSettings {
+	settings := &points.PointSystemSettings{
+		Eligibility: points.EligibilitySettings{
+			RaceDistPct: 0.5,
+		},
+		Races: []points.RaceSettings{
+			{
+				Policies: []points.PointPolicyType{
+					points.PointsPolicyFinishPos,
+					points.PointsPolicyIncidentsExceeded,
+				},
+				AwardSettings: []points.RankedPolicySettings{
+					{
+						Points: map[points.PointPolicyType][]points.PointType{
+							points.PointsPolicyFinishPos: {200, 150},
+						},
+					},
+					{
+						Points: map[points.PointPolicyType][]points.PointType{
+							points.PointsPolicyFinishPos: {100, 70},
+						},
+					},
+				},
+				PenaltySettings: []points.PointPenaltySettings{
+					{
+						Arguments: map[points.PointPolicyType]any{
+							points.PointsPolicyIncidentsExceeded: points.ThresholdPenaltySettings{
+								Threshold:  3,
+								PenaltyPct: 0.1,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return settings
 }

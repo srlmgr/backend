@@ -45,9 +45,11 @@ type SeasonTemplate struct {
 	Name           func() string
 	StartsAt       func() null.Val[time.Time]
 	EndsAt         func() null.Val[time.Time]
-	HasTeams       func() bool
 	SkipEvents     func() int32
+	HasTeams       func() bool
 	TeamPointsTopN func() null.Val[int32]
+	IsTeamBased    func() bool
+	IsMulticlass   func() bool
 	Status         func() string
 	CreatedAt      func() time.Time
 	UpdatedAt      func() time.Time
@@ -238,17 +240,25 @@ func (o SeasonTemplate) BuildSetter() *models.SeasonSetter {
 		val := o.EndsAt()
 		m.EndsAt = omitnull.FromNull(val)
 	}
-	if o.HasTeams != nil {
-		val := o.HasTeams()
-		m.HasTeams = omit.From(val)
-	}
 	if o.SkipEvents != nil {
 		val := o.SkipEvents()
 		m.SkipEvents = omit.From(val)
 	}
+	if o.HasTeams != nil {
+		val := o.HasTeams()
+		m.HasTeams = omit.From(val)
+	}
 	if o.TeamPointsTopN != nil {
 		val := o.TeamPointsTopN()
 		m.TeamPointsTopN = omitnull.FromNull(val)
+	}
+	if o.IsTeamBased != nil {
+		val := o.IsTeamBased()
+		m.IsTeamBased = omit.From(val)
+	}
+	if o.IsMulticlass != nil {
+		val := o.IsMulticlass()
+		m.IsMulticlass = omit.From(val)
 	}
 	if o.Status != nil {
 		val := o.Status()
@@ -313,14 +323,20 @@ func (o SeasonTemplate) Build() *models.Season {
 	if o.EndsAt != nil {
 		m.EndsAt = o.EndsAt()
 	}
-	if o.HasTeams != nil {
-		m.HasTeams = o.HasTeams()
-	}
 	if o.SkipEvents != nil {
 		m.SkipEvents = o.SkipEvents()
 	}
+	if o.HasTeams != nil {
+		m.HasTeams = o.HasTeams()
+	}
 	if o.TeamPointsTopN != nil {
 		m.TeamPointsTopN = o.TeamPointsTopN()
+	}
+	if o.IsTeamBased != nil {
+		m.IsTeamBased = o.IsTeamBased()
+	}
+	if o.IsMulticlass != nil {
+		m.IsMulticlass = o.IsMulticlass()
 	}
 	if o.Status != nil {
 		m.Status = o.Status()
@@ -633,9 +649,11 @@ func (m seasonMods) RandomizeAllColumns(f *faker.Faker) SeasonMod {
 		SeasonMods.RandomName(f),
 		SeasonMods.RandomStartsAt(f),
 		SeasonMods.RandomEndsAt(f),
-		SeasonMods.RandomHasTeams(f),
 		SeasonMods.RandomSkipEvents(f),
+		SeasonMods.RandomHasTeams(f),
 		SeasonMods.RandomTeamPointsTopN(f),
+		SeasonMods.RandomIsTeamBased(f),
+		SeasonMods.RandomIsMulticlass(f),
 		SeasonMods.RandomStatus(f),
 		SeasonMods.RandomCreatedAt(f),
 		SeasonMods.RandomUpdatedAt(f),
@@ -906,37 +924,6 @@ func (m seasonMods) RandomEndsAtNotNull(f *faker.Faker) SeasonMod {
 }
 
 // Set the model columns to this value
-func (m seasonMods) HasTeams(val bool) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.HasTeams = func() bool { return val }
-	})
-}
-
-// Set the Column from the function
-func (m seasonMods) HasTeamsFunc(f func() bool) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.HasTeams = f
-	})
-}
-
-// Clear any values for the column
-func (m seasonMods) UnsetHasTeams() SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.HasTeams = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m seasonMods) RandomHasTeams(f *faker.Faker) SeasonMod {
-	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
-		o.HasTeams = func() bool {
-			return random_bool(f)
-		}
-	})
-}
-
-// Set the model columns to this value
 func (m seasonMods) SkipEvents(val int32) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.SkipEvents = func() int32 { return val }
@@ -963,6 +950,37 @@ func (m seasonMods) RandomSkipEvents(f *faker.Faker) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.SkipEvents = func() int32 {
 			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) HasTeams(val bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) HasTeamsFunc(f func() bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetHasTeams() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomHasTeams(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.HasTeams = func() bool {
+			return random_bool(f)
 		}
 	})
 }
@@ -1016,6 +1034,68 @@ func (m seasonMods) RandomTeamPointsTopNNotNull(f *faker.Faker) SeasonMod {
 
 			val := random_int32(f)
 			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) IsTeamBased(val bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsTeamBased = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) IsTeamBasedFunc(f func() bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsTeamBased = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetIsTeamBased() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsTeamBased = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomIsTeamBased(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsTeamBased = func() bool {
+			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) IsMulticlass(val bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsMulticlass = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) IsMulticlassFunc(f func() bool) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsMulticlass = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetIsMulticlass() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsMulticlass = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomIsMulticlass(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.IsMulticlass = func() bool {
+			return random_bool(f)
 		}
 	})
 }

@@ -11,13 +11,6 @@ var SimulationCarAliasErrors = &simulationCarAliasErrors{
 		s:       "simulation_car_aliases_pkey",
 	},
 
-	ErrUniqueSimulationCarAliasesCarModelIdSimulationIdUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "simulation_car_aliases",
-		columns: []string{"car_model_id", "simulation_id"},
-		s:       "simulation_car_aliases_car_model_id_simulation_id_unique",
-	},
-
 	ErrUniqueSimulationCarAliasesSimulationIdExternalNameUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "simulation_car_aliases",
@@ -28,8 +21,6 @@ var SimulationCarAliasErrors = &simulationCarAliasErrors{
 
 type simulationCarAliasErrors struct {
 	ErrUniqueSimulationCarAliasesPkey *UniqueConstraintError
-
-	ErrUniqueSimulationCarAliasesCarModelIdSimulationIdUnique *UniqueConstraintError
 
 	ErrUniqueSimulationCarAliasesSimulationIdExternalNameUnique *UniqueConstraintError
 }

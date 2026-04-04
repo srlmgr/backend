@@ -1,4 +1,4 @@
-//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen,gocyclo // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -18,17 +18,16 @@ func TestSeasonSetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
 
 	setter := (seasonSetterBuilder{}).Build(&v1.CreateSeasonRequest{
-		SeriesId:      10,
-		Name:          "2024 Season",
-		PointSystemId: 3,
-		HasTeams:      true,
-		SkipEvents:    2,
-		Status:        "active",
+		Name:           "2024 Season",
+		PointSystemId:  3,
+		HasTeams:       true,
+		IsTeamBased:    false,
+		IsMulticlass:   false,
+		TeamPointsTopN: 2,
+		SkipEvents:     2,
+		Status:         "active",
 	})
 
-	if !setter.SeriesID.IsValue() || setter.SeriesID.MustGet() != 10 {
-		t.Fatalf("unexpected series_id setter value: %+v", setter.SeriesID)
-	}
 	if !setter.Name.IsValue() || setter.Name.MustGet() != "2024 Season" {
 		t.Fatalf("unexpected name setter value: %+v", setter.Name)
 	}
@@ -38,6 +37,17 @@ func TestSeasonSetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.HasTeams.IsValue() || !setter.HasTeams.MustGet() {
 		t.Fatalf("unexpected has_teams setter value: %+v", setter.HasTeams)
 	}
+	if !setter.IsTeamBased.IsValue() || setter.IsTeamBased.MustGet() {
+		t.Fatalf("unexpected is_team_based setter value: %+v", setter.IsTeamBased)
+	}
+	if !setter.IsMulticlass.IsValue() || setter.IsMulticlass.MustGet() {
+		t.Fatalf("unexpected is_multiclass setter value: %+v", setter.IsMulticlass)
+	}
+
+	if !setter.TeamPointsTopN.IsValue() || setter.TeamPointsTopN.MustGet() != 2 {
+		t.Fatalf("unexpected team_points_top_n setter value: %+v", setter.TeamPointsTopN)
+	}
+
 	if !setter.SkipEvents.IsValue() || setter.SkipEvents.MustGet() != 2 {
 		t.Fatalf("unexpected skip_events setter value: %+v", setter.SkipEvents)
 	}
@@ -224,7 +234,6 @@ func TestUpdateSeasonSuccess(t *testing.T) {
 
 	resp, err := svc.UpdateSeason(ctx, connect.NewRequest(&v1.UpdateSeasonRequest{
 		SeasonId:      uint32(initial.ID),
-		SeriesId:      uint32(series.ID),
 		Name:          "2023 LMP2 Updated",
 		PointSystemId: uint32(ps.ID),
 		Status:        "completed",
