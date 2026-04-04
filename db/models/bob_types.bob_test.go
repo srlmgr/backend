@@ -106,12 +106,6 @@ var _ bob.HookableType = &TrackLayout{}
 // Make sure the type Track runs hooks after queries
 var _ bob.HookableType = &Track{}
 
-// Make sure the type uuid.UUID satisfies database/sql.Scanner
-var _ sql.Scanner = (*uuid.UUID)(nil)
-
-// Make sure the type uuid.UUID satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(uuid.UUID)
-
 // Make sure the type mytypes.TargetType satisfies database/sql.Scanner
 var _ sql.Scanner = (*mytypes.TargetType)(nil)
 
@@ -129,6 +123,12 @@ var _ sql.Scanner = (*types.JSON[json.RawMessage])(nil)
 
 // Make sure the type types.JSON[json.RawMessage] satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(types.JSON[json.RawMessage])
+
+// Make sure the type uuid.UUID satisfies database/sql.Scanner
+var _ sql.Scanner = (*uuid.UUID)(nil)
+
+// Make sure the type uuid.UUID satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(uuid.UUID)
 
 // Make sure the type pq.Int32Array satisfies database/sql.Scanner
 var _ sql.Scanner = (*pq.Int32Array)(nil)

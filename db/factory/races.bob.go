@@ -52,10 +52,15 @@ type RaceTemplate struct {
 }
 
 type raceR struct {
-	RaceGrids []*raceRRaceGridsR
-	Event     *raceREventR
+	BookingEntries []*raceRBookingEntriesR
+	RaceGrids      []*raceRRaceGridsR
+	Event          *raceREventR
 }
 
+type raceRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
 type raceRRaceGridsR struct {
 	number int
 	o      *RaceGridTemplate
@@ -74,6 +79,19 @@ func (o *RaceTemplate) Apply(ctx context.Context, mods ...RaceMod) {
 // setModelRels creates and sets the relationships on *models.Race
 // according to the relationships in the template. Nothing is inserted into the db
 func (t RaceTemplate) setModelRels(o *models.Race) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.RaceID = o.ID // h2
+				rel.R.Race = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+	}
+
 	if t.r.RaceGrids != nil {
 		rel := models.RaceGridSlice{}
 		for _, r := range t.r.RaceGrids {
@@ -229,6 +247,26 @@ func ensureCreatableRace(m *models.RaceSetter) {
 func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.Race) error {
 	var err error
 
+	isBookingEntriesDone, _ := raceRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = raceRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isRaceGridsDone, _ := raceRelRaceGridsCtx.Value(ctx)
 	if !isRaceGridsDone && o.r.RaceGrids != nil {
 		ctx = raceRelRaceGridsCtx.WithValue(ctx, true)
@@ -236,12 +274,12 @@ func (o *RaceTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 			if r.o.alreadyPersisted {
 				m.R.RaceGrids = append(m.R.RaceGrids, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachRaceGrids(ctx, exec, rel0...)
+				err = m.AttachRaceGrids(ctx, exec, rel1...)
 				if err != nil {
 					return err
 				}
@@ -263,25 +301,25 @@ func (o *RaceTemplate) Create(ctx context.Context, exec bob.Executor) (*models.R
 		RaceMods.WithNewEvent().Apply(ctx, o)
 	}
 
-	var rel1 *models.Event
+	var rel2 *models.Event
 
 	if o.r.Event.o.alreadyPersisted {
-		rel1 = o.r.Event.o.Build()
+		rel2 = o.r.Event.o.Build()
 	} else {
-		rel1, err = o.r.Event.o.Create(ctx, exec)
+		rel2, err = o.r.Event.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.EventID = omit.From(rel1.ID)
+	opt.EventID = omit.From(rel2.ID)
 
 	m, err := models.Races.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Event = rel1
+	m.R.Event = rel2
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -692,6 +730,54 @@ func (m raceMods) WithExistingEvent(em *models.Event) RaceMod {
 func (m raceMods) WithoutEvent() RaceMod {
 	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
 		o.r.Event = nil
+	})
+}
+
+func (m raceMods) WithBookingEntries(number int, related *BookingEntryTemplate) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.BookingEntries = []*raceRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m raceMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceMods) AddBookingEntries(number int, related *BookingEntryTemplate) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &raceRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m raceMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &raceRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
+			})
+		}
+	})
+}
+
+func (m raceMods) WithoutBookingEntries() RaceMod {
+	return RaceModFunc(func(ctx context.Context, o *RaceTemplate) {
+		o.r.BookingEntries = nil
 	})
 }
 

@@ -389,7 +389,8 @@ func SeedResultEntryContext(
 func SeedBookingEntry(
 	t *testing.T,
 	eventID int32,
-	sourceResultEntryID int32,
+	raceID int32,
+	raceGridID int32,
 	description string,
 	points int32,
 ) *models.BookingEntry {
@@ -398,7 +399,8 @@ func SeedBookingEntry(
 		t,
 		context.Background(),
 		eventID,
-		sourceResultEntryID,
+		raceID,
+		raceGridID,
 		description,
 		points,
 	)
@@ -408,23 +410,25 @@ func SeedBookingEntryContext(
 	t *testing.T,
 	ctx context.Context,
 	eventID int32,
-	sourceResultEntryID int32,
+	raceID int32,
+	raceGridID int32,
 	description string,
 	points int32,
 ) *models.BookingEntry {
 	t.Helper()
 
 	entry, err := models.BookingEntries.Insert(&models.BookingEntrySetter{
-		EventID:             omit.From(eventID),
-		SourceResultEntryID: omitnull.From(sourceResultEntryID),
-		TargetType:          omit.From(mytypes.TargetType("driver")),
-		SourceType:          omit.From(mytypes.SourceType("finish_pos")),
-		Points:              omit.From(points),
-		Description:         omit.From(description),
-		IsManual:            omit.From(false),
-		MetadataJSON:        omit.From(emptyJSON(t)),
-		CreatedBy:           omit.From(TestUserSeed),
-		UpdatedBy:           omit.From(TestUserSeed),
+		EventID:      omit.From(eventID),
+		RaceID:       omit.From(raceID),
+		RaceGridID:   omit.From(raceGridID),
+		TargetType:   omit.From(mytypes.TargetType("driver")),
+		SourceType:   omit.From(mytypes.SourceType("finish_pos")),
+		Points:       omit.From(points),
+		Description:  omit.From(description),
+		IsManual:     omit.From(false),
+		MetadataJSON: omit.From(emptyJSON(t)),
+		CreatedBy:    omit.From(TestUserSeed),
+		UpdatedBy:    omit.From(TestUserSeed),
 	}).One(ctx, getExecutorFromContext(t, ctx))
 	if err != nil {
 		t.Fatalf("failed to seed booking entry %q: %v", description, err)

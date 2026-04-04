@@ -206,7 +206,8 @@ func seedEventFixture(t *testing.T, ctx context.Context, suffix string) eventFix
 		t,
 		ctx,
 		base.event.ID,
-		base.resultEntry.ID,
+		base.race.ID,
+		base.raceGrid.ID,
 		"Booking "+suffix,
 		10,
 	)

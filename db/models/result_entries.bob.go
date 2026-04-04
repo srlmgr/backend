@@ -69,12 +69,11 @@ type ResultEntriesQuery = *psql.ViewQuery[*ResultEntry, ResultEntrySlice]
 
 // resultEntryR is where relationships are stored.
 type resultEntryR struct {
-	SourceResultEntryBookingEntries BookingEntrySlice // booking_entries.booking_entries_source_result_entry_id_fk
-	CarClass                        *CarClass         // result_entries.result_entries_car_class_id_fk
-	CarModel                        *CarModel         // result_entries.result_entries_car_model_id_fk
-	Driver                          *Driver           // result_entries.result_entries_driver_id_fk
-	RaceGrid                        *RaceGrid         // result_entries.result_entries_race_grid_id_fk
-	Team                            *Team             // result_entries.result_entries_team_id_fk
+	CarClass *CarClass // result_entries.result_entries_car_class_id_fk
+	CarModel *CarModel // result_entries.result_entries_car_model_id_fk
+	Driver   *Driver   // result_entries.result_entries_driver_id_fk
+	RaceGrid *RaceGrid // result_entries.result_entries_race_grid_id_fk
+	Team     *Team     // result_entries.result_entries_team_id_fk
 }
 
 func buildResultEntryColumns(alias string) resultEntryColumns {
@@ -929,30 +928,6 @@ func (o ResultEntrySlice) ReloadAll(ctx context.Context, exec bob.Executor) erro
 	return nil
 }
 
-// SourceResultEntryBookingEntries starts a query for related objects on booking_entries
-func (o *ResultEntry) SourceResultEntryBookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
-	return BookingEntries.Query(append(mods,
-		sm.Where(BookingEntries.Columns.SourceResultEntryID.EQ(psql.Arg(o.ID))),
-	)...)
-}
-
-func (os ResultEntrySlice) SourceResultEntryBookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
-	pkID := make(pgtypes.Array[int32], 0, len(os))
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-		pkID = append(pkID, o.ID)
-	}
-	PKArgExpr := psql.Select(sm.Columns(
-		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
-	))
-
-	return BookingEntries.Query(append(mods,
-		sm.Where(psql.Group(BookingEntries.Columns.SourceResultEntryID).OP("IN", PKArgExpr)),
-	)...)
-}
-
 // CarClass starts a query for related objects on car_classes
 func (o *ResultEntry) CarClass(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesQuery {
 	return CarClasses.Query(append(mods,
@@ -1071,74 +1046,6 @@ func (os ResultEntrySlice) Team(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQuer
 	return Teams.Query(append(mods,
 		sm.Where(psql.Group(Teams.Columns.ID).OP("IN", PKArgExpr)),
 	)...)
-}
-
-func insertResultEntrySourceResultEntryBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, resultEntry0 *ResultEntry) (BookingEntrySlice, error) {
-	for i := range bookingEntries1 {
-		bookingEntries1[i].SourceResultEntryID = omitnull.From(resultEntry0.ID)
-	}
-
-	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
-	if err != nil {
-		return ret, fmt.Errorf("insertResultEntrySourceResultEntryBookingEntries0: %w", err)
-	}
-
-	return ret, nil
-}
-
-func attachResultEntrySourceResultEntryBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, resultEntry0 *ResultEntry) (BookingEntrySlice, error) {
-	setter := &BookingEntrySetter{
-		SourceResultEntryID: omitnull.From(resultEntry0.ID),
-	}
-
-	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
-	if err != nil {
-		return nil, fmt.Errorf("attachResultEntrySourceResultEntryBookingEntries0: %w", err)
-	}
-
-	return bookingEntries1, nil
-}
-
-func (resultEntry0 *ResultEntry) InsertSourceResultEntryBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntrySetter) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-
-	bookingEntries1, err := insertResultEntrySourceResultEntryBookingEntries0(ctx, exec, related, resultEntry0)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.SourceResultEntryBookingEntries = append(resultEntry0.R.SourceResultEntryBookingEntries, bookingEntries1...)
-
-	for _, rel := range bookingEntries1 {
-		rel.R.SourceResultEntryResultEntry = resultEntry0
-	}
-	return nil
-}
-
-func (resultEntry0 *ResultEntry) AttachSourceResultEntryBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntry) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	bookingEntries1 := BookingEntrySlice(related)
-
-	_, err = attachResultEntrySourceResultEntryBookingEntries0(ctx, exec, len(related), bookingEntries1, resultEntry0)
-	if err != nil {
-		return err
-	}
-
-	resultEntry0.R.SourceResultEntryBookingEntries = append(resultEntry0.R.SourceResultEntryBookingEntries, bookingEntries1...)
-
-	for _, rel := range related {
-		rel.R.SourceResultEntryResultEntry = resultEntry0
-	}
-
-	return nil
 }
 
 func attachResultEntryCarClass0(ctx context.Context, exec bob.Executor, count int, resultEntry0 *ResultEntry, carClass1 *CarClass) (*ResultEntry, error) {
@@ -1451,20 +1358,6 @@ func (o *ResultEntry) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
-	case "SourceResultEntryBookingEntries":
-		rels, ok := retrieved.(BookingEntrySlice)
-		if !ok {
-			return fmt.Errorf("resultEntry cannot load %T as %q", retrieved, name)
-		}
-
-		o.R.SourceResultEntryBookingEntries = rels
-
-		for _, rel := range rels {
-			if rel != nil {
-				rel.R.SourceResultEntryResultEntry = o
-			}
-		}
-		return nil
 	case "CarClass":
 		rel, ok := retrieved.(*CarClass)
 		if !ok {
@@ -1609,18 +1502,14 @@ func buildResultEntryPreloader() resultEntryPreloader {
 }
 
 type resultEntryThenLoader[Q orm.Loadable] struct {
-	SourceResultEntryBookingEntries func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	CarClass                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	CarModel                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	Driver                          func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	RaceGrid                        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
-	Team                            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	CarClass func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	CarModel func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Driver   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	RaceGrid func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	Team     func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
-	type SourceResultEntryBookingEntriesLoadInterface interface {
-		LoadSourceResultEntryBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
-	}
 	type CarClassLoadInterface interface {
 		LoadCarClass(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -1638,12 +1527,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 	}
 
 	return resultEntryThenLoader[Q]{
-		SourceResultEntryBookingEntries: thenLoadBuilder[Q](
-			"SourceResultEntryBookingEntries",
-			func(ctx context.Context, exec bob.Executor, retrieved SourceResultEntryBookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
-				return retrieved.LoadSourceResultEntryBookingEntries(ctx, exec, mods...)
-			},
-		),
 		CarClass: thenLoadBuilder[Q](
 			"CarClass",
 			func(ctx context.Context, exec bob.Executor, retrieved CarClassLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -1675,70 +1558,6 @@ func buildResultEntryThenLoader[Q orm.Loadable]() resultEntryThenLoader[Q] {
 			},
 		),
 	}
-}
-
-// LoadSourceResultEntryBookingEntries loads the resultEntry's SourceResultEntryBookingEntries into the .R struct
-func (o *ResultEntry) LoadSourceResultEntryBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if o == nil {
-		return nil
-	}
-
-	// Reset the relationship
-	o.R.SourceResultEntryBookingEntries = nil
-
-	related, err := o.SourceResultEntryBookingEntries(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, rel := range related {
-		rel.R.SourceResultEntryResultEntry = o
-	}
-
-	o.R.SourceResultEntryBookingEntries = related
-	return nil
-}
-
-// LoadSourceResultEntryBookingEntries loads the resultEntry's SourceResultEntryBookingEntries into the .R struct
-func (os ResultEntrySlice) LoadSourceResultEntryBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
-	if len(os) == 0 {
-		return nil
-	}
-
-	bookingEntries, err := os.SourceResultEntryBookingEntries(mods...).All(ctx, exec)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		o.R.SourceResultEntryBookingEntries = nil
-	}
-
-	for _, o := range os {
-		if o == nil {
-			continue
-		}
-
-		for _, rel := range bookingEntries {
-
-			if !rel.SourceResultEntryID.IsValue() {
-				continue
-			}
-			if !(rel.SourceResultEntryID.IsValue() && o.ID == rel.SourceResultEntryID.MustGet()) {
-				continue
-			}
-
-			rel.R.SourceResultEntryResultEntry = o
-
-			o.R.SourceResultEntryBookingEntries = append(o.R.SourceResultEntryBookingEntries, rel)
-		}
-	}
-
-	return nil
 }
 
 // LoadCarClass loads the resultEntry's CarClass into the .R struct
@@ -2014,13 +1833,12 @@ func (os ResultEntrySlice) LoadTeam(ctx context.Context, exec bob.Executor, mods
 }
 
 type resultEntryJoins[Q dialect.Joinable] struct {
-	typ                             string
-	SourceResultEntryBookingEntries modAs[Q, bookingEntryColumns]
-	CarClass                        modAs[Q, carClassColumns]
-	CarModel                        modAs[Q, carModelColumns]
-	Driver                          modAs[Q, driverColumns]
-	RaceGrid                        modAs[Q, raceGridColumns]
-	Team                            modAs[Q, teamColumns]
+	typ      string
+	CarClass modAs[Q, carClassColumns]
+	CarModel modAs[Q, carModelColumns]
+	Driver   modAs[Q, driverColumns]
+	RaceGrid modAs[Q, raceGridColumns]
+	Team     modAs[Q, teamColumns]
 }
 
 func (j resultEntryJoins[Q]) aliasedAs(alias string) resultEntryJoins[Q] {
@@ -2030,20 +1848,6 @@ func (j resultEntryJoins[Q]) aliasedAs(alias string) resultEntryJoins[Q] {
 func buildResultEntryJoins[Q dialect.Joinable](cols resultEntryColumns, typ string) resultEntryJoins[Q] {
 	return resultEntryJoins[Q]{
 		typ: typ,
-		SourceResultEntryBookingEntries: modAs[Q, bookingEntryColumns]{
-			c: BookingEntries.Columns,
-			f: func(to bookingEntryColumns) bob.Mod[Q] {
-				mods := make(mods.QueryMods[Q], 0, 1)
-
-				{
-					mods = append(mods, dialect.Join[Q](typ, BookingEntries.Name().As(to.Alias())).On(
-						to.SourceResultEntryID.EQ(cols.ID),
-					))
-				}
-
-				return mods
-			},
-		},
 		CarClass: modAs[Q, carClassColumns]{
 			c: CarClasses.Columns,
 			f: func(to carClassColumns) bob.Mod[Q] {

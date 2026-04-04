@@ -60,6 +60,9 @@ func (s *service) ComputeDriverBookingEntries(
 		}
 		resultEntries = append(resultEntries, entries...)
 	}
+	raceIDByGridID := lo.SliceToMap(raceGrids, func(item *models.RaceGrid) (int32, int32) {
+		return item.ID, item.RaceID
+	})
 
 	fromState := event.ProcessingState
 	toState := conversion.EventProcessingStateDriverEntriesComputed
@@ -104,6 +107,8 @@ func (s *service) ComputeDriverBookingEntries(
 					ctx,
 					&models.BookingEntrySetter{
 						EventID:    omit.From(eventID),
+						RaceID:     omit.From(raceIDByGridID[gridOutput.GridID]),
+						RaceGridID: omit.From(gridOutput.GridID),
 						TargetType: omit.From(mytypes.TargetType("driver")),
 						DriverID:   omitnull.From(output.ReferenceID()),
 						// TODO: calc TeamID from driverID + season.ID

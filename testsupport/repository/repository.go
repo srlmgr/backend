@@ -1341,7 +1341,6 @@ func New() rootrepo.Repository {
 			func(m *models.BookingEntry, s *models.BookingEntrySetter) { s.Overwrite(m) },
 			&models.BookingEntry{
 				ID:          1,
-				FrontendID:  mustUUID("00000000-0000-0000-0000-000000000011"),
 				EventID:     1,
 				TargetType:  mytypes.TargetType("driver"),
 				SourceType:  mytypes.SourceType("result"),

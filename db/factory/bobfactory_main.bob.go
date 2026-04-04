@@ -73,10 +73,9 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 	o := &BookingEntryTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.EventID = func() int32 { return m.EventID }
-	o.SourceResultEntryID = func() null.Val[int32] { return m.SourceResultEntryID }
-	o.SourceBookingEntryID = func() null.Val[int32] { return m.SourceBookingEntryID }
+	o.RaceID = func() int32 { return m.RaceID }
+	o.RaceGridID = func() int32 { return m.RaceGridID }
 	o.TargetType = func() mytypes.TargetType { return m.TargetType }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -98,14 +97,11 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 	if m.R.Event != nil {
 		BookingEntryMods.WithExistingEvent(m.R.Event).Apply(ctx, o)
 	}
-	if m.R.SourceBookingEntry != nil {
-		BookingEntryMods.WithExistingSourceBookingEntry(m.R.SourceBookingEntry).Apply(ctx, o)
+	if m.R.RaceGrid != nil {
+		BookingEntryMods.WithExistingRaceGrid(m.R.RaceGrid).Apply(ctx, o)
 	}
-	if len(m.R.ReverseSourceBookingEntries) > 0 {
-		BookingEntryMods.AddExistingReverseSourceBookingEntries(m.R.ReverseSourceBookingEntries...).Apply(ctx, o)
-	}
-	if m.R.SourceResultEntryResultEntry != nil {
-		BookingEntryMods.WithExistingSourceResultEntryResultEntry(m.R.SourceResultEntryResultEntry).Apply(ctx, o)
+	if m.R.Race != nil {
+		BookingEntryMods.WithExistingRace(m.R.Race).Apply(ctx, o)
 	}
 	if m.R.Team != nil {
 		BookingEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
@@ -701,6 +697,9 @@ func (f *Factory) FromExistingRaceGrid(m *models.RaceGrid) *RaceGridTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		RaceGridMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
 	if len(m.R.ImportBatches) > 0 {
 		RaceGridMods.AddExistingImportBatches(m.R.ImportBatches...).Apply(ctx, o)
 	}
@@ -744,6 +743,9 @@ func (f *Factory) FromExistingRace(m *models.Race) *RaceTemplate {
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
+	if len(m.R.BookingEntries) > 0 {
+		RaceMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
+	}
 	if len(m.R.RaceGrids) > 0 {
 		RaceMods.AddExistingRaceGrids(m.R.RaceGrids...).Apply(ctx, o)
 	}
@@ -847,9 +849,6 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.UpdatedBy = func() string { return m.UpdatedBy }
 
 	ctx := context.Background()
-	if len(m.R.SourceResultEntryBookingEntries) > 0 {
-		ResultEntryMods.AddExistingSourceResultEntryBookingEntries(m.R.SourceResultEntryBookingEntries...).Apply(ctx, o)
-	}
 	if m.R.CarClass != nil {
 		ResultEntryMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
 	}

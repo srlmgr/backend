@@ -52,11 +52,16 @@ type RaceGridTemplate struct {
 }
 
 type raceGridR struct {
-	ImportBatches []*raceGridRImportBatchesR
-	Race          *raceGridRRaceR
-	ResultEntries []*raceGridRResultEntriesR
+	BookingEntries []*raceGridRBookingEntriesR
+	ImportBatches  []*raceGridRImportBatchesR
+	Race           *raceGridRRaceR
+	ResultEntries  []*raceGridRResultEntriesR
 }
 
+type raceGridRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
 type raceGridRImportBatchesR struct {
 	number int
 	o      *ImportBatchTemplate
@@ -79,6 +84,19 @@ func (o *RaceGridTemplate) Apply(ctx context.Context, mods ...RaceGridMod) {
 // setModelRels creates and sets the relationships on *models.RaceGrid
 // according to the relationships in the template. Nothing is inserted into the db
 func (t RaceGridTemplate) setModelRels(o *models.RaceGrid) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.RaceGridID = o.ID // h2
+				rel.R.RaceGrid = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+	}
+
 	if t.r.ImportBatches != nil {
 		rel := models.ImportBatchSlice{}
 		for _, r := range t.r.ImportBatches {
@@ -247,6 +265,26 @@ func ensureCreatableRaceGrid(m *models.RaceGridSetter) {
 func (o *RaceGridTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.RaceGrid) error {
 	var err error
 
+	isBookingEntriesDone, _ := raceGridRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = raceGridRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isImportBatchesDone, _ := raceGridRelImportBatchesCtx.Value(ctx)
 	if !isImportBatchesDone && o.r.ImportBatches != nil {
 		ctx = raceGridRelImportBatchesCtx.WithValue(ctx, true)
@@ -254,12 +292,12 @@ func (o *RaceGridTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.ImportBatches = append(m.R.ImportBatches, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachImportBatches(ctx, exec, rel0...)
+				err = m.AttachImportBatches(ctx, exec, rel1...)
 				if err != nil {
 					return err
 				}
@@ -274,12 +312,12 @@ func (o *RaceGridTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
 			} else {
-				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachResultEntries(ctx, exec, rel2...)
+				err = m.AttachResultEntries(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -301,25 +339,25 @@ func (o *RaceGridTemplate) Create(ctx context.Context, exec bob.Executor) (*mode
 		RaceGridMods.WithNewRace().Apply(ctx, o)
 	}
 
-	var rel1 *models.Race
+	var rel2 *models.Race
 
 	if o.r.Race.o.alreadyPersisted {
-		rel1 = o.r.Race.o.Build()
+		rel2 = o.r.Race.o.Build()
 	} else {
-		rel1, err = o.r.Race.o.Create(ctx, exec)
+		rel2, err = o.r.Race.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceID = omit.From(rel1.ID)
+	opt.RaceID = omit.From(rel2.ID)
 
 	m, err := models.RaceGrids.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.Race = rel1
+	m.R.Race = rel2
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -730,6 +768,54 @@ func (m raceGridMods) WithExistingRace(em *models.Race) RaceGridMod {
 func (m raceGridMods) WithoutRace() RaceGridMod {
 	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
 		o.r.Race = nil
+	})
+}
+
+func (m raceGridMods) WithBookingEntries(number int, related *BookingEntryTemplate) RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		o.r.BookingEntries = []*raceGridRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m raceGridMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceGridMods) AddBookingEntries(number int, related *BookingEntryTemplate) RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &raceGridRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m raceGridMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m raceGridMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &raceGridRBookingEntriesR{
+				o: o.f.FromExistingBookingEntry(em),
+			})
+		}
+	})
+}
+
+func (m raceGridMods) WithoutBookingEntries() RaceGridMod {
+	return RaceGridModFunc(func(ctx context.Context, o *RaceGridTemplate) {
+		o.r.BookingEntries = nil
 	})
 }
 

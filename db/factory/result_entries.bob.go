@@ -72,18 +72,13 @@ type ResultEntryTemplate struct {
 }
 
 type resultEntryR struct {
-	SourceResultEntryBookingEntries []*resultEntryRSourceResultEntryBookingEntriesR
-	CarClass                        *resultEntryRCarClassR
-	CarModel                        *resultEntryRCarModelR
-	Driver                          *resultEntryRDriverR
-	RaceGrid                        *resultEntryRRaceGridR
-	Team                            *resultEntryRTeamR
+	CarClass *resultEntryRCarClassR
+	CarModel *resultEntryRCarModelR
+	Driver   *resultEntryRDriverR
+	RaceGrid *resultEntryRRaceGridR
+	Team     *resultEntryRTeamR
 }
 
-type resultEntryRSourceResultEntryBookingEntriesR struct {
-	number int
-	o      *BookingEntryTemplate
-}
 type resultEntryRCarClassR struct {
 	o *CarClassTemplate
 }
@@ -110,19 +105,6 @@ func (o *ResultEntryTemplate) Apply(ctx context.Context, mods ...ResultEntryMod)
 // setModelRels creates and sets the relationships on *models.ResultEntry
 // according to the relationships in the template. Nothing is inserted into the db
 func (t ResultEntryTemplate) setModelRels(o *models.ResultEntry) {
-	if t.r.SourceResultEntryBookingEntries != nil {
-		rel := models.BookingEntrySlice{}
-		for _, r := range t.r.SourceResultEntryBookingEntries {
-			related := r.o.BuildMany(r.number)
-			for _, rel := range related {
-				rel.SourceResultEntryID = null.From(o.ID) // h2
-				rel.R.SourceResultEntryResultEntry = o
-			}
-			rel = append(rel, related...)
-		}
-		o.R.SourceResultEntryBookingEntries = rel
-	}
-
 	if t.r.CarClass != nil {
 		rel := t.r.CarClass.o.Build()
 		rel.R.ResultEntries = append(rel.R.ResultEntries, o)
@@ -404,38 +386,18 @@ func ensureCreatableResultEntry(m *models.ResultEntrySetter) {
 func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.ResultEntry) error {
 	var err error
 
-	isSourceResultEntryBookingEntriesDone, _ := resultEntryRelSourceResultEntryBookingEntriesCtx.Value(ctx)
-	if !isSourceResultEntryBookingEntriesDone && o.r.SourceResultEntryBookingEntries != nil {
-		ctx = resultEntryRelSourceResultEntryBookingEntriesCtx.WithValue(ctx, true)
-		for _, r := range o.r.SourceResultEntryBookingEntries {
-			if r.o.alreadyPersisted {
-				m.R.SourceResultEntryBookingEntries = append(m.R.SourceResultEntryBookingEntries, r.o.Build())
-			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
-				if err != nil {
-					return err
-				}
-
-				err = m.AttachSourceResultEntryBookingEntries(ctx, exec, rel0...)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	isCarClassDone, _ := resultEntryRelCarClassCtx.Value(ctx)
 	if !isCarClassDone && o.r.CarClass != nil {
 		ctx = resultEntryRelCarClassCtx.WithValue(ctx, true)
 		if o.r.CarClass.o.alreadyPersisted {
 			m.R.CarClass = o.r.CarClass.o.Build()
 		} else {
-			var rel1 *models.CarClass
-			rel1, err = o.r.CarClass.o.Create(ctx, exec)
+			var rel0 *models.CarClass
+			rel0, err = o.r.CarClass.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachCarClass(ctx, exec, rel1)
+			err = m.AttachCarClass(ctx, exec, rel0)
 			if err != nil {
 				return err
 			}
@@ -449,12 +411,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.CarModel.o.alreadyPersisted {
 			m.R.CarModel = o.r.CarModel.o.Build()
 		} else {
-			var rel2 *models.CarModel
-			rel2, err = o.r.CarModel.o.Create(ctx, exec)
+			var rel1 *models.CarModel
+			rel1, err = o.r.CarModel.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachCarModel(ctx, exec, rel2)
+			err = m.AttachCarModel(ctx, exec, rel1)
 			if err != nil {
 				return err
 			}
@@ -468,12 +430,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.Driver.o.alreadyPersisted {
 			m.R.Driver = o.r.Driver.o.Build()
 		} else {
-			var rel3 *models.Driver
-			rel3, err = o.r.Driver.o.Create(ctx, exec)
+			var rel2 *models.Driver
+			rel2, err = o.r.Driver.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachDriver(ctx, exec, rel3)
+			err = m.AttachDriver(ctx, exec, rel2)
 			if err != nil {
 				return err
 			}
@@ -487,12 +449,12 @@ func (o *ResultEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execut
 		if o.r.Team.o.alreadyPersisted {
 			m.R.Team = o.r.Team.o.Build()
 		} else {
-			var rel5 *models.Team
-			rel5, err = o.r.Team.o.Create(ctx, exec)
+			var rel4 *models.Team
+			rel4, err = o.r.Team.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachTeam(ctx, exec, rel5)
+			err = m.AttachTeam(ctx, exec, rel4)
 			if err != nil {
 				return err
 			}
@@ -514,25 +476,25 @@ func (o *ResultEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 		ResultEntryMods.WithNewRaceGrid().Apply(ctx, o)
 	}
 
-	var rel4 *models.RaceGrid
+	var rel3 *models.RaceGrid
 
 	if o.r.RaceGrid.o.alreadyPersisted {
-		rel4 = o.r.RaceGrid.o.Build()
+		rel3 = o.r.RaceGrid.o.Build()
 	} else {
-		rel4, err = o.r.RaceGrid.o.Create(ctx, exec)
+		rel3, err = o.r.RaceGrid.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.RaceGridID = omit.From(rel4.ID)
+	opt.RaceGridID = omit.From(rel3.ID)
 
 	m, err := models.ResultEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.RaceGrid = rel4
+	m.R.RaceGrid = rel3
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -1957,53 +1919,5 @@ func (m resultEntryMods) WithExistingTeam(em *models.Team) ResultEntryMod {
 func (m resultEntryMods) WithoutTeam() ResultEntryMod {
 	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
 		o.r.Team = nil
-	})
-}
-
-func (m resultEntryMods) WithSourceResultEntryBookingEntries(number int, related *BookingEntryTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = []*resultEntryRSourceResultEntryBookingEntriesR{{
-			number: number,
-			o:      related,
-		}}
-	})
-}
-
-func (m resultEntryMods) WithNewSourceResultEntryBookingEntries(number int, mods ...BookingEntryMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.WithSourceResultEntryBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) AddSourceResultEntryBookingEntries(number int, related *BookingEntryTemplate) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = append(o.r.SourceResultEntryBookingEntries, &resultEntryRSourceResultEntryBookingEntriesR{
-			number: number,
-			o:      related,
-		})
-	})
-}
-
-func (m resultEntryMods) AddNewSourceResultEntryBookingEntries(number int, mods ...BookingEntryMod) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		related := o.f.NewBookingEntryWithContext(ctx, mods...)
-		m.AddSourceResultEntryBookingEntries(number, related).Apply(ctx, o)
-	})
-}
-
-func (m resultEntryMods) AddExistingSourceResultEntryBookingEntries(existingModels ...*models.BookingEntry) ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		for _, em := range existingModels {
-			o.r.SourceResultEntryBookingEntries = append(o.r.SourceResultEntryBookingEntries, &resultEntryRSourceResultEntryBookingEntriesR{
-				o: o.f.FromExistingBookingEntry(em),
-			})
-		}
-	})
-}
-
-func (m resultEntryMods) WithoutSourceResultEntryBookingEntries() ResultEntryMod {
-	return ResultEntryModFunc(func(ctx context.Context, o *ResultEntryTemplate) {
-		o.r.SourceResultEntryBookingEntries = nil
 	})
 }

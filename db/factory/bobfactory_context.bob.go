@@ -9,13 +9,12 @@ type contextKey string
 
 var (
 	// Relationship Contexts for booking_entries
-	bookingEntryWithParentsCascadingCtx            = newContextual[bool]("bookingEntryWithParentsCascading")
-	bookingEntryRelDriverCtx                       = newContextual[bool]("booking_entries.drivers.booking_entries.booking_entries_driver_id_fk")
-	bookingEntryRelEventCtx                        = newContextual[bool]("booking_entries.events.booking_entries.booking_entries_event_id_fk")
-	bookingEntryRelSourceBookingEntryCtx           = newContextual[bool]("booking_entries.booking_entries.booking_entries.booking_entries_source_booking_entry_id_fk")
-	bookingEntryRelReverseSourceBookingEntriesCtx  = newContextual[bool]("booking_entries.booking_entries.booking_entries.booking_entries_source_booking_entry_id_fk")
-	bookingEntryRelSourceResultEntryResultEntryCtx = newContextual[bool]("booking_entries.result_entries.booking_entries.booking_entries_source_result_entry_id_fk")
-	bookingEntryRelTeamCtx                         = newContextual[bool]("booking_entries.teams.booking_entries.booking_entries_team_id_fk")
+	bookingEntryWithParentsCascadingCtx = newContextual[bool]("bookingEntryWithParentsCascading")
+	bookingEntryRelDriverCtx            = newContextual[bool]("booking_entries.drivers.booking_entries.booking_entries_driver_id_fk")
+	bookingEntryRelEventCtx             = newContextual[bool]("booking_entries.events.booking_entries.booking_entries_event_id_fk")
+	bookingEntryRelRaceGridCtx          = newContextual[bool]("booking_entries.race_grids.booking_entries.booking_entries_race_grid_id_fk")
+	bookingEntryRelRaceCtx              = newContextual[bool]("booking_entries.races.booking_entries.booking_entries_race_id_fk")
+	bookingEntryRelTeamCtx              = newContextual[bool]("booking_entries.teams.booking_entries.booking_entries_team_id_fk")
 
 	// Relationship Contexts for car_brands
 	carBrandWithParentsCascadingCtx           = newContextual[bool]("carBrandWithParentsCascading")
@@ -95,12 +94,14 @@ var (
 
 	// Relationship Contexts for race_grids
 	raceGridWithParentsCascadingCtx = newContextual[bool]("raceGridWithParentsCascading")
+	raceGridRelBookingEntriesCtx    = newContextual[bool]("booking_entries.race_grids.booking_entries.booking_entries_race_grid_id_fk")
 	raceGridRelImportBatchesCtx     = newContextual[bool]("import_batches.race_grids.import_batches.import_batches_race_grid_id_fk")
 	raceGridRelRaceCtx              = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
 	raceGridRelResultEntriesCtx     = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
 
 	// Relationship Contexts for races
 	raceWithParentsCascadingCtx = newContextual[bool]("raceWithParentsCascading")
+	raceRelBookingEntriesCtx    = newContextual[bool]("booking_entries.races.booking_entries.booking_entries_race_id_fk")
 	raceRelRaceGridsCtx         = newContextual[bool]("race_grids.races.race_grids.race_grids_race_id_fk")
 	raceRelEventCtx             = newContextual[bool]("events.races.races.races_event_id_fk")
 
@@ -112,13 +113,12 @@ var (
 	racingSimRelSimulationSimulationTrackLayoutAliasesCtx = newContextual[bool]("racing_sims.simulation_track_layout_aliases.simulation_track_layout_aliases.simulation_track_layout_aliases_simulation_id_fk")
 
 	// Relationship Contexts for result_entries
-	resultEntryWithParentsCascadingCtx               = newContextual[bool]("resultEntryWithParentsCascading")
-	resultEntryRelSourceResultEntryBookingEntriesCtx = newContextual[bool]("booking_entries.result_entries.booking_entries.booking_entries_source_result_entry_id_fk")
-	resultEntryRelCarClassCtx                        = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
-	resultEntryRelCarModelCtx                        = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
-	resultEntryRelDriverCtx                          = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
-	resultEntryRelRaceGridCtx                        = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
-	resultEntryRelTeamCtx                            = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
+	resultEntryWithParentsCascadingCtx = newContextual[bool]("resultEntryWithParentsCascading")
+	resultEntryRelCarClassCtx          = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
+	resultEntryRelCarModelCtx          = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
+	resultEntryRelDriverCtx            = newContextual[bool]("drivers.result_entries.result_entries.result_entries_driver_id_fk")
+	resultEntryRelRaceGridCtx          = newContextual[bool]("race_grids.result_entries.result_entries.result_entries_race_grid_id_fk")
+	resultEntryRelTeamCtx              = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 
 	// Relationship Contexts for season_driver_standings
 	seasonDriverStandingWithParentsCascadingCtx = newContextual[bool]("seasonDriverStandingWithParentsCascading")

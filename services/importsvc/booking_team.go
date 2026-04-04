@@ -110,17 +110,16 @@ func (s *service) ComputeTeamBookingEntries(
 			_, createErr := s.repo.BookingEntries().Create(
 				ctx,
 				&models.BookingEntrySetter{
-					EventID:             omit.From(eventID),
-					SourceResultEntryID: omitnull.From(entry.ID),
-					TargetType:          omit.From(mytypes.TargetType("team")),
-					TeamID:              omitnull.From(teamID),
-					SourceType:          omit.From(mytypes.SourceType("position")),
-					Points:              omit.From(int32(0)),
-					Description:         omit.From("team position booking"),
-					IsManual:            omit.From(false),
-					MetadataJSON:        omit.From(emptyJSON),
-					CreatedBy:           omit.From(execUser),
-					UpdatedBy:           omit.From(execUser),
+					EventID:      omit.From(eventID),
+					TargetType:   omit.From(mytypes.TargetType("team")),
+					TeamID:       omitnull.From(teamID),
+					SourceType:   omit.From(mytypes.SourceType("position")),
+					Points:       omit.From(int32(0)),
+					Description:  omit.From("team position booking"),
+					IsManual:     omit.From(false),
+					MetadataJSON: omit.From(emptyJSON),
+					CreatedBy:    omit.From(execUser),
+					UpdatedBy:    omit.From(execUser),
 				})
 			if createErr != nil {
 				return createErr

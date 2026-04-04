@@ -42,24 +42,6 @@ func TestBookingEntryUniqueConstraintErrors(t *testing.T) {
 				}
 			},
 		},
-		{
-			name:        "ErrUniqueBookingEntriesFrontendIdUnique",
-			expectedErr: BookingEntryErrors.ErrUniqueBookingEntriesFrontendIdUnique,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.BookingEntry) factory.BookingEntryModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.BookingEntryModSlice, 0, 1)
-
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewBookingEntryWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.BookingEntryModSlice{
-					factory.BookingEntryMods.FrontendID(obj.FrontendID),
-				}
-			},
-		},
 	}
 
 	for _, tt := range tests {

@@ -24,15 +24,6 @@ var BookingEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		FrontendID: column{
-			Name:      "frontend_id",
-			DBType:    "uuid",
-			Default:   "uuid_generate_v4()",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		EventID: column{
 			Name:      "event_id",
 			DBType:    "integer",
@@ -42,21 +33,21 @@ var BookingEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		SourceResultEntryID: column{
-			Name:      "source_result_entry_id",
+		RaceID: column{
+			Name:      "race_id",
 			DBType:    "integer",
-			Default:   "NULL",
+			Default:   "",
 			Comment:   "",
-			Nullable:  true,
+			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},
-		SourceBookingEntryID: column{
-			Name:      "source_booking_entry_id",
+		RaceGridID: column{
+			Name:      "race_grid_id",
 			DBType:    "integer",
-			Default:   "NULL",
+			Default:   "",
 			Comment:   "",
-			Nullable:  true,
+			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -196,23 +187,6 @@ var BookingEntries = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		BookingEntriesFrontendIDUnique: index{
-			Type: "btree",
-			Name: "booking_entries_frontend_id_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "frontend_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 		IdxBookingEntriesDriverID: index{
 			Type: "btree",
 			Name: "idx_booking_entries_driver_id",
@@ -236,6 +210,40 @@ var BookingEntries = Table[
 			Columns: []indexColumn{
 				{
 					Name:         "event_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxBookingEntriesRaceGridID: index{
+			Type: "btree",
+			Name: "idx_booking_entries_race_grid_id",
+			Columns: []indexColumn{
+				{
+					Name:         "race_grid_id",
+					Desc:         null.FromCond(false, true),
+					IsExpression: false,
+				},
+			},
+			Unique:        false,
+			Comment:       "",
+			NullsFirst:    []bool{false},
+			NullsDistinct: false,
+			Where:         "",
+			Include:       []string{},
+		},
+		IdxBookingEntriesRaceID: index{
+			Type: "btree",
+			Name: "idx_booking_entries_race_id",
+			Columns: []indexColumn{
+				{
+					Name:         "race_id",
 					Desc:         null.FromCond(false, true),
 					IsExpression: false,
 				},
@@ -323,22 +331,22 @@ var BookingEntries = Table[
 			ForeignTable:   "events",
 			ForeignColumns: []string{"id"},
 		},
-		BookingEntriesBookingEntriesSourceBookingEntryIDFK: foreignKey{
+		BookingEntriesBookingEntriesRaceGridIDFK: foreignKey{
 			constraint: constraint{
-				Name:    "booking_entries.booking_entries_source_booking_entry_id_fk",
-				Columns: []string{"source_booking_entry_id"},
+				Name:    "booking_entries.booking_entries_race_grid_id_fk",
+				Columns: []string{"race_grid_id"},
 				Comment: "",
 			},
-			ForeignTable:   "booking_entries",
+			ForeignTable:   "race_grids",
 			ForeignColumns: []string{"id"},
 		},
-		BookingEntriesBookingEntriesSourceResultEntryIDFK: foreignKey{
+		BookingEntriesBookingEntriesRaceIDFK: foreignKey{
 			constraint: constraint{
-				Name:    "booking_entries.booking_entries_source_result_entry_id_fk",
-				Columns: []string{"source_result_entry_id"},
+				Name:    "booking_entries.booking_entries_race_id_fk",
+				Columns: []string{"race_id"},
 				Comment: "",
 			},
-			ForeignTable:   "result_entries",
+			ForeignTable:   "races",
 			ForeignColumns: []string{"id"},
 		},
 		BookingEntriesBookingEntriesTeamIDFK: foreignKey{
@@ -351,13 +359,7 @@ var BookingEntries = Table[
 			ForeignColumns: []string{"id"},
 		},
 	},
-	Uniques: bookingEntryUniques{
-		BookingEntriesFrontendIDUnique: constraint{
-			Name:    "booking_entries_frontend_id_unique",
-			Columns: []string{"frontend_id"},
-			Comment: "",
-		},
-	},
+
 	Checks: bookingEntryChecks{
 		BookingEntriesSourceTypeCheck: check{
 			constraint: constraint{
@@ -380,70 +382,66 @@ var BookingEntries = Table[
 }
 
 type bookingEntryColumns struct {
-	ID                   column
-	FrontendID           column
-	EventID              column
-	SourceResultEntryID  column
-	SourceBookingEntryID column
-	TargetType           column
-	DriverID             column
-	TeamID               column
-	SourceType           column
-	Points               column
-	Description          column
-	IsManual             column
-	LockedAt             column
-	MetadataJSON         column
-	CreatedAt            column
-	UpdatedAt            column
-	CreatedBy            column
-	UpdatedBy            column
+	ID           column
+	EventID      column
+	RaceID       column
+	RaceGridID   column
+	TargetType   column
+	DriverID     column
+	TeamID       column
+	SourceType   column
+	Points       column
+	Description  column
+	IsManual     column
+	LockedAt     column
+	MetadataJSON column
+	CreatedAt    column
+	UpdatedAt    column
+	CreatedBy    column
+	UpdatedBy    column
 }
 
 func (c bookingEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.EventID, c.SourceResultEntryID, c.SourceBookingEntryID, c.TargetType, c.DriverID, c.TeamID, c.SourceType, c.Points, c.Description, c.IsManual, c.LockedAt, c.MetadataJSON, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.EventID, c.RaceID, c.RaceGridID, c.TargetType, c.DriverID, c.TeamID, c.SourceType, c.Points, c.Description, c.IsManual, c.LockedAt, c.MetadataJSON, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type bookingEntryIndexes struct {
-	BookingEntriesPkey             index
-	BookingEntriesFrontendIDUnique index
-	IdxBookingEntriesDriverID      index
-	IdxBookingEntriesEventID       index
-	IdxBookingEntriesSourceType    index
-	IdxBookingEntriesTargetType    index
-	IdxBookingEntriesTeamID        index
+	BookingEntriesPkey          index
+	IdxBookingEntriesDriverID   index
+	IdxBookingEntriesEventID    index
+	IdxBookingEntriesRaceGridID index
+	IdxBookingEntriesRaceID     index
+	IdxBookingEntriesSourceType index
+	IdxBookingEntriesTargetType index
+	IdxBookingEntriesTeamID     index
 }
 
 func (i bookingEntryIndexes) AsSlice() []index {
 	return []index{
-		i.BookingEntriesPkey, i.BookingEntriesFrontendIDUnique, i.IdxBookingEntriesDriverID, i.IdxBookingEntriesEventID, i.IdxBookingEntriesSourceType, i.IdxBookingEntriesTargetType, i.IdxBookingEntriesTeamID,
+		i.BookingEntriesPkey, i.IdxBookingEntriesDriverID, i.IdxBookingEntriesEventID, i.IdxBookingEntriesRaceGridID, i.IdxBookingEntriesRaceID, i.IdxBookingEntriesSourceType, i.IdxBookingEntriesTargetType, i.IdxBookingEntriesTeamID,
 	}
 }
 
 type bookingEntryForeignKeys struct {
-	BookingEntriesBookingEntriesDriverIDFK             foreignKey
-	BookingEntriesBookingEntriesEventIDFK              foreignKey
-	BookingEntriesBookingEntriesSourceBookingEntryIDFK foreignKey
-	BookingEntriesBookingEntriesSourceResultEntryIDFK  foreignKey
-	BookingEntriesBookingEntriesTeamIDFK               foreignKey
+	BookingEntriesBookingEntriesDriverIDFK   foreignKey
+	BookingEntriesBookingEntriesEventIDFK    foreignKey
+	BookingEntriesBookingEntriesRaceGridIDFK foreignKey
+	BookingEntriesBookingEntriesRaceIDFK     foreignKey
+	BookingEntriesBookingEntriesTeamIDFK     foreignKey
 }
 
 func (f bookingEntryForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.BookingEntriesBookingEntriesDriverIDFK, f.BookingEntriesBookingEntriesEventIDFK, f.BookingEntriesBookingEntriesSourceBookingEntryIDFK, f.BookingEntriesBookingEntriesSourceResultEntryIDFK, f.BookingEntriesBookingEntriesTeamIDFK,
+		f.BookingEntriesBookingEntriesDriverIDFK, f.BookingEntriesBookingEntriesEventIDFK, f.BookingEntriesBookingEntriesRaceGridIDFK, f.BookingEntriesBookingEntriesRaceIDFK, f.BookingEntriesBookingEntriesTeamIDFK,
 	}
 }
 
-type bookingEntryUniques struct {
-	BookingEntriesFrontendIDUnique constraint
-}
+type bookingEntryUniques struct{}
 
 func (u bookingEntryUniques) AsSlice() []constraint {
-	return []constraint{
-		u.BookingEntriesFrontendIDUnique,
-	}
+	return []constraint{}
 }
 
 type bookingEntryChecks struct {

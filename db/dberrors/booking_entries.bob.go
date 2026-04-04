@@ -10,17 +10,8 @@ var BookingEntryErrors = &bookingEntryErrors{
 		columns: []string{"id"},
 		s:       "booking_entries_pkey",
 	},
-
-	ErrUniqueBookingEntriesFrontendIdUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "booking_entries",
-		columns: []string{"frontend_id"},
-		s:       "booking_entries_frontend_id_unique",
-	},
 }
 
 type bookingEntryErrors struct {
 	ErrUniqueBookingEntriesPkey *UniqueConstraintError
-
-	ErrUniqueBookingEntriesFrontendIdUnique *UniqueConstraintError
 }
