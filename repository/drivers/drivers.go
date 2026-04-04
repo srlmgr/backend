@@ -25,6 +25,7 @@ import (
 type DriversRepository interface {
 	LoadAll(ctx context.Context) ([]*models.Driver, error)
 	LoadByID(ctx context.Context, id int32) (*models.Driver, error)
+	LoadByIDs(ctx context.Context, ids []int32) ([]*models.Driver, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.DriverSetter) (*models.Driver, error)
 	Update(ctx context.Context, id int32, input *models.DriverSetter) (*models.Driver, error)
@@ -90,6 +91,16 @@ func (r *driversRepository) LoadByID(ctx context.Context, id int32) (*models.Dri
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("driver %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *driversRepository) LoadByIDs(ctx context.Context, ids []int32) ([]*models.Driver, error) {
+	entity, err := models.Drivers.Query(
+		sm.Where(models.Drivers.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids))))).
+		All(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("drivers %v: %w", ids, repoerrors.ErrNotFound)
 	}
 	return entity, err
 }

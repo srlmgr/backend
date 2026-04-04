@@ -49,12 +49,22 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 		entry := &models.ResultEntry{
 			FinishPosition: int32(row.FinPos),
 			LapsCompleted:  int32(row.Laps),
+			StartPosition:  null.From(int32(row.StartPos)),
 			RawDriverName:  null.From(row.Name),
 			RawCarName:     null.From(row.Car),
+			CarNumber:      null.From(row.CarNumber),
 			Incidents:      null.From(int32(row.Incidents)),
 			State:          conversion.ResultStateNormal,
 		}
-
+		if row.QualiLapTime > 0 {
+			entry.QualiLapTimeMS = null.From(int32(row.QualiLapTime))
+		}
+		if row.TotalTime > 0 {
+			entry.TotalTimeMS = null.From(int32(row.TotalTime))
+		}
+		if row.FastestLapTime > 0 {
+			entry.FastestLapTimeMS = null.From(int32(row.FastestLapTime))
+		}
 		driverID, err := r.entityResolver.ResolveDriver(row.DriverID, row.Name)
 		if err != nil {
 			entry.State = conversion.ResultStateMappingError

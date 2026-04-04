@@ -25,6 +25,7 @@ import (
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.BookingEntry, error)
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.BookingEntry, error)
+	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	DeleteByEventIDAndTargetType(ctx context.Context, eventID int32, targetType string) error
 	DeleteByEventIDAndSourceType(ctx context.Context, eventID int32, sourceType string) error
@@ -89,6 +90,15 @@ func (r *bookingEntriesRepository) LoadByEventID(
 ) ([]*models.BookingEntry, error) {
 	return models.BookingEntries.Query(
 		sm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Query(
+		sm.Where(models.BookingEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
 	).All(ctx, r.getExecutor(ctx))
 }
 

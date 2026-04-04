@@ -7,9 +7,11 @@ import (
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
 )
 
@@ -18,12 +20,30 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListDrivers(
 	ctx context.Context,
-	_ *connect.Request[queryv1.ListDriversRequest],
+	req *connect.Request[queryv1.ListDriversRequest],
 ) (*connect.Response[queryv1.ListDriversResponse], error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListDrivers")
-
-	driverItems, err := s.repo.Drivers().Drivers().LoadAll(ctx)
+	var driverItems []*models.Driver
+	var err error
+	switch req.Msg.Filter.(type) {
+	case *queryv1.ListDriversRequest_SeasonId:
+		l.Debug("ListDrivers by seasonID",
+			log.Uint32("seasonID", req.Msg.GetSeasonId()))
+		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	case *queryv1.ListDriversRequest_TeamId:
+		l.Debug("ListDrivers by teamID",
+			log.Uint32("teamID", req.Msg.GetTeamId()))
+		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	case *queryv1.ListDriversRequest_MultipleDrivers:
+		ids := lo.Map(req.Msg.GetMultipleDrivers().GetDriverIds(),
+			func(id uint32, _ int) int32 {
+				return int32(id)
+			})
+		driverItems, err = s.repo.Drivers().Drivers().LoadByIDs(ctx, ids)
+	default:
+		driverItems, err = s.repo.Drivers().Drivers().LoadAll(ctx)
+	}
 	if err != nil {
 		l.Error("failed to load drivers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load drivers")

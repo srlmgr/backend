@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ func parseSessionCSV(header, record []string) (processor.SessionInfo, error) {
 	}, nil
 }
 
-//nolint:funlen,whitespace // many attributes to parse
+//nolint:funlen,whitespace,gocyclo // many attributes to parse
 func parseResultsCSV(header []string, records [][]string) (
 	[]processor.ResultRow, error,
 ) {
@@ -166,7 +167,15 @@ func parseResultsCSV(header []string, records [][]string) (
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i+1, err)
 		}
-		fastestLapTime, err := requiredStringField(mapped, "Fastest Lap Time")
+		qualifyLapTime, err := laptimeField(mapped, "Qualify Time")
+		if err != nil {
+			return nil, fmt.Errorf("row %d: %w", i+1, err)
+		}
+		avgLapTime, err := laptimeField(mapped, "Average Lap Time")
+		if err != nil {
+			return nil, fmt.Errorf("row %d: %w", i+1, err)
+		}
+		fastestLapTime, err := laptimeField(mapped, "Fastest Lap Time")
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i+1, err)
 		}
@@ -190,6 +199,8 @@ func parseResultsCSV(header []string, records [][]string) (
 			CarNumber:      carNumber,
 			Interval:       interval,
 			LapsLed:        lapsLed,
+			QualiLapTime:   qualifyLapTime,
+			TotalTime:      avgLapTime * laps,
 			FastestLapTime: fastestLapTime,
 			Laps:           laps,
 			Incidents:      inc,
@@ -238,6 +249,61 @@ func requiredStringField(row map[string]string, field string) (string, error) {
 	}
 
 	return value, nil
+}
+
+//nolint:funlen // complex parsing logic
+func laptimeField(row map[string]string, field string) (int, error) {
+	raw, ok := row[field]
+	if !ok {
+		return -1, nil
+	}
+
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return -1, nil
+	}
+
+	durationRe := regexp.MustCompile(
+		`^(?:(?P<minutes>\d{1,2}):)?(?P<seconds>\d{1,2})\.(?P<milliseconds>\d{3})$`,
+	)
+
+	match := durationRe.FindStringSubmatch(value)
+	if match == nil {
+		return -1, fmt.Errorf("invalid duration: %s", value)
+	}
+
+	// Map group names → values
+	result := make(map[string]string)
+	for i, name := range durationRe.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = match[i]
+		}
+	}
+
+	var minutes int
+	var seconds int
+	var millis int
+	var err error
+
+	if result["minutes"] != "" {
+		minutes, err = strconv.Atoi(result["minutes"])
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	seconds, err = strconv.Atoi(result["seconds"])
+	if err != nil {
+		return -1, err
+	}
+
+	millis, err = strconv.Atoi(result["milliseconds"])
+	if err != nil {
+		return -1, err
+	}
+
+	total := minutes*60_000 + seconds*1_000 + millis
+	return total, nil
 }
 
 func requiredIntField(row map[string]string, field string) (int, error) {

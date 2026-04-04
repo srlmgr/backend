@@ -155,6 +155,56 @@ func (e *EventProcInfoCollector) StandardPointSystemSettings(
 					{Arguments: map[points.PointPolicyType]any{}},
 				},
 			},
+			{
+				Policies: []points.PointPolicyType{
+					points.PointsPolicyFinishPos,
+					points.PointsPolicyLeastIncidents,
+					points.PointsPolicyFastestLap,
+				},
+				AwardSettings: []points.RankedPolicySettings{
+					{
+						Points: map[points.PointPolicyType][]points.PointType{
+							points.PointsPolicyFinishPos: {
+								100,
+								95,
+								92,
+								90,
+								88,
+								86,
+								84,
+								82,
+								80,
+								78,
+								76,
+								74,
+								72,
+								70,
+								68,
+								66,
+								64,
+								62,
+								60,
+								58,
+								56,
+								54,
+								52,
+								50,
+								48,
+								46,
+								44,
+								42,
+								40,
+							},
+
+							points.PointsPolicyLeastIncidents: {3, 2, 1},
+							points.PointsPolicyFastestLap:     {1},
+						},
+					},
+				},
+				PenaltySettings: []points.PointPenaltySettings{
+					{Arguments: map[points.PointPolicyType]any{}},
+				},
+			},
 		},
 	}
 	return settings
