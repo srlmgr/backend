@@ -43,6 +43,7 @@ type EventTemplate struct {
 	SeasonID        func() int32
 	TrackLayoutID   func() int32
 	Name            func() string
+	SequenceNo      func() int32
 	EventDate       func() time.Time
 	Status          func() string
 	ProcessingState func() string
@@ -210,6 +211,10 @@ func (o EventTemplate) BuildSetter() *models.EventSetter {
 		val := o.Name()
 		m.Name = omit.From(val)
 	}
+	if o.SequenceNo != nil {
+		val := o.SequenceNo()
+		m.SequenceNo = omit.From(val)
+	}
 	if o.EventDate != nil {
 		val := o.EventDate()
 		m.EventDate = omit.From(val)
@@ -279,6 +284,9 @@ func (o EventTemplate) Build() *models.Event {
 	if o.Name != nil {
 		m.Name = o.Name()
 	}
+	if o.SequenceNo != nil {
+		m.SequenceNo = o.SequenceNo()
+	}
 	if o.EventDate != nil {
 		m.EventDate = o.EventDate()
 	}
@@ -334,6 +342,10 @@ func ensureCreatableEvent(m *models.EventSetter) {
 	if !(m.Name.IsValue()) {
 		val := random_string(nil)
 		m.Name = omit.From(val)
+	}
+	if !(m.SequenceNo.IsValue()) {
+		val := random_int32(nil)
+		m.SequenceNo = omit.From(val)
 	}
 	if !(m.EventDate.IsValue()) {
 		val := random_time_Time(nil)
@@ -581,6 +593,7 @@ func (m eventMods) RandomizeAllColumns(f *faker.Faker) EventMod {
 		EventMods.RandomSeasonID(f),
 		EventMods.RandomTrackLayoutID(f),
 		EventMods.RandomName(f),
+		EventMods.RandomSequenceNo(f),
 		EventMods.RandomEventDate(f),
 		EventMods.RandomStatus(f),
 		EventMods.RandomProcessingState(f),
@@ -743,6 +756,37 @@ func (m eventMods) RandomName(f *faker.Faker) EventMod {
 	return EventModFunc(func(_ context.Context, o *EventTemplate) {
 		o.Name = func() string {
 			return random_string(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m eventMods) SequenceNo(val int32) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.SequenceNo = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m eventMods) SequenceNoFunc(f func() int32) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.SequenceNo = f
+	})
+}
+
+// Clear any values for the column
+func (m eventMods) UnsetSequenceNo() EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.SequenceNo = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m eventMods) RandomSequenceNo(f *faker.Faker) EventMod {
+	return EventModFunc(func(_ context.Context, o *EventTemplate) {
+		o.SequenceNo = func() int32 {
+			return random_int32(f)
 		}
 	})
 }

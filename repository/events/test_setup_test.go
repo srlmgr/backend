@@ -41,6 +41,7 @@ func seedEvent(
 	seasonID int32,
 	trackLayoutID int32,
 	name string,
+	sequenceNo int32,
 ) (
 	event *models.Event,
 ) {
@@ -51,6 +52,7 @@ func seedEvent(
 		SeasonID:      omit.From(seasonID),
 		TrackLayoutID: omit.From(trackLayoutID),
 		Name:          omit.From(name),
+		SequenceNo:    omit.From(sequenceNo),
 		EventDate:     omit.From(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		CreatedBy:     omit.From(testhelpers.TestUserSeed),
 		UpdatedBy:     omit.From(testhelpers.TestUserSeed),

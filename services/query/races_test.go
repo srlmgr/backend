@@ -63,7 +63,7 @@ func TestListRacesReturnsAll(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race1 := seedRace(t, repo, event.ID, "Qualifying", conversion.RaceSessionTypeQualifying, 1)
 	race2 := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 2)
 
@@ -103,8 +103,8 @@ func TestListRacesByEventID(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
+	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
+	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2", 2)
 	race1 := seedRace(t, repo, event1.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 	seedRace(t, repo, event2.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 
@@ -139,7 +139,7 @@ func TestGetRaceSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 
 	resp, err := svc.GetRace(
@@ -217,7 +217,7 @@ func TestListRaceGridsReturnsAll(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 	grid1 := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	grid2 := seedRaceGrid(t, repo, race.ID, "Grid 2", conversion.RaceSessionTypeHeat, 2)
@@ -257,7 +257,7 @@ func TestListRaceGridsByRaceID(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race1 := seedRace(t, repo, event.ID, "Feature Race", conversion.RaceSessionTypeRace, 1)
 	race2 := seedRace(t, repo, event.ID, "Sprint Race", conversion.RaceSessionTypeRace, 2)
 	grid1 := seedRaceGrid(t, repo, race1.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)

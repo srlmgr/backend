@@ -48,6 +48,7 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetDriver",
 		"GetTeam",
 		"GetResultEntry",
+		"GetSummary",
 		"GetPointSystem",
 		"GetTrack",
 		"GetTrackLayout",

@@ -24,6 +24,7 @@ type eventRequest interface {
 	GetTrackLayoutId() uint32
 	GetName() string
 	GetEventDate() *timestamppb.Timestamp
+	GetSequenceNo() uint32
 }
 
 type eventSetter = models.EventSetter
@@ -47,6 +48,10 @@ func (b eventSetterBuilder) Build(msg eventRequest) (*eventSetter, error) {
 
 	if eventDate := msg.GetEventDate(); eventDate != nil {
 		setter.EventDate = omit.From(eventDate.AsTime())
+	}
+
+	if sequenceNo := msg.GetSequenceNo(); sequenceNo != 0 {
+		setter.SequenceNo = omit.From(int32(sequenceNo))
 	}
 
 	status, err := conversion.ProtoFieldStringOrEnumValue(msg.ProtoReflect(), "status")

@@ -116,7 +116,7 @@ func TestCreateRaceSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateRace(ctx, connect.NewRequest(&v1.CreateRaceRequest{
@@ -169,7 +169,7 @@ func TestCreateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	_, err := svc.CreateRace(
@@ -197,7 +197,7 @@ func TestCreateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	_, err := svc.CreateRace(
@@ -225,8 +225,8 @@ func TestCreateRaceSuccessDuplicateNameDifferentEvent(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
-	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2")
+	event1 := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
+	event2 := seedEvent(t, repo, season.ID, layout.ID, "Round 2", 2)
 	seedRace(t, repo, event1.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 
 	resp, err := svc.CreateRace(
@@ -283,7 +283,7 @@ func TestUpdateRaceSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	initial := seedRace(t, repo, event.ID, "Qualifying 1", conversion.RaceSessionTypeQualifying, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
@@ -369,7 +369,7 @@ func TestUpdateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	first := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 	second := seedRace(t, repo, event.ID, "Race 2", conversion.RaceSessionTypeQualifying, 2)
 
@@ -408,7 +408,7 @@ func TestUpdateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	first := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeQualifying, 1)
 	second := seedRace(t, repo, event.ID, "Race 2", conversion.RaceSessionTypeQualifying, 2)
 
@@ -435,7 +435,7 @@ func TestDeleteRaceSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	initial := seedRace(t, repo, event.ID, "Delete Me", conversion.RaceSessionTypeQualifying, 1)
 
 	resp, err := svc.DeleteRace(
@@ -530,7 +530,7 @@ func TestCreateRaceGridSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
@@ -578,7 +578,7 @@ func TestUpdateRaceGridSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	initial := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
@@ -664,7 +664,7 @@ func TestDeleteRaceGridSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	initial := seedRaceGrid(t, repo, race.ID, "Delete Me", conversion.RaceSessionTypeRace, 1)
 

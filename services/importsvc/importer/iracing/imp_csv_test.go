@@ -40,7 +40,7 @@ func TestParseCSV(t *testing.T) {
 	if first.FinPos != 1 || first.CarID != "165" || first.TeamID != "1310137" ||
 		first.DriverID != "1310137" || first.StartPos != 2 || first.CarNumber != "2" ||
 		first.Interval != "-00.000" || first.LapsLed != 3 ||
-		first.FastestLapTime != "1:17.561" || first.Laps != 16 || first.Incidents != 0 {
+		first.FastestLapTime != 77561 || first.Laps != 16 || first.Incidents != 0 {
 
 		t.Fatalf("unexpected first result row: %+v", first)
 	}

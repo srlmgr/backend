@@ -32,6 +32,7 @@ type Event struct {
 	SeasonID        int32               `db:"season_id" `
 	TrackLayoutID   int32               `db:"track_layout_id" `
 	Name            string              `db:"name" `
+	SequenceNo      int32               `db:"sequence_no" `
 	EventDate       time.Time           `db:"event_date" `
 	Status          string              `db:"status" `
 	ProcessingState string              `db:"processing_state" `
@@ -68,7 +69,7 @@ type eventR struct {
 func buildEventColumns(alias string) eventColumns {
 	return eventColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "season_id", "track_layout_id", "name", "event_date", "status", "processing_state", "finalized_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "season_id", "track_layout_id", "name", "sequence_no", "event_date", "status", "processing_state", "finalized_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("events"),
 		tableAlias:      alias,
 		ID:              psql.Quote(alias, "id"),
@@ -76,6 +77,7 @@ func buildEventColumns(alias string) eventColumns {
 		SeasonID:        psql.Quote(alias, "season_id"),
 		TrackLayoutID:   psql.Quote(alias, "track_layout_id"),
 		Name:            psql.Quote(alias, "name"),
+		SequenceNo:      psql.Quote(alias, "sequence_no"),
 		EventDate:       psql.Quote(alias, "event_date"),
 		Status:          psql.Quote(alias, "status"),
 		ProcessingState: psql.Quote(alias, "processing_state"),
@@ -95,6 +97,7 @@ type eventColumns struct {
 	SeasonID        psql.Expression
 	TrackLayoutID   psql.Expression
 	Name            psql.Expression
+	SequenceNo      psql.Expression
 	EventDate       psql.Expression
 	Status          psql.Expression
 	ProcessingState psql.Expression
@@ -122,6 +125,7 @@ type EventSetter struct {
 	SeasonID        omit.Val[int32]         `db:"season_id" `
 	TrackLayoutID   omit.Val[int32]         `db:"track_layout_id" `
 	Name            omit.Val[string]        `db:"name" `
+	SequenceNo      omit.Val[int32]         `db:"sequence_no" `
 	EventDate       omit.Val[time.Time]     `db:"event_date" `
 	Status          omit.Val[string]        `db:"status" `
 	ProcessingState omit.Val[string]        `db:"processing_state" `
@@ -133,7 +137,7 @@ type EventSetter struct {
 }
 
 func (s EventSetter) SetColumns() []string {
-	vals := make([]string, 0, 13)
+	vals := make([]string, 0, 14)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -148,6 +152,9 @@ func (s EventSetter) SetColumns() []string {
 	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
+	}
+	if s.SequenceNo.IsValue() {
+		vals = append(vals, "sequence_no")
 	}
 	if s.EventDate.IsValue() {
 		vals = append(vals, "event_date")
@@ -192,6 +199,9 @@ func (s EventSetter) Overwrite(t *Event) {
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
 	}
+	if s.SequenceNo.IsValue() {
+		t.SequenceNo = s.SequenceNo.MustGet()
+	}
 	if s.EventDate.IsValue() {
 		t.EventDate = s.EventDate.MustGet()
 	}
@@ -224,7 +234,7 @@ func (s *EventSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 13)
+		vals := make([]bob.Expression, 14)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -255,52 +265,58 @@ func (s *EventSetter) Apply(q *dialect.InsertQuery) {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.EventDate.IsValue() {
-			vals[5] = psql.Arg(s.EventDate.MustGet())
+		if s.SequenceNo.IsValue() {
+			vals[5] = psql.Arg(s.SequenceNo.MustGet())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.Status.IsValue() {
-			vals[6] = psql.Arg(s.Status.MustGet())
+		if s.EventDate.IsValue() {
+			vals[6] = psql.Arg(s.EventDate.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.ProcessingState.IsValue() {
-			vals[7] = psql.Arg(s.ProcessingState.MustGet())
+		if s.Status.IsValue() {
+			vals[7] = psql.Arg(s.Status.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FinalizedAt.IsUnset() {
-			vals[8] = psql.Arg(s.FinalizedAt.MustGetNull())
+		if s.ProcessingState.IsValue() {
+			vals[8] = psql.Arg(s.ProcessingState.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[9] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.FinalizedAt.IsUnset() {
+			vals[9] = psql.Arg(s.FinalizedAt.MustGetNull())
 		} else {
 			vals[9] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[10] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[10] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[11] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[11] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[12] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[12] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[13] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[13] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -312,7 +328,7 @@ func (s EventSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 13)
+	exprs := make([]bob.Expression, 0, 14)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -346,6 +362,13 @@ func (s EventSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "name")...),
 			psql.Arg(s.Name),
+		}})
+	}
+
+	if s.SequenceNo.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "sequence_no")...),
+			psql.Arg(s.SequenceNo),
 		}})
 	}
 
@@ -1241,6 +1264,7 @@ type eventWhere[Q psql.Filterable] struct {
 	SeasonID        psql.WhereMod[Q, int32]
 	TrackLayoutID   psql.WhereMod[Q, int32]
 	Name            psql.WhereMod[Q, string]
+	SequenceNo      psql.WhereMod[Q, int32]
 	EventDate       psql.WhereMod[Q, time.Time]
 	Status          psql.WhereMod[Q, string]
 	ProcessingState psql.WhereMod[Q, string]
@@ -1262,6 +1286,7 @@ func buildEventWhere[Q psql.Filterable](cols eventColumns) eventWhere[Q] {
 		SeasonID:        psql.Where[Q, int32](cols.SeasonID),
 		TrackLayoutID:   psql.Where[Q, int32](cols.TrackLayoutID),
 		Name:            psql.Where[Q, string](cols.Name),
+		SequenceNo:      psql.Where[Q, int32](cols.SequenceNo),
 		EventDate:       psql.Where[Q, time.Time](cols.EventDate),
 		Status:          psql.Where[Q, string](cols.Status),
 		ProcessingState: psql.Where[Q, string](cols.ProcessingState),

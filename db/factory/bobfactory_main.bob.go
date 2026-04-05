@@ -513,6 +513,7 @@ func (f *Factory) FromExistingEvent(m *models.Event) *EventTemplate {
 	o.SeasonID = func() int32 { return m.SeasonID }
 	o.TrackLayoutID = func() int32 { return m.TrackLayoutID }
 	o.Name = func() string { return m.Name }
+	o.SequenceNo = func() int32 { return m.SequenceNo }
 	o.EventDate = func() time.Time { return m.EventDate }
 	o.Status = func() string { return m.Status }
 	o.ProcessingState = func() string { return m.ProcessingState }

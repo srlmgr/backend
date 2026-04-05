@@ -279,7 +279,7 @@ func (s *service) replaceResultEntriesForBatch(
 	return nil
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func buildResultEntryCreateSetter(
 	batch *models.ImportBatch,
 	entry *models.ResultEntry,
@@ -293,7 +293,9 @@ func buildResultEntryCreateSetter(
 		CreatedBy:      omit.From(execUser),
 		UpdatedBy:      omit.From(execUser),
 	}
-
+	if !entry.StartPosition.IsNull() {
+		setter.StartPosition = omitnull.From(entry.StartPosition.GetOr(0))
+	}
 	if !entry.DriverID.IsNull() {
 		setter.DriverID = omitnull.From(entry.DriverID.GetOr(0))
 	}
@@ -306,8 +308,17 @@ func buildResultEntryCreateSetter(
 	if !entry.RawCarName.IsNull() {
 		setter.RawCarName = omitnull.From(entry.RawCarName.GetOr(""))
 	}
+	if !entry.CarNumber.IsNull() {
+		setter.CarNumber = omitnull.From(entry.CarNumber.GetOr(""))
+	}
 	if !entry.FastestLapTimeMS.IsNull() {
 		setter.FastestLapTimeMS = omitnull.From(entry.FastestLapTimeMS.GetOr(0))
+	}
+	if !entry.QualiLapTimeMS.IsNull() {
+		setter.QualiLapTimeMS = omitnull.From(entry.QualiLapTimeMS.GetOr(0))
+	}
+	if !entry.TotalTimeMS.IsNull() {
+		setter.TotalTimeMS = omitnull.From(entry.TotalTimeMS.GetOr(0))
 	}
 	if !entry.Incidents.IsNull() {
 		setter.Incidents = omitnull.From(entry.Incidents.GetOr(0))

@@ -204,6 +204,31 @@ func (r *driversEntityRepo) FindByName(
 	)
 }
 
+//nolint:whitespace // multiline signature style
+func (r *driversEntityRepo) LoadByIDs(
+	ctx context.Context, ids []int32,
+) ([]*models.Driver, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.Driver, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		for _, id := range ids {
+			if item.ID == id {
+				filtered = append(filtered, item)
+				break
+			}
+		}
+	}
+
+	return filtered, nil
+}
+
 type simulationDriverAliasesEntityRepo struct {
 	*mapEntityRepo[models.SimulationDriverAlias, models.SimulationDriverAliasSetter]
 }
@@ -759,6 +784,27 @@ func (r *bookingEntriesEntityRepo) LoadByEventID(
 	filtered := make([]*models.BookingEntry, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.EventID != eventID {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+
+	return filtered, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *bookingEntriesEntityRepo) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) ([]*models.BookingEntry, error) {
+	items, err := r.LoadAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*models.BookingEntry, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.RaceID != raceID {
 			continue
 		}
 		filtered = append(filtered, item)

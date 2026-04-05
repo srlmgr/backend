@@ -244,6 +244,7 @@ func seedEventBase(t *testing.T, ctx context.Context, suffix string) eventFixtur
 			season.ID,
 			trackLayout.ID,
 			"Event "+suffix,
+			1,
 		),
 	}
 }

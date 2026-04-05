@@ -31,7 +31,9 @@ type ResultRow struct {
 	CarNumber      string
 	Interval       string
 	LapsLed        int
-	FastestLapTime string
+	QualiLapTime   int
+	TotalTime      int
+	FastestLapTime int
 	Laps           int
 	Incidents      int
 }

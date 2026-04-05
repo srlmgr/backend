@@ -60,6 +60,15 @@ var Events = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		SequenceNo: column{
+			Name:      "sequence_no",
+			DBType:    "integer",
+			Default:   "",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		EventDate: column{
 			Name:      "event_date",
 			DBType:    "timestamp with time zone",
@@ -323,6 +332,7 @@ type eventColumns struct {
 	SeasonID        column
 	TrackLayoutID   column
 	Name            column
+	SequenceNo      column
 	EventDate       column
 	Status          column
 	ProcessingState column
@@ -335,7 +345,7 @@ type eventColumns struct {
 
 func (c eventColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.SeasonID, c.TrackLayoutID, c.Name, c.EventDate, c.Status, c.ProcessingState, c.FinalizedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeasonID, c.TrackLayoutID, c.Name, c.SequenceNo, c.EventDate, c.Status, c.ProcessingState, c.FinalizedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 

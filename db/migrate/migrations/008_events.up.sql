@@ -6,6 +6,7 @@ CREATE TABLE events (
     season_id integer NOT NULL,
     track_layout_id integer NOT NULL,
     name text NOT NULL,
+	sequence_no integer NOT NULL,
     event_date timestamp with time zone NOT NULL,
     status text NOT NULL DEFAULT 'scheduled',
     processing_state text NOT NULL DEFAULT 'draft',

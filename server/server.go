@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/grpcreflect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/authz"
@@ -180,6 +181,7 @@ func registerConnectHandlers(
 	opts ...connect.HandlerOption,
 ) {
 	txManager := repository.NewBobTransactionFromPool(pool)
+	tracer := otel.Tracer("backend.server")
 	repo := pgRepos.New(pool)
 	adminPath, adminHandler := adminv1connect.NewAdminServiceHandler(
 		adminservice.New(repo, txManager, logger.Named("services.admin")),
@@ -194,7 +196,7 @@ func registerConnectHandlers(
 		opts...,
 	)
 	queryPath, queryHandler := queryv1connect.NewQueryServiceHandler(
-		queryservice.New(repo, txManager, logger.Named("services.query")),
+		queryservice.New(repo, txManager, logger.Named("services.query"), tracer),
 		opts...,
 	)
 
