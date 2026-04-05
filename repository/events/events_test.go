@@ -21,7 +21,7 @@ func TestRepositoryCreateLoadByIDLoadAll(t *testing.T) {
 	track := testhelpers.SeedTrack(t, "Track A")
 	trackLayout := testhelpers.SeedTrackLayout(t, track.ID, "Layout A")
 
-	created := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1")
+	created := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1", 1)
 
 	loaded, err := repo.LoadByID(context.Background(), created.ID)
 	if err != nil {
@@ -53,8 +53,8 @@ func TestRepositoryLoadBySeasonID(t *testing.T) {
 	track := testhelpers.SeedTrack(t, "Track A")
 	trackLayout := testhelpers.SeedTrackLayout(t, track.ID, "Layout A")
 
-	eventA := seedEvent(t, repo, seasonA.ID, trackLayout.ID, "Round A")
-	_ = seedEvent(t, repo, seasonB.ID, trackLayout.ID, "Round B")
+	eventA := seedEvent(t, repo, seasonA.ID, trackLayout.ID, "Round A", 1)
+	_ = seedEvent(t, repo, seasonB.ID, trackLayout.ID, "Round B", 2)
 
 	bySeason, err := repo.LoadBySeasonID(context.Background(), seasonA.ID)
 	if err != nil {
@@ -76,7 +76,7 @@ func TestRepositoryLoadByGridID(t *testing.T) {
 	season := testhelpers.SeedSeason(t, series.ID, pointSystem.ID, "Season A")
 	track := testhelpers.SeedTrack(t, "Track A")
 	trackLayout := testhelpers.SeedTrackLayout(t, track.ID, "Layout A")
-	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1", 1)
 	race := testhelpers.SeedRace(t, event.ID, "Race A", "R", 1)
 	grid := testhelpers.SeedRaceGrid(t, race.ID, "Grid A", "R", 1)
 
@@ -106,7 +106,7 @@ func TestRepositoryUpdate(t *testing.T) {
 	season := testhelpers.SeedSeason(t, series.ID, pointSystem.ID, "Season A")
 	track := testhelpers.SeedTrack(t, "Track A")
 	trackLayout := testhelpers.SeedTrackLayout(t, track.ID, "Layout A")
-	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1", 1)
 
 	updated, err := repo.Update(context.Background(), event.ID, &models.EventSetter{
 		Name:      omit.From("Round 1 Updated"),
@@ -135,7 +135,7 @@ func TestRepositoryDeleteByID(t *testing.T) {
 	season := testhelpers.SeedSeason(t, series.ID, pointSystem.ID, "Season A")
 	track := testhelpers.SeedTrack(t, "Track A")
 	trackLayout := testhelpers.SeedTrackLayout(t, track.ID, "Layout A")
-	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, trackLayout.ID, "Round 1", 1)
 
 	if err := repo.DeleteByID(context.Background(), event.ID); err != nil {
 		t.Fatalf("DeleteByID returned error: %v", err)

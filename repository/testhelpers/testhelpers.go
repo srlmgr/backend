@@ -238,9 +238,11 @@ func SeedEvent(
 	seasonID int32,
 	trackLayoutID int32,
 	name string,
+	sequenceNo int32,
 ) *models.Event {
 	t.Helper()
-	return SeedEventContext(t, context.Background(), seasonID, trackLayoutID, name)
+	return SeedEventContext(t, context.Background(),
+		seasonID, trackLayoutID, name, sequenceNo)
 }
 
 func SeedEventContext(
@@ -249,6 +251,7 @@ func SeedEventContext(
 	seasonID int32,
 	trackLayoutID int32,
 	name string,
+	sequenceNo int32,
 ) *models.Event {
 	t.Helper()
 
@@ -256,6 +259,7 @@ func SeedEventContext(
 		SeasonID:      omit.From(seasonID),
 		TrackLayoutID: omit.From(trackLayoutID),
 		Name:          omit.From(name),
+		SequenceNo:    omit.From(sequenceNo),
 		EventDate:     omit.From(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		CreatedBy:     omit.From(TestUserSeed),
 		UpdatedBy:     omit.From(TestUserSeed),

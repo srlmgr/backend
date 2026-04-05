@@ -100,7 +100,7 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 	race := seedRace(t, repo, event.ID, "Feature Race", "race", 1)
 	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", "race", 1)
 	batch := seedImportBatch(t, repo, grid.ID)

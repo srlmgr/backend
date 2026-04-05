@@ -20,12 +20,14 @@ func seedEvent(
 	repo rootrepo.Repository,
 	seasonID, trackLayoutID int32,
 	name string,
+	sequenceNo int32,
 ) *models.Event {
 	t.Helper()
 	event, err := repo.Events().Create(context.Background(), &models.EventSetter{
 		SeasonID:      omit.From(seasonID),
 		TrackLayoutID: omit.From(trackLayoutID),
 		Name:          omit.From(name),
+		SequenceNo:    omit.From(sequenceNo),
 		EventDate:     omit.From(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		CreatedBy:     omit.From(testUserSeed),
 		UpdatedBy:     omit.From(testUserSeed),
@@ -61,8 +63,8 @@ func TestListEventsReturnsAll(t *testing.T) {
 	track := seedTrack(t, repo, "Daytona")
 	layout1 := seedTrackLayout(t, repo, track.ID, "Full Circuit")
 	layout2 := seedTrackLayout(t, repo, track.ID, "Short Circuit")
-	event1 := seedEvent(t, repo, season.ID, layout1.ID, "Round 1")
-	event2 := seedEvent(t, repo, season.ID, layout2.ID, "Round 2")
+	event1 := seedEvent(t, repo, season.ID, layout1.ID, "Round 1", 1)
+	event2 := seedEvent(t, repo, season.ID, layout2.ID, "Round 2", 2)
 
 	resp, err := svc.ListEvents(
 		context.Background(),
@@ -100,8 +102,8 @@ func TestListEventsBySeasonID(t *testing.T) {
 	season2 := seedSeason(t, repo, series.ID, pointSystem.ID, "2025 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event1 := seedEvent(t, repo, season1.ID, layout.ID, "Round 1")
-	seedEvent(t, repo, season2.ID, layout.ID, "Round 1 S2")
+	event1 := seedEvent(t, repo, season1.ID, layout.ID, "Round 1", 1)
+	seedEvent(t, repo, season2.ID, layout.ID, "Round 1 S2", 2)
 
 	resp, err := svc.ListEvents(
 		context.Background(),
@@ -134,7 +136,7 @@ func TestGetEventSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
 
 	resp, err := svc.GetEvent(
 		context.Background(),
