@@ -36,6 +36,7 @@ type TeamDriversRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.TeamDriver, error)
 	LoadByTeamID(ctx context.Context, teamID int32) ([]*models.TeamDriver, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByTeamID(ctx context.Context, teamID int32) error
 	Create(ctx context.Context, input *models.TeamDriverSetter) (*models.TeamDriver, error)
 	Update(
 		ctx context.Context,
@@ -144,6 +145,12 @@ func (r *teamDriversRepository) LoadByTeamID(
 
 func (r *teamDriversRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.TeamDrivers.Delete(dm.Where(models.TeamDrivers.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *teamDriversRepository) DeleteByTeamID(ctx context.Context, teamID int32) error {
+	_, err := models.TeamDrivers.Delete(dm.Where(models.TeamDrivers.Columns.TeamID.EQ(psql.Arg(teamID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

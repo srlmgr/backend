@@ -667,6 +667,28 @@ func (r *teamDriversEntityRepo) LoadByTeamID(
 	return filtered, nil
 }
 
+//nolint:whitespace // multiline signature style
+func (r *teamDriversEntityRepo) DeleteByTeamID(
+	ctx context.Context,
+	teamID int32,
+) error {
+	items, err := r.LoadByTeamID(ctx, teamID)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		if err := r.DeleteByID(ctx, item.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type importBatchesEntityRepo struct {
 	*mapEntityRepo[models.ImportBatch, models.ImportBatchSetter]
 }
