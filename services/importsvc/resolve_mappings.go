@@ -17,6 +17,7 @@ import (
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
 	"github.com/srlmgr/backend/services/importsvc/importer"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 //nolint:whitespace,funlen,gocyclo // editor/linter issue
@@ -35,6 +36,18 @@ func (s *service) ResolveMappings(
 			errors.New("race_grid_id is required"))
 	}
 
+	// Load event to get current processing state.
+	event, err := s.repo.Events().LoadByGridID(ctx, gridID)
+	if err != nil {
+		l.Error("failed to load event", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+	ep := processor.NewEventProcInfoCollector(s.repo)
+	epi, err := ep.ForEvent(ctx, event.ID)
+	if err != nil {
+		return nil, err
+	}
 	execUser := s.execUser(ctx)
 	var unresolvedMappings int32
 
@@ -44,12 +57,7 @@ func (s *service) ResolveMappings(
 			return err
 		}
 
-		event, err := s.repo.Events().LoadByGridID(ctx, batch.RaceGridID)
-		if err != nil {
-			return err
-		}
-
-		importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, event)
+		importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, epi)
 		if err != nil {
 			return err
 		}
@@ -75,7 +83,8 @@ func (s *service) ResolveMappings(
 		}
 
 		resolver := importer.NewResolver(
-			importer.NewRepositoryEntityResolver(ctx, s.repo, simulation),
+			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation),
+			epi,
 		)
 		resolved, err := resolver.ResolveNonMapped(input, existing)
 		if err != nil {

@@ -2,14 +2,12 @@ package importer
 
 import (
 	"time"
-
-	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 )
 
 // ParsedImportPayload is the common parsed payload shape returned by CSV processors.
 type ParsedImportPayload struct {
 	Session SessionInfo
-	Results []ResultRow
+	Results []*ResultRow
 }
 
 // SessionInfo contains event-level data from an import payload.
@@ -20,29 +18,30 @@ type SessionInfo struct {
 
 // ResultRow contains normalized per-driver result values extracted from payloads.
 // Note: IDs are specific to the simulation and must be resolved later
-type ResultRow struct {
-	FinPos         int
-	CarID          string
-	Car            string
-	TeamID         string
-	DriverID       string
-	Name           string
-	StartPos       int
-	CarNumber      string
-	Interval       string
-	LapsLed        int
-	QualiLapTime   int
-	TotalTime      int
-	FastestLapTime int
-	Laps           int
-	Incidents      int
-}
-type ParsedImportProcessor struct{}
-
-func NewParsedImportProcessor() *ParsedImportProcessor {
-	return &ParsedImportProcessor{}
-}
-
-func (p *ParsedImportProcessor) Process() []*commonv1.ResultEntry {
-	return nil
-}
+type (
+	ResultRow struct {
+		FinPos         int
+		CarID          string
+		Car            string
+		TeamID         string
+		DriverID       string
+		Name           string
+		StartPos       int
+		CarNumber      string
+		Interval       string //
+		LapsLed        int
+		QualiLapTime   int // in ms
+		TotalTime      int // in ms
+		FastestLapTime int // in ms
+		Laps           int
+		Incidents      int
+		TeamDrivers    []*TeamDriver // filled in team-based events
+	}
+	TeamDriver struct {
+		DriverID       string
+		Name           string
+		FastestLapTime int // in ms
+		Laps           int
+		Incidents      int
+	}
+)

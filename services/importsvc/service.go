@@ -6,10 +6,12 @@ import (
 	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/import/v1/importv1connect"
 
 	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
 	"github.com/srlmgr/backend/services/conversion"
-	processor "github.com/srlmgr/backend/services/importsvc/importer"
+	"github.com/srlmgr/backend/services/importsvc/importer"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 type service struct {
@@ -19,7 +21,7 @@ type service struct {
 	repo       rootrepo.Repository
 	txMgr      rootrepo.TransactionManager
 	conversion *conversion.Service
-	processor  *processor.Factory
+	processor  *importer.Factory
 }
 
 var _ importv1connect.ImportServiceHandler = (*service)(nil)
@@ -37,7 +39,7 @@ func New(
 		repo:       repo,
 		txMgr:      txMgr,
 		conversion: conversion.New(),
-		processor:  processor.NewDefaultFactory(),
+		processor:  importer.NewDefaultFactory(),
 	}
 }
 
@@ -62,4 +64,22 @@ func (s *service) execUser(ctx context.Context) string {
 		return "system"
 	}
 	return principal.Name
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) resolveProcessorForEvent(
+	ctx context.Context,
+	epi *processor.EventProcInfo,
+) (importer.ProcessImport, *models.RacingSim, error) {
+	simulation, err := s.repo.RacingSims().LoadByID(ctx, epi.Series.SimulationID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	importProcessor, err := s.processor.Get(simulation.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return importProcessor, simulation, nil
 }

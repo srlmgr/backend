@@ -14,6 +14,7 @@ import (
 	"github.com/srlmgr/backend/repository/events"
 	"github.com/srlmgr/backend/repository/importbatches"
 	"github.com/srlmgr/backend/repository/pointsystems"
+	"github.com/srlmgr/backend/repository/queries"
 	"github.com/srlmgr/backend/repository/races"
 	"github.com/srlmgr/backend/repository/racingsims"
 	"github.com/srlmgr/backend/repository/resultentries"
@@ -40,6 +41,7 @@ type repository struct {
 	bookingEntries       bookingentries.Repository
 	eventProcessingAudit eventprocessingaudit.Repository
 	standings            standings.Repository
+	queries              rootrepo.Queries
 }
 
 // New returns the root postgres-backed repository aggregate.
@@ -60,6 +62,7 @@ func New(pool *pgxpool.Pool) rootrepo.Repository {
 		bookingEntries:       bookingentries.New(pool),
 		eventProcessingAudit: eventprocessingaudit.New(pool),
 		standings:            standings.New(pool),
+		queries:              queries.New(pool),
 	}
 }
 
@@ -80,3 +83,4 @@ func (r *repository) EventProcessingAudit() eventprocessingaudit.Repository {
 	return r.eventProcessingAudit
 }
 func (r *repository) Standings() standings.Repository { return r.standings }
+func (r *repository) Queries() rootrepo.Queries       { return r.queries }

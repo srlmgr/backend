@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
+
 	processor "github.com/srlmgr/backend/services/importsvc/importer"
 )
 
@@ -120,9 +122,9 @@ func parseSessionCSV(header, record []string) (processor.SessionInfo, error) {
 
 //nolint:funlen,whitespace,gocyclo // many attributes to parse
 func parseResultsCSV(header []string, records [][]string) (
-	[]processor.ResultRow, error,
+	[]*processor.ResultRow, error,
 ) {
-	rows := make([]processor.ResultRow, 0, len(records))
+	rows := make([]*processor.ResultRow, 0, len(records))
 
 	for i, record := range records {
 		mapped := rowMap(header, record)
@@ -187,24 +189,39 @@ func parseResultsCSV(header []string, records [][]string) (
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i+1, err)
 		}
-
-		rows = append(rows, processor.ResultRow{
-			FinPos:         finPos,
-			CarID:          carID,
-			Car:            car,
-			TeamID:         teamID,
-			DriverID:       custID,
-			Name:           name,
-			StartPos:       startPos,
-			CarNumber:      carNumber,
-			Interval:       interval,
-			LapsLed:        lapsLed,
-			QualiLapTime:   qualifyLapTime,
-			TotalTime:      avgLapTime * laps,
-			FastestLapTime: fastestLapTime,
-			Laps:           laps,
-			Incidents:      inc,
+		mainEntry, ok := lo.Find(rows, func(item *processor.ResultRow) bool {
+			return item.FinPos == finPos
 		})
+		if !ok {
+			rows = append(rows, &processor.ResultRow{
+				FinPos:         finPos,
+				CarID:          carID,
+				Car:            car,
+				TeamID:         teamID,
+				DriverID:       custID,
+				Name:           name,
+				StartPos:       startPos,
+				CarNumber:      carNumber,
+				Interval:       interval,
+				LapsLed:        lapsLed,
+				QualiLapTime:   qualifyLapTime,
+				TotalTime:      avgLapTime * laps,
+				FastestLapTime: fastestLapTime,
+				Laps:           laps,
+				Incidents:      inc,
+			})
+		} else {
+			if mainEntry.TeamDrivers == nil {
+				mainEntry.TeamDrivers = []*processor.TeamDriver{}
+			}
+			mainEntry.TeamDrivers = append(mainEntry.TeamDrivers, &processor.TeamDriver{
+				DriverID:       custID,
+				Name:           name,
+				FastestLapTime: fastestLapTime,
+				Laps:           laps,
+				Incidents:      inc,
+			})
+		}
 	}
 
 	return rows, nil

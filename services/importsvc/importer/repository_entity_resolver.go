@@ -7,6 +7,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 // RepositoryEntityResolver resolves simulation-specific identifiers via repositories.
@@ -14,6 +15,7 @@ type RepositoryEntityResolver struct {
 	ctx   context.Context
 	repos repository.Repository
 	sim   *models.RacingSim
+	epi   *processor.EventProcInfo
 }
 
 // NewRepositoryEntityResolver returns a repository-backed EntityResolver.
@@ -22,12 +24,14 @@ type RepositoryEntityResolver struct {
 func NewRepositoryEntityResolver(
 	ctx context.Context,
 	repos repository.Repository,
+	epi *processor.EventProcInfo,
 	sim *models.RacingSim,
 ) *RepositoryEntityResolver {
 	return &RepositoryEntityResolver{
 		ctx:   ctx,
 		repos: repos,
 		sim:   sim,
+		epi:   epi,
 	}
 }
 
@@ -107,6 +111,26 @@ func (r *RepositoryEntityResolver) ResolveCar(
 	}
 
 	return r.resolveBy("car", simCarID, simCarName, resolveArg)
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *RepositoryEntityResolver) ResolveCarClass(
+	ownCarID uint32,
+) (uint32, error) {
+	return 0, fmt.Errorf("resolve car class: not implemented")
+	// TODO: lookup in classes defined for this season
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *RepositoryEntityResolver) ResolveTeam(
+	ownDriverID uint32,
+) (uint32, error) {
+	td, err := r.repos.Queries().QueryTeamDrivers().FindBySeasonAndDriver(
+		r.ctx, r.epi.Season.ID, int32(ownDriverID))
+	if err != nil {
+		return 0, fmt.Errorf("resolve team: %w", err)
+	}
+	return uint32(td.TeamID), nil
 }
 
 //nolint:whitespace // editor/linter issue

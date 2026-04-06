@@ -428,3 +428,114 @@ func TestGetCarModelNotFound(t *testing.T) {
 		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
 	}
 }
+
+//nolint:whitespace // multiline signature style
+func seedCarClass(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) *models.CarClass {
+	t.Helper()
+	cc, err := repo.Cars().CarClasses().Create(context.Background(), &models.CarClassSetter{
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car class %q: %v", name, err)
+	}
+	return cc
+}
+
+func TestListCarClassesEmpty(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	resp, err := svc.ListCarClasses(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListCarClassesRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Msg.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	}
+}
+
+func TestListCarClassesReturnsAll(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	class1 := seedCarClass(t, repo, "GT3")
+	class2 := seedCarClass(t, repo, "GT4")
+
+	resp, err := svc.ListCarClasses(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListCarClassesRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := resp.Msg.GetItems()
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+
+	ids := make(map[uint32]bool)
+	for _, item := range items {
+		ids[item.GetId()] = true
+	}
+
+	if !ids[uint32(class1.ID)] {
+		t.Errorf("class1 (id=%d) not found in response", class1.ID)
+	}
+	if !ids[uint32(class2.ID)] {
+		t.Errorf("class2 (id=%d) not found in response", class2.ID)
+	}
+}
+
+func TestGetCarClassSuccess(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	cc := seedCarClass(t, repo, "LMP2")
+
+	resp, err := svc.GetCarClass(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetCarClassRequest{
+			Id: uint32(cc.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Msg.GetCarClass().GetId() != uint32(cc.ID) {
+		t.Errorf("expected id %d, got %d", cc.ID, resp.Msg.GetCarClass().GetId())
+	}
+	if resp.Msg.GetCarClass().GetName() != "LMP2" {
+		t.Errorf("expected name %q, got %q", "LMP2", resp.Msg.GetCarClass().GetName())
+	}
+}
+
+func TestGetCarClassNotFound(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	_, err := svc.GetCarClass(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetCarClassRequest{
+			Id: 99999,
+		}),
+	)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T: %v", err, err)
+	}
+	if connectErr.Code() != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+	}
+}

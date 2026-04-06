@@ -7,7 +7,9 @@ import (
 	"github.com/aarondl/opt/null"
 
 	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 type (
@@ -16,11 +18,14 @@ type (
 		ResolveTrack(simTrackID, simTrackName string) (trackID uint32, err error)
 		ResolveDriver(simDriverID, simDriverName string) (driverID uint32, err error)
 		ResolveCar(simCarID, simCarName string) (carID uint32, err error)
+		ResolveTeam(ownDriverID uint32) (teamID uint32, err error)
+		ResolveCarClass(ownCarID uint32) (carClassID uint32, err error)
 	}
 
 	// Resolver transforms parsed input rows into resolved common result entries.
 	Resolver struct {
 		entityResolver EntityResolver
+		epi            *processor.EventProcInfo
 	}
 	Result struct {
 		TrackID  uint32
@@ -30,9 +35,15 @@ type (
 )
 
 // NewResolver returns a Resolver using the provided entity resolver.
-func NewResolver(entityResolver EntityResolver) *Resolver {
+//
+//nolint:whitespace // editor/linter issue
+func NewResolver(
+	entityResolver EntityResolver,
+	epi *processor.EventProcInfo,
+) *Resolver {
 	return &Resolver{
 		entityResolver: entityResolver,
+		epi:            epi,
 	}
 }
 
@@ -45,16 +56,20 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 	entries := make([]*models.ResultEntry, len(inp.Results))
 	unresolved := make([]*commonv1.UnresolvedMapping, 0)
 	for i := range inp.Results {
-		row := &inp.Results[i]
+		row := inp.Results[i]
 		entry := &models.ResultEntry{
 			FinishPosition: int32(row.FinPos),
 			LapsCompleted:  int32(row.Laps),
 			StartPosition:  null.From(int32(row.StartPos)),
-			RawDriverName:  null.From(row.Name),
 			RawCarName:     null.From(row.Car),
 			CarNumber:      null.From(row.CarNumber),
 			Incidents:      null.From(int32(row.Incidents)),
 			State:          conversion.ResultStateNormal,
+		}
+		if r.epi.Season.IsTeamBased {
+			entry.RawTeamName = null.From(row.Name)
+		} else {
+			entry.RawDriverName = null.From(row.Name)
 		}
 		if row.QualiLapTime > 0 {
 			entry.QualiLapTimeMS = null.From(int32(row.QualiLapTime))
@@ -65,26 +80,42 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 		if row.FastestLapTime > 0 {
 			entry.FastestLapTimeMS = null.From(int32(row.FastestLapTime))
 		}
-		driverID, err := r.entityResolver.ResolveDriver(row.DriverID, row.Name)
-		if err != nil {
-			entry.State = conversion.ResultStateMappingError
-			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: fmt.Sprintf("%s (name: %s)", row.DriverID, row.Name),
-				MappingType: "driver",
-			})
+		//nolint:nestif // yes, it's complex
+		if r.epi.Season.IsTeamBased {
+			teamID, um := r.resolveTeam(row.TeamDrivers, row.Name)
+			if um != nil {
+				entry.State = conversion.ResultStateMappingError
+				unresolved = append(unresolved, um)
+			} else {
+				entry.TeamID = null.From(int32(teamID))
+			}
 		} else {
-			entry.DriverID = null.From(int32(driverID))
+			driverID, um := r.resolveDriver(row.DriverID, row.Name)
+			if um != nil {
+				entry.State = conversion.ResultStateMappingError
+				unresolved = append(unresolved, um)
+			} else {
+				entry.DriverID = null.From(int32(driverID))
+			}
 		}
 
-		carID, err := r.entityResolver.ResolveCar(row.CarID, row.Car)
-		if err != nil {
+		carID, um := r.resolveCar(row.CarID, row.Car)
+		if um != nil {
 			entry.State = conversion.ResultStateMappingError
-			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: fmt.Sprintf("%s (name: %s)", row.CarID, row.Car),
-				MappingType: "car",
-			})
+			unresolved = append(unresolved, um)
 		} else {
 			entry.CarModelID = null.From(int32(carID))
+		}
+
+		// if multi-class, resolve car class as well
+		if r.epi.Season.IsMulticlass {
+			carClassID, um := r.resolveCarClass(carID, row.Car)
+			if um != nil {
+				entry.State = conversion.ResultStateMappingError
+				unresolved = append(unresolved, um)
+			} else {
+				entry.CarClassID = null.From(int32(carClassID))
+			}
 		}
 		entries[i] = entry
 	}
@@ -123,24 +154,18 @@ func (r *Resolver) ResolveNonMapped(
 			continue
 		}
 		entryHasUnresolved := false
-		driverID, err := r.entityResolver.ResolveDriver("", entry.RawDriverName.GetOr(""))
-		if err != nil {
+		driverID, um := r.resolveDriver("", entry.RawDriverName.GetOr(""))
+		if um != nil {
 			entryHasUnresolved = true
-			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: entry.RawDriverName.GetOr(""),
-				MappingType: "driver",
-			})
+			unresolved = append(unresolved, um)
 		} else {
 			entry.DriverID = null.From(int32(driverID))
 		}
 
-		carID, err := r.entityResolver.ResolveCar("", entry.RawCarName.GetOr(""))
-		if err != nil {
+		carID, um := r.resolveCar("", entry.RawCarName.GetOr(""))
+		if um != nil {
 			entryHasUnresolved = true
-			unresolved = append(unresolved, &commonv1.UnresolvedMapping{
-				SourceValue: entry.RawCarName.GetOr(""),
-				MappingType: "car",
-			})
+			unresolved = append(unresolved, um)
 		} else {
 			entry.CarModelID = null.From(int32(carID))
 		}
@@ -165,4 +190,82 @@ func (r *Resolver) ResolveNonMapped(
 		Entries:  resolvedResults,
 		Unmapped: unresolved,
 	}, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *Resolver) resolveDriver(
+	simDriverID, simDriverName string,
+) (uint32, *commonv1.UnresolvedMapping) {
+	driverID, err := r.entityResolver.ResolveDriver(simDriverID, simDriverName)
+	if err != nil {
+		sv := simDriverName
+		if simDriverID != "" {
+			sv = fmt.Sprintf("%s (name: %s)", simDriverID, simDriverName)
+		}
+		return 0, &commonv1.UnresolvedMapping{SourceValue: sv, MappingType: "driver"}
+	}
+	return driverID, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *Resolver) resolveTeam(
+	teamDrivers []*TeamDriver,
+	rowName string,
+) (uint32, *commonv1.UnresolvedMapping) {
+	var teamDriverID uint32
+	var dErr error
+	for _, td := range teamDrivers {
+		teamDriverID, dErr = r.entityResolver.ResolveDriver(td.DriverID, td.Name)
+		if dErr == nil {
+			log.Debug("resolved team driver",
+				log.Uint32("driverID", teamDriverID),
+				log.String("inputName", td.Name),
+			)
+			break
+		}
+	}
+	teamID, err := r.entityResolver.ResolveTeam(teamDriverID)
+	if err != nil {
+		return 0, &commonv1.UnresolvedMapping{
+			SourceValue: fmt.Sprintf("team with driver %d (name: %s)", teamDriverID, rowName),
+			MappingType: "team",
+		}
+	}
+	log.Debug("resolved team",
+		log.Uint32("teamID", teamID),
+		log.Uint32("driverID", teamDriverID),
+		log.String("inputName", rowName),
+	)
+	return teamID, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *Resolver) resolveCar(
+	simCarID,
+	simCarName string,
+) (uint32, *commonv1.UnresolvedMapping) {
+	carID, err := r.entityResolver.ResolveCar(simCarID, simCarName)
+	if err != nil {
+		sv := simCarName
+		if simCarID != "" {
+			sv = fmt.Sprintf("%s (name: %s)", simCarID, simCarName)
+		}
+		return 0, &commonv1.UnresolvedMapping{SourceValue: sv, MappingType: "car"}
+	}
+	return carID, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *Resolver) resolveCarClass(
+	carID uint32,
+	carName string,
+) (uint32, *commonv1.UnresolvedMapping) {
+	carClassID, err := r.entityResolver.ResolveCarClass(carID)
+	if err != nil {
+		return 0, &commonv1.UnresolvedMapping{
+			SourceValue: fmt.Sprintf("car class for car %d (name: %s)", carID, carName),
+			MappingType: "car_class",
+		}
+	}
+	return carClassID, nil
 }

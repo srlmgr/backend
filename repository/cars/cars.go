@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aarondl/opt/omit"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -57,6 +58,17 @@ type CarModelsRepository interface {
 	Update(ctx context.Context, id int32, input *models.CarModelSetter) (*models.CarModel, error)
 }
 
+// CarClassesRepository defines persistence operations for CarClass entities.
+type CarClassesRepository interface {
+	LoadAll(ctx context.Context) ([]*models.CarClass, error)
+	LoadByID(ctx context.Context, id int32) (*models.CarClass, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(ctx context.Context, input *models.CarClassSetter) (*models.CarClass, error)
+	Update(ctx context.Context, id int32, input *models.CarClassSetter) (*models.CarClass, error)
+	AssignCarModel(ctx context.Context, classID, modelID int32) error
+	UnassignCarModel(ctx context.Context, classID, modelID int32) error
+}
+
 // SimulationCarAliasesRepository defines persistence operations for SimulationCarAlias entities.
 type SimulationCarAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationCarAlias, error)
@@ -83,6 +95,7 @@ type Repository interface {
 	CarManufacturers() CarManufacturersRepository
 	CarBrands() CarBrandsRepository
 	CarModels() CarModelsRepository
+	CarClasses() CarClassesRepository
 	SimulationCarAliases() SimulationCarAliasesRepository
 }
 
@@ -90,6 +103,7 @@ type repository struct {
 	carManufacturers     CarManufacturersRepository
 	carBrands            CarBrandsRepository
 	carModels            CarModelsRepository
+	carClasses           CarClassesRepository
 	simulationCarAliases SimulationCarAliasesRepository
 }
 
@@ -97,6 +111,7 @@ type (
 	carManufacturersRepository     struct{ exec *pgbob.Executor }
 	carBrandsRepository            struct{ exec *pgbob.Executor }
 	carModelsRepository            struct{ exec *pgbob.Executor }
+	carClassesRepository           struct{ exec *pgbob.Executor }
 	simulationCarAliasesRepository struct{ exec *pgbob.Executor }
 )
 
@@ -106,6 +121,7 @@ func New(pool *pgxpool.Pool) Repository {
 		carManufacturers:     &carManufacturersRepository{exec: pgbob.New(pool)},
 		carBrands:            &carBrandsRepository{exec: pgbob.New(pool)},
 		carModels:            &carModelsRepository{exec: pgbob.New(pool)},
+		carClasses:           &carClassesRepository{exec: pgbob.New(pool)},
 		simulationCarAliases: &simulationCarAliasesRepository{exec: pgbob.New(pool)},
 	}
 }
@@ -113,6 +129,7 @@ func New(pool *pgxpool.Pool) Repository {
 func (r *repository) CarManufacturers() CarManufacturersRepository { return r.carManufacturers }
 func (r *repository) CarBrands() CarBrandsRepository               { return r.carBrands }
 func (r *repository) CarModels() CarModelsRepository               { return r.carModels }
+func (r *repository) CarClasses() CarClassesRepository             { return r.carClasses }
 func (r *repository) SimulationCarAliases() SimulationCarAliasesRepository {
 	return r.simulationCarAliases
 }
@@ -271,6 +288,77 @@ func (r *carModelsRepository) Update(
 	return entity, err
 }
 
+func (r *carClassesRepository) LoadAll(ctx context.Context) ([]*models.CarClass, error) {
+	return models.CarClasses.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carClassesRepository) LoadByID(ctx context.Context, id int32) (*models.CarClass, error) {
+	entity, err := models.CarClasses.Query(sm.Where(models.CarClasses.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car class %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *carClassesRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.CarClasses.Delete(dm.Where(models.CarClasses.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *carClassesRepository) Create(
+	ctx context.Context,
+	input *models.CarClassSetter,
+) (*models.CarClass, error) {
+	return models.CarClasses.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *carClassesRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.CarClassSetter,
+) (*models.CarClass, error) {
+	entity, err := models.CarClasses.Update(
+		input.UpdateMod(),
+		um.Where(models.CarClasses.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car class %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *carClassesRepository) AssignCarModel(
+	ctx context.Context,
+	classID, modelID int32,
+) error {
+	if _, checkErr := models.CarClassesToCarModels.Query(
+		sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
+		sm.Where(models.CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(modelID))),
+	).One(ctx, r.getExecutor(ctx)); checkErr == nil {
+		return nil
+	}
+	_, err := models.CarClassesToCarModels.Insert(&models.CarClassesToCarModelSetter{
+		CarClassID: omit.From(classID),
+		CarModelID: omit.From(modelID),
+	}).One(ctx, r.getExecutor(ctx))
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *carClassesRepository) UnassignCarModel(
+	ctx context.Context,
+	classID, modelID int32,
+) error {
+	_, err := models.CarClassesToCarModels.Delete(
+		dm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
+		dm.Where(models.CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(modelID))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
 func (r *simulationCarAliasesRepository) LoadByID(
 	ctx context.Context,
 	id int32,
@@ -362,6 +450,13 @@ func (r *carBrandsRepository) getExecutor(ctx context.Context) bob.Executor {
 }
 
 func (r *carModelsRepository) getExecutor(ctx context.Context) bob.Executor {
+	if executor := pgbob.FromContext(ctx); executor != nil {
+		return executor
+	}
+	return r.exec
+}
+
+func (r *carClassesRepository) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor
 	}
