@@ -963,7 +963,7 @@ func TestAssignCarModelToCarClassSuccess(t *testing.T) {
 	}
 }
 
-func TestAssignCarModelToCarClassDuplicateIsError(t *testing.T) {
+func TestAssignCarModelToCarClassTwiceIsNotAnError(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 
 	cc := seedCarClass(t, repo, "GTC")
@@ -989,7 +989,7 @@ func TestAssignCarModelToCarClassDuplicateIsError(t *testing.T) {
 			CarModelId: uint32(mod.ID),
 		}),
 	)
-	if err == nil {
-		t.Fatal("expected error for duplicate assignment")
+	if err != nil {
+		t.Fatal("error is not expected on second assignmet")
 	}
 }

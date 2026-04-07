@@ -23,7 +23,7 @@ import (
 	"github.com/srlmgr/backend/version"
 )
 
-const envPrefix = "backend"
+const envPrefix = "BACKEND"
 
 var (
 	cfgFile             string
