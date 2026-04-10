@@ -123,6 +123,56 @@ func (s *service) UpdateSeason(
 }
 
 //nolint:whitespace // editor/linter issue
+func (s *service) AssignCarClassToSeason(
+	ctx context.Context,
+	req *connect.Request[v1.AssignCarClassToSeasonRequest]) (
+	*connect.Response[v1.AssignCarClassToSeasonResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("AssignCarClassToSeason")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		return s.repo.Seasons().AssignCarClass(
+			ctx,
+			int32(req.Msg.GetSeasonId()),
+			int32(req.Msg.GetCarClassId()),
+		)
+	}); txErr != nil {
+		l.Error("failed to assign car class to season", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to assign car class to season")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class assigned to season")
+	return connect.NewResponse(&v1.AssignCarClassToSeasonResponse{}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) UnassignCarClassFromSeason(
+	ctx context.Context,
+	req *connect.Request[v1.UnassignCarClassFromSeasonRequest]) (
+	*connect.Response[v1.UnassignCarClassFromSeasonResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("UnassignCarClassFromSeason")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		return s.repo.Seasons().UnassignCarClass(
+			ctx,
+			int32(req.Msg.GetSeasonId()),
+			int32(req.Msg.GetCarClassId()),
+		)
+	}); txErr != nil {
+		l.Error("failed to unassign car class from season", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to unassign car class from season")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class unassigned from season")
+	return connect.NewResponse(&v1.UnassignCarClassFromSeasonResponse{}), nil
+}
+
+//nolint:whitespace // editor/linter issue
 func (s *service) DeleteSeason(
 	ctx context.Context,
 	req *connect.Request[v1.DeleteSeasonRequest]) (

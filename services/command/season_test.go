@@ -368,3 +368,141 @@ func TestDeleteSeasonFailureTransactionError(t *testing.T) {
 		t.Fatalf("expected wrapped transaction error: %v", err)
 	}
 }
+
+func TestAssignCarClassToSeasonSuccess(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3")
+	ps := seedPointSystem(t, repo, "Formula Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2024 Season")
+	cc := seedCarClass(t, repo, "GT3")
+
+	resp, err := svc.AssignCarClassToSeason(
+		context.Background(),
+		connect.NewRequest(&v1.AssignCarClassToSeasonRequest{
+			SeasonId:   uint32(season.ID),
+			CarClassId: uint32(cc.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+}
+
+func TestAssignCarClassToSeasonTwiceIsNotAnError(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3")
+	ps := seedPointSystem(t, repo, "Formula Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2024 Season")
+	cc := seedCarClass(t, repo, "GT3")
+
+	_, err := svc.AssignCarClassToSeason(
+		context.Background(),
+		connect.NewRequest(&v1.AssignCarClassToSeasonRequest{
+			SeasonId:   uint32(season.ID),
+			CarClassId: uint32(cc.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("first assignment failed: %v", err)
+	}
+
+	_, err = svc.AssignCarClassToSeason(
+		context.Background(),
+		connect.NewRequest(&v1.AssignCarClassToSeasonRequest{
+			SeasonId:   uint32(season.ID),
+			CarClassId: uint32(cc.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatal("error is not expected on second assignment")
+	}
+}
+
+func TestAssignCarClassToSeasonFailureTransactionError(t *testing.T) {
+	repo := postgresrepo.New(testPool)
+	txErr := errors.New(txFailedErrMsg)
+	svc := newTestService(repo, txManagerStub{
+		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
+			return txErr
+		},
+	})
+
+	_, err := svc.AssignCarClassToSeason(
+		context.Background(),
+		connect.NewRequest(&v1.AssignCarClassToSeasonRequest{
+			SeasonId:   1,
+			CarClassId: 1,
+		}),
+	)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeInternal {
+		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeInternal)
+	}
+	if !errors.Is(err, txErr) {
+		t.Fatalf("expected wrapped transaction error: %v", err)
+	}
+}
+
+func TestUnassignCarClassFromSeasonSuccess(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3")
+	ps := seedPointSystem(t, repo, "Formula Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2024 Season")
+	cc := seedCarClass(t, repo, "GT3")
+
+	if err := repo.Seasons().AssignCarClass(context.Background(), season.ID, cc.ID); err != nil {
+		t.Fatalf("failed to assign car class for test setup: %v", err)
+	}
+
+	resp, err := svc.UnassignCarClassFromSeason(
+		context.Background(),
+		connect.NewRequest(&v1.UnassignCarClassFromSeasonRequest{
+			SeasonId:   uint32(season.ID),
+			CarClassId: uint32(cc.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+}
+
+func TestUnassignCarClassFromSeasonFailureTransactionError(t *testing.T) {
+	repo := postgresrepo.New(testPool)
+	txErr := errors.New(txFailedErrMsg)
+	svc := newTestService(repo, txManagerStub{
+		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
+			return txErr
+		},
+	})
+
+	_, err := svc.UnassignCarClassFromSeason(
+		context.Background(),
+		connect.NewRequest(&v1.UnassignCarClassFromSeasonRequest{
+			SeasonId:   1,
+			CarClassId: 1,
+		}),
+	)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeInternal {
+		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeInternal)
+	}
+	if !errors.Is(err, txErr) {
+		t.Fatalf("expected wrapped transaction error: %v", err)
+	}
+}

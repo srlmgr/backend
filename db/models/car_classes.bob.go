@@ -50,6 +50,7 @@ type CarClassesQuery = *psql.ViewQuery[*CarClass, CarClassSlice]
 type carClassR struct {
 	CarClassesToCarModels CarClassesToCarModelSlice // car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk
 	ResultEntries         ResultEntrySlice          // result_entries.result_entries_car_class_id_fk
+	SeasonCarClasses      SeasonCarClassSlice       // season_car_classes.season_car_classes_car_class_id_fk
 }
 
 func buildCarClassColumns(alias string) carClassColumns {
@@ -534,6 +535,30 @@ func (os CarClassSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) Res
 	)...)
 }
 
+// SeasonCarClasses starts a query for related objects on season_car_classes
+func (o *CarClass) SeasonCarClasses(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarClassesQuery {
+	return SeasonCarClasses.Query(append(mods,
+		sm.Where(SeasonCarClasses.Columns.CarClassID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os CarClassSlice) SeasonCarClasses(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarClassesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonCarClasses.Query(append(mods,
+		sm.Where(psql.Group(SeasonCarClasses.Columns.CarClassID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 func insertCarClassCarClassesToCarModels0(ctx context.Context, exec bob.Executor, carClassesToCarModels1 []*CarClassesToCarModelSetter, carClass0 *CarClass) (CarClassesToCarModelSlice, error) {
 	for i := range carClassesToCarModels1 {
 		carClassesToCarModels1[i].CarClassID = omit.From(carClass0.ID)
@@ -670,6 +695,74 @@ func (carClass0 *CarClass) AttachResultEntries(ctx context.Context, exec bob.Exe
 	return nil
 }
 
+func insertCarClassSeasonCarClasses0(ctx context.Context, exec bob.Executor, seasonCarClasses1 []*SeasonCarClassSetter, carClass0 *CarClass) (SeasonCarClassSlice, error) {
+	for i := range seasonCarClasses1 {
+		seasonCarClasses1[i].CarClassID = omit.From(carClass0.ID)
+	}
+
+	ret, err := SeasonCarClasses.Insert(bob.ToMods(seasonCarClasses1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertCarClassSeasonCarClasses0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachCarClassSeasonCarClasses0(ctx context.Context, exec bob.Executor, count int, seasonCarClasses1 SeasonCarClassSlice, carClass0 *CarClass) (SeasonCarClassSlice, error) {
+	setter := &SeasonCarClassSetter{
+		CarClassID: omit.From(carClass0.ID),
+	}
+
+	err := seasonCarClasses1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachCarClassSeasonCarClasses0: %w", err)
+	}
+
+	return seasonCarClasses1, nil
+}
+
+func (carClass0 *CarClass) InsertSeasonCarClasses(ctx context.Context, exec bob.Executor, related ...*SeasonCarClassSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonCarClasses1, err := insertCarClassSeasonCarClasses0(ctx, exec, related, carClass0)
+	if err != nil {
+		return err
+	}
+
+	carClass0.R.SeasonCarClasses = append(carClass0.R.SeasonCarClasses, seasonCarClasses1...)
+
+	for _, rel := range seasonCarClasses1 {
+		rel.R.CarClass = carClass0
+	}
+	return nil
+}
+
+func (carClass0 *CarClass) AttachSeasonCarClasses(ctx context.Context, exec bob.Executor, related ...*SeasonCarClass) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonCarClasses1 := SeasonCarClassSlice(related)
+
+	_, err = attachCarClassSeasonCarClasses0(ctx, exec, len(related), seasonCarClasses1, carClass0)
+	if err != nil {
+		return err
+	}
+
+	carClass0.R.SeasonCarClasses = append(carClass0.R.SeasonCarClasses, seasonCarClasses1...)
+
+	for _, rel := range related {
+		rel.R.CarClass = carClass0
+	}
+
+	return nil
+}
+
 type carClassWhere[Q psql.Filterable] struct {
 	ID        psql.WhereMod[Q, int32]
 	Name      psql.WhereMod[Q, string]
@@ -730,6 +823,20 @@ func (o *CarClass) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "SeasonCarClasses":
+		rels, ok := retrieved.(SeasonCarClassSlice)
+		if !ok {
+			return fmt.Errorf("carClass cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonCarClasses = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.CarClass = o
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("carClass has no relationship %q", name)
 	}
@@ -744,6 +851,7 @@ func buildCarClassPreloader() carClassPreloader {
 type carClassThenLoader[Q orm.Loadable] struct {
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonCarClasses      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
@@ -752,6 +860,9 @@ func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
 	}
 	type ResultEntriesLoadInterface interface {
 		LoadResultEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonCarClassesLoadInterface interface {
+		LoadSeasonCarClasses(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 
 	return carClassThenLoader[Q]{
@@ -765,6 +876,12 @@ func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
 			"ResultEntries",
 			func(ctx context.Context, exec bob.Executor, retrieved ResultEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadResultEntries(ctx, exec, mods...)
+			},
+		),
+		SeasonCarClasses: thenLoadBuilder[Q](
+			"SeasonCarClasses",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonCarClassesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonCarClasses(ctx, exec, mods...)
 			},
 		),
 	}
@@ -895,10 +1012,72 @@ func (os CarClassSlice) LoadResultEntries(ctx context.Context, exec bob.Executor
 	return nil
 }
 
+// LoadSeasonCarClasses loads the carClass's SeasonCarClasses into the .R struct
+func (o *CarClass) LoadSeasonCarClasses(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonCarClasses = nil
+
+	related, err := o.SeasonCarClasses(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.CarClass = o
+	}
+
+	o.R.SeasonCarClasses = related
+	return nil
+}
+
+// LoadSeasonCarClasses loads the carClass's SeasonCarClasses into the .R struct
+func (os CarClassSlice) LoadSeasonCarClasses(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonCarClasses, err := os.SeasonCarClasses(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonCarClasses = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasonCarClasses {
+
+			if !(o.ID == rel.CarClassID) {
+				continue
+			}
+
+			rel.R.CarClass = o
+
+			o.R.SeasonCarClasses = append(o.R.SeasonCarClasses, rel)
+		}
+	}
+
+	return nil
+}
+
 type carClassJoins[Q dialect.Joinable] struct {
 	typ                   string
 	CarClassesToCarModels modAs[Q, carClassesToCarModelColumns]
 	ResultEntries         modAs[Q, resultEntryColumns]
+	SeasonCarClasses      modAs[Q, seasonCarClassColumns]
 }
 
 func (j carClassJoins[Q]) aliasedAs(alias string) carClassJoins[Q] {
@@ -929,6 +1108,20 @@ func buildCarClassJoins[Q dialect.Joinable](cols carClassColumns, typ string) ca
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, ResultEntries.Name().As(to.Alias())).On(
+						to.CarClassID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonCarClasses: modAs[Q, seasonCarClassColumns]{
+			c: SeasonCarClasses.Columns,
+			f: func(to seasonCarClassColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonCarClasses.Name().As(to.Alias())).On(
 						to.CarClassID.EQ(cols.ID),
 					))
 				}
