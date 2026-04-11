@@ -117,7 +117,19 @@ func (r *RepositoryEntityResolver) ResolveCar(
 func (r *RepositoryEntityResolver) ResolveCarClass(
 	ownCarID uint32,
 ) (uint32, error) {
-	return 0, fmt.Errorf("resolve car class: not implemented")
+	if r.epi.Season == nil {
+		return 0, fmt.Errorf("resolve car class: season is not set")
+	}
+
+	carClass, err := r.repos.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+		r.ctx,
+		r.epi.Season.ID,
+		int32(ownCarID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("resolve car class: %w", err)
+	}
+	return uint32(carClass.ID), nil
 	// TODO: lookup in classes defined for this season
 }
 

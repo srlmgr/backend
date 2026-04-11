@@ -46,7 +46,7 @@ func (r *queryTeamDrivers) FindBySeasonAndDriver(
 
 func (r *queryTeamDrivers) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
-		return bob.Debug(executor)
+		return executor
 	}
-	return bob.Debug(r.exec)
+	return r.exec
 }
