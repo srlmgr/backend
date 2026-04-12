@@ -35,6 +35,7 @@ type preloaders struct {
 	Race                       racePreloader
 	RacingSim                  racingSimPreloader
 	ResultEntry                resultEntryPreloader
+	SeasonCarClass             seasonCarClassPreloader
 	SeasonDriverStanding       seasonDriverStandingPreloader
 	SeasonTeamStanding         seasonTeamStandingPreloader
 	Season                     seasonPreloader
@@ -68,6 +69,7 @@ func getPreloaders() preloaders {
 		Race:                       buildRacePreloader(),
 		RacingSim:                  buildRacingSimPreloader(),
 		ResultEntry:                buildResultEntryPreloader(),
+		SeasonCarClass:             buildSeasonCarClassPreloader(),
 		SeasonDriverStanding:       buildSeasonDriverStandingPreloader(),
 		SeasonTeamStanding:         buildSeasonTeamStandingPreloader(),
 		Season:                     buildSeasonPreloader(),
@@ -107,6 +109,7 @@ type thenLoaders[Q orm.Loadable] struct {
 	Race                       raceThenLoader[Q]
 	RacingSim                  racingSimThenLoader[Q]
 	ResultEntry                resultEntryThenLoader[Q]
+	SeasonCarClass             seasonCarClassThenLoader[Q]
 	SeasonDriverStanding       seasonDriverStandingThenLoader[Q]
 	SeasonTeamStanding         seasonTeamStandingThenLoader[Q]
 	Season                     seasonThenLoader[Q]
@@ -140,6 +143,7 @@ func getThenLoaders[Q orm.Loadable]() thenLoaders[Q] {
 		Race:                       buildRaceThenLoader[Q](),
 		RacingSim:                  buildRacingSimThenLoader[Q](),
 		ResultEntry:                buildResultEntryThenLoader[Q](),
+		SeasonCarClass:             buildSeasonCarClassThenLoader[Q](),
 		SeasonDriverStanding:       buildSeasonDriverStandingThenLoader[Q](),
 		SeasonTeamStanding:         buildSeasonTeamStandingThenLoader[Q](),
 		Season:                     buildSeasonThenLoader[Q](),

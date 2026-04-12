@@ -42,8 +42,8 @@ func (mods BookingEntryModSlice) Apply(ctx context.Context, n *BookingEntryTempl
 type BookingEntryTemplate struct {
 	ID           func() int32
 	EventID      func() int32
-	RaceID       func() int32
-	RaceGridID   func() int32
+	RaceID       func() null.Val[int32]
+	RaceGridID   func() null.Val[int32]
 	TargetType   func() mytypes.TargetType
 	DriverID     func() null.Val[int32]
 	TeamID       func() null.Val[int32]
@@ -115,14 +115,14 @@ func (t BookingEntryTemplate) setModelRels(o *models.BookingEntry) {
 	if t.r.RaceGrid != nil {
 		rel := t.r.RaceGrid.o.Build()
 		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
-		o.RaceGridID = rel.ID // h2
+		o.RaceGridID = null.From(rel.ID) // h2
 		o.R.RaceGrid = rel
 	}
 
 	if t.r.Race != nil {
 		rel := t.r.Race.o.Build()
 		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
-		o.RaceID = rel.ID // h2
+		o.RaceID = null.From(rel.ID) // h2
 		o.R.Race = rel
 	}
 
@@ -149,11 +149,11 @@ func (o BookingEntryTemplate) BuildSetter() *models.BookingEntrySetter {
 	}
 	if o.RaceID != nil {
 		val := o.RaceID()
-		m.RaceID = omit.From(val)
+		m.RaceID = omitnull.FromNull(val)
 	}
 	if o.RaceGridID != nil {
 		val := o.RaceGridID()
-		m.RaceGridID = omit.From(val)
+		m.RaceGridID = omitnull.FromNull(val)
 	}
 	if o.TargetType != nil {
 		val := o.TargetType()
@@ -304,14 +304,6 @@ func ensureCreatableBookingEntry(m *models.BookingEntrySetter) {
 		val := random_int32(nil)
 		m.EventID = omit.From(val)
 	}
-	if !(m.RaceID.IsValue()) {
-		val := random_int32(nil)
-		m.RaceID = omit.From(val)
-	}
-	if !(m.RaceGridID.IsValue()) {
-		val := random_int32(nil)
-		m.RaceGridID = omit.From(val)
-	}
 	if !(m.TargetType.IsValue()) {
 		val := random_mytypes_TargetType(nil)
 		m.TargetType = omit.From(val)
@@ -344,6 +336,44 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 				return err
 			}
 			err = m.AttachDriver(ctx, exec, rel0)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	isRaceGridDone, _ := bookingEntryRelRaceGridCtx.Value(ctx)
+	if !isRaceGridDone && o.r.RaceGrid != nil {
+		ctx = bookingEntryRelRaceGridCtx.WithValue(ctx, true)
+		if o.r.RaceGrid.o.alreadyPersisted {
+			m.R.RaceGrid = o.r.RaceGrid.o.Build()
+		} else {
+			var rel2 *models.RaceGrid
+			rel2, err = o.r.RaceGrid.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachRaceGrid(ctx, exec, rel2)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	isRaceDone, _ := bookingEntryRelRaceCtx.Value(ctx)
+	if !isRaceDone && o.r.Race != nil {
+		ctx = bookingEntryRelRaceCtx.WithValue(ctx, true)
+		if o.r.Race.o.alreadyPersisted {
+			m.R.Race = o.r.Race.o.Build()
+		} else {
+			var rel3 *models.Race
+			rel3, err = o.r.Race.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachRace(ctx, exec, rel3)
 			if err != nil {
 				return err
 			}
@@ -397,48 +427,12 @@ func (o *BookingEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*
 
 	opt.EventID = omit.From(rel1.ID)
 
-	if o.r.RaceGrid == nil {
-		BookingEntryMods.WithNewRaceGrid().Apply(ctx, o)
-	}
-
-	var rel2 *models.RaceGrid
-
-	if o.r.RaceGrid.o.alreadyPersisted {
-		rel2 = o.r.RaceGrid.o.Build()
-	} else {
-		rel2, err = o.r.RaceGrid.o.Create(ctx, exec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	opt.RaceGridID = omit.From(rel2.ID)
-
-	if o.r.Race == nil {
-		BookingEntryMods.WithNewRace().Apply(ctx, o)
-	}
-
-	var rel3 *models.Race
-
-	if o.r.Race.o.alreadyPersisted {
-		rel3 = o.r.Race.o.Build()
-	} else {
-		rel3, err = o.r.Race.o.Create(ctx, exec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	opt.RaceID = omit.From(rel3.ID)
-
 	m, err := models.BookingEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
 	m.R.Event = rel1
-	m.R.RaceGrid = rel2
-	m.R.Race = rel3
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -600,14 +594,14 @@ func (m bookingEntryMods) RandomEventID(f *faker.Faker) BookingEntryMod {
 }
 
 // Set the model columns to this value
-func (m bookingEntryMods) RaceID(val int32) BookingEntryMod {
+func (m bookingEntryMods) RaceID(val null.Val[int32]) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.RaceID = func() int32 { return val }
+		o.RaceID = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m bookingEntryMods) RaceIDFunc(f func() int32) BookingEntryMod {
+func (m bookingEntryMods) RaceIDFunc(f func() null.Val[int32]) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
 		o.RaceID = f
 	})
@@ -622,23 +616,45 @@ func (m bookingEntryMods) UnsetRaceID() BookingEntryMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
+// The generated value is sometimes null
 func (m bookingEntryMods) RandomRaceID(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.RaceID = func() int32 {
-			return random_int32(f)
+		o.RaceID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m bookingEntryMods) RandomRaceIDNotNull(f *faker.Faker) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.RaceID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m bookingEntryMods) RaceGridID(val int32) BookingEntryMod {
+func (m bookingEntryMods) RaceGridID(val null.Val[int32]) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.RaceGridID = func() int32 { return val }
+		o.RaceGridID = func() null.Val[int32] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m bookingEntryMods) RaceGridIDFunc(f func() int32) BookingEntryMod {
+func (m bookingEntryMods) RaceGridIDFunc(f func() null.Val[int32]) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
 		o.RaceGridID = f
 	})
@@ -653,10 +669,32 @@ func (m bookingEntryMods) UnsetRaceGridID() BookingEntryMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
+// The generated value is sometimes null
 func (m bookingEntryMods) RandomRaceGridID(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
-		o.RaceGridID = func() int32 {
-			return random_int32(f)
+		o.RaceGridID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m bookingEntryMods) RandomRaceGridIDNotNull(f *faker.Faker) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.RaceGridID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
 		}
 	})
 }

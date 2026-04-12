@@ -36,6 +36,7 @@ type Factory struct {
 	baseRaceMods                       RaceModSlice
 	baseRacingSimMods                  RacingSimModSlice
 	baseResultEntryMods                ResultEntryModSlice
+	baseSeasonCarClassMods             SeasonCarClassModSlice
 	baseSeasonDriverStandingMods       SeasonDriverStandingModSlice
 	baseSeasonTeamStandingMods         SeasonTeamStandingModSlice
 	baseSeasonMods                     SeasonModSlice
@@ -74,8 +75,8 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 
 	o.ID = func() int32 { return m.ID }
 	o.EventID = func() int32 { return m.EventID }
-	o.RaceID = func() int32 { return m.RaceID }
-	o.RaceGridID = func() int32 { return m.RaceGridID }
+	o.RaceID = func() null.Val[int32] { return m.RaceID }
+	o.RaceGridID = func() null.Val[int32] { return m.RaceGridID }
 	o.TargetType = func() mytypes.TargetType { return m.TargetType }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -182,6 +183,9 @@ func (f *Factory) FromExistingCarClass(m *models.CarClass) *CarClassTemplate {
 	}
 	if len(m.R.ResultEntries) > 0 {
 		CarClassMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonCarClasses) > 0 {
+		CarClassMods.AddExistingSeasonCarClasses(m.R.SeasonCarClasses...).Apply(ctx, o)
 	}
 
 	return o
@@ -833,7 +837,8 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	o.RawDriverName = func() null.Val[string] { return m.RawDriverName }
 	o.RawTeamName = func() null.Val[string] { return m.RawTeamName }
 	o.CarNumber = func() null.Val[string] { return m.CarNumber }
-	o.IsGuestDriver = func() bool { return m.IsGuestDriver }
+	o.IsGuestStarter = func() bool { return m.IsGuestStarter }
+	o.TeamDrivers = func() null.Val[mytypes.TeamDrivers] { return m.TeamDrivers }
 	o.StartPosition = func() null.Val[int32] { return m.StartPosition }
 	o.FinishPosition = func() int32 { return m.FinishPosition }
 	o.LapsCompleted = func() int32 { return m.LapsCompleted }
@@ -864,6 +869,40 @@ func (f *Factory) FromExistingResultEntry(m *models.ResultEntry) *ResultEntryTem
 	}
 	if m.R.Team != nil {
 		ResultEntryMods.WithExistingTeam(m.R.Team).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeasonCarClass(mods ...SeasonCarClassMod) *SeasonCarClassTemplate {
+	return f.NewSeasonCarClassWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeasonCarClassWithContext(ctx context.Context, mods ...SeasonCarClassMod) *SeasonCarClassTemplate {
+	o := &SeasonCarClassTemplate{f: f}
+
+	if f != nil {
+		f.baseSeasonCarClassMods.Apply(ctx, o)
+	}
+
+	SeasonCarClassModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeasonCarClass(m *models.SeasonCarClass) *SeasonCarClassTemplate {
+	o := &SeasonCarClassTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.CarClassID = func() int32 { return m.CarClassID }
+
+	ctx := context.Background()
+	if m.R.CarClass != nil {
+		SeasonCarClassMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
+	}
+	if m.R.Season != nil {
+		SeasonCarClassMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
 	}
 
 	return o
@@ -1001,6 +1040,9 @@ func (f *Factory) FromExistingSeason(m *models.Season) *SeasonTemplate {
 	}
 	if len(m.R.Events) > 0 {
 		SeasonMods.AddExistingEvents(m.R.Events...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonCarClasses) > 0 {
+		SeasonMods.AddExistingSeasonCarClasses(m.R.SeasonCarClasses...).Apply(ctx, o)
 	}
 	if len(m.R.SeasonDriverStandings) > 0 {
 		SeasonMods.AddExistingSeasonDriverStandings(m.R.SeasonDriverStandings...).Apply(ctx, o)
@@ -1497,6 +1539,14 @@ func (f *Factory) ClearBaseResultEntryMods() {
 
 func (f *Factory) AddBaseResultEntryMod(mods ...ResultEntryMod) {
 	f.baseResultEntryMods = append(f.baseResultEntryMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeasonCarClassMods() {
+	f.baseSeasonCarClassMods = nil
+}
+
+func (f *Factory) AddBaseSeasonCarClassMod(mods ...SeasonCarClassMod) {
+	f.baseSeasonCarClassMods = append(f.baseSeasonCarClassMods, mods...)
 }
 
 func (f *Factory) ClearBaseSeasonDriverStandingMods() {

@@ -60,4 +60,23 @@ CREATE INDEX idx_seasons_point_system_id ON seasons (point_system_id);
 CREATE INDEX idx_seasons_status ON seasons (status);
 CREATE INDEX idx_seasons_starts_at ON seasons (starts_at);
 
+
+CREATE TABLE season_car_classes (
+	-- ugly workaround. don't need a pk here, but bob runs into errors creating dberrors text without it
+	id serial PRIMARY KEY,
+    season_id integer NOT NULL,
+    car_class_id integer NOT NULL
+);
+ALTER TABLE season_car_classes
+    ADD CONSTRAINT season_car_classes_car_class_id_fk
+    FOREIGN KEY (car_class_id) REFERENCES car_classes (id);
+
+ALTER TABLE season_car_classes
+    ADD CONSTRAINT season_car_classes_season_id_fk
+    FOREIGN KEY (season_id) REFERENCES seasons (id);
+
+ALTER TABLE season_car_classes
+    ADD CONSTRAINT season_car_classes_car_class_id_season_id_unique
+    UNIQUE (car_class_id, season_id);
+
 COMMIT;

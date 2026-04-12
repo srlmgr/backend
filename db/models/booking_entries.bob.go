@@ -31,8 +31,8 @@ import (
 type BookingEntry struct {
 	ID           int32                       `db:"id,pk" `
 	EventID      int32                       `db:"event_id" `
-	RaceID       int32                       `db:"race_id" `
-	RaceGridID   int32                       `db:"race_grid_id" `
+	RaceID       null.Val[int32]             `db:"race_id" `
+	RaceGridID   null.Val[int32]             `db:"race_grid_id" `
 	TargetType   mytypes.TargetType          `db:"target_type" `
 	DriverID     null.Val[int32]             `db:"driver_id" `
 	TeamID       null.Val[int32]             `db:"team_id" `
@@ -131,8 +131,8 @@ func (bookingEntryColumns) AliasedAs(alias string) bookingEntryColumns {
 type BookingEntrySetter struct {
 	ID           omit.Val[int32]                       `db:"id,pk" `
 	EventID      omit.Val[int32]                       `db:"event_id" `
-	RaceID       omit.Val[int32]                       `db:"race_id" `
-	RaceGridID   omit.Val[int32]                       `db:"race_grid_id" `
+	RaceID       omitnull.Val[int32]                   `db:"race_id" `
+	RaceGridID   omitnull.Val[int32]                   `db:"race_grid_id" `
 	TargetType   omit.Val[mytypes.TargetType]          `db:"target_type" `
 	DriverID     omitnull.Val[int32]                   `db:"driver_id" `
 	TeamID       omitnull.Val[int32]                   `db:"team_id" `
@@ -156,10 +156,10 @@ func (s BookingEntrySetter) SetColumns() []string {
 	if s.EventID.IsValue() {
 		vals = append(vals, "event_id")
 	}
-	if s.RaceID.IsValue() {
+	if !s.RaceID.IsUnset() {
 		vals = append(vals, "race_id")
 	}
-	if s.RaceGridID.IsValue() {
+	if !s.RaceGridID.IsUnset() {
 		vals = append(vals, "race_grid_id")
 	}
 	if s.TargetType.IsValue() {
@@ -211,11 +211,11 @@ func (s BookingEntrySetter) Overwrite(t *BookingEntry) {
 	if s.EventID.IsValue() {
 		t.EventID = s.EventID.MustGet()
 	}
-	if s.RaceID.IsValue() {
-		t.RaceID = s.RaceID.MustGet()
+	if !s.RaceID.IsUnset() {
+		t.RaceID = s.RaceID.MustGetNull()
 	}
-	if s.RaceGridID.IsValue() {
-		t.RaceGridID = s.RaceGridID.MustGet()
+	if !s.RaceGridID.IsUnset() {
+		t.RaceGridID = s.RaceGridID.MustGetNull()
 	}
 	if s.TargetType.IsValue() {
 		t.TargetType = s.TargetType.MustGet()
@@ -277,14 +277,14 @@ func (s *BookingEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.RaceID.IsValue() {
-			vals[2] = psql.Arg(s.RaceID.MustGet())
+		if !s.RaceID.IsUnset() {
+			vals[2] = psql.Arg(s.RaceID.MustGetNull())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.RaceGridID.IsValue() {
-			vals[3] = psql.Arg(s.RaceGridID.MustGet())
+		if !s.RaceGridID.IsUnset() {
+			vals[3] = psql.Arg(s.RaceGridID.MustGetNull())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
@@ -392,14 +392,14 @@ func (s BookingEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.RaceID.IsValue() {
+	if !s.RaceID.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "race_id")...),
 			psql.Arg(s.RaceID),
 		}})
 	}
 
-	if s.RaceGridID.IsValue() {
+	if !s.RaceGridID.IsUnset() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "race_grid_id")...),
 			psql.Arg(s.RaceGridID),
@@ -779,7 +779,7 @@ func (o *BookingEntry) RaceGrid(mods ...bob.Mod[*dialect.SelectQuery]) RaceGrids
 }
 
 func (os BookingEntrySlice) RaceGrid(mods ...bob.Mod[*dialect.SelectQuery]) RaceGridsQuery {
-	pkRaceGridID := make(pgtypes.Array[int32], 0, len(os))
+	pkRaceGridID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -803,7 +803,7 @@ func (o *BookingEntry) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
 }
 
 func (os BookingEntrySlice) Race(mods ...bob.Mod[*dialect.SelectQuery]) RacesQuery {
-	pkRaceID := make(pgtypes.Array[int32], 0, len(os))
+	pkRaceID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -941,7 +941,7 @@ func (bookingEntry0 *BookingEntry) AttachEvent(ctx context.Context, exec bob.Exe
 
 func attachBookingEntryRaceGrid0(ctx context.Context, exec bob.Executor, count int, bookingEntry0 *BookingEntry, raceGrid1 *RaceGrid) (*BookingEntry, error) {
 	setter := &BookingEntrySetter{
-		RaceGridID: omit.From(raceGrid1.ID),
+		RaceGridID: omitnull.From(raceGrid1.ID),
 	}
 
 	err := bookingEntry0.Update(ctx, exec, setter)
@@ -989,7 +989,7 @@ func (bookingEntry0 *BookingEntry) AttachRaceGrid(ctx context.Context, exec bob.
 
 func attachBookingEntryRace0(ctx context.Context, exec bob.Executor, count int, bookingEntry0 *BookingEntry, race1 *Race) (*BookingEntry, error) {
 	setter := &BookingEntrySetter{
-		RaceID: omit.From(race1.ID),
+		RaceID: omitnull.From(race1.ID),
 	}
 
 	err := bookingEntry0.Update(ctx, exec, setter)
@@ -1086,8 +1086,8 @@ func (bookingEntry0 *BookingEntry) AttachTeam(ctx context.Context, exec bob.Exec
 type bookingEntryWhere[Q psql.Filterable] struct {
 	ID           psql.WhereMod[Q, int32]
 	EventID      psql.WhereMod[Q, int32]
-	RaceID       psql.WhereMod[Q, int32]
-	RaceGridID   psql.WhereMod[Q, int32]
+	RaceID       psql.WhereNullMod[Q, int32]
+	RaceGridID   psql.WhereNullMod[Q, int32]
 	TargetType   psql.WhereMod[Q, mytypes.TargetType]
 	DriverID     psql.WhereNullMod[Q, int32]
 	TeamID       psql.WhereNullMod[Q, int32]
@@ -1111,8 +1111,8 @@ func buildBookingEntryWhere[Q psql.Filterable](cols bookingEntryColumns) booking
 	return bookingEntryWhere[Q]{
 		ID:           psql.Where[Q, int32](cols.ID),
 		EventID:      psql.Where[Q, int32](cols.EventID),
-		RaceID:       psql.Where[Q, int32](cols.RaceID),
-		RaceGridID:   psql.Where[Q, int32](cols.RaceGridID),
+		RaceID:       psql.WhereNull[Q, int32](cols.RaceID),
+		RaceGridID:   psql.WhereNull[Q, int32](cols.RaceGridID),
 		TargetType:   psql.Where[Q, mytypes.TargetType](cols.TargetType),
 		DriverID:     psql.WhereNull[Q, int32](cols.DriverID),
 		TeamID:       psql.WhereNull[Q, int32](cols.TeamID),
@@ -1481,8 +1481,11 @@ func (os BookingEntrySlice) LoadRaceGrid(ctx context.Context, exec bob.Executor,
 		}
 
 		for _, rel := range raceGrids {
+			if !o.RaceGridID.IsValue() {
+				continue
+			}
 
-			if !(o.RaceGridID == rel.ID) {
+			if !(o.RaceGridID.IsValue() && o.RaceGridID.MustGet() == rel.ID) {
 				continue
 			}
 
@@ -1533,8 +1536,11 @@ func (os BookingEntrySlice) LoadRace(ctx context.Context, exec bob.Executor, mod
 		}
 
 		for _, rel := range races {
+			if !o.RaceID.IsValue() {
+				continue
+			}
 
-			if !(o.RaceID == rel.ID) {
+			if !(o.RaceID.IsValue() && o.RaceID.MustGet() == rel.ID) {
 				continue
 			}
 

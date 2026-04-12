@@ -66,6 +66,7 @@ type seasonR struct {
 	EventDriverStandings  []*seasonREventDriverStandingsR
 	EventTeamStandings    []*seasonREventTeamStandingsR
 	Events                []*seasonREventsR
+	SeasonCarClasses      []*seasonRSeasonCarClassesR
 	SeasonDriverStandings []*seasonRSeasonDriverStandingsR
 	SeasonTeamStandings   []*seasonRSeasonTeamStandingsR
 	PointSystem           *seasonRPointSystemR
@@ -84,6 +85,10 @@ type seasonREventTeamStandingsR struct {
 type seasonREventsR struct {
 	number int
 	o      *EventTemplate
+}
+type seasonRSeasonCarClassesR struct {
+	number int
+	o      *SeasonCarClassTemplate
 }
 type seasonRSeasonDriverStandingsR struct {
 	number int
@@ -151,6 +156,19 @@ func (t SeasonTemplate) setModelRels(o *models.Season) {
 			rel = append(rel, related...)
 		}
 		o.R.Events = rel
+	}
+
+	if t.r.SeasonCarClasses != nil {
+		rel := models.SeasonCarClassSlice{}
+		for _, r := range t.r.SeasonCarClasses {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.SeasonID = o.ID // h2
+				rel.R.Season = o
+			}
+			rel = append(rel, related...)
+		}
+		o.R.SeasonCarClasses = rel
 	}
 
 	if t.r.SeasonDriverStandings != nil {
@@ -453,6 +471,26 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 		}
 	}
 
+	isSeasonCarClassesDone, _ := seasonRelSeasonCarClassesCtx.Value(ctx)
+	if !isSeasonCarClassesDone && o.r.SeasonCarClasses != nil {
+		ctx = seasonRelSeasonCarClassesCtx.WithValue(ctx, true)
+		for _, r := range o.r.SeasonCarClasses {
+			if r.o.alreadyPersisted {
+				m.R.SeasonCarClasses = append(m.R.SeasonCarClasses, r.o.Build())
+			} else {
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachSeasonCarClasses(ctx, exec, rel3...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isSeasonDriverStandingsDone, _ := seasonRelSeasonDriverStandingsCtx.Value(ctx)
 	if !isSeasonDriverStandingsDone && o.r.SeasonDriverStandings != nil {
 		ctx = seasonRelSeasonDriverStandingsCtx.WithValue(ctx, true)
@@ -460,12 +498,12 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 			if r.o.alreadyPersisted {
 				m.R.SeasonDriverStandings = append(m.R.SeasonDriverStandings, r.o.Build())
 			} else {
-				rel3, err := r.o.CreateMany(ctx, exec, r.number)
+				rel4, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSeasonDriverStandings(ctx, exec, rel3...)
+				err = m.AttachSeasonDriverStandings(ctx, exec, rel4...)
 				if err != nil {
 					return err
 				}
@@ -480,12 +518,12 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 			if r.o.alreadyPersisted {
 				m.R.SeasonTeamStandings = append(m.R.SeasonTeamStandings, r.o.Build())
 			} else {
-				rel4, err := r.o.CreateMany(ctx, exec, r.number)
+				rel5, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSeasonTeamStandings(ctx, exec, rel4...)
+				err = m.AttachSeasonTeamStandings(ctx, exec, rel5...)
 				if err != nil {
 					return err
 				}
@@ -500,12 +538,12 @@ func (o *SeasonTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m
 			if r.o.alreadyPersisted {
 				m.R.Teams = append(m.R.Teams, r.o.Build())
 			} else {
-				rel7, err := r.o.CreateMany(ctx, exec, r.number)
+				rel8, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachTeams(ctx, exec, rel7...)
+				err = m.AttachTeams(ctx, exec, rel8...)
 				if err != nil {
 					return err
 				}
@@ -527,43 +565,43 @@ func (o *SeasonTemplate) Create(ctx context.Context, exec bob.Executor) (*models
 		SeasonMods.WithNewPointSystem().Apply(ctx, o)
 	}
 
-	var rel5 *models.PointSystem
+	var rel6 *models.PointSystem
 
 	if o.r.PointSystem.o.alreadyPersisted {
-		rel5 = o.r.PointSystem.o.Build()
+		rel6 = o.r.PointSystem.o.Build()
 	} else {
-		rel5, err = o.r.PointSystem.o.Create(ctx, exec)
+		rel6, err = o.r.PointSystem.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.PointSystemID = omit.From(rel5.ID)
+	opt.PointSystemID = omit.From(rel6.ID)
 
 	if o.r.Series == nil {
 		SeasonMods.WithNewSeries().Apply(ctx, o)
 	}
 
-	var rel6 *models.Series
+	var rel7 *models.Series
 
 	if o.r.Series.o.alreadyPersisted {
-		rel6 = o.r.Series.o.Build()
+		rel7 = o.r.Series.o.Build()
 	} else {
-		rel6, err = o.r.Series.o.Create(ctx, exec)
+		rel7, err = o.r.Series.o.Create(ctx, exec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	opt.SeriesID = omit.From(rel6.ID)
+	opt.SeriesID = omit.From(rel7.ID)
 
 	m, err := models.Seasons.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.R.PointSystem = rel5
-	m.R.Series = rel6
+	m.R.PointSystem = rel6
+	m.R.Series = rel7
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -1475,6 +1513,54 @@ func (m seasonMods) AddExistingEvents(existingModels ...*models.Event) SeasonMod
 func (m seasonMods) WithoutEvents() SeasonMod {
 	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
 		o.r.Events = nil
+	})
+}
+
+func (m seasonMods) WithSeasonCarClasses(number int, related *SeasonCarClassTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonCarClasses = []*seasonRSeasonCarClassesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m seasonMods) WithNewSeasonCarClasses(number int, mods ...SeasonCarClassMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonCarClassWithContext(ctx, mods...)
+		m.WithSeasonCarClasses(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddSeasonCarClasses(number int, related *SeasonCarClassTemplate) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonCarClasses = append(o.r.SeasonCarClasses, &seasonRSeasonCarClassesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m seasonMods) AddNewSeasonCarClasses(number int, mods ...SeasonCarClassMod) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		related := o.f.NewSeasonCarClassWithContext(ctx, mods...)
+		m.AddSeasonCarClasses(number, related).Apply(ctx, o)
+	})
+}
+
+func (m seasonMods) AddExistingSeasonCarClasses(existingModels ...*models.SeasonCarClass) SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		for _, em := range existingModels {
+			o.r.SeasonCarClasses = append(o.r.SeasonCarClasses, &seasonRSeasonCarClassesR{
+				o: o.f.FromExistingSeasonCarClass(em),
+			})
+		}
+	})
+}
+
+func (m seasonMods) WithoutSeasonCarClasses() SeasonMod {
+	return SeasonModFunc(func(ctx context.Context, o *SeasonTemplate) {
+		o.r.SeasonCarClasses = nil
 	})
 }
 

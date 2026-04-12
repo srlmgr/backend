@@ -229,6 +229,30 @@ func seedCarModel(
 }
 
 //nolint:whitespace // multiline signature style
+func seedCarClass(
+	t *testing.T,
+	repo rootrepo.Repository,
+	name string,
+) (
+	cc *models.CarClass,
+) {
+	t.Helper()
+
+	var err error
+	cc, err = repo.Cars().CarClasses().Create(context.Background(), &models.CarClassSetter{
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed car class %q: %v", name, err)
+	}
+
+	return cc
+}
+
+//nolint:whitespace // multiline signature style
 func seedTrack(
 	t *testing.T,
 	repo rootrepo.Repository,

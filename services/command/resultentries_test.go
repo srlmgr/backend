@@ -16,7 +16,6 @@ import (
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
 	"github.com/srlmgr/backend/services/conversion"
-	testsupportrepo "github.com/srlmgr/backend/testsupport/repository"
 )
 
 //nolint:gocyclo // much to do
@@ -120,17 +119,24 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	}
 }
 
-// TestCreateResultEntrySuccess tests CreateResultEntry using the in-memory repository,
-// because the proto request does not include required DB fields (import_batch_id, driver_name).
+// TestCreateResultEntrySuccess tests CreateResultEntry using the real database.
 func TestCreateResultEntrySuccess(t *testing.T) {
-	repo := testsupportrepo.New()
-	txMgr := txManagerStub{}
-	svc := newTestService(repo, txMgr)
+	svc, repo := newDBBackedTestService(t)
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3")
+	ps := seedPointSystem(t, repo, "Standard Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
+	track := seedTrack(t, repo, "Spa-Francorchamps")
+	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
+	driver := seedDriver(t, repo, "ext-001", "Alex Tester")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceGridId:        1,
-		DriverId:          1,
+		RaceGridId:        uint32(grid.ID),
+		DriverId:          uint32(driver.ID),
 		FinishingPosition: 2,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
@@ -141,10 +147,11 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 	if resp.Msg.GetResultEntry() == nil {
 		t.Fatal("expected non-nil result entry in response")
 	}
-	if resp.Msg.GetResultEntry().GetRaceGridId() != 1 {
+	if resp.Msg.GetResultEntry().GetRaceGridId() != uint32(grid.ID) {
 		t.Fatalf(
-			"unexpected race_grid_id: got %d want 1",
+			"unexpected race_grid_id: got %d want %d",
 			resp.Msg.GetResultEntry().GetRaceGridId(),
+			uint32(grid.ID),
 		)
 	}
 	if resp.Msg.GetResultEntry().GetFinishingPosition() != 2 {
@@ -204,17 +211,26 @@ func TestCreateResultEntryFailureDuplicateRaceDriver(t *testing.T) {
 	}
 }
 
-// TestCreateResultEntrySuccessDifferentDriver verifies that the same race with
-// different drivers succeeds using the in-memory repository.
+// TestCreateResultEntrySuccessDifferentDriver verifies that the same race grid with
+// different drivers succeeds using the real database.
 func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
-	repo := testsupportrepo.New()
-	txMgr := txManagerStub{}
-	svc := newTestService(repo, txMgr)
+	svc, repo := newDBBackedTestService(t)
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3")
+	ps := seedPointSystem(t, repo, "Standard Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
+	track := seedTrack(t, repo, "Spa-Francorchamps")
+	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
+	event := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
+	driver1 := seedDriver(t, repo, "ext-001", "Alex Tester")
+	driver2 := seedDriver(t, repo, "ext-002", "Bob Racer")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	_, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceGridId:        1,
-		DriverId:          1,
+		RaceGridId:        uint32(grid.ID),
+		DriverId:          uint32(driver1.ID),
 		FinishingPosition: 1,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
@@ -224,8 +240,8 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 	}
 
 	_, err = svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
-		RaceGridId:        1,
-		DriverId:          2,
+		RaceGridId:        uint32(grid.ID),
+		DriverId:          uint32(driver2.ID),
 		FinishingPosition: 2,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,

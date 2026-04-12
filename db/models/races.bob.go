@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -606,7 +607,7 @@ func (os RaceSlice) Event(mods ...bob.Mod[*dialect.SelectQuery]) EventsQuery {
 
 func insertRaceBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, race0 *Race) (BookingEntrySlice, error) {
 	for i := range bookingEntries1 {
-		bookingEntries1[i].RaceID = omit.From(race0.ID)
+		bookingEntries1[i].RaceID = omitnull.From(race0.ID)
 	}
 
 	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
@@ -619,7 +620,7 @@ func insertRaceBookingEntries0(ctx context.Context, exec bob.Executor, bookingEn
 
 func attachRaceBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, race0 *Race) (BookingEntrySlice, error) {
 	setter := &BookingEntrySetter{
-		RaceID: omit.From(race0.ID),
+		RaceID: omitnull.From(race0.ID),
 	}
 
 	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
@@ -978,7 +979,10 @@ func (os RaceSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor, m
 
 		for _, rel := range bookingEntries {
 
-			if !(o.ID == rel.RaceID) {
+			if !rel.RaceID.IsValue() {
+				continue
+			}
+			if !(rel.RaceID.IsValue() && o.ID == rel.RaceID.MustGet()) {
 				continue
 			}
 

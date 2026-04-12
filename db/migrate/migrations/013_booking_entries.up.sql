@@ -3,8 +3,8 @@ BEGIN;
 CREATE TABLE booking_entries (
     id serial PRIMARY KEY,
     event_id integer NOT NULL,
-	race_id integer not null,
-	race_grid_id integer not null,
+	race_id integer,
+	race_grid_id integer,
 
     target_type text NOT NULL,
     driver_id integer,
@@ -48,7 +48,7 @@ ALTER TABLE booking_entries
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_source_type_check
-    CHECK (source_type IN ('finish_pos', 'fastest_lap', 'least_incidents','incidents_exceeded','qualification_pos','top_n_finishers','custom','manual_adjustment'));
+    CHECK (source_type IN ('finish_pos', 'fastest_lap', 'least_incidents','incidents_exceeded','qualification_pos','top_n_finishers','custom','manual_adjustment', 'penalty_points', 'team_contribution'));
 
 
 CREATE INDEX idx_booking_entries_event_id ON booking_entries (event_id);

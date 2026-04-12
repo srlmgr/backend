@@ -91,7 +91,13 @@ func (p *PointSystemProcessor) ProcessPoints(
 	penaltySettings map[PointPolicyType]any,
 ) ([]Output, error) {
 	ret := make([]Output, 0)
-	byClass := lo.GroupBy(inputs, func(item Input) int32 { return item.ClassID() })
+	sortedByFinishPos := lo.Clone(inputs)
+	slices.SortFunc(
+		sortedByFinishPos, func(a, b Input) int {
+			return int(a.FinishPosition() - b.FinishPosition())
+		})
+	byClass := lo.GroupBy(sortedByFinishPos,
+		func(item Input) int32 { return item.ClassID() })
 	for _, classInputs := range byClass {
 		eligibleInputs := p.collectEligibleInputs(classInputs)
 		for _, policyType := range policies {
@@ -200,9 +206,11 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 }
 
 func (p *PointSystemProcessor) collectEligibleInputs(inputs []Input) []Input {
-	first, _ := lo.Find(inputs, func(inp Input) bool {
-		return inp.FinishPosition() == 1
-	})
+	if len(inputs) == 0 {
+		return inputs
+	}
+
+	first := inputs[0]
 	needsLaps := int32(0)
 	if p.settings.Eligibility.RaceDistPct > 0 {
 		raw := float64(first.LapsCompleted()) * p.settings.Eligibility.RaceDistPct

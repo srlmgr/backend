@@ -67,6 +67,7 @@ type seasonR struct {
 	EventDriverStandings  EventDriverStandingSlice  // event_driver_standings.event_driver_standings_season_id_fk
 	EventTeamStandings    EventTeamStandingSlice    // event_team_standings.event_team_standings_season_id_fk
 	Events                EventSlice                // events.events_season_id_fk
+	SeasonCarClasses      SeasonCarClassSlice       // season_car_classes.season_car_classes_season_id_fk
 	SeasonDriverStandings SeasonDriverStandingSlice // season_driver_standings.season_driver_standings_season_id_fk
 	SeasonTeamStandings   SeasonTeamStandingSlice   // season_team_standings.season_team_standings_season_id_fk
 	PointSystem           *PointSystem              // seasons.seasons_point_system_id_fk
@@ -800,6 +801,30 @@ func (os SeasonSlice) Events(mods ...bob.Mod[*dialect.SelectQuery]) EventsQuery 
 	)...)
 }
 
+// SeasonCarClasses starts a query for related objects on season_car_classes
+func (o *Season) SeasonCarClasses(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarClassesQuery {
+	return SeasonCarClasses.Query(append(mods,
+		sm.Where(SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os SeasonSlice) SeasonCarClasses(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarClassesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonCarClasses.Query(append(mods,
+		sm.Where(psql.Group(SeasonCarClasses.Columns.SeasonID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // SeasonDriverStandings starts a query for related objects on season_driver_standings
 func (o *Season) SeasonDriverStandings(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriverStandingsQuery {
 	return SeasonDriverStandings.Query(append(mods,
@@ -1116,6 +1141,74 @@ func (season0 *Season) AttachEvents(ctx context.Context, exec bob.Executor, rela
 	}
 
 	season0.R.Events = append(season0.R.Events, events1...)
+
+	for _, rel := range related {
+		rel.R.Season = season0
+	}
+
+	return nil
+}
+
+func insertSeasonSeasonCarClasses0(ctx context.Context, exec bob.Executor, seasonCarClasses1 []*SeasonCarClassSetter, season0 *Season) (SeasonCarClassSlice, error) {
+	for i := range seasonCarClasses1 {
+		seasonCarClasses1[i].SeasonID = omit.From(season0.ID)
+	}
+
+	ret, err := SeasonCarClasses.Insert(bob.ToMods(seasonCarClasses1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertSeasonSeasonCarClasses0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachSeasonSeasonCarClasses0(ctx context.Context, exec bob.Executor, count int, seasonCarClasses1 SeasonCarClassSlice, season0 *Season) (SeasonCarClassSlice, error) {
+	setter := &SeasonCarClassSetter{
+		SeasonID: omit.From(season0.ID),
+	}
+
+	err := seasonCarClasses1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachSeasonSeasonCarClasses0: %w", err)
+	}
+
+	return seasonCarClasses1, nil
+}
+
+func (season0 *Season) InsertSeasonCarClasses(ctx context.Context, exec bob.Executor, related ...*SeasonCarClassSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonCarClasses1, err := insertSeasonSeasonCarClasses0(ctx, exec, related, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonCarClasses = append(season0.R.SeasonCarClasses, seasonCarClasses1...)
+
+	for _, rel := range seasonCarClasses1 {
+		rel.R.Season = season0
+	}
+	return nil
+}
+
+func (season0 *Season) AttachSeasonCarClasses(ctx context.Context, exec bob.Executor, related ...*SeasonCarClass) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonCarClasses1 := SeasonCarClassSlice(related)
+
+	_, err = attachSeasonSeasonCarClasses0(ctx, exec, len(related), seasonCarClasses1, season0)
+	if err != nil {
+		return err
+	}
+
+	season0.R.SeasonCarClasses = append(season0.R.SeasonCarClasses, seasonCarClasses1...)
 
 	for _, rel := range related {
 		rel.R.Season = season0
@@ -1518,6 +1611,20 @@ func (o *Season) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "SeasonCarClasses":
+		rels, ok := retrieved.(SeasonCarClassSlice)
+		if !ok {
+			return fmt.Errorf("season cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonCarClasses = rels
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.Season = o
+			}
+		}
+		return nil
 	case "SeasonDriverStandings":
 		rels, ok := retrieved.(SeasonDriverStandingSlice)
 		if !ok {
@@ -1629,6 +1736,7 @@ type seasonThenLoader[Q orm.Loadable] struct {
 	EventDriverStandings  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	EventTeamStandings    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Events                func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonCarClasses      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonDriverStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonTeamStandings   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	PointSystem           func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
@@ -1645,6 +1753,9 @@ func buildSeasonThenLoader[Q orm.Loadable]() seasonThenLoader[Q] {
 	}
 	type EventsLoadInterface interface {
 		LoadEvents(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonCarClassesLoadInterface interface {
+		LoadSeasonCarClasses(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type SeasonDriverStandingsLoadInterface interface {
 		LoadSeasonDriverStandings(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1679,6 +1790,12 @@ func buildSeasonThenLoader[Q orm.Loadable]() seasonThenLoader[Q] {
 			"Events",
 			func(ctx context.Context, exec bob.Executor, retrieved EventsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadEvents(ctx, exec, mods...)
+			},
+		),
+		SeasonCarClasses: thenLoadBuilder[Q](
+			"SeasonCarClasses",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonCarClassesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonCarClasses(ctx, exec, mods...)
 			},
 		),
 		SeasonDriverStandings: thenLoadBuilder[Q](
@@ -1891,6 +2008,67 @@ func (os SeasonSlice) LoadEvents(ctx context.Context, exec bob.Executor, mods ..
 			rel.R.Season = o
 
 			o.R.Events = append(o.R.Events, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadSeasonCarClasses loads the season's SeasonCarClasses into the .R struct
+func (o *Season) LoadSeasonCarClasses(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonCarClasses = nil
+
+	related, err := o.SeasonCarClasses(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.Season = o
+	}
+
+	o.R.SeasonCarClasses = related
+	return nil
+}
+
+// LoadSeasonCarClasses loads the season's SeasonCarClasses into the .R struct
+func (os SeasonSlice) LoadSeasonCarClasses(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonCarClasses, err := os.SeasonCarClasses(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonCarClasses = nil
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range seasonCarClasses {
+
+			if !(o.ID == rel.SeasonID) {
+				continue
+			}
+
+			rel.R.Season = o
+
+			o.R.SeasonCarClasses = append(o.R.SeasonCarClasses, rel)
 		}
 	}
 
@@ -2189,6 +2367,7 @@ type seasonJoins[Q dialect.Joinable] struct {
 	EventDriverStandings  modAs[Q, eventDriverStandingColumns]
 	EventTeamStandings    modAs[Q, eventTeamStandingColumns]
 	Events                modAs[Q, eventColumns]
+	SeasonCarClasses      modAs[Q, seasonCarClassColumns]
 	SeasonDriverStandings modAs[Q, seasonDriverStandingColumns]
 	SeasonTeamStandings   modAs[Q, seasonTeamStandingColumns]
 	PointSystem           modAs[Q, pointSystemColumns]
@@ -2238,6 +2417,20 @@ func buildSeasonJoins[Q dialect.Joinable](cols seasonColumns, typ string) season
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, Events.Name().As(to.Alias())).On(
+						to.SeasonID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonCarClasses: modAs[Q, seasonCarClassColumns]{
+			c: SeasonCarClasses.Columns,
+			f: func(to seasonCarClassColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonCarClasses.Name().As(to.Alias())).On(
 						to.SeasonID.EQ(cols.ID),
 					))
 				}

@@ -21,7 +21,8 @@ import (
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
-	processor "github.com/srlmgr/backend/services/importsvc/importer"
+	"github.com/srlmgr/backend/services/importsvc/importer"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 //nolint:whitespace,funlen,gocyclo // editor/linter issue
@@ -75,8 +76,12 @@ func (s *service) UploadResultsFile(
 			),
 		)
 	}
-
-	importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, event)
+	ep := processor.NewEventProcInfoCollector(s.repo)
+	epi, err := ep.ForEvent(ctx, event.ID)
+	if err != nil {
+		return nil, err
+	}
+	importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, epi)
 	if err != nil {
 		l.Error("failed to resolve import processor", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
@@ -96,12 +101,12 @@ func (s *service) UploadResultsFile(
 		)
 	}
 
-	if !processor.SupportsFormat(importProcessor, importFormat) {
+	if !importer.SupportsFormat(importProcessor, importFormat) {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
 			fmt.Errorf(
 				"%w: simulation=%q format=%q",
-				processor.ErrUnsupportedFormat,
+				importer.ErrUnsupportedFormat,
 				simulation.Name,
 				importFormat,
 			),
@@ -147,8 +152,8 @@ func (s *service) UploadResultsFile(
 			return fmt.Errorf("process import payload: %w", inpErr)
 		}
 
-		resolver := processor.NewResolver(
-			processor.NewRepositoryEntityResolver(ctx, s.repo, simulation))
+		resolver := importer.NewResolver(
+			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation), epi)
 		resolved, resolveErr := resolver.ResolveInput(input)
 		if resolveErr != nil {
 			return fmt.Errorf("resolve import payload: %w", resolveErr)
@@ -222,34 +227,6 @@ func (s *service) cleanupExistingImportBatch(ctx context.Context, gridID int32) 
 	return nil
 }
 
-//nolint:whitespace // editor/linter issue
-func (s *service) resolveProcessorForEvent(
-	ctx context.Context,
-	event *models.Event,
-) (processor.ProcessImport, *models.RacingSim, error) {
-	season, err := s.repo.Seasons().LoadByID(ctx, event.SeasonID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	series, err := s.repo.Series().LoadByID(ctx, season.SeriesID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	simulation, err := s.repo.RacingSims().LoadByID(ctx, series.SimulationID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	importProcessor, err := s.processor.Get(simulation.Name)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return importProcessor, simulation, nil
-}
-
 func (s *service) replaceResultEntriesForBatch(
 	ctx context.Context,
 	batch *models.ImportBatch,
@@ -279,7 +256,7 @@ func (s *service) replaceResultEntriesForBatch(
 	return nil
 }
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace,funlen,gocyclo // editor/linter issue, many optional fields to set
 func buildResultEntryCreateSetter(
 	batch *models.ImportBatch,
 	entry *models.ResultEntry,
@@ -302,11 +279,24 @@ func buildResultEntryCreateSetter(
 	if !entry.RawDriverName.IsNull() {
 		setter.RawDriverName = omitnull.From(entry.RawDriverName.GetOr(""))
 	}
+	if !entry.TeamID.IsNull() {
+		setter.TeamID = omitnull.From(entry.TeamID.MustGet())
+	}
+	if !entry.TeamDrivers.IsNull() {
+		setter.TeamDrivers = omitnull.From(entry.TeamDrivers.MustGet())
+	}
+
+	if !entry.RawTeamName.IsNull() {
+		setter.RawTeamName = omitnull.From(entry.RawTeamName.GetOr(""))
+	}
 	if !entry.CarModelID.IsNull() {
 		setter.CarModelID = omitnull.From(entry.CarModelID.GetOr(0))
 	}
 	if !entry.RawCarName.IsNull() {
 		setter.RawCarName = omitnull.From(entry.RawCarName.GetOr(""))
+	}
+	if !entry.CarClassID.IsNull() {
+		setter.CarClassID = omitnull.From(entry.CarClassID.GetOr(0))
 	}
 	if !entry.CarNumber.IsNull() {
 		setter.CarNumber = omitnull.From(entry.CarNumber.GetOr(""))

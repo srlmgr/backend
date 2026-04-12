@@ -100,6 +100,14 @@ func random_mytypes_TargetType(f *faker.Faker, limits ...string) mytypes.TargetT
 	return "driver"
 }
 
+func random_mytypes_TeamDrivers(f *faker.Faker, limits ...string) mytypes.TeamDrivers {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return mytypes.TeamDrivers{}
+}
+
 func random_pq_Int32Array(f *faker.Faker, limits ...string) pq.Int32Array {
 	if f == nil {
 		f = &defaultFaker

@@ -17,6 +17,7 @@ type (
 		Races               []*models.Race
 		Grids               []*models.RaceGrid
 		Season              *models.Season
+		Series              *models.Series
 		PointSystem         *models.PointSystem
 		PointSystemSettings *points.PointSystemSettings
 	}
@@ -49,6 +50,10 @@ func (e *EventProcInfoCollector) ForEvent(ctx context.Context, eventID int32) (
 	if err != nil {
 		return nil, err
 	}
+	series, err := e.repos.Series().LoadByID(ctx, season.SeriesID)
+	if err != nil {
+		return nil, err
+	}
 
 	pointSystem, err := e.repos.PointSystems().PointSystems().LoadByID(
 		ctx, season.PointSystemID)
@@ -75,6 +80,7 @@ func (e *EventProcInfoCollector) ForEvent(ctx context.Context, eventID int32) (
 		Races:               races,
 		Grids:               grids,
 		Season:              season,
+		Series:              series,
 		PointSystem:         pointSystem,
 		PointSystemSettings: pointSystemSettings,
 	}, nil
@@ -271,7 +277,7 @@ func (e *EventProcInfoCollector) VRGESPointSystemSettings() *points.PointSystemS
 					{
 						Arguments: map[points.PointPolicyType]any{
 							points.PointsPolicyIncidentsExceeded: points.ThresholdPenaltySettings{
-								Threshold:  3,
+								Threshold:  30,
 								PenaltyPct: 0.1,
 							},
 						},

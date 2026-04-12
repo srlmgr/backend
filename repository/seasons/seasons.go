@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aarondl/opt/omit"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -29,6 +30,8 @@ type Repository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeasonSetter) (*models.Season, error)
 	Update(ctx context.Context, id int32, input *models.SeasonSetter) (*models.Season, error)
+	AssignCarClass(ctx context.Context, seasonID, carClassID int32) error
+	UnassignCarClass(ctx context.Context, seasonID, carClassID int32) error
 }
 
 type seasonsRepository struct{ exec *pgbob.Executor }
@@ -86,6 +89,36 @@ func (r *seasonsRepository) Update(
 		return nil, fmt.Errorf("season %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *seasonsRepository) AssignCarClass(
+	ctx context.Context,
+	seasonID, carClassID int32,
+) error {
+	if _, checkErr := models.SeasonCarClasses.Query(
+		sm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		sm.Where(models.SeasonCarClasses.Columns.CarClassID.EQ(psql.Arg(carClassID))),
+	).One(ctx, r.getExecutor(ctx)); checkErr == nil {
+		return nil
+	}
+	_, err := models.SeasonCarClasses.Insert(&models.SeasonCarClassSetter{
+		SeasonID:   omit.From(seasonID),
+		CarClassID: omit.From(carClassID),
+	}).One(ctx, r.getExecutor(ctx))
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *seasonsRepository) UnassignCarClass(
+	ctx context.Context,
+	seasonID, carClassID int32,
+) error {
+	_, err := models.SeasonCarClasses.Delete(
+		dm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		dm.Where(models.SeasonCarClasses.Columns.CarClassID.EQ(psql.Arg(carClassID))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
 }
 
 func (r *seasonsRepository) getExecutor(ctx context.Context) bob.Executor {

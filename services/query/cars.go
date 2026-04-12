@@ -190,3 +190,54 @@ func (s *service) GetCarModel(
 		CarModel: s.conversion.CarModelToCarModel(item),
 	}), nil
 }
+
+// ListCarClasses returns a list of all car classes.
+//
+//nolint:whitespace // editor/linter issue
+func (s *service) ListCarClasses(
+	ctx context.Context,
+	req *connect.Request[queryv1.ListCarClassesRequest],
+) (*connect.Response[queryv1.ListCarClassesResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("ListCarClasses")
+
+	carClasses, err := s.repo.Cars().CarClasses().LoadAll(ctx)
+	if err != nil {
+		l.Error("failed to load car classes", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car classes")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	items := make([]*commonv1.CarClass, 0, len(carClasses))
+	for _, item := range carClasses {
+		if converted := s.conversion.CarClassToCarClass(item); converted != nil {
+			items = append(items, converted)
+		}
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car classes loaded")
+	return connect.NewResponse(&queryv1.ListCarClassesResponse{Items: items}), nil
+}
+
+// GetCarClass returns a car class by ID.
+//
+//nolint:whitespace // editor/linter issue
+func (s *service) GetCarClass(
+	ctx context.Context,
+	req *connect.Request[queryv1.GetCarClassRequest],
+) (*connect.Response[queryv1.GetCarClassResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("GetCarClass", log.Uint32("id", req.Msg.GetId()))
+
+	item, err := s.repo.Cars().CarClasses().LoadByID(ctx, int32(req.Msg.GetId()))
+	if err != nil {
+		l.Error("failed to load car class", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car class")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class loaded")
+	return connect.NewResponse(&queryv1.GetCarClassResponse{
+		CarClass: s.conversion.CarClassToCarClass(item),
+	}), nil
+}

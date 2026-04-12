@@ -27,9 +27,14 @@ type Repository interface {
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.BookingEntry, error)
 	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteNonManualByEvent(ctx context.Context, eventID int32) error
 	DeleteByEventIDAndTargetType(ctx context.Context, eventID int32, targetType string) error
 	DeleteByEventIDAndSourceType(ctx context.Context, eventID int32, sourceType string) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
+	CreateMany(
+		ctx context.Context,
+		input []*models.BookingEntrySetter,
+	) ([]*models.BookingEntry, error)
 	Update(
 		ctx context.Context,
 		id int32,
@@ -69,6 +74,13 @@ func (r *bookingEntriesRepository) Create(
 	return models.BookingEntries.Insert(input).One(ctx, r.getExecutor(ctx))
 }
 
+func (r *bookingEntriesRepository) CreateMany(
+	ctx context.Context,
+	input []*models.BookingEntrySetter,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Insert(bob.ToMods(input...)).All(ctx, r.getExecutor(ctx))
+}
+
 func (r *bookingEntriesRepository) Update(
 	ctx context.Context,
 	id int32,
@@ -100,6 +112,17 @@ func (r *bookingEntriesRepository) LoadByRaceID(
 	return models.BookingEntries.Query(
 		sm.Where(models.BookingEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
 	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) DeleteNonManualByEvent(
+	ctx context.Context,
+	eventID int32,
+) error {
+	_, err := models.BookingEntries.Delete(
+		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+		dm.Where(models.BookingEntries.Columns.IsManual.EQ(psql.Arg(false))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
 }
 
 func (r *bookingEntriesRepository) DeleteByEventIDAndTargetType(

@@ -114,12 +114,21 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		IsGuestDriver: column{
-			Name:      "is_guest_driver",
+		IsGuestStarter: column{
+			Name:      "is_guest_starter",
 			DBType:    "boolean",
 			Default:   "false",
 			Comment:   "",
 			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		TeamDrivers: column{
+			Name:      "team_drivers",
+			DBType:    "jsonb",
+			Default:   "'{}'::jsonb",
+			Comment:   "",
+			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -556,7 +565,8 @@ type resultEntryColumns struct {
 	RawDriverName    column
 	RawTeamName      column
 	CarNumber        column
-	IsGuestDriver    column
+	IsGuestStarter   column
+	TeamDrivers      column
 	StartPosition    column
 	FinishPosition   column
 	LapsCompleted    column
@@ -575,7 +585,7 @@ type resultEntryColumns struct {
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestDriver, c.StartPosition, c.FinishPosition, c.LapsCompleted, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestStarter, c.TeamDrivers, c.StartPosition, c.FinishPosition, c.LapsCompleted, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 

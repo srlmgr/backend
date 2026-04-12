@@ -49,6 +49,7 @@ type Repository interface {
 	BookingEntries() bookingentries.Repository
 	EventProcessingAudit() eventprocessingaudit.Repository
 	Standings() standings.Repository
+	Queries() Queries
 }
 
 type TransactionManager interface {

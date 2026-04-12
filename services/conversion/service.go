@@ -237,6 +237,18 @@ func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel 
 	}
 }
 
+// CarClassToCarClass converts a CarClass model to a CarClass message.
+func (s *Service) CarClassToCarClass(model *models.CarClass) *commonv1.CarClass {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.CarClass{
+		Id:   uint32(model.ID),
+		Name: model.Name,
+	}
+}
+
 // DriverToDriver converts a Driver model to a Driver message.
 func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 	if model == nil {
@@ -370,7 +382,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		AdminNotes:        model.AdminNotes.GetOr(""),
 		RawDriverName:     model.RawDriverName.GetOr(""),
 		RawTeamName:       model.RawTeamName.GetOr(""),
-		IsGuestDriver:     model.IsGuestDriver,
+		IsGuestDriver:     model.IsGuestStarter,
 	}
 
 	switch model.State {
@@ -451,7 +463,7 @@ func (s *Service) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid 
 	}
 }
 
-//nolint:gocyclo,funlen // many different error types to check for
+//nolint:gocyclo,funlen,lll // many different error types to check for
 func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
@@ -473,6 +485,16 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.CarModelErrors.ErrUniqueCarModelsBrandIdNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(dberrors.CarClassErrors.ErrUniqueCarClassesNameUnique, err) {
+		return connect.CodeAlreadyExists
+	}
+	if errors.Is(
+		dberrors.CarClassesToCarModelErrors.ErrUniqueCarClassesToCarModelsCarClassIdCarModelIdUnique,
+		err,
+	) {
+
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.TrackErrors.ErrUniqueTracksNameUnique, err) {

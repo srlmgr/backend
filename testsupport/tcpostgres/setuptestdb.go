@@ -37,7 +37,7 @@ func SetupTestDB() (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	containerPort, _ := container.MappedPort(ctx, port)
+	containerPort, _ := container.MappedPort(ctx, port.Port())
 	host, _ := container.Host(ctx)
 	dbURL := fmt.Sprintf("postgresql://postgres:password@%s:%s/postgres",
 		host, containerPort.Port())
@@ -83,6 +83,7 @@ func ClearAllTables(pool *pgxpool.Pool) error {
 		"import_batches",
 		"event_team_standings",
 		"event_driver_standings",
+		"season_car_classes",
 		"season_team_standings",
 		"race_grids",
 		"races",

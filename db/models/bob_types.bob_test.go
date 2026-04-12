@@ -73,6 +73,9 @@ var _ bob.HookableType = &RacingSim{}
 // Make sure the type ResultEntry runs hooks after queries
 var _ bob.HookableType = &ResultEntry{}
 
+// Make sure the type SeasonCarClass runs hooks after queries
+var _ bob.HookableType = &SeasonCarClass{}
+
 // Make sure the type SeasonDriverStanding runs hooks after queries
 var _ bob.HookableType = &SeasonDriverStanding{}
 
@@ -147,6 +150,12 @@ var _ sql.Scanner = (*pq.StringArray)(nil)
 
 // Make sure the type pq.StringArray satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(pq.StringArray)
+
+// Make sure the type mytypes.TeamDrivers satisfies database/sql.Scanner
+var _ sql.Scanner = (*mytypes.TeamDrivers)(nil)
+
+// Make sure the type mytypes.TeamDrivers satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(mytypes.TeamDrivers)
 
 // Make sure the type decimal.Decimal satisfies database/sql.Scanner
 var _ sql.Scanner = (*decimal.Decimal)(nil)
