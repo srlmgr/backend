@@ -18,6 +18,8 @@ buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260410182521-e3ef154b9b4a.2 
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260410182521-e3ef154b9b4a.2/go.mod h1:5Btuz6bOAEOoGdhqukPptqHxodldOA6Ur28dM9IBC0E=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260410182853-3b7cd8d97f74.2 h1:V/dl7UjpLCyLyFItRU5KDFgI7dLVpT19e0+qci4y6pU=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260410182853-3b7cd8d97f74.2/go.mod h1:JNQxLl6mRuBz94zGAZkYkSlxquzJUK17qBBdLQPGZDw=
+buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260411073242-bee79afff934.2 h1:G/sgVFs4bQH5ynUY9hSKAfLo2JVEOxemooV0miUARGg=
+buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260411073242-bee79afff934.2/go.mod h1:pr/RgJWkMTMwvPFspEXnZcJDsU+DjfAgVHiLWgz++JE=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260404084507-da7b5d4b21f2.1 h1:jBGydSiUvt59HGgcZEba1QfuB0l9rXWLNA2trzT/jmk=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260404084507-da7b5d4b21f2.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260404165258-3f2f403fa9a7.1 h1:pgDsu1guFllRr5p1EMhQLz0fVIOmMc6YG2UIX430MTQ=
@@ -38,6 +40,8 @@ buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260410182521-e3ef154b9
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260410182521-e3ef154b9b4a.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260410182853-3b7cd8d97f74.1 h1:7MxKomuZ+tT+ytbUpdzoRD+/OxhE0dJcG5s2LKwbSRo=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260410182853-3b7cd8d97f74.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
+buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260411073242-bee79afff934.1 h1:kEVfesglsPoT9CvY2iZz51ZGmOTEWa8KnrSTXfBXhek=
+buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260411073242-bee79afff934.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
 connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
 connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
 connectrpc.com/grpchealth v1.4.0 h1:MJC96JLelARPgZTiRF9KRfY/2N9OcoQvF2EWX07v2IE=

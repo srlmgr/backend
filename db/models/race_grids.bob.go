@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -631,7 +632,7 @@ func (os RaceGridSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) Res
 
 func insertRaceGridBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, raceGrid0 *RaceGrid) (BookingEntrySlice, error) {
 	for i := range bookingEntries1 {
-		bookingEntries1[i].RaceGridID = omit.From(raceGrid0.ID)
+		bookingEntries1[i].RaceGridID = omitnull.From(raceGrid0.ID)
 	}
 
 	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
@@ -644,7 +645,7 @@ func insertRaceGridBookingEntries0(ctx context.Context, exec bob.Executor, booki
 
 func attachRaceGridBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, raceGrid0 *RaceGrid) (BookingEntrySlice, error) {
 	setter := &BookingEntrySetter{
-		RaceGridID: omit.From(raceGrid0.ID),
+		RaceGridID: omitnull.From(raceGrid0.ID),
 	}
 
 	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
@@ -1095,7 +1096,10 @@ func (os RaceGridSlice) LoadBookingEntries(ctx context.Context, exec bob.Executo
 
 		for _, rel := range bookingEntries {
 
-			if !(o.ID == rel.RaceGridID) {
+			if !rel.RaceGridID.IsValue() {
+				continue
+			}
+			if !(rel.RaceGridID.IsValue() && o.ID == rel.RaceGridID.MustGet()) {
 				continue
 			}
 

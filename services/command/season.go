@@ -139,7 +139,8 @@ func (s *service) AssignCarClassToSeason(
 		)
 	}); txErr != nil {
 		l.Error("failed to assign car class to season", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to assign car class to season")
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to assign car class to season")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -164,7 +165,8 @@ func (s *service) UnassignCarClassFromSeason(
 		)
 	}); txErr != nil {
 		l.Error("failed to unassign car class from season", log.ErrorField(txErr))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to unassign car class from season")
+		trace.SpanFromContext(ctx).
+			SetStatus(codes.Error, "failed to unassign car class from season")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

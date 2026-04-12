@@ -44,6 +44,26 @@ func (r *queryTeamDrivers) FindBySeasonAndDriver(
 	return entity, err
 }
 
+//nolint:whitespace // editor/linter issue
+func (r *queryTeamDrivers) FindBySeason(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.TeamDriver, error) {
+	query := models.TeamDrivers.Query(
+		models.SelectJoins.TeamDrivers.InnerJoin.Team,
+		models.SelectWhere.Teams.SeasonID.EQ(seasonID),
+	)
+	entities, err := query.All(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf(
+			"team drivers for season %d: %w",
+			seasonID,
+			repoerrors.ErrNotFound,
+		)
+	}
+	return entities, err
+}
+
 func (r *queryTeamDrivers) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor

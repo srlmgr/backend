@@ -107,8 +107,8 @@ func (s *service) ComputeDriverBookingEntries(
 					ctx,
 					&models.BookingEntrySetter{
 						EventID:    omit.From(eventID),
-						RaceID:     omit.From(raceIDByGridID[gridOutput.GridID]),
-						RaceGridID: omit.From(gridOutput.GridID),
+						RaceID:     omitnull.From(raceIDByGridID[gridOutput.GridID]),
+						RaceGridID: omitnull.From(gridOutput.GridID),
 						TargetType: omit.From(mytypes.TargetType("driver")),
 						DriverID:   omitnull.From(output.ReferenceID()),
 						// TODO: calc TeamID from driverID + season.ID

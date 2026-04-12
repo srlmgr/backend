@@ -75,8 +75,8 @@ func (f *Factory) FromExistingBookingEntry(m *models.BookingEntry) *BookingEntry
 
 	o.ID = func() int32 { return m.ID }
 	o.EventID = func() int32 { return m.EventID }
-	o.RaceID = func() int32 { return m.RaceID }
-	o.RaceGridID = func() int32 { return m.RaceGridID }
+	o.RaceID = func() null.Val[int32] { return m.RaceID }
+	o.RaceGridID = func() null.Val[int32] { return m.RaceGridID }
 	o.TargetType = func() mytypes.TargetType { return m.TargetType }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }

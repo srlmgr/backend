@@ -13,6 +13,9 @@ type (
 		FindBySeasonAndDriver(ctx context.Context, seasonID, driverID int32) (
 			*models.TeamDriver, error,
 		)
+		FindBySeason(ctx context.Context, seasonID int32) (
+			[]*models.TeamDriver, error,
+		)
 	}
 	QueryCarClass interface {
 		FindBySeasonAndCarModel(ctx context.Context, seasonID, carModelID int32) (

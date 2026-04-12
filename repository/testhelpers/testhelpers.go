@@ -423,8 +423,8 @@ func SeedBookingEntryContext(
 
 	entry, err := models.BookingEntries.Insert(&models.BookingEntrySetter{
 		EventID:      omit.From(eventID),
-		RaceID:       omit.From(raceID),
-		RaceGridID:   omit.From(raceGridID),
+		RaceID:       omitnull.From(raceID),
+		RaceGridID:   omitnull.From(raceGridID),
 		TargetType:   omit.From(mytypes.TargetType("driver")),
 		SourceType:   omit.From(mytypes.SourceType("finish_pos")),
 		Points:       omit.From(points),

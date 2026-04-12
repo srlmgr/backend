@@ -277,7 +277,7 @@ func (e *EventProcInfoCollector) VRGESPointSystemSettings() *points.PointSystemS
 					{
 						Arguments: map[points.PointPolicyType]any{
 							points.PointsPolicyIncidentsExceeded: points.ThresholdPenaltySettings{
-								Threshold:  3,
+								Threshold:  30,
 								PenaltyPct: 0.1,
 							},
 						},

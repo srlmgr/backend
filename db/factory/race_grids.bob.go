@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
@@ -89,7 +90,7 @@ func (t RaceGridTemplate) setModelRels(o *models.RaceGrid) {
 		for _, r := range t.r.BookingEntries {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
-				rel.RaceGridID = o.ID // h2
+				rel.RaceGridID = null.From(o.ID) // h2
 				rel.R.RaceGrid = o
 			}
 			rel = append(rel, related...)
