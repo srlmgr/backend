@@ -53,6 +53,7 @@ type (
 		ClassID() int32
 		DriverID() int32
 		TeamID() int32
+		TeamDriverIDs() []int32
 		IsGuest() bool
 		Incidents() int32
 		LapsCompleted() int32
@@ -71,6 +72,7 @@ type (
 		lapsCompleted  int32
 		fastestLap     int32
 		referenceID    int32
+		teamDriverIDs  []int32
 	}
 )
 
@@ -173,6 +175,13 @@ func WithTeamID(id int32) InputOpt {
 	}
 }
 
+func WithTeamDriverIDs(ids []int32) InputOpt {
+	return func(i *defaultInputImpl) *defaultInputImpl {
+		i.teamDriverIDs = ids
+		return i
+	}
+}
+
 func WithIsGuest(isGuest bool) InputOpt {
 	return func(i *defaultInputImpl) *defaultInputImpl {
 		i.isGuest = isGuest
@@ -208,13 +217,14 @@ func WithReferenceID(id int32) InputOpt {
 	}
 }
 
-func (i defaultInputImpl) FinishPosition() int32 { return i.finishPosition }
-func (i defaultInputImpl) QualiPosition() int32  { return i.qualiPosition }
-func (i defaultInputImpl) ReferenceID() int32    { return i.referenceID }
-func (i defaultInputImpl) ClassID() int32        { return i.classID }
-func (i defaultInputImpl) DriverID() int32       { return i.driverID }
-func (i defaultInputImpl) TeamID() int32         { return i.teamID }
-func (i defaultInputImpl) IsGuest() bool         { return i.isGuest }
-func (i defaultInputImpl) Incidents() int32      { return i.incidents }
-func (i defaultInputImpl) LapsCompleted() int32  { return i.lapsCompleted }
-func (i defaultInputImpl) FastestLap() int32     { return i.fastestLap }
+func (i defaultInputImpl) FinishPosition() int32  { return i.finishPosition }
+func (i defaultInputImpl) QualiPosition() int32   { return i.qualiPosition }
+func (i defaultInputImpl) ReferenceID() int32     { return i.referenceID }
+func (i defaultInputImpl) ClassID() int32         { return i.classID }
+func (i defaultInputImpl) DriverID() int32        { return i.driverID }
+func (i defaultInputImpl) TeamID() int32          { return i.teamID }
+func (i defaultInputImpl) IsGuest() bool          { return i.isGuest }
+func (i defaultInputImpl) Incidents() int32       { return i.incidents }
+func (i defaultInputImpl) LapsCompleted() int32   { return i.lapsCompleted }
+func (i defaultInputImpl) FastestLap() int32      { return i.fastestLap }
+func (i defaultInputImpl) TeamDriverIDs() []int32 { return i.teamDriverIDs }

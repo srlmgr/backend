@@ -382,7 +382,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		AdminNotes:        model.AdminNotes.GetOr(""),
 		RawDriverName:     model.RawDriverName.GetOr(""),
 		RawTeamName:       model.RawTeamName.GetOr(""),
-		IsGuestDriver:     model.IsGuestDriver,
+		IsGuestDriver:     model.IsGuestStarter,
 	}
 
 	switch model.State {

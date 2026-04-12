@@ -31,6 +31,10 @@ type Repository interface {
 	DeleteByEventIDAndTargetType(ctx context.Context, eventID int32, targetType string) error
 	DeleteByEventIDAndSourceType(ctx context.Context, eventID int32, sourceType string) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
+	CreateMany(
+		ctx context.Context,
+		input []*models.BookingEntrySetter,
+	) ([]*models.BookingEntry, error)
 	Update(
 		ctx context.Context,
 		id int32,
@@ -68,6 +72,13 @@ func (r *bookingEntriesRepository) Create(
 	input *models.BookingEntrySetter,
 ) (*models.BookingEntry, error) {
 	return models.BookingEntries.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) CreateMany(
+	ctx context.Context,
+	input []*models.BookingEntrySetter,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Insert(bob.ToMods(input...)).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *bookingEntriesRepository) Update(

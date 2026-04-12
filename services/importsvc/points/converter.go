@@ -1,6 +1,8 @@
 package points
 
-import "github.com/srlmgr/backend/db/models"
+import (
+	"github.com/srlmgr/backend/db/models"
+)
 
 type (
 	Converter struct{}
@@ -14,10 +16,11 @@ func (c *Converter) ResultEntryToInput(re *models.ResultEntry, opts ...InputOpt)
 	standardOps := []InputOpt{
 		WithDriverID(re.DriverID.GetOrZero()),
 		WithTeamID(re.TeamID.GetOrZero()),
+		WithTeamDriverIDs(re.TeamDrivers.GetOrZero().DriverIDs),
 		WithClassID(re.CarClassID.GetOrZero()),
 		WithFinishPosition(re.FinishPosition),
 		WithQualiPosition(re.StartPosition.GetOrZero()),
-		WithIsGuest(re.IsGuestDriver),
+		WithIsGuest(re.IsGuestStarter),
 		WithIncidents(re.Incidents.GetOrZero()),
 		WithLapsCompleted(re.LapsCompleted),
 		WithFastestLap(re.FastestLapTimeMS.GetOrZero()),

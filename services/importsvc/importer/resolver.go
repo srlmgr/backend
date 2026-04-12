@@ -7,6 +7,7 @@ import (
 	"github.com/aarondl/opt/null"
 
 	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
 	"github.com/srlmgr/backend/services/importsvc/processor"
@@ -82,12 +83,13 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 		}
 		//nolint:nestif // yes, it's complex
 		if r.epi.Season.IsTeamBased {
-			teamID, um := r.resolveTeam(row.TeamDrivers, row.Name)
+			teamID, driverIDs, um := r.resolveTeam(row.TeamDrivers, row.Name)
 			if um != nil {
 				entry.State = conversion.ResultStateMappingError
 				unresolved = append(unresolved, um)
 			} else {
 				entry.TeamID = null.From(int32(teamID))
+				entry.TeamDrivers = null.From(mytypes.TeamDrivers{DriverIDs: driverIDs})
 			}
 		} else {
 			driverID, um := r.resolveDriver(row.DriverID, row.Name)
@@ -211,32 +213,44 @@ func (r *Resolver) resolveDriver(
 func (r *Resolver) resolveTeam(
 	teamDrivers []*TeamDriver,
 	rowName string,
-) (uint32, *commonv1.UnresolvedMapping) {
-	var teamDriverID uint32
+) (uint32, []int32, *commonv1.UnresolvedMapping) {
+	var teamDriverIDs []int32
 	var dErr error
 	for _, td := range teamDrivers {
-		teamDriverID, dErr = r.entityResolver.ResolveDriver(td.DriverID, td.Name)
+		var driverID uint32
+		driverID, dErr = r.entityResolver.ResolveDriver(td.DriverID, td.Name)
 		if dErr == nil {
+			teamDriverIDs = append(teamDriverIDs, int32(driverID))
 			log.Debug("resolved team driver",
-				log.Uint32("driverID", teamDriverID),
+				log.Uint32("driverID", driverID),
 				log.String("inputName", td.Name),
 			)
+		}
+
+	}
+	var teamID uint32
+	for _, tdID := range teamDriverIDs {
+		var resolveErr error
+		teamID, resolveErr = r.entityResolver.ResolveTeam(uint32(tdID))
+		if resolveErr == nil {
 			break
 		}
 	}
-	teamID, err := r.entityResolver.ResolveTeam(teamDriverID)
-	if err != nil {
-		return 0, &commonv1.UnresolvedMapping{
-			SourceValue: fmt.Sprintf("team with driver %d (name: %s)", teamDriverID, rowName),
+	// TODO: we may need to enhance the UnresolvedMapping message
+	// it should provided more infos about what is missing
+	if teamID == 0 {
+		return 0, nil, &commonv1.UnresolvedMapping{
+			SourceValue: fmt.Sprintf("team with driver %d (name: %s)",
+				teamDriverIDs, rowName),
 			MappingType: "team",
 		}
 	}
 	log.Debug("resolved team",
 		log.Uint32("teamID", teamID),
-		log.Uint32("driverID", teamDriverID),
+		log.Any("driverIDs", teamDriverIDs),
 		log.String("inputName", rowName),
 	)
-	return teamID, nil
+	return teamID, teamDriverIDs, nil
 }
 
 //nolint:whitespace // editor/linter issue

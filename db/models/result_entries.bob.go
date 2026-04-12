@@ -13,6 +13,7 @@ import (
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/gofrs/uuid/v5"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -27,32 +28,33 @@ import (
 
 // ResultEntry is an object representing the database table.
 type ResultEntry struct {
-	ID               int32               `db:"id,pk" `
-	FrontendID       uuid.UUID           `db:"frontend_id" `
-	RaceGridID       int32               `db:"race_grid_id" `
-	DriverID         null.Val[int32]     `db:"driver_id" `
-	TeamID           null.Val[int32]     `db:"team_id" `
-	CarModelID       null.Val[int32]     `db:"car_model_id" `
-	CarClassID       null.Val[int32]     `db:"car_class_id" `
-	RawCarName       null.Val[string]    `db:"raw_car_name" `
-	RawDriverName    null.Val[string]    `db:"raw_driver_name" `
-	RawTeamName      null.Val[string]    `db:"raw_team_name" `
-	CarNumber        null.Val[string]    `db:"car_number" `
-	IsGuestDriver    bool                `db:"is_guest_driver" `
-	StartPosition    null.Val[int32]     `db:"start_position" `
-	FinishPosition   int32               `db:"finish_position" `
-	LapsCompleted    int32               `db:"laps_completed" `
-	QualiLapTimeMS   null.Val[int32]     `db:"quali_lap_time_ms" `
-	FastestLapTimeMS null.Val[int32]     `db:"fastest_lap_time_ms" `
-	TotalTimeMS      null.Val[int32]     `db:"total_time_ms" `
-	Incidents        null.Val[int32]     `db:"incidents" `
-	State            string              `db:"state" `
-	AdminNotes       null.Val[string]    `db:"admin_notes" `
-	LockedAt         null.Val[time.Time] `db:"locked_at" `
-	CreatedAt        time.Time           `db:"created_at" `
-	UpdatedAt        time.Time           `db:"updated_at" `
-	CreatedBy        string              `db:"created_by" `
-	UpdatedBy        string              `db:"updated_by" `
+	ID               int32                         `db:"id,pk" `
+	FrontendID       uuid.UUID                     `db:"frontend_id" `
+	RaceGridID       int32                         `db:"race_grid_id" `
+	DriverID         null.Val[int32]               `db:"driver_id" `
+	TeamID           null.Val[int32]               `db:"team_id" `
+	CarModelID       null.Val[int32]               `db:"car_model_id" `
+	CarClassID       null.Val[int32]               `db:"car_class_id" `
+	RawCarName       null.Val[string]              `db:"raw_car_name" `
+	RawDriverName    null.Val[string]              `db:"raw_driver_name" `
+	RawTeamName      null.Val[string]              `db:"raw_team_name" `
+	CarNumber        null.Val[string]              `db:"car_number" `
+	IsGuestStarter   bool                          `db:"is_guest_starter" `
+	TeamDrivers      null.Val[mytypes.TeamDrivers] `db:"team_drivers" `
+	StartPosition    null.Val[int32]               `db:"start_position" `
+	FinishPosition   int32                         `db:"finish_position" `
+	LapsCompleted    int32                         `db:"laps_completed" `
+	QualiLapTimeMS   null.Val[int32]               `db:"quali_lap_time_ms" `
+	FastestLapTimeMS null.Val[int32]               `db:"fastest_lap_time_ms" `
+	TotalTimeMS      null.Val[int32]               `db:"total_time_ms" `
+	Incidents        null.Val[int32]               `db:"incidents" `
+	State            string                        `db:"state" `
+	AdminNotes       null.Val[string]              `db:"admin_notes" `
+	LockedAt         null.Val[time.Time]           `db:"locked_at" `
+	CreatedAt        time.Time                     `db:"created_at" `
+	UpdatedAt        time.Time                     `db:"updated_at" `
+	CreatedBy        string                        `db:"created_by" `
+	UpdatedBy        string                        `db:"updated_by" `
 
 	R resultEntryR `db:"-" `
 }
@@ -79,7 +81,7 @@ type resultEntryR struct {
 func buildResultEntryColumns(alias string) resultEntryColumns {
 	return resultEntryColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_driver", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "frontend_id", "race_grid_id", "driver_id", "team_id", "car_model_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_starter", "team_drivers", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("result_entries"),
 		tableAlias:       alias,
 		ID:               psql.Quote(alias, "id"),
@@ -93,7 +95,8 @@ func buildResultEntryColumns(alias string) resultEntryColumns {
 		RawDriverName:    psql.Quote(alias, "raw_driver_name"),
 		RawTeamName:      psql.Quote(alias, "raw_team_name"),
 		CarNumber:        psql.Quote(alias, "car_number"),
-		IsGuestDriver:    psql.Quote(alias, "is_guest_driver"),
+		IsGuestStarter:   psql.Quote(alias, "is_guest_starter"),
+		TeamDrivers:      psql.Quote(alias, "team_drivers"),
 		StartPosition:    psql.Quote(alias, "start_position"),
 		FinishPosition:   psql.Quote(alias, "finish_position"),
 		LapsCompleted:    psql.Quote(alias, "laps_completed"),
@@ -125,7 +128,8 @@ type resultEntryColumns struct {
 	RawDriverName    psql.Expression
 	RawTeamName      psql.Expression
 	CarNumber        psql.Expression
-	IsGuestDriver    psql.Expression
+	IsGuestStarter   psql.Expression
+	TeamDrivers      psql.Expression
 	StartPosition    psql.Expression
 	FinishPosition   psql.Expression
 	LapsCompleted    psql.Expression
@@ -154,36 +158,37 @@ func (resultEntryColumns) AliasedAs(alias string) resultEntryColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type ResultEntrySetter struct {
-	ID               omit.Val[int32]         `db:"id,pk" `
-	FrontendID       omit.Val[uuid.UUID]     `db:"frontend_id" `
-	RaceGridID       omit.Val[int32]         `db:"race_grid_id" `
-	DriverID         omitnull.Val[int32]     `db:"driver_id" `
-	TeamID           omitnull.Val[int32]     `db:"team_id" `
-	CarModelID       omitnull.Val[int32]     `db:"car_model_id" `
-	CarClassID       omitnull.Val[int32]     `db:"car_class_id" `
-	RawCarName       omitnull.Val[string]    `db:"raw_car_name" `
-	RawDriverName    omitnull.Val[string]    `db:"raw_driver_name" `
-	RawTeamName      omitnull.Val[string]    `db:"raw_team_name" `
-	CarNumber        omitnull.Val[string]    `db:"car_number" `
-	IsGuestDriver    omit.Val[bool]          `db:"is_guest_driver" `
-	StartPosition    omitnull.Val[int32]     `db:"start_position" `
-	FinishPosition   omit.Val[int32]         `db:"finish_position" `
-	LapsCompleted    omit.Val[int32]         `db:"laps_completed" `
-	QualiLapTimeMS   omitnull.Val[int32]     `db:"quali_lap_time_ms" `
-	FastestLapTimeMS omitnull.Val[int32]     `db:"fastest_lap_time_ms" `
-	TotalTimeMS      omitnull.Val[int32]     `db:"total_time_ms" `
-	Incidents        omitnull.Val[int32]     `db:"incidents" `
-	State            omit.Val[string]        `db:"state" `
-	AdminNotes       omitnull.Val[string]    `db:"admin_notes" `
-	LockedAt         omitnull.Val[time.Time] `db:"locked_at" `
-	CreatedAt        omit.Val[time.Time]     `db:"created_at" `
-	UpdatedAt        omit.Val[time.Time]     `db:"updated_at" `
-	CreatedBy        omit.Val[string]        `db:"created_by" `
-	UpdatedBy        omit.Val[string]        `db:"updated_by" `
+	ID               omit.Val[int32]                   `db:"id,pk" `
+	FrontendID       omit.Val[uuid.UUID]               `db:"frontend_id" `
+	RaceGridID       omit.Val[int32]                   `db:"race_grid_id" `
+	DriverID         omitnull.Val[int32]               `db:"driver_id" `
+	TeamID           omitnull.Val[int32]               `db:"team_id" `
+	CarModelID       omitnull.Val[int32]               `db:"car_model_id" `
+	CarClassID       omitnull.Val[int32]               `db:"car_class_id" `
+	RawCarName       omitnull.Val[string]              `db:"raw_car_name" `
+	RawDriverName    omitnull.Val[string]              `db:"raw_driver_name" `
+	RawTeamName      omitnull.Val[string]              `db:"raw_team_name" `
+	CarNumber        omitnull.Val[string]              `db:"car_number" `
+	IsGuestStarter   omit.Val[bool]                    `db:"is_guest_starter" `
+	TeamDrivers      omitnull.Val[mytypes.TeamDrivers] `db:"team_drivers" `
+	StartPosition    omitnull.Val[int32]               `db:"start_position" `
+	FinishPosition   omit.Val[int32]                   `db:"finish_position" `
+	LapsCompleted    omit.Val[int32]                   `db:"laps_completed" `
+	QualiLapTimeMS   omitnull.Val[int32]               `db:"quali_lap_time_ms" `
+	FastestLapTimeMS omitnull.Val[int32]               `db:"fastest_lap_time_ms" `
+	TotalTimeMS      omitnull.Val[int32]               `db:"total_time_ms" `
+	Incidents        omitnull.Val[int32]               `db:"incidents" `
+	State            omit.Val[string]                  `db:"state" `
+	AdminNotes       omitnull.Val[string]              `db:"admin_notes" `
+	LockedAt         omitnull.Val[time.Time]           `db:"locked_at" `
+	CreatedAt        omit.Val[time.Time]               `db:"created_at" `
+	UpdatedAt        omit.Val[time.Time]               `db:"updated_at" `
+	CreatedBy        omit.Val[string]                  `db:"created_by" `
+	UpdatedBy        omit.Val[string]                  `db:"updated_by" `
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 26)
+	vals := make([]string, 0, 27)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -217,8 +222,11 @@ func (s ResultEntrySetter) SetColumns() []string {
 	if !s.CarNumber.IsUnset() {
 		vals = append(vals, "car_number")
 	}
-	if s.IsGuestDriver.IsValue() {
-		vals = append(vals, "is_guest_driver")
+	if s.IsGuestStarter.IsValue() {
+		vals = append(vals, "is_guest_starter")
+	}
+	if !s.TeamDrivers.IsUnset() {
+		vals = append(vals, "team_drivers")
 	}
 	if !s.StartPosition.IsUnset() {
 		vals = append(vals, "start_position")
@@ -299,8 +307,11 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	if !s.CarNumber.IsUnset() {
 		t.CarNumber = s.CarNumber.MustGetNull()
 	}
-	if s.IsGuestDriver.IsValue() {
-		t.IsGuestDriver = s.IsGuestDriver.MustGet()
+	if s.IsGuestStarter.IsValue() {
+		t.IsGuestStarter = s.IsGuestStarter.MustGet()
+	}
+	if !s.TeamDrivers.IsUnset() {
+		t.TeamDrivers = s.TeamDrivers.MustGetNull()
 	}
 	if !s.StartPosition.IsUnset() {
 		t.StartPosition = s.StartPosition.MustGetNull()
@@ -352,7 +363,7 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 26)
+		vals := make([]bob.Expression, 27)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -419,94 +430,100 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 			vals[10] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsGuestDriver.IsValue() {
-			vals[11] = psql.Arg(s.IsGuestDriver.MustGet())
+		if s.IsGuestStarter.IsValue() {
+			vals[11] = psql.Arg(s.IsGuestStarter.MustGet())
 		} else {
 			vals[11] = psql.Raw("DEFAULT")
 		}
 
-		if !s.StartPosition.IsUnset() {
-			vals[12] = psql.Arg(s.StartPosition.MustGetNull())
+		if !s.TeamDrivers.IsUnset() {
+			vals[12] = psql.Arg(s.TeamDrivers.MustGetNull())
 		} else {
 			vals[12] = psql.Raw("DEFAULT")
 		}
 
-		if s.FinishPosition.IsValue() {
-			vals[13] = psql.Arg(s.FinishPosition.MustGet())
+		if !s.StartPosition.IsUnset() {
+			vals[13] = psql.Arg(s.StartPosition.MustGetNull())
 		} else {
 			vals[13] = psql.Raw("DEFAULT")
 		}
 
-		if s.LapsCompleted.IsValue() {
-			vals[14] = psql.Arg(s.LapsCompleted.MustGet())
+		if s.FinishPosition.IsValue() {
+			vals[14] = psql.Arg(s.FinishPosition.MustGet())
 		} else {
 			vals[14] = psql.Raw("DEFAULT")
 		}
 
-		if !s.QualiLapTimeMS.IsUnset() {
-			vals[15] = psql.Arg(s.QualiLapTimeMS.MustGetNull())
+		if s.LapsCompleted.IsValue() {
+			vals[15] = psql.Arg(s.LapsCompleted.MustGet())
 		} else {
 			vals[15] = psql.Raw("DEFAULT")
 		}
 
-		if !s.FastestLapTimeMS.IsUnset() {
-			vals[16] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
+		if !s.QualiLapTimeMS.IsUnset() {
+			vals[16] = psql.Arg(s.QualiLapTimeMS.MustGetNull())
 		} else {
 			vals[16] = psql.Raw("DEFAULT")
 		}
 
-		if !s.TotalTimeMS.IsUnset() {
-			vals[17] = psql.Arg(s.TotalTimeMS.MustGetNull())
+		if !s.FastestLapTimeMS.IsUnset() {
+			vals[17] = psql.Arg(s.FastestLapTimeMS.MustGetNull())
 		} else {
 			vals[17] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Incidents.IsUnset() {
-			vals[18] = psql.Arg(s.Incidents.MustGetNull())
+		if !s.TotalTimeMS.IsUnset() {
+			vals[18] = psql.Arg(s.TotalTimeMS.MustGetNull())
 		} else {
 			vals[18] = psql.Raw("DEFAULT")
 		}
 
-		if s.State.IsValue() {
-			vals[19] = psql.Arg(s.State.MustGet())
+		if !s.Incidents.IsUnset() {
+			vals[19] = psql.Arg(s.Incidents.MustGetNull())
 		} else {
 			vals[19] = psql.Raw("DEFAULT")
 		}
 
-		if !s.AdminNotes.IsUnset() {
-			vals[20] = psql.Arg(s.AdminNotes.MustGetNull())
+		if s.State.IsValue() {
+			vals[20] = psql.Arg(s.State.MustGet())
 		} else {
 			vals[20] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LockedAt.IsUnset() {
-			vals[21] = psql.Arg(s.LockedAt.MustGetNull())
+		if !s.AdminNotes.IsUnset() {
+			vals[21] = psql.Arg(s.AdminNotes.MustGetNull())
 		} else {
 			vals[21] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[22] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.LockedAt.IsUnset() {
+			vals[22] = psql.Arg(s.LockedAt.MustGetNull())
 		} else {
 			vals[22] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[23] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[23] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[23] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[24] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[24] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[24] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[25] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[25] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[25] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[26] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[26] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -518,7 +535,7 @@ func (s ResultEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 26)
+	exprs := make([]bob.Expression, 0, 27)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -597,10 +614,17 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if s.IsGuestDriver.IsValue() {
+	if s.IsGuestStarter.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "is_guest_driver")...),
-			psql.Arg(s.IsGuestDriver),
+			psql.Quote(append(prefix, "is_guest_starter")...),
+			psql.Arg(s.IsGuestStarter),
+		}})
+	}
+
+	if !s.TeamDrivers.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "team_drivers")...),
+			psql.Arg(s.TeamDrivers),
 		}})
 	}
 
@@ -1300,7 +1324,8 @@ type resultEntryWhere[Q psql.Filterable] struct {
 	RawDriverName    psql.WhereNullMod[Q, string]
 	RawTeamName      psql.WhereNullMod[Q, string]
 	CarNumber        psql.WhereNullMod[Q, string]
-	IsGuestDriver    psql.WhereMod[Q, bool]
+	IsGuestStarter   psql.WhereMod[Q, bool]
+	TeamDrivers      psql.WhereNullMod[Q, mytypes.TeamDrivers]
 	StartPosition    psql.WhereNullMod[Q, int32]
 	FinishPosition   psql.WhereMod[Q, int32]
 	LapsCompleted    psql.WhereMod[Q, int32]
@@ -1334,7 +1359,8 @@ func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEnt
 		RawDriverName:    psql.WhereNull[Q, string](cols.RawDriverName),
 		RawTeamName:      psql.WhereNull[Q, string](cols.RawTeamName),
 		CarNumber:        psql.WhereNull[Q, string](cols.CarNumber),
-		IsGuestDriver:    psql.Where[Q, bool](cols.IsGuestDriver),
+		IsGuestStarter:   psql.Where[Q, bool](cols.IsGuestStarter),
+		TeamDrivers:      psql.WhereNull[Q, mytypes.TeamDrivers](cols.TeamDrivers),
 		StartPosition:    psql.WhereNull[Q, int32](cols.StartPosition),
 		FinishPosition:   psql.Where[Q, int32](cols.FinishPosition),
 		LapsCompleted:    psql.Where[Q, int32](cols.LapsCompleted),

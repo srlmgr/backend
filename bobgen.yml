@@ -47,6 +47,10 @@ replacements:
     match:
       name: "import_format"
     replace: "mytypes.ImportFormat"
+  - tables: ["result_entries"]
+    match:
+      name: "team_drivers"
+    replace: "mytypes.TeamDrivers"
 
 types:
   "mytypes.SourceType":
@@ -64,6 +68,11 @@ types:
     no_randomization_test: true
     random_expr: |
       return "json"
+  "mytypes.TeamDrivers":
+    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    no_randomization_test: true
+    random_expr: |
+      return mytypes.TeamDrivers{}
 
 psql:
   # The DSN is read from the PSQL_DSN environment variable, so it is not hardcoded here.

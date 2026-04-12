@@ -432,7 +432,7 @@ func TestResolveInputTeamBased(t *testing.T) {
 				CarModelID:     null.From(int32(303)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{{
-				SourceValue: "team with driver 501 (name: Team Beta)",
+				SourceValue: "team with driver [501] (name: Team Beta)",
 				MappingType: "team",
 			}},
 			wantTrackCalls:  []resolverCall{{id: "Spa", name: "Spa"}},
@@ -476,6 +476,7 @@ func TestResolveInputTeamBased(t *testing.T) {
 			wantTrackCalls: []resolverCall{{id: "Monza", name: "Monza"}},
 			wantDriverCalls: []resolverCall{
 				{id: "sim-drv-3", name: "Driver C"},
+				{id: "sim-drv-4", name: "Driver D"},
 			},
 			wantCarCalls:  []resolverCall{{id: "sim-car-3", name: "GTE"}},
 			wantTeamCalls: []resolverCall{{id: "600", name: ""}},

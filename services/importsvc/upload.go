@@ -256,16 +256,12 @@ func (s *service) replaceResultEntriesForBatch(
 	return nil
 }
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace,funlen,gocyclo // editor/linter issue, many optional fields to set
 func buildResultEntryCreateSetter(
 	batch *models.ImportBatch,
 	entry *models.ResultEntry,
 	execUser string,
 ) *models.ResultEntrySetter {
-	log.Debug("buildResultEntryCreateSetter",
-		log.Int32("teamID", entry.TeamID.GetOr(0)),
-		log.String("rawTeamName", entry.RawTeamName.GetOr("")),
-	)
 	setter := &models.ResultEntrySetter{
 		RaceGridID:     omit.From(batch.RaceGridID),
 		FinishPosition: omit.From(entry.FinishPosition),
@@ -286,6 +282,10 @@ func buildResultEntryCreateSetter(
 	if !entry.TeamID.IsNull() {
 		setter.TeamID = omitnull.From(entry.TeamID.MustGet())
 	}
+	if !entry.TeamDrivers.IsNull() {
+		setter.TeamDrivers = omitnull.From(entry.TeamDrivers.MustGet())
+	}
+
 	if !entry.RawTeamName.IsNull() {
 		setter.RawTeamName = omitnull.From(entry.RawTeamName.GetOr(""))
 	}

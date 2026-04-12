@@ -14,6 +14,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob"
 )
 
@@ -49,7 +50,8 @@ type ResultEntryTemplate struct {
 	RawDriverName    func() null.Val[string]
 	RawTeamName      func() null.Val[string]
 	CarNumber        func() null.Val[string]
-	IsGuestDriver    func() bool
+	IsGuestStarter   func() bool
+	TeamDrivers      func() null.Val[mytypes.TeamDrivers]
 	StartPosition    func() null.Val[int32]
 	FinishPosition   func() int32
 	LapsCompleted    func() int32
@@ -190,9 +192,13 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.CarNumber()
 		m.CarNumber = omitnull.FromNull(val)
 	}
-	if o.IsGuestDriver != nil {
-		val := o.IsGuestDriver()
-		m.IsGuestDriver = omit.From(val)
+	if o.IsGuestStarter != nil {
+		val := o.IsGuestStarter()
+		m.IsGuestStarter = omit.From(val)
+	}
+	if o.TeamDrivers != nil {
+		val := o.TeamDrivers()
+		m.TeamDrivers = omitnull.FromNull(val)
 	}
 	if o.StartPosition != nil {
 		val := o.StartPosition()
@@ -305,8 +311,11 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	if o.CarNumber != nil {
 		m.CarNumber = o.CarNumber()
 	}
-	if o.IsGuestDriver != nil {
-		m.IsGuestDriver = o.IsGuestDriver()
+	if o.IsGuestStarter != nil {
+		m.IsGuestStarter = o.IsGuestStarter()
+	}
+	if o.TeamDrivers != nil {
+		m.TeamDrivers = o.TeamDrivers()
 	}
 	if o.StartPosition != nil {
 		m.StartPosition = o.StartPosition()
@@ -584,7 +593,8 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 		ResultEntryMods.RandomRawDriverName(f),
 		ResultEntryMods.RandomRawTeamName(f),
 		ResultEntryMods.RandomCarNumber(f),
-		ResultEntryMods.RandomIsGuestDriver(f),
+		ResultEntryMods.RandomIsGuestStarter(f),
+		ResultEntryMods.RandomTeamDrivers(f),
 		ResultEntryMods.RandomStartPosition(f),
 		ResultEntryMods.RandomFinishPosition(f),
 		ResultEntryMods.RandomLapsCompleted(f),
@@ -1120,32 +1130,85 @@ func (m resultEntryMods) RandomCarNumberNotNull(f *faker.Faker) ResultEntryMod {
 }
 
 // Set the model columns to this value
-func (m resultEntryMods) IsGuestDriver(val bool) ResultEntryMod {
+func (m resultEntryMods) IsGuestStarter(val bool) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.IsGuestDriver = func() bool { return val }
+		o.IsGuestStarter = func() bool { return val }
 	})
 }
 
 // Set the Column from the function
-func (m resultEntryMods) IsGuestDriverFunc(f func() bool) ResultEntryMod {
+func (m resultEntryMods) IsGuestStarterFunc(f func() bool) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.IsGuestDriver = f
+		o.IsGuestStarter = f
 	})
 }
 
 // Clear any values for the column
-func (m resultEntryMods) UnsetIsGuestDriver() ResultEntryMod {
+func (m resultEntryMods) UnsetIsGuestStarter() ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.IsGuestDriver = nil
+		o.IsGuestStarter = nil
 	})
 }
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-func (m resultEntryMods) RandomIsGuestDriver(f *faker.Faker) ResultEntryMod {
+func (m resultEntryMods) RandomIsGuestStarter(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
-		o.IsGuestDriver = func() bool {
+		o.IsGuestStarter = func() bool {
 			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) TeamDrivers(val null.Val[mytypes.TeamDrivers]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamDrivers = func() null.Val[mytypes.TeamDrivers] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) TeamDriversFunc(f func() null.Val[mytypes.TeamDrivers]) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamDrivers = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetTeamDrivers() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamDrivers = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m resultEntryMods) RandomTeamDrivers(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamDrivers = func() null.Val[mytypes.TeamDrivers] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_mytypes_TeamDrivers(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m resultEntryMods) RandomTeamDriversNotNull(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.TeamDrivers = func() null.Val[mytypes.TeamDrivers] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_mytypes_TeamDrivers(f)
+			return null.From(val)
 		}
 	})
 }

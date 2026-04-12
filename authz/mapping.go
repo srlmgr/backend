@@ -192,8 +192,6 @@ func addImportPolicies(policies map[string]ProcedurePolicy) {
 		"ResolveMappings",
 		"GetPreprocessPreview",
 		"ApplyResultEdits",
-		"ComputeDriverBookingEntries",
-		"ComputeTeamBookingEntries",
 		"ComputeBookingEntries",
 	} {
 		policies[procedure(importService, method)] = ProcedurePolicy{
