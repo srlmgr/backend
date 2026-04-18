@@ -193,6 +193,8 @@ func addImportPolicies(policies map[string]ProcedurePolicy) {
 		"GetPreprocessPreview",
 		"ApplyResultEdits",
 		"ComputeBookingEntries",
+		"AddPenalty",
+		"DeletePenalty",
 	} {
 		policies[procedure(importService, method)] = ProcedurePolicy{
 			Capability: "import.write",

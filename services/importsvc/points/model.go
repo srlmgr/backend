@@ -83,6 +83,7 @@ const (
 	PointsPolicyIncidentsExceeded
 	PointsPolicyQualificationPos
 	PointsPolicyTopNFinishers
+	PointsPolicyPenalty
 	PointsPolicyCustom
 )
 
@@ -95,6 +96,7 @@ var (
 		"incidents_exceeded": PointsPolicyIncidentsExceeded,
 		"qualification_pos":  PointsPolicyQualificationPos,
 		"top_n_finishers":    PointsPolicyTopNFinishers,
+		"penalty_points":     PointsPolicyPenalty,
 		"custom":             PointsPolicyCustom,
 	}
 	pointPolicyTypeToString = func() map[PointPolicyType]string {

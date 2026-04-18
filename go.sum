@@ -2,10 +2,14 @@ buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260411073242-bee79afff934.2 
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260411073242-bee79afff934.2/go.mod h1:pr/RgJWkMTMwvPFspEXnZcJDsU+DjfAgVHiLWgz++JE=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260412092736-222a89c3c1cc.2 h1:sK6x2rI+2haf+s4+p5fORUcQzbXJ56WRU7dnOD0W9fE=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260412092736-222a89c3c1cc.2/go.mod h1:sHR4E4TJgpi1qnk0SxBa7J7cYjd5cY4Qbec+zqATGGQ=
+buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260417205924-7eacca22161b.2 h1:udkyM4kIESaqajLYA0Tx1mzkgVR3GYp9PEHmQ3hTzJE=
+buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.1-20260417205924-7eacca22161b.2/go.mod h1:gnjkT+TqWf4CfsBNla2/Eb+sSgllzgy6dv5UbVAoV5U=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260411073242-bee79afff934.1 h1:kEVfesglsPoT9CvY2iZz51ZGmOTEWa8KnrSTXfBXhek=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260411073242-bee79afff934.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260412092736-222a89c3c1cc.1 h1:7cc+DQr5OFvy+DH2xHuiVoff2VC3oTJ39xjQjQdcolA=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260412092736-222a89c3c1cc.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
+buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260417205924-7eacca22161b.1 h1:YxmC+xuOZ6CPapS3rqF+7SWunZ8/H4YMLKSUdRoGIB0=
+buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260417205924-7eacca22161b.1/go.mod h1:pGcTCZq+h5qRGj7j6B7jEw0LSnmXf1BmRdtf9jI1rSk=
 connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
 connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
 connectrpc.com/grpchealth v1.4.0 h1:MJC96JLelARPgZTiRF9KRfY/2N9OcoQvF2EWX07v2IE=

@@ -23,7 +23,7 @@ import (
 	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace,funlen,gocyclo // editor/linter issue, lots of work to do here
 func (s *service) ComputeBookingEntries(
 	ctx context.Context,
 	req *connect.Request[importv1.ComputeBookingEntriesRequest],
@@ -78,7 +78,14 @@ func (s *service) ComputeBookingEntries(
 	if err != nil {
 		teamDrivers = nil // not critical, we can proceed without team driver info
 	}
-	bookingProc := newBookingProc(epi, resultEntries, raceGrids, teamDrivers, execUser)
+	penalties := s.loadPenalties(ctx, eventID)
+	bookingProc := newBookingProc(
+		epi,
+		resultEntries,
+		raceGrids,
+		teamDrivers,
+		penalties,
+		execUser)
 
 	var createdEntries int32
 
@@ -113,9 +120,21 @@ func (s *service) ComputeBookingEntries(
 			return err
 		}
 
-		_, err = s.repo.BookingEntries().CreateMany(ctx, pBookings)
-		if err != nil {
-			return err
+		dbgSingle := false
+		if dbgSingle {
+			for i, setter := range pBookings {
+				_, err = s.repo.BookingEntries().Create(ctx, setter)
+				if err != nil {
+					log.Error("failed to create booking entry",
+						log.ErrorField(err), log.Int("index", i))
+					return err
+				}
+			}
+		} else {
+			_, err = s.repo.BookingEntries().CreateMany(ctx, pBookings)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Advance event processing state.
@@ -153,12 +172,27 @@ func (s *service) ComputeBookingEntries(
 	}), nil
 }
 
+//nolint:whitespace // editor/linter issue
+func (s *service) loadPenalties(
+	ctx context.Context,
+	eventID int32,
+) []*models.BookingEntry {
+	entries, err := s.repo.BookingEntries().LoadByEventIDAndSourceType(
+		ctx, eventID, points.PointsPolicyPenalty.String(),
+	)
+	if err != nil {
+		return nil
+	}
+	return entries
+}
+
 type (
 	bookingProc struct {
 		resultEntries  []*models.ResultEntry
 		raceGrids      []*models.RaceGrid
 		raceIDByGridID map[int32]int32
 		teamDrivers    []*models.TeamDriver
+		penalties      []*models.BookingEntry
 		epi            *processor.EventProcInfo
 		execUser       string
 	}
@@ -170,12 +204,14 @@ func newBookingProc(
 	resultEntries []*models.ResultEntry,
 	raceGrids []*models.RaceGrid,
 	teamDrivers []*models.TeamDriver,
+	penalties []*models.BookingEntry,
 	execUser string,
 ) *bookingProc {
 	return &bookingProc{
 		resultEntries: resultEntries,
 		raceGrids:     raceGrids,
 		teamDrivers:   teamDrivers,
+		penalties:     penalties,
 		raceIDByGridID: lo.SliceToMap(raceGrids,
 			func(item *models.RaceGrid) (int32, int32) {
 				return item.ID, item.RaceID
@@ -225,6 +261,8 @@ func (s *bookingProc) computeBookingEntries(
 	setters := make([]*models.BookingEntrySetter, 0)
 	pEntries := s.computePrimaryBookings(rawOutputs)
 	setters = append(setters, pEntries...)
+
+	// add penalties (needs to be done before computing secondary entries)
 
 	if sEntries, err := s.computeSecondaryBookings(rawOutputs); err != nil {
 		return nil, err
@@ -285,6 +323,9 @@ func (s *bookingProc) createSecondaryTeamEntries(
 	byDriver := lo.GroupBy(s.combineOutputs(outputs), func(output points.Output) int32 {
 		return output.ReferenceID()
 	})
+	penByDriver := lo.GroupBy(s.penalties, func(be *models.BookingEntry) int32 {
+		return be.DriverID.GetOrZero()
+	})
 
 	type _driverData struct {
 		driverID int32
@@ -296,6 +337,12 @@ func (s *bookingProc) createSecondaryTeamEntries(
 		pointsSum := lo.SumBy(entries, func(entry points.Output) float64 {
 			return float64(entry.Points())
 		})
+		// process penalties (note: penalty points are stored as negative values))
+		if penEntries, ok := penByDriver[driverID]; ok {
+			pointsSum += lo.SumBy(penEntries, func(entry *models.BookingEntry) float64 {
+				return float64(entry.Points)
+			})
+		}
 		driverData = append(driverData, _driverData{
 			driverID: driverID,
 			points:   pointsSum,
@@ -313,7 +360,10 @@ func (s *bookingProc) createSecondaryTeamEntries(
 	settersByTeamID := make(map[int32][]*models.BookingEntrySetter)
 	for i := range driverData {
 		data := driverData[i]
-		teamID := teamIDByDriverID[data.driverID]
+		teamID, ok := teamIDByDriverID[data.driverID]
+		if !ok {
+			continue // driver not assigned to team, skip
+		}
 		if len(settersByTeamID[teamID]) < int(s.epi.Season.TeamPointsTopN.GetOrZero()) {
 			settersByTeamID[teamID] = append(settersByTeamID[teamID],
 				&models.BookingEntrySetter{
