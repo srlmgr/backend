@@ -60,7 +60,29 @@ type (
 		FastestLap() int32
 		ReferenceID() int32
 	}
-	InputOpt         func(*defaultInputImpl) *defaultInputImpl
+	InputOpt func(*defaultInputImpl) *defaultInputImpl
+
+	Output interface {
+		ReferenceID() int32
+		Points() PointType
+		Msg() string
+		Origin() PointPolicyType
+		Meta() MetaType
+	}
+	MetaType struct {
+		Version int
+		Data    any
+	}
+	// Metadata for position based points
+	PositionMeta struct {
+		Pos int // e.g. finishing position, qualifying position, etc. depending on the policy
+	}
+
+	IncidentExceededMeta struct {
+		Incidents  int // e.g. number of incidents, penalties, etc. depending on the policy
+		Limit      int
+		PenaltyPct float64
+	}
 	defaultInputImpl struct {
 		finishPosition int32
 		qualiPosition  int32

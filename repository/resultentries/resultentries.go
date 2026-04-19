@@ -25,6 +25,7 @@ import (
 type Repository interface {
 	LoadAll(ctx context.Context) ([]*models.ResultEntry, error)
 	LoadByID(ctx context.Context, id int32) (*models.ResultEntry, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.ResultEntry, error)
 	LoadByRaceGridID(ctx context.Context, raceGridID int32) ([]*models.ResultEntry, error)
 	LoadByState(ctx context.Context, state string) ([]*models.ResultEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
@@ -70,6 +71,18 @@ func (r *resultEntriesRepository) LoadByRaceGridID(
 ) ([]*models.ResultEntry, error) {
 	return models.ResultEntries.Query(
 		sm.Where(models.ResultEntries.Columns.RaceGridID.EQ(psql.Arg(raceGridID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *resultEntriesRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.ResultEntry, error) {
+	return models.ResultEntries.Query(
+		models.SelectJoins.ResultEntries.InnerJoin.RaceGrid,
+		models.SelectJoins.RaceGrids.InnerJoin.Race,
+		models.SelectJoins.Races.InnerJoin.Event,
+		models.SelectWhere.Events.SeasonID.EQ(seasonID),
 	).All(ctx, r.getExecutor(ctx))
 }
 
