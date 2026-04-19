@@ -23,13 +23,6 @@ func NewPointSystemProcessor(
 }
 
 type (
-	// TODO: move to model when dev is finished
-	Output interface {
-		ReferenceID() int32
-		Points() PointType
-		Msg() string
-		Origin() PointPolicyType
-	}
 	positionBasedPoints interface {
 		Process(inputs []Input, points []PointType) []Output
 	}
@@ -48,6 +41,7 @@ type (
 		points PointType
 		msg    string
 		origin PointPolicyType
+		meta   MetaType
 	}
 )
 
@@ -60,6 +54,7 @@ func (w workOutput) ReferenceID() int32      { return w.refID }
 func (w workOutput) Points() PointType       { return w.points }
 func (w workOutput) Msg() string             { return w.msg }
 func (w workOutput) Origin() PointPolicyType { return w.origin }
+func (w workOutput) Meta() MetaType          { return w.meta }
 
 //nolint:whitespace // editor/linter issue
 func (p *standardPosBasedProcessor) Process(
@@ -78,6 +73,7 @@ func (p *standardPosBasedProcessor) Process(
 			points: points[i],
 			msg:    msg,
 			origin: p.policyType,
+			meta:   MetaType{Version: 1, Data: PositionMeta{Pos: i + 1}},
 		})
 	}
 	return ret
@@ -197,6 +193,14 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 					msg: fmt.Sprintf("%d%% reduction for %d incidents (limit: %d)",
 						int(penaltyPct*100), inp.Incidents(), threshold),
 					origin: PointsPolicyIncidentsExceeded,
+					meta: MetaType{
+						Version: 1,
+						Data: IncidentExceededMeta{
+							Incidents:  int(inp.Incidents()),
+							Limit:      int(threshold),
+							PenaltyPct: penaltyPct,
+						},
+					},
 				}
 				ret = append(ret, out)
 			}

@@ -5,7 +5,7 @@ updates:
 
     # Auto assign PRs raised to this account on Github
     assignees:
-      - "srlmgr"
+      - "mpapenbr"
 
     # Check for updates to dependencies once a week - Saturday
     schedule:

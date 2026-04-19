@@ -49,6 +49,7 @@ func (r *eventsRepository) LoadBySeasonID(
 ) ([]*models.Event, error) {
 	return models.Events.Query(
 		sm.Where(models.Events.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		sm.OrderBy(models.Events.Columns.SequenceNo),
 	).All(ctx, r.getExecutor(ctx))
 }
 

@@ -448,13 +448,23 @@ func (s *bookingProc) primaryReferenceID(
 
 func (s *bookingProc) baseSetter(output points.Output) *models.BookingEntrySetter {
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
+	createJSON := func(data any) types.JSON[json.RawMessage] {
+		if data == nil {
+			return emptyJSON
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			return emptyJSON
+		}
+		return types.JSON[json.RawMessage]{Val: json.RawMessage(b)}
+	}
 	setter := &models.BookingEntrySetter{
 		EventID:      omit.From(s.epi.Event.ID),
 		SourceType:   omit.From(mytypes.SourceType(output.Origin().String())),
 		Points:       omit.From(int32(output.Points())),
 		Description:  omit.From(output.Msg()),
 		IsManual:     omit.From(false),
-		MetadataJSON: omit.From(emptyJSON),
+		MetadataJSON: omit.From(createJSON(output.Meta())),
 		CreatedBy:    omit.From(s.execUser),
 		UpdatedBy:    omit.From(s.execUser),
 	}

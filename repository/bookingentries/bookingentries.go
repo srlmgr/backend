@@ -24,6 +24,7 @@ import (
 // Repository defines persistence operations for BookingEntry entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.BookingEntry, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.BookingEntry, error)
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.BookingEntry, error)
 	LoadByEventIDAndSourceType(
 		ctx context.Context,
@@ -107,6 +108,16 @@ func (r *bookingEntriesRepository) LoadByEventID(
 ) ([]*models.BookingEntry, error) {
 	return models.BookingEntries.Query(
 		sm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Query(
+		models.SelectJoins.BookingEntries.InnerJoin.Event,
+		models.SelectWhere.Events.SeasonID.EQ(seasonID),
 	).All(ctx, r.getExecutor(ctx))
 }
 
