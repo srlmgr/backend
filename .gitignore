@@ -22,3 +22,6 @@ dist/**
 .npmrc
 .backend.yml
 .env*
+
+# additional
+backend
