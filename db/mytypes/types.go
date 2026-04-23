@@ -19,6 +19,7 @@ type (
 	ImportBatchMeta struct {
 		Race  string `json:"race,omitempty"`  // fn in zip for race data
 		Quali string `json:"quali,omitempty"` // fn in zip for quali data
+		All   string `json:"all,omitempty"`   // fn in zip for payloads containing all data
 	}
 )
 

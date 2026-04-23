@@ -6,8 +6,9 @@ import (
 
 // ParsedImportPayload is the common parsed payload shape returned by CSV processors.
 type ParsedImportPayload struct {
-	Session SessionInfo
-	Results []*ResultRow
+	Session  SessionInfo
+	Results  []*ResultRow
+	DataType ImportData
 }
 
 // SessionInfo contains event-level data from an import payload.

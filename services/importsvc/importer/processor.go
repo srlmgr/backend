@@ -7,7 +7,16 @@ import (
 )
 
 // ImportFormat is the persisted format value used by processors.
-type ImportFormat = string
+type (
+	ImportFormat = string
+	ImportData   = string
+)
+
+const (
+	ImportDataQuali = "quali" // use for quali only data
+	ImportDataRace  = "race"  // use for race only data
+	ImportDataAll   = "all"   // use if data contains quali+race
+)
 
 // ProcessImport describes a simulation-specific import processor.
 type ProcessImport interface {

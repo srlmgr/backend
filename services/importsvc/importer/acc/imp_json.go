@@ -52,8 +52,20 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 			StartTime: time.Time{},
 			Track:     data.TrackName,
 		},
-		Results: results,
+		Results:  results,
+		DataType: detectImportDataType(data.SessionType),
 	}, nil
+}
+
+func detectImportDataType(sessionType string) processor.ImportData {
+	if strings.EqualFold(sessionType, "q") || strings.EqualFold(sessionType, "quali") {
+		return processor.ImportDataQuali
+	}
+	if strings.EqualFold(sessionType, "r") || strings.EqualFold(sessionType, "race") {
+		return processor.ImportDataRace
+	}
+
+	return processor.ImportDataAll
 }
 
 func payloadToEventData(payload any) (*EventData, error) {

@@ -78,6 +78,9 @@ func TestParseJSONMinimal(t *testing.T) {
 	if len(parsed.Results) != 1 {
 		t.Fatalf("unexpected results count: got %d want %d", len(parsed.Results), 1)
 	}
+	if parsed.DataType != "all" {
+		t.Fatalf("unexpected data type: got %q want %q", parsed.DataType, "all")
+	}
 
 	row := parsed.Results[0]
 	if row.FinPos != 2 ||

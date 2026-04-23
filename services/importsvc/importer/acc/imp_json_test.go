@@ -68,6 +68,9 @@ func TestParseJSONMinimal(t *testing.T) {
 	if len(parsed.Results) != 1 {
 		t.Fatalf("unexpected result count: got %d want %d", len(parsed.Results), 1)
 	}
+	if parsed.DataType != "race" {
+		t.Fatalf("unexpected data type: got %q want %q", parsed.DataType, "race")
+	}
 
 	row := parsed.Results[0]
 	if row.FinPos != 1 ||
@@ -99,6 +102,9 @@ func TestParseJSONUTF16LEPayload(t *testing.T) {
 
 	if len(parsed.Results) != 1 {
 		t.Fatalf("unexpected result count: got %d want %d", len(parsed.Results), 1)
+	}
+	if parsed.DataType != "quali" {
+		t.Fatalf("unexpected data type: got %q want %q", parsed.DataType, "quali")
 	}
 
 	if parsed.Results[0].QualiLapTime != 900 {

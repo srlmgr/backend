@@ -51,7 +51,8 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 			StartTime: time.Unix(data.StartTime, 0).UTC(),
 			Track:     data.Track + " - " + data.TrackLayout,
 		},
-		Results: results,
+		Results:  results,
+		DataType: processor.ImportDataAll,
 	}, nil
 }
 
