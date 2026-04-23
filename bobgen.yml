@@ -35,44 +35,58 @@ aliases:
     down_singular: "series"
 
 replacements:
-  - tables: ["booking_entries"]
+  - tables: [ "booking_entries" ]
     match:
       name: "source_type"
     replace: "mytypes.SourceType"
-  - tables: ["booking_entries"]
+  - tables: [ "booking_entries" ]
     match:
       name: "target_type"
     replace: "mytypes.TargetType"
-  - tables: ["import_batches"]
+  - tables: [ "import_batches" ]
     match:
       name: "import_format"
     replace: "mytypes.ImportFormat"
-  - tables: ["result_entries"]
+  - tables: [ "import_batches" ]
+    match:
+      name: "metadata_json"
+    replace: "mytypes.ImportBatchMeta"
+  - tables: [ "result_entries" ]
     match:
       name: "team_drivers"
     replace: "mytypes.TeamDrivers"
 
 types:
   "mytypes.SourceType":
-    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
     no_randomization_test: true
     random_expr: |
       return "finish_pos"
   "mytypes.TargetType":
-    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
     no_randomization_test: true
     random_expr: |
       return "driver"
   "mytypes.ImportFormat":
-    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
     no_randomization_test: true
     random_expr: |
       return "json"
   "mytypes.TeamDrivers":
-    imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
     no_randomization_test: true
     random_expr: |
       return mytypes.TeamDrivers{}
+  "mytypes.RaceSimImportFormat":
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
+    no_randomization_test: true
+    random_expr: |
+      return mytypes.RaceSimImportFormat{}
+  "mytypes.ImportBatchMeta":
+    imports: [ "mytypes \"github.com/srlmgr/backend/db/mytypes\"" ]
+    no_randomization_test: true
+    random_expr: |
+      return mytypes.ImportBatchMeta{}
 
 psql:
   # The DSN is read from the PSQL_DSN environment variable, so it is not hardcoded here.

@@ -5,13 +5,12 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/aarondl/opt/omit"
-	"github.com/gofrs/uuid/v5"
-	"github.com/lib/pq"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -21,20 +20,20 @@ import (
 	"github.com/stephenafamo/bob/expr"
 	"github.com/stephenafamo/bob/mods"
 	"github.com/stephenafamo/bob/orm"
+	"github.com/stephenafamo/bob/types"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // RacingSim is an object representing the database table.
 type RacingSim struct {
-	ID                     int32          `db:"id,pk" `
-	FrontendID             uuid.UUID      `db:"frontend_id" `
-	Name                   string         `db:"name" `
-	SupportedImportFormats pq.StringArray `db:"supported_import_formats" `
-	IsActive               bool           `db:"is_active" `
-	CreatedAt              time.Time      `db:"created_at" `
-	UpdatedAt              time.Time      `db:"updated_at" `
-	CreatedBy              string         `db:"created_by" `
-	UpdatedBy              string         `db:"updated_by" `
+	ID                     int32                       `db:"id,pk" `
+	Name                   string                      `db:"name" `
+	SupportedImportFormats types.JSON[json.RawMessage] `db:"supported_import_formats" `
+	IsActive               bool                        `db:"is_active" `
+	CreatedAt              time.Time                   `db:"created_at" `
+	UpdatedAt              time.Time                   `db:"updated_at" `
+	CreatedBy              string                      `db:"created_by" `
+	UpdatedBy              string                      `db:"updated_by" `
 
 	R racingSimR `db:"-" `
 }
@@ -60,11 +59,10 @@ type racingSimR struct {
 func buildRacingSimColumns(alias string) racingSimColumns {
 	return racingSimColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "frontend_id", "name", "supported_import_formats", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+			"id", "name", "supported_import_formats", "is_active", "created_at", "updated_at", "created_by", "updated_by",
 		).WithParent("racing_sims"),
 		tableAlias:             alias,
 		ID:                     psql.Quote(alias, "id"),
-		FrontendID:             psql.Quote(alias, "frontend_id"),
 		Name:                   psql.Quote(alias, "name"),
 		SupportedImportFormats: psql.Quote(alias, "supported_import_formats"),
 		IsActive:               psql.Quote(alias, "is_active"),
@@ -79,7 +77,6 @@ type racingSimColumns struct {
 	expr.ColumnsExpr
 	tableAlias             string
 	ID                     psql.Expression
-	FrontendID             psql.Expression
 	Name                   psql.Expression
 	SupportedImportFormats psql.Expression
 	IsActive               psql.Expression
@@ -101,24 +98,20 @@ func (racingSimColumns) AliasedAs(alias string) racingSimColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type RacingSimSetter struct {
-	ID                     omit.Val[int32]          `db:"id,pk" `
-	FrontendID             omit.Val[uuid.UUID]      `db:"frontend_id" `
-	Name                   omit.Val[string]         `db:"name" `
-	SupportedImportFormats omit.Val[pq.StringArray] `db:"supported_import_formats" `
-	IsActive               omit.Val[bool]           `db:"is_active" `
-	CreatedAt              omit.Val[time.Time]      `db:"created_at" `
-	UpdatedAt              omit.Val[time.Time]      `db:"updated_at" `
-	CreatedBy              omit.Val[string]         `db:"created_by" `
-	UpdatedBy              omit.Val[string]         `db:"updated_by" `
+	ID                     omit.Val[int32]                       `db:"id,pk" `
+	Name                   omit.Val[string]                      `db:"name" `
+	SupportedImportFormats omit.Val[types.JSON[json.RawMessage]] `db:"supported_import_formats" `
+	IsActive               omit.Val[bool]                        `db:"is_active" `
+	CreatedAt              omit.Val[time.Time]                   `db:"created_at" `
+	UpdatedAt              omit.Val[time.Time]                   `db:"updated_at" `
+	CreatedBy              omit.Val[string]                      `db:"created_by" `
+	UpdatedBy              omit.Val[string]                      `db:"updated_by" `
 }
 
 func (s RacingSimSetter) SetColumns() []string {
-	vals := make([]string, 0, 9)
+	vals := make([]string, 0, 8)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
-	}
-	if s.FrontendID.IsValue() {
-		vals = append(vals, "frontend_id")
 	}
 	if s.Name.IsValue() {
 		vals = append(vals, "name")
@@ -147,9 +140,6 @@ func (s RacingSimSetter) SetColumns() []string {
 func (s RacingSimSetter) Overwrite(t *RacingSim) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
-	}
-	if s.FrontendID.IsValue() {
-		t.FrontendID = s.FrontendID.MustGet()
 	}
 	if s.Name.IsValue() {
 		t.Name = s.Name.MustGet()
@@ -180,59 +170,53 @@ func (s *RacingSimSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 9)
+		vals := make([]bob.Expression, 8)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.FrontendID.IsValue() {
-			vals[1] = psql.Arg(s.FrontendID.MustGet())
+		if s.Name.IsValue() {
+			vals[1] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[2] = psql.Arg(s.Name.MustGet())
+		if s.SupportedImportFormats.IsValue() {
+			vals[2] = psql.Arg(s.SupportedImportFormats.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.SupportedImportFormats.IsValue() {
-			vals[3] = psql.Arg(s.SupportedImportFormats.MustGet())
+		if s.IsActive.IsValue() {
+			vals[3] = psql.Arg(s.IsActive.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsActive.IsValue() {
-			vals[4] = psql.Arg(s.IsActive.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[4] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[5] = psql.Arg(s.CreatedAt.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[5] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[6] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[6] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[7] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedBy.IsValue() {
+			vals[7] = psql.Arg(s.UpdatedBy.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
-		}
-
-		if s.UpdatedBy.IsValue() {
-			vals[8] = psql.Arg(s.UpdatedBy.MustGet())
-		} else {
-			vals[8] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -244,19 +228,12 @@ func (s RacingSimSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s RacingSimSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 9)
+	exprs := make([]bob.Expression, 0, 8)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
-		}})
-	}
-
-	if s.FrontendID.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "frontend_id")...),
-			psql.Arg(s.FrontendID),
 		}})
 	}
 
@@ -905,9 +882,8 @@ func (racingSim0 *RacingSim) AttachSimulationSimulationTrackLayoutAliases(ctx co
 
 type racingSimWhere[Q psql.Filterable] struct {
 	ID                     psql.WhereMod[Q, int32]
-	FrontendID             psql.WhereMod[Q, uuid.UUID]
 	Name                   psql.WhereMod[Q, string]
-	SupportedImportFormats psql.WhereMod[Q, pq.StringArray]
+	SupportedImportFormats psql.WhereMod[Q, types.JSON[json.RawMessage]]
 	IsActive               psql.WhereMod[Q, bool]
 	CreatedAt              psql.WhereMod[Q, time.Time]
 	UpdatedAt              psql.WhereMod[Q, time.Time]
@@ -922,9 +898,8 @@ func (racingSimWhere[Q]) AliasedAs(alias string) racingSimWhere[Q] {
 func buildRacingSimWhere[Q psql.Filterable](cols racingSimColumns) racingSimWhere[Q] {
 	return racingSimWhere[Q]{
 		ID:                     psql.Where[Q, int32](cols.ID),
-		FrontendID:             psql.Where[Q, uuid.UUID](cols.FrontendID),
 		Name:                   psql.Where[Q, string](cols.Name),
-		SupportedImportFormats: psql.Where[Q, pq.StringArray](cols.SupportedImportFormats),
+		SupportedImportFormats: psql.Where[Q, types.JSON[json.RawMessage]](cols.SupportedImportFormats),
 		IsActive:               psql.Where[Q, bool](cols.IsActive),
 		CreatedAt:              psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:              psql.Where[Q, time.Time](cols.UpdatedAt),

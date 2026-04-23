@@ -579,7 +579,7 @@ func (f *Factory) FromExistingImportBatch(m *models.ImportBatch) *ImportBatchTem
 	o.Payload = func() []byte { return m.Payload }
 	o.SourceFilename = func() null.Val[string] { return m.SourceFilename }
 	o.ProcessingState = func() string { return m.ProcessingState }
-	o.MetadataJSON = func() types.JSON[json.RawMessage] { return m.MetadataJSON }
+	o.MetadataJSON = func() mytypes.ImportBatchMeta { return m.MetadataJSON }
 	o.ProcessedAt = func() null.Val[time.Time] { return m.ProcessedAt }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
@@ -781,9 +781,8 @@ func (f *Factory) FromExistingRacingSim(m *models.RacingSim) *RacingSimTemplate 
 	o := &RacingSimTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.Name = func() string { return m.Name }
-	o.SupportedImportFormats = func() pq.StringArray { return m.SupportedImportFormats }
+	o.SupportedImportFormats = func() types.JSON[json.RawMessage] { return m.SupportedImportFormats }
 	o.IsActive = func() bool { return m.IsActive }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }

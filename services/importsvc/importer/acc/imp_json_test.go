@@ -21,8 +21,8 @@ func TestParseJSONMinimal(t *testing.T) {
 		"sessionResult":{
 			"bestlap":124877,
 			"bestSplits":[26502,40660,57713],
-			"isWetSession":false,
-			"type":"Race",
+			"isWetSession":0,
+			"type":0,
 			"leaderBoardLines":[
 				{
 					"car":{
@@ -89,7 +89,7 @@ func TestParseJSONMinimal(t *testing.T) {
 func TestParseJSONUTF16LEPayload(t *testing.T) {
 	t.Parallel()
 
-	jsonText := `{"sessionType":"Q","trackName":"cota","sessionIndex":1,"raceWeekendIndex":0,"metaData":"cota","serverName":"vr","sessionResult":{"bestlap":1000,"bestSplits":[1,2,3],"isWetSession":false,"type":"Q","leaderBoardLines":[{"car":{"carId":1,"raceNumber":7,"carModel":99,"cupCategory":0,"carGroup":"GT3","teamName":"Team","nationality":1,"carGuid":1,"teamGuid":2,"drivers":[{"firstName":"A","lastName":"B","shortName":"A. B","playerId":"P1"}]},"currentDriver":{"firstName":"A","lastName":"B","shortName":"A. B","playerId":"P1"},"currentDriverIndex":0,"driverTotalTimes":[1.5],"missingMandatoryPitstop":-1,"timing":{"lastLap":1000,"lastSplits":[1,2,3],"bestLap":900,"bestSplits":[1,2,3],"totalTime":12000,"lapCount":10,"lastSplitId":2}}]},"laps":[],"penalties":[],"post_race_penalties":[]}`
+	jsonText := `{"sessionType":"Q","trackName":"cota","sessionIndex":1,"raceWeekendIndex":0,"metaData":"cota","serverName":"vr","sessionResult":{"bestlap":1000,"bestSplits":[1,2,3],"isWetSession":0,"type":1,"leaderBoardLines":[{"car":{"carId":1,"raceNumber":7,"carModel":99,"cupCategory":0,"carGroup":"GT3","teamName":"Team","nationality":1,"carGuid":1,"teamGuid":2,"drivers":[{"firstName":"A","lastName":"B","shortName":"A. B","playerId":"P1"}]},"currentDriver":{"firstName":"A","lastName":"B","shortName":"A. B","playerId":"P1"},"currentDriverIndex":0,"driverTotalTimes":[1.5],"missingMandatoryPitstop":-1,"timing":{"lastLap":1000,"lastSplits":[1,2,3],"bestLap":900,"bestSplits":[1,2,3],"totalTime":12000,"lapCount":10,"lastSplitId":2}}]},"laps":[],"penalties":[],"post_race_penalties":[]}`
 	utf16Payload := encodeUTF16LE(jsonText)
 
 	parsed, err := ParseJSON(utf16Payload)

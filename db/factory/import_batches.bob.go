@@ -5,7 +5,6 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	models "github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/types"
 )
 
 type ImportBatchMod interface {
@@ -48,7 +46,7 @@ type ImportBatchTemplate struct {
 	Payload         func() []byte
 	SourceFilename  func() null.Val[string]
 	ProcessingState func() string
-	MetadataJSON    func() types.JSON[json.RawMessage]
+	MetadataJSON    func() mytypes.ImportBatchMeta
 	ProcessedAt     func() null.Val[time.Time]
 	CreatedAt       func() time.Time
 	UpdatedAt       func() time.Time
@@ -650,14 +648,14 @@ func (m importBatchMods) RandomProcessingState(f *faker.Faker) ImportBatchMod {
 }
 
 // Set the model columns to this value
-func (m importBatchMods) MetadataJSON(val types.JSON[json.RawMessage]) ImportBatchMod {
+func (m importBatchMods) MetadataJSON(val mytypes.ImportBatchMeta) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.MetadataJSON = func() types.JSON[json.RawMessage] { return val }
+		o.MetadataJSON = func() mytypes.ImportBatchMeta { return val }
 	})
 }
 
 // Set the Column from the function
-func (m importBatchMods) MetadataJSONFunc(f func() types.JSON[json.RawMessage]) ImportBatchMod {
+func (m importBatchMods) MetadataJSONFunc(f func() mytypes.ImportBatchMeta) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
 		o.MetadataJSON = f
 	})
@@ -674,8 +672,8 @@ func (m importBatchMods) UnsetMetadataJSON() ImportBatchMod {
 // if faker is nil, a default faker is used
 func (m importBatchMods) RandomMetadataJSON(f *faker.Faker) ImportBatchMod {
 	return ImportBatchModFunc(func(_ context.Context, o *ImportBatchTemplate) {
-		o.MetadataJSON = func() types.JSON[json.RawMessage] {
-			return random_types_JSON_json_RawMessage_(f)
+		o.MetadataJSON = func() mytypes.ImportBatchMeta {
+			return random_mytypes_ImportBatchMeta(f)
 		}
 	})
 }

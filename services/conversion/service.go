@@ -2,6 +2,7 @@
 package conversion
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/srlmgr/backend/db/dberrors"
 	"github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
@@ -78,11 +80,27 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 	}
 
 	return &commonv1.Simulation{
-		Id:               uint32(model.ID),
-		Name:             model.Name,
-		IsActive:         model.IsActive,
-		SupportedFormats: ImportFormatsToProto(model.SupportedImportFormats),
+		Id:       uint32(model.ID),
+		Name:     model.Name,
+		IsActive: model.IsActive,
+		SupportedFormats: ImportFormatsToProto(
+			racingSimFormatStrings(model.SupportedImportFormats.Val),
+		),
 	}
+}
+
+// racingSimFormatStrings extracts import format strings from a JSON-encoded
+// array of RaceSimImportFormat values.
+func racingSimFormatStrings(raw json.RawMessage) []string {
+	var formats []mytypes.RaceSimImportFormat
+	if err := json.Unmarshal(raw, &formats); err != nil || len(formats) == 0 {
+		return nil
+	}
+	out := make([]string, len(formats))
+	for i := range formats {
+		out[i] = string(formats[i].Format)
+	}
+	return out
 }
 
 // PointSystemToPointSystem converts a PointSystem model to a PointSystem message.

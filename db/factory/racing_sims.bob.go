@@ -5,15 +5,15 @@ package factory
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/aarondl/opt/omit"
-	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
-	"github.com/lib/pq"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/types"
 )
 
 type RacingSimMod interface {
@@ -38,9 +38,8 @@ func (mods RacingSimModSlice) Apply(ctx context.Context, n *RacingSimTemplate) {
 // all columns are optional and should be set by mods
 type RacingSimTemplate struct {
 	ID                     func() int32
-	FrontendID             func() uuid.UUID
 	Name                   func() string
-	SupportedImportFormats func() pq.StringArray
+	SupportedImportFormats func() types.JSON[json.RawMessage]
 	IsActive               func() bool
 	CreatedAt              func() time.Time
 	UpdatedAt              func() time.Time
@@ -149,10 +148,6 @@ func (o RacingSimTemplate) BuildSetter() *models.RacingSimSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
-	if o.FrontendID != nil {
-		val := o.FrontendID()
-		m.FrontendID = omit.From(val)
-	}
 	if o.Name != nil {
 		val := o.Name()
 		m.Name = omit.From(val)
@@ -205,9 +200,6 @@ func (o RacingSimTemplate) Build() *models.RacingSim {
 
 	if o.ID != nil {
 		m.ID = o.ID()
-	}
-	if o.FrontendID != nil {
-		m.FrontendID = o.FrontendID()
 	}
 	if o.Name != nil {
 		m.Name = o.Name()
@@ -435,7 +427,6 @@ type racingSimMods struct{}
 func (m racingSimMods) RandomizeAllColumns(f *faker.Faker) RacingSimMod {
 	return RacingSimModSlice{
 		RacingSimMods.RandomID(f),
-		RacingSimMods.RandomFrontendID(f),
 		RacingSimMods.RandomName(f),
 		RacingSimMods.RandomSupportedImportFormats(f),
 		RacingSimMods.RandomIsActive(f),
@@ -478,37 +469,6 @@ func (m racingSimMods) RandomID(f *faker.Faker) RacingSimMod {
 }
 
 // Set the model columns to this value
-func (m racingSimMods) FrontendID(val uuid.UUID) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.FrontendID = func() uuid.UUID { return val }
-	})
-}
-
-// Set the Column from the function
-func (m racingSimMods) FrontendIDFunc(f func() uuid.UUID) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.FrontendID = f
-	})
-}
-
-// Clear any values for the column
-func (m racingSimMods) UnsetFrontendID() RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.FrontendID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m racingSimMods) RandomFrontendID(f *faker.Faker) RacingSimMod {
-	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.FrontendID = func() uuid.UUID {
-			return random_uuid_UUID(f)
-		}
-	})
-}
-
-// Set the model columns to this value
 func (m racingSimMods) Name(val string) RacingSimMod {
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
 		o.Name = func() string { return val }
@@ -540,14 +500,14 @@ func (m racingSimMods) RandomName(f *faker.Faker) RacingSimMod {
 }
 
 // Set the model columns to this value
-func (m racingSimMods) SupportedImportFormats(val pq.StringArray) RacingSimMod {
+func (m racingSimMods) SupportedImportFormats(val types.JSON[json.RawMessage]) RacingSimMod {
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.SupportedImportFormats = func() pq.StringArray { return val }
+		o.SupportedImportFormats = func() types.JSON[json.RawMessage] { return val }
 	})
 }
 
 // Set the Column from the function
-func (m racingSimMods) SupportedImportFormatsFunc(f func() pq.StringArray) RacingSimMod {
+func (m racingSimMods) SupportedImportFormatsFunc(f func() types.JSON[json.RawMessage]) RacingSimMod {
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
 		o.SupportedImportFormats = f
 	})
@@ -564,8 +524,8 @@ func (m racingSimMods) UnsetSupportedImportFormats() RacingSimMod {
 // if faker is nil, a default faker is used
 func (m racingSimMods) RandomSupportedImportFormats(f *faker.Faker) RacingSimMod {
 	return RacingSimModFunc(func(_ context.Context, o *RacingSimTemplate) {
-		o.SupportedImportFormats = func() pq.StringArray {
-			return random_pq_StringArray(f)
+		o.SupportedImportFormats = func() types.JSON[json.RawMessage] {
+			return random_types_JSON_json_RawMessage_(f)
 		}
 	})
 }

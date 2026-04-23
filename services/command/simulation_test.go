@@ -3,6 +3,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/srlmgr/backend/authn"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
 	"github.com/srlmgr/backend/services/conversion"
@@ -41,10 +43,14 @@ func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
 	}
 
 	formats := setter.SupportedImportFormats.MustGet()
-	if len(formats) != 2 || formats[0] != conversion.ImportFormatJSON ||
-		formats[1] != conversion.ImportFormatCSV {
+	var simFormats []mytypes.RaceSimImportFormat
+	if err := json.Unmarshal(formats.Val, &simFormats); err != nil {
+		t.Fatalf("failed to unmarshal formats: %v", err)
+	}
+	if len(simFormats) != 2 || string(simFormats[0].Format) != conversion.ImportFormatJSON ||
+		string(simFormats[1].Format) != conversion.ImportFormatCSV {
 
-		t.Fatalf("unexpected supported formats: %v", formats)
+		t.Fatalf("unexpected supported formats: %v", simFormats)
 	}
 }
 
@@ -87,10 +93,12 @@ func TestCreateSimulationSuccess(t *testing.T) {
 			stored.UpdatedBy,
 		)
 	}
-	if len(stored.SupportedImportFormats) != 1 ||
-		stored.SupportedImportFormats[0] != conversion.ImportFormatJSON {
-
-		t.Fatalf("unexpected stored formats: %v", stored.SupportedImportFormats)
+	var storedFormats []mytypes.RaceSimImportFormat
+	if err := json.Unmarshal(stored.SupportedImportFormats.Val, &storedFormats); err != nil {
+		t.Fatalf("failed to unmarshal stored formats: %v", err)
+	}
+	if len(storedFormats) != 1 || string(storedFormats[0].Format) != conversion.ImportFormatJSON {
+		t.Fatalf("unexpected stored formats: %v", storedFormats)
 	}
 }
 
@@ -206,10 +214,12 @@ func TestUpdateSimulationSuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
-	if len(after.SupportedImportFormats) != 1 ||
-		after.SupportedImportFormats[0] != conversion.ImportFormatCSV {
-
-		t.Fatalf("unexpected updated formats: %v", after.SupportedImportFormats)
+	var afterFormats []mytypes.RaceSimImportFormat
+	if err := json.Unmarshal(after.SupportedImportFormats.Val, &afterFormats); err != nil {
+		t.Fatalf("failed to unmarshal after formats: %v", err)
+	}
+	if len(afterFormats) != 1 || string(afterFormats[0].Format) != conversion.ImportFormatCSV {
+		t.Fatalf("unexpected updated formats: %v", afterFormats)
 	}
 }
 

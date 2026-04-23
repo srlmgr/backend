@@ -90,7 +90,14 @@ func (s *service) UploadResultsFile(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	if !slices.Contains(simulation.SupportedImportFormats, importFormat) {
+	if !slices.ContainsFunc(
+		func() []mytypes.RaceSimImportFormat {
+			var f []mytypes.RaceSimImportFormat
+			_ = json.Unmarshal(simulation.SupportedImportFormats.Val, &f)
+			return f
+		}(),
+		func(f mytypes.RaceSimImportFormat) bool { return string(f.Format) == importFormat },
+	) {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
 			fmt.Errorf(
@@ -134,7 +141,7 @@ func (s *service) UploadResultsFile(
 			ImportFormat:    omit.From(mytypes.ImportFormat(importFormat)),
 			Payload:         omit.From(req.Msg.GetPayload()),
 			ProcessingState: omit.From(toState),
-			MetadataJSON:    omit.From(emptyJSON),
+			MetadataJSON:    omit.From(mytypes.ImportBatchMeta{}),
 			CreatedBy:       omit.From(execUser),
 			UpdatedBy:       omit.From(execUser),
 		})

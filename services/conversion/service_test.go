@@ -2,14 +2,15 @@
 package conversion
 
 import (
+	"encoding/json"
 	"testing"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"github.com/gofrs/uuid/v5"
-	"github.com/lib/pq"
+	bobtypes "github.com/stephenafamo/bob/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 )
 
 func TestImportFormatsToProto(t *testing.T) {
@@ -74,15 +75,22 @@ func TestImportFormatsFromProtoUnspecified(t *testing.T) {
 	}
 }
 
+func makeSimFormats(formats ...string) bobtypes.JSON[json.RawMessage] {
+	items := make([]mytypes.RaceSimImportFormat, len(formats))
+	for i, f := range formats {
+		items[i] = mytypes.RaceSimImportFormat{Format: mytypes.ImportFormat(f)}
+	}
+	b, _ := json.Marshal(items)
+	return bobtypes.JSON[json.RawMessage]{Val: json.RawMessage(b)}
+}
+
 func TestServiceRacingSimToSimulation(t *testing.T) {
 	t.Parallel()
 
-	frontendID := uuid.Must(uuid.NewV4())
 	input := &models.RacingSim{
 		ID:                     42,
-		FrontendID:             frontendID,
 		Name:                   "iRacing",
-		SupportedImportFormats: pq.StringArray{ImportFormatJSON, ImportFormatCSV},
+		SupportedImportFormats: makeSimFormats(ImportFormatJSON, ImportFormatCSV),
 		IsActive:               true,
 	}
 
@@ -110,11 +118,6 @@ func TestServiceRacingSimToSimulation(t *testing.T) {
 
 		t.Fatalf("unexpected supported formats: got %v", msg.SupportedFormats)
 	}
-
-	input.SupportedImportFormats[0] = ImportFormatCSV
-	if msg.SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
-		t.Fatalf("supported formats should be copied, got %v", msg.SupportedFormats[0])
-	}
 }
 
 func TestServiceRacingSimToSimulationNil(t *testing.T) {
@@ -135,14 +138,14 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 		{
 			ID:                     1,
 			Name:                   "Assetto Corsa",
-			SupportedImportFormats: pq.StringArray{ImportFormatJSON},
+			SupportedImportFormats: makeSimFormats(ImportFormatJSON),
 			IsActive:               true,
 		},
 		nil,
 		{
 			ID:                     2,
 			Name:                   "rFactor 2",
-			SupportedImportFormats: pq.StringArray{ImportFormatCSV},
+			SupportedImportFormats: makeSimFormats(ImportFormatCSV),
 			IsActive:               false,
 		},
 	}

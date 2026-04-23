@@ -58,17 +58,6 @@ func TestRandom_pq_Int32Array(t *testing.T) {
 	}
 }
 
-func TestRandom_pq_StringArray(t *testing.T) {
-	t.Parallel()
-
-	val1 := random_pq_StringArray(nil)
-	val2 := random_pq_StringArray(nil)
-
-	if slices.Equal(val1, val2) {
-		t.Fatalf("random_pq_StringArray() returned the same value twice: %v", val1)
-	}
-}
-
 func TestRandom_string(t *testing.T) {
 	t.Parallel()
 

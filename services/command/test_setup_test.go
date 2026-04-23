@@ -3,13 +3,14 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
+	bobtypes "github.com/stephenafamo/bob/types"
 
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
@@ -112,11 +113,18 @@ func seedSimulation(
 
 	var err error
 	sim, err = repo.RacingSims().Create(context.Background(), &models.RacingSimSetter{
-		Name:                   omit.From(name),
-		IsActive:               omit.From(true),
-		SupportedImportFormats: omit.From(pq.StringArray{conversion.ImportFormatJSON}),
-		CreatedBy:              omit.From(testUserSeed),
-		UpdatedBy:              omit.From(testUserSeed),
+		Name:     omit.From(name),
+		IsActive: omit.From(true),
+		SupportedImportFormats: omit.From(func() bobtypes.JSON[json.RawMessage] {
+			b, _ := json.Marshal(
+				[]mytypes.RaceSimImportFormat{
+					{Format: mytypes.ImportFormat(conversion.ImportFormatJSON)},
+				},
+			)
+			return bobtypes.JSON[json.RawMessage]{Val: json.RawMessage(b)}
+		}()),
+		CreatedBy: omit.From(testUserSeed),
+		UpdatedBy: omit.From(testUserSeed),
 	})
 	if err != nil {
 		t.Fatalf("failed to seed simulation %q: %v", name, err)
