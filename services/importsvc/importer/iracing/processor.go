@@ -15,7 +15,7 @@ var _ processor.ProcessImport = (*Processor)(nil)
 
 func (p *Processor) SupportedFormats() []string {
 	return []string{
-		// conversion.ImportFormatJSON,
+		conversion.ImportFormatJSON,
 		conversion.ImportFormatCSV,
 	}
 }
@@ -27,6 +27,13 @@ func (p *Processor) Process(
 	payload any,
 ) (*processor.ParsedImportPayload, error) {
 	switch format {
+	case conversion.ImportFormatJSON:
+		parsed, err := ParseJSON(payload)
+		if err != nil {
+			return nil, fmt.Errorf("parse json: %w", err)
+		}
+
+		return parsed, nil
 	case conversion.ImportFormatCSV:
 		parsed, err := ParseCSV(payload)
 		if err != nil {
