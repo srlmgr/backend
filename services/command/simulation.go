@@ -16,7 +16,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/srlmgr/backend/db/models"
-	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/services/conversion"
 )
@@ -24,7 +23,7 @@ import (
 type simulationRequest interface {
 	GetName() string
 	GetIsActive() bool
-	GetSupportedFormats() []commonv1.ImportFormat
+	GetSupportedFormats() []*commonv1.ImportConfig
 }
 
 type simSetter = models.RacingSimSetter
@@ -43,13 +42,9 @@ func (r racingSimSetterBuilder) Build(msg simulationRequest) (*simSetter, error)
 	}
 
 	if formats := msg.GetSupportedFormats(); len(formats) > 0 {
-		supportedFormats, err := conversion.ImportFormatsFromProto(formats)
+		rsiFormats, err := conversion.ImportConfigsFromProto(formats)
 		if err != nil {
 			return nil, err
-		}
-		rsiFormats := make([]mytypes.RaceSimImportFormat, len(supportedFormats))
-		for i, f := range supportedFormats {
-			rsiFormats[i] = mytypes.RaceSimImportFormat{Format: mytypes.ImportFormat(f)}
 		}
 		b, err := json.Marshal(rsiFormats)
 		if err != nil {

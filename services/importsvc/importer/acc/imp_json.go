@@ -25,7 +25,6 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 	for i := range data.SessionResult.LeaderBoardRows {
 		entry := data.SessionResult.LeaderBoardRows[i]
 		result := &processor.ResultRow{
-			FinPos:   i + 1,
 			CarID:    strconv.Itoa(entry.Car.CarModel),
 			Car:      strconv.Itoa(entry.Car.CarModel),
 			TeamID:   strconv.Itoa(entry.Car.TeamGUID),
@@ -33,15 +32,19 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 			Name: strings.TrimSpace(
 				entry.CurrentDriver.FirstName + " " + entry.CurrentDriver.LastName,
 			),
-			CarNumber:      strconv.Itoa(entry.Car.RaceNumber),
-			FastestLapTime: entry.Timing.BestLap,
-			TotalTime:      entry.Timing.TotalTime,
-			Laps:           entry.Timing.LapCount,
-			Incidents:      penaltyCountByCarID[entry.Car.CarID],
+			CarNumber: strconv.Itoa(entry.Car.RaceNumber),
 		}
 
 		if strings.EqualFold(data.SessionType, "q") {
+			result.StartPos = i + 1
 			result.QualiLapTime = entry.Timing.BestLap
+		}
+		if strings.EqualFold(data.SessionType, "r") {
+			result.FinPos = i + 1
+			result.FastestLapTime = entry.Timing.BestLap
+			result.TotalTime = entry.Timing.TotalTime
+			result.Laps = entry.Timing.LapCount
+			result.Incidents = penaltyCountByCarID[entry.Car.CarID]
 		}
 
 		results = append(results, result)
@@ -58,10 +61,10 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 }
 
 func detectImportDataType(sessionType string) processor.ImportData {
-	if strings.EqualFold(sessionType, "q") || strings.EqualFold(sessionType, "quali") {
+	if strings.EqualFold(sessionType, "q") {
 		return processor.ImportDataQuali
 	}
-	if strings.EqualFold(sessionType, "r") || strings.EqualFold(sessionType, "race") {
+	if strings.EqualFold(sessionType, "r") {
 		return processor.ImportDataRace
 	}
 

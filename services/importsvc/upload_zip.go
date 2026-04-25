@@ -3,6 +3,7 @@ package importsvc
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,20 +40,6 @@ func findRaceSimImportFormat(
 	}
 
 	return mytypes.RaceSimImportFormat{}, false
-}
-
-func isMultiUploadEnabled(raw string) bool {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	if value == "" {
-		return false
-	}
-
-	switch value {
-	case "0", "false", "no", "none", "off", "disabled":
-		return false
-	default:
-		return true
-	}
 }
 
 func importDataZipEntry(dataType importer.ImportData, multiUpload bool) string {
@@ -194,4 +181,113 @@ func selectImportPayloadForProcessing(
 	}
 
 	return nil, fmt.Errorf("zip payload does not contain a known import entry")
+}
+
+// extractNamedZipEntry returns the bytes for a named entry in the zip,
+// or nil if not present.
+func extractNamedZipEntry(zipPayload []byte, entryName string) ([]byte, error) {
+	if entryName == "" {
+		return nil, nil
+	}
+	reader, err := zip.NewReader(bytes.NewReader(zipPayload), int64(len(zipPayload)))
+	if err != nil {
+		return nil, fmt.Errorf("read zip payload: %w", err)
+	}
+	for _, file := range reader.File {
+		if file.Name != entryName {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return nil, fmt.Errorf("open zip entry %q: %w", entryName, err)
+		}
+		data, readErr := io.ReadAll(rc)
+		closeErr := rc.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("read zip entry %q: %w", entryName, readErr)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("close zip entry %q: %w", entryName, closeErr)
+		}
+		return data, nil
+	}
+	return nil, nil
+}
+
+// mergeResultRows copies quali-specific fields (StartPos, QualiLapTime) from quali
+// rows into matching race rows. Matching is by TeamID when isTeamBased is true,
+// otherwise by DriverID.
+//
+//nolint:whitespace // editor/linter issue
+func mergeResultRows(
+	isTeamBased bool,
+	raceRows, qualiRows []*importer.ResultRow,
+) []*importer.ResultRow {
+	index := make(map[string]*importer.ResultRow, len(qualiRows))
+	for _, q := range qualiRows {
+		key := q.DriverID
+		if isTeamBased {
+			key = q.TeamID
+		}
+		if key != "" {
+			index[key] = q
+		}
+	}
+	for _, r := range raceRows {
+		key := r.DriverID
+		if isTeamBased {
+			key = r.TeamID
+		}
+		if q, ok := index[key]; ok {
+			r.StartPos = q.StartPos
+			r.QualiLapTime = q.QualiLapTime
+		}
+	}
+	return raceRows
+}
+
+// buildMergedInputFromZip extracts the race and quali payloads from the merged zip,
+// processes each with the import processor, and merges the results into a single
+// ParsedImportPayload. If only one entry is present it is returned as-is.
+// Returns nil when neither race nor quali entry exists in the zip.
+//
+//nolint:whitespace // editor/linter issue
+func buildMergedInputFromZip(
+	ctx context.Context,
+	importProcessor importer.ProcessImport,
+	importFormat importer.ImportFormat,
+	zipPayload []byte,
+	meta mytypes.ImportBatchMeta,
+	isTeamBased bool,
+) (*importer.ParsedImportPayload, error) {
+	raceBytes, err := extractNamedZipEntry(zipPayload, meta.Race)
+	if err != nil {
+		return nil, fmt.Errorf("extract race zip entry: %w", err)
+	}
+	qualiBytes, err := extractNamedZipEntry(zipPayload, meta.Quali)
+	if err != nil {
+		return nil, fmt.Errorf("extract quali zip entry: %w", err)
+	}
+
+	if raceBytes == nil && qualiBytes == nil {
+		return nil, nil
+	}
+	if raceBytes == nil {
+		return importProcessor.Process(ctx, importFormat, qualiBytes)
+	}
+	if qualiBytes == nil {
+		return importProcessor.Process(ctx, importFormat, raceBytes)
+	}
+
+	raceInput, err := importProcessor.Process(ctx, importFormat, raceBytes)
+	if err != nil {
+		return nil, fmt.Errorf("process race payload: %w", err)
+	}
+	qualiInput, err := importProcessor.Process(ctx, importFormat, qualiBytes)
+	if err != nil {
+		return nil, fmt.Errorf("process quali payload: %w", err)
+	}
+
+	raceInput.Results = mergeResultRows(isTeamBased, raceInput.Results, qualiInput.Results)
+	return raceInput, nil
 }

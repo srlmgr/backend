@@ -25,6 +25,9 @@ type ProcessImport interface {
 		format ImportFormat,
 		payload any,
 	) (*ParsedImportPayload, error)
+	// Combine(
+	// 	ctx context.Context,
+	// 	quali, race *ParsedImportPayload) (*ParsedImportPayload, error)
 }
 
 // FormatSupporter can be implemented by processors that expose supported formats.

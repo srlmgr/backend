@@ -4,6 +4,7 @@ package conversion
 const (
 	ImportFormatJSON = "json"
 	ImportFormatCSV  = "csv"
+	ImportFormatXML  = "xml"
 )
 
 // Race session type strings as persisted in the database.

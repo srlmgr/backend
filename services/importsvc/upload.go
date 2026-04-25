@@ -138,7 +138,7 @@ func (s *service) UploadResultsFile(
 
 		entryName := importDataZipEntry(
 			input.DataType,
-			isMultiUploadEnabled(selectedFormat.AllowMultipleUploads),
+			selectedFormat.AllowMultipleUploads,
 		)
 
 		existingBatch, loadErr := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
@@ -184,7 +184,26 @@ func (s *service) UploadResultsFile(
 
 		resolver := importer.NewResolver(
 			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation), epi)
-		resolved, resolveErr := resolver.ResolveInput(input)
+
+		finalInput := input
+		if selectedFormat.AllowMultipleUploads {
+			merged, mergeErr := buildMergedInputFromZip(
+				ctx,
+				importProcessor,
+				importFormat,
+				zipPayload,
+				meta,
+				epi.Season.IsTeamBased,
+			)
+			if mergeErr != nil {
+				return fmt.Errorf("build merged import input: %w", mergeErr)
+			}
+			if merged != nil {
+				finalInput = merged
+			}
+		}
+
+		resolved, resolveErr := resolver.ResolveInput(finalInput)
 		if resolveErr != nil {
 			return fmt.Errorf("resolve import payload: %w", resolveErr)
 		}
@@ -240,24 +259,18 @@ func (s *service) UploadResultsFile(
 	}), nil
 }
 
+//nolint:whitespace // editor/linter issue
 func (s *service) replaceResultEntriesForBatch(
 	ctx context.Context,
 	batch *models.ImportBatch,
 	entries []*models.ResultEntry,
 	execUser string,
 ) error {
-	// TODO: change to RaceGridID when that is supported in ImportBatch
-	existing, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, batch.RaceGridID)
-	if err != nil {
-		return fmt.Errorf("load result entries for race grid %d: %w", batch.RaceGridID, err)
+	if err := s.repo.ResultEntries().DeleteByRaceGridID(
+		ctx, batch.RaceGridID); err != nil {
+		return fmt.Errorf("delete result entries for race grid %d: %w",
+			batch.RaceGridID, err)
 	}
-
-	for _, item := range existing {
-		if deleteErr := s.repo.ResultEntries().DeleteByID(ctx, item.ID); deleteErr != nil {
-			return fmt.Errorf("delete result entry %d: %w", item.ID, deleteErr)
-		}
-	}
-
 	setters := make([]*models.ResultEntrySetter, len(entries))
 	for i, entry := range entries {
 		setters[i] = buildResultEntryCreateSetter(batch, entry, execUser)

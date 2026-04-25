@@ -24,9 +24,9 @@ func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
 	setter, err := (racingSimSetterBuilder{}).Build(&v1.CreateSimulationRequest{
 		Name:     "Le Mans Ultimate",
 		IsActive: true,
-		SupportedFormats: []commonv1.ImportFormat{
-			commonv1.ImportFormat_IMPORT_FORMAT_JSON,
-			commonv1.ImportFormat_IMPORT_FORMAT_CSV,
+		SupportedFormats: []*commonv1.ImportConfig{
+			{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+			{Format: commonv1.ImportFormat_IMPORT_FORMAT_CSV, AllowMultipleUploads: true},
 		},
 	})
 	if err != nil {
@@ -52,13 +52,19 @@ func TestRacingSimSetterBuilderBuildSuccess(t *testing.T) {
 
 		t.Fatalf("unexpected supported formats: %v", simFormats)
 	}
+	if simFormats[0].AllowMultipleUploads {
+		t.Fatalf("unexpected allow_multiple_uploads for first format: %v", simFormats[0])
+	}
+	if !simFormats[1].AllowMultipleUploads {
+		t.Fatalf("unexpected allow_multiple_uploads for second format: %v", simFormats[1])
+	}
 }
 
 func TestRacingSimSetterBuilderBuildFailureInvalidFormat(t *testing.T) {
 	t.Parallel()
 
 	_, err := (racingSimSetterBuilder{}).Build(&v1.CreateSimulationRequest{
-		SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat(99)},
+		SupportedFormats: []*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}},
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid import format")
@@ -70,9 +76,11 @@ func TestCreateSimulationSuccess(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateSimulation(ctx, connect.NewRequest(&v1.CreateSimulationRequest{
-		Name:             "rFactor 2",
-		IsActive:         true,
-		SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+		Name:     "rFactor 2",
+		IsActive: true,
+		SupportedFormats: []*commonv1.ImportConfig{
+			{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -108,7 +116,7 @@ func TestCreateSimulationFailureInvalidFormat(t *testing.T) {
 	_, err := svc.CreateSimulation(
 		context.Background(),
 		connect.NewRequest(&v1.CreateSimulationRequest{
-			SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat(99)},
+			SupportedFormats: []*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}},
 		}),
 	)
 	if err == nil {
@@ -126,9 +134,11 @@ func TestCreateSimulationFailureDuplicateName(t *testing.T) {
 	_, err := svc.CreateSimulation(
 		context.Background(),
 		connect.NewRequest(&v1.CreateSimulationRequest{
-			Name:             "duplicate-sim",
-			IsActive:         true,
-			SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+			Name:     "duplicate-sim",
+			IsActive: true,
+			SupportedFormats: []*commonv1.ImportConfig{
+				{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+			},
 		}),
 	)
 	if err == nil {
@@ -188,10 +198,12 @@ func TestUpdateSimulationSuccess(t *testing.T) {
 	}
 
 	resp, err := svc.UpdateSimulation(ctx, connect.NewRequest(&v1.UpdateSimulationRequest{
-		SimulationId:     uint32(initial.ID),
-		Name:             "iRacing Updated",
-		IsActive:         true,
-		SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat_IMPORT_FORMAT_CSV},
+		SimulationId: uint32(initial.ID),
+		Name:         "iRacing Updated",
+		IsActive:     true,
+		SupportedFormats: []*commonv1.ImportConfig{
+			{Format: commonv1.ImportFormat_IMPORT_FORMAT_CSV},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -231,7 +243,7 @@ func TestUpdateSimulationFailureInvalidFormat(t *testing.T) {
 		context.Background(),
 		connect.NewRequest(&v1.UpdateSimulationRequest{
 			SimulationId:     uint32(initial.ID),
-			SupportedFormats: []commonv1.ImportFormat{commonv1.ImportFormat(99)},
+			SupportedFormats: []*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}},
 		}),
 	)
 	if err == nil {

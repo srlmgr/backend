@@ -14,7 +14,7 @@ type (
 	}
 	RaceSimImportFormat struct {
 		Format               ImportFormat `json:"format"`
-		AllowMultipleUploads string       `json:"allowMultipleUploads"`
+		AllowMultipleUploads bool         `json:"allowMultipleUploads"`
 	}
 	ImportBatchMeta struct {
 		Race  string `json:"race,omitempty"`  // fn in zip for race data

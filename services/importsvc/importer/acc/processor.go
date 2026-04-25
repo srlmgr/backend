@@ -18,7 +18,6 @@ func (p *Processor) SupportedFormats() []string {
 }
 
 //nolint:whitespace // editor/linter issue
-//nolint:whitespace // editor/linter issue
 func (p *Processor) Process(
 	ctx context.Context,
 	format string,
