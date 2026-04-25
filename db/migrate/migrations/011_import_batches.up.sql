@@ -25,7 +25,7 @@ ALTER TABLE import_batches
 
 ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_import_format_check
-    CHECK (import_format IN ('json', 'csv'));
+    CHECK (import_format IN ('json', 'csv', 'xml'));
 
 ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_processing_state_check
