@@ -14,16 +14,26 @@ type Processor struct{}
 var _ processor.ProcessImport = (*Processor)(nil)
 
 func (p *Processor) SupportedFormats() []string {
-	return []string{conversion.ImportFormatJSON, conversion.ImportFormatCSV}
+	return []string{conversion.ImportFormatJSON}
 }
 
 //nolint:whitespace // editor/linter issue
 func (p *Processor) Process(
-	_ context.Context,
-	_ string,
-	_ any,
+	ctx context.Context,
+	format string,
+	payload any,
 ) (*processor.ParsedImportPayload, error) {
-	return nil, fmt.Errorf("assetto corsa competizione processor is not implemented")
+	switch format {
+	case conversion.ImportFormatJSON:
+		parsed, err := ParseJSON(payload)
+		if err != nil {
+			return nil, fmt.Errorf("parse json: %w", err)
+		}
+
+		return parsed, nil
+	default:
+		return nil, fmt.Errorf("%w: %s", processor.ErrUnsupportedFormat, format)
+	}
 }
 
 func init() {

@@ -72,7 +72,12 @@ func (s *service) ResolveMappings(
 			)
 		}
 
-		input, err := importProcessor.Process(ctx, importFormat, batch.Payload)
+		payload, err := selectImportPayloadForProcessing(batch.Payload, batch.MetadataJSON)
+		if err != nil {
+			return fmt.Errorf("select import payload: %w", err)
+		}
+
+		input, err := importProcessor.Process(ctx, importFormat, payload)
 		if err != nil {
 			return fmt.Errorf("process import payload: %w", err)
 		}

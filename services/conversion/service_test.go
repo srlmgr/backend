@@ -2,14 +2,15 @@
 package conversion
 
 import (
+	"encoding/json"
 	"testing"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"github.com/gofrs/uuid/v5"
-	"github.com/lib/pq"
+	bobtypes "github.com/stephenafamo/bob/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 )
 
 func TestImportFormatsToProto(t *testing.T) {
@@ -74,15 +75,80 @@ func TestImportFormatsFromProtoUnspecified(t *testing.T) {
 	}
 }
 
+func TestImportConfigsToProto(t *testing.T) {
+	t.Parallel()
+
+	got := ImportConfigsToProto([]mytypes.RaceSimImportFormat{
+		{Format: mytypes.ImportFormat(ImportFormatJSON)},
+		{Format: mytypes.ImportFormat(ImportFormatCSV), AllowMultipleUploads: true},
+		{Format: mytypes.ImportFormat("unknown")},
+	})
+	if len(got) != 3 {
+		t.Fatalf("unexpected format count: got %d want %d", len(got), 3)
+	}
+	if got[0].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
+		t.Fatalf("unexpected first format: got %v", got[0].GetFormat())
+	}
+	if got[1].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_CSV ||
+		!got[1].GetAllowMultipleUploads() {
+
+		t.Fatalf("unexpected second format config: %+v", got[1])
+	}
+	if got[2].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED {
+		t.Fatalf("unexpected third format: got %v", got[2].GetFormat())
+	}
+}
+
+func TestImportConfigsFromProto(t *testing.T) {
+	t.Parallel()
+
+	got, err := ImportConfigsFromProto([]*commonv1.ImportConfig{
+		{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+		nil,
+		{Format: commonv1.ImportFormat_IMPORT_FORMAT_CSV, AllowMultipleUploads: true},
+		{Format: commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("unexpected format count: got %d want %d", len(got), 2)
+	}
+	if got[0].Format != mytypes.ImportFormat(ImportFormatJSON) {
+		t.Fatalf("unexpected first format: got %v", got[0].Format)
+	}
+	if got[1].Format != mytypes.ImportFormat(ImportFormatCSV) ||
+		!got[1].AllowMultipleUploads {
+
+		t.Fatalf("unexpected second format config: %+v", got[1])
+	}
+}
+
+func TestImportConfigsFromProtoInvalidFormat(t *testing.T) {
+	t.Parallel()
+
+	_, err := ImportConfigsFromProto([]*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func makeSimFormats(formats ...string) bobtypes.JSON[json.RawMessage] {
+	items := make([]mytypes.RaceSimImportFormat, len(formats))
+	for i, f := range formats {
+		items[i] = mytypes.RaceSimImportFormat{Format: mytypes.ImportFormat(f)}
+	}
+	b, _ := json.Marshal(items)
+	return bobtypes.JSON[json.RawMessage]{Val: json.RawMessage(b)}
+}
+
 func TestServiceRacingSimToSimulation(t *testing.T) {
 	t.Parallel()
 
-	frontendID := uuid.Must(uuid.NewV4())
 	input := &models.RacingSim{
 		ID:                     42,
-		FrontendID:             frontendID,
 		Name:                   "iRacing",
-		SupportedImportFormats: pq.StringArray{ImportFormatJSON, ImportFormatCSV},
+		SupportedImportFormats: makeSimFormats(ImportFormatJSON, ImportFormatCSV),
 		IsActive:               true,
 	}
 
@@ -105,15 +171,13 @@ func TestServiceRacingSimToSimulation(t *testing.T) {
 		t.Fatalf("unexpected supported formats length: got %d want %d",
 			len(msg.SupportedFormats), 2)
 	}
-	if msg.SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_JSON ||
-		msg.SupportedFormats[1] != commonv1.ImportFormat_IMPORT_FORMAT_CSV {
+	if msg.SupportedFormats[0].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_JSON ||
+		msg.SupportedFormats[1].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_CSV {
 
 		t.Fatalf("unexpected supported formats: got %v", msg.SupportedFormats)
 	}
-
-	input.SupportedImportFormats[0] = ImportFormatCSV
-	if msg.SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
-		t.Fatalf("supported formats should be copied, got %v", msg.SupportedFormats[0])
+	if msg.SupportedFormats[0].GetAllowMultipleUploads() {
+		t.Fatalf("unexpected first format config: %+v", msg.SupportedFormats[0])
 	}
 }
 
@@ -135,14 +199,14 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 		{
 			ID:                     1,
 			Name:                   "Assetto Corsa",
-			SupportedImportFormats: pq.StringArray{ImportFormatJSON},
+			SupportedImportFormats: makeSimFormats(ImportFormatJSON),
 			IsActive:               true,
 		},
 		nil,
 		{
 			ID:                     2,
 			Name:                   "rFactor 2",
-			SupportedImportFormats: pq.StringArray{ImportFormatCSV},
+			SupportedImportFormats: makeSimFormats(ImportFormatCSV),
 			IsActive:               false,
 		},
 	}
@@ -154,11 +218,11 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 	if got[0].Id != 1 || got[1].Id != 2 {
 		t.Fatalf("unexpected ids: got %d, %d", got[0].Id, got[1].Id)
 	}
-	if got[0].SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
-		t.Fatalf("unexpected first item format: got %v", got[0].SupportedFormats[0])
+	if got[0].SupportedFormats[0].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
+		t.Fatalf("unexpected first item format: got %v", got[0].SupportedFormats[0].GetFormat())
 	}
-	if got[1].SupportedFormats[0] != commonv1.ImportFormat_IMPORT_FORMAT_CSV {
-		t.Fatalf("unexpected second item format: got %v", got[1].SupportedFormats[0])
+	if got[1].SupportedFormats[0].GetFormat() != commonv1.ImportFormat_IMPORT_FORMAT_CSV {
+		t.Fatalf("unexpected second item format: got %v", got[1].SupportedFormats[0].GetFormat())
 	}
 
 	empty := svc.RacingSimsToSimulations(nil)

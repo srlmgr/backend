@@ -5,7 +5,6 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -24,25 +23,24 @@ import (
 	"github.com/stephenafamo/bob/expr"
 	"github.com/stephenafamo/bob/mods"
 	"github.com/stephenafamo/bob/orm"
-	"github.com/stephenafamo/bob/types"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 // ImportBatch is an object representing the database table.
 type ImportBatch struct {
-	ID              int32                       `db:"id,pk" `
-	FrontendID      uuid.UUID                   `db:"frontend_id" `
-	RaceGridID      int32                       `db:"race_grid_id" `
-	ImportFormat    mytypes.ImportFormat        `db:"import_format" `
-	Payload         []byte                      `db:"payload" `
-	SourceFilename  null.Val[string]            `db:"source_filename" `
-	ProcessingState string                      `db:"processing_state" `
-	MetadataJSON    types.JSON[json.RawMessage] `db:"metadata_json" `
-	ProcessedAt     null.Val[time.Time]         `db:"processed_at" `
-	CreatedAt       time.Time                   `db:"created_at" `
-	UpdatedAt       time.Time                   `db:"updated_at" `
-	CreatedBy       string                      `db:"created_by" `
-	UpdatedBy       string                      `db:"updated_by" `
+	ID              int32                   `db:"id,pk" `
+	FrontendID      uuid.UUID               `db:"frontend_id" `
+	RaceGridID      int32                   `db:"race_grid_id" `
+	ImportFormat    mytypes.ImportFormat    `db:"import_format" `
+	Payload         []byte                  `db:"payload" `
+	SourceFilename  null.Val[string]        `db:"source_filename" `
+	ProcessingState string                  `db:"processing_state" `
+	MetadataJSON    mytypes.ImportBatchMeta `db:"metadata_json" `
+	ProcessedAt     null.Val[time.Time]     `db:"processed_at" `
+	CreatedAt       time.Time               `db:"created_at" `
+	UpdatedAt       time.Time               `db:"updated_at" `
+	CreatedBy       string                  `db:"created_by" `
+	UpdatedBy       string                  `db:"updated_by" `
 
 	R importBatchR `db:"-" `
 }
@@ -115,19 +113,19 @@ func (importBatchColumns) AliasedAs(alias string) importBatchColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type ImportBatchSetter struct {
-	ID              omit.Val[int32]                       `db:"id,pk" `
-	FrontendID      omit.Val[uuid.UUID]                   `db:"frontend_id" `
-	RaceGridID      omit.Val[int32]                       `db:"race_grid_id" `
-	ImportFormat    omit.Val[mytypes.ImportFormat]        `db:"import_format" `
-	Payload         omit.Val[[]byte]                      `db:"payload" `
-	SourceFilename  omitnull.Val[string]                  `db:"source_filename" `
-	ProcessingState omit.Val[string]                      `db:"processing_state" `
-	MetadataJSON    omit.Val[types.JSON[json.RawMessage]] `db:"metadata_json" `
-	ProcessedAt     omitnull.Val[time.Time]               `db:"processed_at" `
-	CreatedAt       omit.Val[time.Time]                   `db:"created_at" `
-	UpdatedAt       omit.Val[time.Time]                   `db:"updated_at" `
-	CreatedBy       omit.Val[string]                      `db:"created_by" `
-	UpdatedBy       omit.Val[string]                      `db:"updated_by" `
+	ID              omit.Val[int32]                   `db:"id,pk" `
+	FrontendID      omit.Val[uuid.UUID]               `db:"frontend_id" `
+	RaceGridID      omit.Val[int32]                   `db:"race_grid_id" `
+	ImportFormat    omit.Val[mytypes.ImportFormat]    `db:"import_format" `
+	Payload         omit.Val[[]byte]                  `db:"payload" `
+	SourceFilename  omitnull.Val[string]              `db:"source_filename" `
+	ProcessingState omit.Val[string]                  `db:"processing_state" `
+	MetadataJSON    omit.Val[mytypes.ImportBatchMeta] `db:"metadata_json" `
+	ProcessedAt     omitnull.Val[time.Time]           `db:"processed_at" `
+	CreatedAt       omit.Val[time.Time]               `db:"created_at" `
+	UpdatedAt       omit.Val[time.Time]               `db:"updated_at" `
+	CreatedBy       omit.Val[string]                  `db:"created_by" `
+	UpdatedBy       omit.Val[string]                  `db:"updated_by" `
 }
 
 func (s ImportBatchSetter) SetColumns() []string {
@@ -801,7 +799,7 @@ type importBatchWhere[Q psql.Filterable] struct {
 	Payload         psql.WhereMod[Q, []byte]
 	SourceFilename  psql.WhereNullMod[Q, string]
 	ProcessingState psql.WhereMod[Q, string]
-	MetadataJSON    psql.WhereMod[Q, types.JSON[json.RawMessage]]
+	MetadataJSON    psql.WhereMod[Q, mytypes.ImportBatchMeta]
 	ProcessedAt     psql.WhereNullMod[Q, time.Time]
 	CreatedAt       psql.WhereMod[Q, time.Time]
 	UpdatedAt       psql.WhereMod[Q, time.Time]
@@ -822,7 +820,7 @@ func buildImportBatchWhere[Q psql.Filterable](cols importBatchColumns) importBat
 		Payload:         psql.Where[Q, []byte](cols.Payload),
 		SourceFilename:  psql.WhereNull[Q, string](cols.SourceFilename),
 		ProcessingState: psql.Where[Q, string](cols.ProcessingState),
-		MetadataJSON:    psql.Where[Q, types.JSON[json.RawMessage]](cols.MetadataJSON),
+		MetadataJSON:    psql.Where[Q, mytypes.ImportBatchMeta](cols.MetadataJSON),
 		ProcessedAt:     psql.WhereNull[Q, time.Time](cols.ProcessedAt),
 		CreatedAt:       psql.Where[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:       psql.Where[Q, time.Time](cols.UpdatedAt),

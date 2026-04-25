@@ -76,6 +76,14 @@ func random_int32(f *faker.Faker, limits ...string) int32 {
 	return f.Int32()
 }
 
+func random_mytypes_ImportBatchMeta(f *faker.Faker, limits ...string) mytypes.ImportBatchMeta {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return mytypes.ImportBatchMeta{}
+}
+
 func random_mytypes_ImportFormat(f *faker.Faker, limits ...string) mytypes.ImportFormat {
 	if f == nil {
 		f = &defaultFaker
@@ -116,18 +124,6 @@ func random_pq_Int32Array(f *faker.Faker, limits ...string) pq.Int32Array {
 	arr := make(pq.Int32Array, f.IntBetween(1, 5))
 	for i := range arr {
 		arr[i] = random_int32(f, limits...)
-	}
-	return arr
-}
-
-func random_pq_StringArray(f *faker.Faker, limits ...string) pq.StringArray {
-	if f == nil {
-		f = &defaultFaker
-	}
-
-	arr := make(pq.StringArray, f.IntBetween(1, 5))
-	for i := range arr {
-		arr[i] = random_string(f, limits...)
 	}
 	return arr
 }

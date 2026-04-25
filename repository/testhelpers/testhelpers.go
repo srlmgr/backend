@@ -12,7 +12,6 @@ import (
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
 	"github.com/stephenafamo/bob"
 	bobtypes "github.com/stephenafamo/bob/types"
 
@@ -80,11 +79,14 @@ func SeedRacingSimContext(
 	t.Helper()
 
 	sim, err := models.RacingSims.Insert(&models.RacingSimSetter{
-		Name:                   omit.From(name),
-		SupportedImportFormats: omit.From(pq.StringArray{"json"}),
-		IsActive:               omit.From(true),
-		CreatedBy:              omit.From(TestUserSeed),
-		UpdatedBy:              omit.From(TestUserSeed),
+		Name: omit.From(name),
+		SupportedImportFormats: omit.From(func() bobtypes.JSON[json.RawMessage] {
+			b, _ := json.Marshal([]mytypes.RaceSimImportFormat{{Format: "json"}})
+			return bobtypes.JSON[json.RawMessage]{Val: json.RawMessage(b)}
+		}()),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(TestUserSeed),
+		UpdatedBy: omit.From(TestUserSeed),
 	}).One(ctx, getExecutorFromContext(t, ctx))
 	if err != nil {
 		t.Fatalf("failed to seed racing sim %q: %v", name, err)
@@ -464,7 +466,7 @@ func SeedImportBatchContext(
 		Payload:         omit.From([]byte(`{"entries":[]}`)),
 		SourceFilename:  omitnull.From(sourceFilename),
 		ProcessingState: omit.From("raw_imported"),
-		MetadataJSON:    omit.From(emptyJSON(t)),
+		MetadataJSON:    omit.From(mytypes.ImportBatchMeta{}),
 		CreatedBy:       omit.From(TestUserSeed),
 		UpdatedBy:       omit.From(TestUserSeed),
 	}).One(ctx, getExecutorFromContext(t, ctx))

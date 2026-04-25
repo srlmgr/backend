@@ -2,6 +2,7 @@
 package conversion
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/srlmgr/backend/db/dberrors"
 	"github.com/srlmgr/backend/db/models"
+	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
@@ -61,11 +63,82 @@ func ImportFormatsFromProto(formats []commonv1.ImportFormat) ([]string, error) {
 			out = append(out, ImportFormatJSON)
 		case commonv1.ImportFormat_IMPORT_FORMAT_CSV:
 			out = append(out, ImportFormatCSV)
+		case commonv1.ImportFormat_IMPORT_FORMAT_XML:
+			out = append(out, ImportFormatXML)
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			// Skip unspecified formats.
 		default:
 			return nil, fmt.Errorf("unsupported import format: %s", format.String())
 		}
+	}
+
+	return out, nil
+}
+
+// ImportConfigsToProto converts persisted simulation import config values to
+// protobuf import configs.
+//
+//nolint:lll // readability
+func ImportConfigsToProto(formats []mytypes.RaceSimImportFormat) []*commonv1.ImportConfig {
+	if len(formats) == 0 {
+		return nil
+	}
+
+	out := make([]*commonv1.ImportConfig, 0, len(formats))
+	for _, format := range formats {
+		item := &commonv1.ImportConfig{
+			Format:               commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED,
+			AllowMultipleUploads: format.AllowMultipleUploads,
+		}
+		switch string(format.Format) {
+		case ImportFormatJSON:
+			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_JSON
+		case ImportFormatCSV:
+			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_CSV
+		case ImportFormatXML:
+			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_XML
+		}
+		out = append(out, item)
+	}
+
+	return out
+}
+
+// ImportConfigsFromProto converts protobuf import configs to persisted
+// simulation import config values.
+//
+//nolint:whitespace // editor/linter issue
+func ImportConfigsFromProto(
+	formats []*commonv1.ImportConfig,
+) ([]mytypes.RaceSimImportFormat, error) {
+	if len(formats) == 0 {
+		return nil, nil
+	}
+
+	out := make([]mytypes.RaceSimImportFormat, 0, len(formats))
+	for _, format := range formats {
+		if format == nil {
+			continue
+		}
+
+		item := mytypes.RaceSimImportFormat{
+			AllowMultipleUploads: format.GetAllowMultipleUploads(),
+		}
+		switch format.GetFormat() {
+		case commonv1.ImportFormat_IMPORT_FORMAT_JSON:
+			item.Format = mytypes.ImportFormat(ImportFormatJSON)
+		case commonv1.ImportFormat_IMPORT_FORMAT_CSV:
+			item.Format = mytypes.ImportFormat(ImportFormatCSV)
+		case commonv1.ImportFormat_IMPORT_FORMAT_XML:
+			item.Format = mytypes.ImportFormat(ImportFormatXML)
+		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
+			continue
+		default:
+			return nil, fmt.Errorf("unsupported import format: %s",
+				format.GetFormat().String())
+		}
+
+		out = append(out, item)
 	}
 
 	return out, nil
@@ -78,11 +151,24 @@ func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simul
 	}
 
 	return &commonv1.Simulation{
-		Id:               uint32(model.ID),
-		Name:             model.Name,
-		IsActive:         model.IsActive,
-		SupportedFormats: ImportFormatsToProto(model.SupportedImportFormats),
+		Id:       uint32(model.ID),
+		Name:     model.Name,
+		IsActive: model.IsActive,
+		SupportedFormats: ImportConfigsToProto(
+			racingSimImportFormats(model.SupportedImportFormats.Val),
+		),
 	}
+}
+
+// racingSimImportFormats extracts simulation import configs from a
+// JSON-encoded array of RaceSimImportFormat values.
+func racingSimImportFormats(raw json.RawMessage) []mytypes.RaceSimImportFormat {
+	var formats []mytypes.RaceSimImportFormat
+	if err := json.Unmarshal(raw, &formats); err != nil || len(formats) == 0 {
+		return nil
+	}
+
+	return formats
 }
 
 // PointSystemToPointSystem converts a PointSystem model to a PointSystem message.

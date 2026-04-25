@@ -3,13 +3,15 @@ package command
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
-	"github.com/lib/pq"
+	bobtypes "github.com/stephenafamo/bob/types"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -21,7 +23,7 @@ import (
 type simulationRequest interface {
 	GetName() string
 	GetIsActive() bool
-	GetSupportedFormats() []commonv1.ImportFormat
+	GetSupportedFormats() []*commonv1.ImportConfig
 }
 
 type simSetter = models.RacingSimSetter
@@ -40,11 +42,17 @@ func (r racingSimSetterBuilder) Build(msg simulationRequest) (*simSetter, error)
 	}
 
 	if formats := msg.GetSupportedFormats(); len(formats) > 0 {
-		supportedFormats, err := conversion.ImportFormatsFromProto(formats)
+		rsiFormats, err := conversion.ImportConfigsFromProto(formats)
 		if err != nil {
 			return nil, err
 		}
-		setter.SupportedImportFormats = omit.From(pq.StringArray(supportedFormats))
+		b, err := json.Marshal(rsiFormats)
+		if err != nil {
+			return nil, fmt.Errorf("marshal supported formats: %w", err)
+		}
+		setter.SupportedImportFormats = omit.From(
+			bobtypes.JSON[json.RawMessage]{Val: json.RawMessage(b)},
+		)
 	}
 
 	return setter, nil

@@ -145,11 +145,11 @@ var _ sql.Scanner = (*mytypes.ImportFormat)(nil)
 // Make sure the type mytypes.ImportFormat satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(mytypes.ImportFormat)
 
-// Make sure the type pq.StringArray satisfies database/sql.Scanner
-var _ sql.Scanner = (*pq.StringArray)(nil)
+// Make sure the type mytypes.ImportBatchMeta satisfies database/sql.Scanner
+var _ sql.Scanner = (*mytypes.ImportBatchMeta)(nil)
 
-// Make sure the type pq.StringArray satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(pq.StringArray)
+// Make sure the type mytypes.ImportBatchMeta satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(mytypes.ImportBatchMeta)
 
 // Make sure the type mytypes.TeamDrivers satisfies database/sql.Scanner
 var _ sql.Scanner = (*mytypes.TeamDrivers)(nil)

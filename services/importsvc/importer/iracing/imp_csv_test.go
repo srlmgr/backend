@@ -38,6 +38,9 @@ func TestParseCSV(t *testing.T) {
 	if len(parsed.Results) != 2 {
 		t.Fatalf("unexpected result count: got %d want %d", len(parsed.Results), 2)
 	}
+	if parsed.DataType != "all" {
+		t.Fatalf("unexpected data type: got %q want %q", parsed.DataType, "all")
+	}
 
 	first := parsed.Results[0]
 	if first.FinPos != 1 || first.CarID != "165" || first.TeamID != "1310137" ||
@@ -112,6 +115,9 @@ func TestParseCSVTeamRace(t *testing.T) {
 
 	if len(parsed.Results) != 2 {
 		t.Fatalf("unexpected result count: got %d want %d", len(parsed.Results), 2)
+	}
+	if parsed.DataType != "all" {
+		t.Fatalf("unexpected data type: got %q want %q", parsed.DataType, "all")
 	}
 	first := parsed.Results[0]
 	expectedFirst := &processor.ResultRow{

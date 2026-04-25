@@ -52,8 +52,9 @@ func ParseCSV(payload any) (*processor.ParsedImportPayload, error) {
 	}
 
 	return &processor.ParsedImportPayload{
-		Session: session,
-		Results: results,
+		Session:  session,
+		Results:  results,
+		DataType: processor.ImportDataAll,
 	}, nil
 }
 
