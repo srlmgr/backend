@@ -6,6 +6,7 @@ package main
 import (
 	"github.com/srlmgr/backend/cmd"
 	_ "github.com/srlmgr/backend/services/importsvc/importer/acc"     // register acc processor
+	_ "github.com/srlmgr/backend/services/importsvc/importer/acevo"   // register acevo processor
 	_ "github.com/srlmgr/backend/services/importsvc/importer/iracing" // register iracing processor
 	_ "github.com/srlmgr/backend/services/importsvc/importer/lmu"     // register lmu processor
 	_ "github.com/srlmgr/backend/services/importsvc/importer/r3e"     // register r3e processor
