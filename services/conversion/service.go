@@ -63,6 +63,8 @@ func ImportFormatsFromProto(formats []commonv1.ImportFormat) ([]string, error) {
 			out = append(out, ImportFormatJSON)
 		case commonv1.ImportFormat_IMPORT_FORMAT_CSV:
 			out = append(out, ImportFormatCSV)
+		case commonv1.ImportFormat_IMPORT_FORMAT_XML:
+			out = append(out, ImportFormatXML)
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			// Skip unspecified formats.
 		default:
@@ -75,6 +77,8 @@ func ImportFormatsFromProto(formats []commonv1.ImportFormat) ([]string, error) {
 
 // ImportConfigsToProto converts persisted simulation import config values to
 // protobuf import configs.
+//
+//nolint:lll // readability
 func ImportConfigsToProto(formats []mytypes.RaceSimImportFormat) []*commonv1.ImportConfig {
 	if len(formats) == 0 {
 		return nil
@@ -91,6 +95,8 @@ func ImportConfigsToProto(formats []mytypes.RaceSimImportFormat) []*commonv1.Imp
 			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_JSON
 		case ImportFormatCSV:
 			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_CSV
+		case ImportFormatXML:
+			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_XML
 		}
 		out = append(out, item)
 	}
@@ -100,6 +106,8 @@ func ImportConfigsToProto(formats []mytypes.RaceSimImportFormat) []*commonv1.Imp
 
 // ImportConfigsFromProto converts protobuf import configs to persisted
 // simulation import config values.
+//
+//nolint:whitespace // editor/linter issue
 func ImportConfigsFromProto(
 	formats []*commonv1.ImportConfig,
 ) ([]mytypes.RaceSimImportFormat, error) {
@@ -126,7 +134,8 @@ func ImportConfigsFromProto(
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			continue
 		default:
-			return nil, fmt.Errorf("unsupported import format: %s", format.GetFormat().String())
+			return nil, fmt.Errorf("unsupported import format: %s",
+				format.GetFormat().String())
 		}
 
 		out = append(out, item)
