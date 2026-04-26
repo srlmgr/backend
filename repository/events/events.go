@@ -25,11 +25,12 @@ import (
 type Repository interface {
 	LoadAll(ctx context.Context) ([]*models.Event, error)
 	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.Event, error)
+	LoadByRaceID(ctx context.Context, raceID int32) (*models.Event, error)
+	LoadByGridID(ctx context.Context, gridID int32) (*models.Event, error)
 	LoadByID(ctx context.Context, id int32) (*models.Event, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.EventSetter) (*models.Event, error)
 	Update(ctx context.Context, id int32, input *models.EventSetter) (*models.Event, error)
-	LoadByGridID(ctx context.Context, gridID int32) (*models.Event, error)
 }
 
 type eventsRepository struct{ exec *pgbob.Executor }
@@ -51,6 +52,21 @@ func (r *eventsRepository) LoadBySeasonID(
 		sm.Where(models.Events.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 		sm.OrderBy(models.Events.Columns.SequenceNo),
 	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *eventsRepository) LoadByRaceID(
+	ctx context.Context,
+	raceID int32,
+) (*models.Event, error) {
+	subQuery := psql.Select(
+		sm.Columns(models.Races.Columns.EventID),
+		sm.From(models.Races.Name()),
+		models.SelectWhere.Races.ID.EQ(raceID),
+	)
+
+	return models.Events.Query(
+		sm.Where(models.Events.Columns.ID.In(subQuery)),
+	).One(ctx, r.getExecutor(ctx))
 }
 
 func (r *eventsRepository) LoadByGridID(

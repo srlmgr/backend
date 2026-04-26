@@ -5,14 +5,10 @@ import "time"
 
 // Simsession type constants identify the kind of sub-session within an iRacing event.
 const (
+	// SimsessionTypeLoneQualifying identifies a lone qualifying session.
+	SimsessionTypeLoneQualifying = 4
 	// SimsessionTypeOpenQualifying identifies an open qualifying session.
 	SimsessionTypeOpenQualifying = 5
-	// SimsessionTypeLoneQualifyingLegacy identifies older lone qualifying sessions.
-	SimsessionTypeLoneQualifyingLegacy = 4
-	// SimsessionTypeLoneQualifying identifies a lone qualifying session.
-	// Note: shares the numeric value with SimsessionTypeRace; use
-	// SimsessionTypeName to distinguish when both can appear.
-	SimsessionTypeLoneQualifying = 6
 	// SimsessionTypeRace identifies a race session.
 	SimsessionTypeRace = 6
 )

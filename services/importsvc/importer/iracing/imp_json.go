@@ -109,10 +109,8 @@ func isQualifyingSession(s *SimSession) bool {
 	}
 
 	switch s.SimsessionType {
-	case SimsessionTypeOpenQualifying, SimsessionTypeLoneQualifyingLegacy:
+	case SimsessionTypeOpenQualifying, SimsessionTypeLoneQualifying:
 		return true
-	case SimsessionTypeLoneQualifying:
-		return !strings.EqualFold(s.SimsessionTypeName, "race")
 	default:
 		return false
 	}

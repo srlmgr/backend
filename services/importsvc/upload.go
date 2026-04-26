@@ -68,6 +68,7 @@ func (s *service) UploadResultsFile(
 		conversion.EventProcessingStateDraft,
 		conversion.EventProcessingStatePreprocessed,
 		conversion.EventProcessingStateMappingError,
+		conversion.EventProcessingStateRawImported,
 	}, event.ProcessingState) {
 		return nil, connect.NewError(
 			connect.CodeFailedPrecondition,

@@ -193,6 +193,7 @@ func addImportPolicies(policies map[string]ProcedurePolicy) {
 		"GetPreprocessPreview",
 		"ApplyResultEdits",
 		"ComputeBookingEntries",
+		"CleanupProcessingData",
 		"AddPenalty",
 		"DeletePenalty",
 	} {
