@@ -3,8 +3,8 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.2-20260424162251-4b9e0599a3c4.1
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260424162251-4b9e0599a3c4.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.2-20260426060557-f1e274e757d3.1
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260426060557-f1e274e757d3.1
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0

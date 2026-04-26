@@ -1,6 +1,6 @@
 // Package bookingentries provides repositories for the booking_entries migration group.
 //
-//nolint:lll,whitespace // repository implementations can be verbose
+//nolint:lll,whitespace,dupl // repository implementations can be verbose
 package bookingentries
 
 import (
@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/dialect"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 	"github.com/stephenafamo/bob/dialect/psql/um"
@@ -46,6 +47,10 @@ type Repository interface {
 		id int32,
 		input *models.BookingEntrySetter,
 	) (*models.BookingEntry, error)
+
+	CleanupByEventID(ctx context.Context, eventID int32, includeManuals bool) error
+	CleanupByRaceIDs(ctx context.Context, raceIDs []int32, includeManuals bool) error
+	CleanupByGridIDs(ctx context.Context, gridIDs []int32, includeManuals bool) error
 }
 
 type bookingEntriesRepository struct{ exec *pgbob.Executor }
@@ -177,6 +182,69 @@ func (r *bookingEntriesRepository) DeleteByEventIDAndSourceType(
 		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
 		dm.Where(models.BookingEntries.Columns.SourceType.EQ(psql.Arg(sourceType))),
 	).Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *bookingEntriesRepository) CleanupByEventID(
+	ctx context.Context,
+	eventID int32,
+	includeManuals bool,
+) error {
+	deleteMods := []bob.Mod[*dialect.DeleteQuery]{
+		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
+	}
+
+	if !includeManuals {
+		deleteMods = append(deleteMods,
+			dm.Where(models.BookingEntries.Columns.IsManual.EQ(psql.Arg(false))))
+	}
+	query := models.BookingEntries.Delete(
+		deleteMods...,
+	)
+
+	_, err := query.Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *bookingEntriesRepository) CleanupByRaceIDs(
+	ctx context.Context,
+	raceIDs []int32,
+	includeManuals bool,
+) error {
+	deleteMods := []bob.Mod[*dialect.DeleteQuery]{
+		dm.Where(models.BookingEntries.Columns.RaceID.EQ(psql.F("ANY", psql.Arg(raceIDs)))),
+	}
+
+	if !includeManuals {
+		deleteMods = append(deleteMods,
+			dm.Where(models.BookingEntries.Columns.IsManual.EQ(psql.Arg(false))))
+	}
+	query := models.BookingEntries.Delete(
+		deleteMods...,
+	)
+
+	_, err := query.Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *bookingEntriesRepository) CleanupByGridIDs(
+	ctx context.Context,
+	gridIDs []int32,
+	includeManuals bool,
+) error {
+	deleteMods := []bob.Mod[*dialect.DeleteQuery]{
+		dm.Where(models.BookingEntries.Columns.RaceGridID.EQ(psql.F("ANY", psql.Arg(gridIDs)))),
+	}
+
+	if !includeManuals {
+		deleteMods = append(deleteMods,
+			dm.Where(models.BookingEntries.Columns.IsManual.EQ(psql.Arg(false))))
+	}
+	query := models.BookingEntries.Delete(
+		deleteMods...,
+	)
+
+	_, err := query.Exec(ctx, r.getExecutor(ctx))
 	return err
 }
 
