@@ -1,4 +1,4 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen // test files can have some duplication and long lines for test data setup
 package command
 
 import (
@@ -7,9 +7,12 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
+	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
+	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
+	"github.com/srlmgr/backend/db/models"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/repository/repoerrors"
 )
@@ -20,6 +23,10 @@ func TestPointSystemSetterBuilderBuildSuccess(t *testing.T) {
 	setter := (pointSystemSetterBuilder{}).Build(&v1.CreatePointSystemRequest{
 		Name:        "Formula Points",
 		Description: "Standard formula points system",
+		Eligibility: &commonv1.PointEligibility{
+			Guests:                 true,
+			MinRaceDistancePercent: 0.75,
+		},
 	})
 
 	if !setter.Name.IsValue() || setter.Name.MustGet() != "Formula Points" {
@@ -29,6 +36,14 @@ func TestPointSystemSetterBuilderBuildSuccess(t *testing.T) {
 		setter.Description.MustGet() != "Standard formula points system" {
 
 		t.Fatalf("unexpected description setter value: %+v", setter.Description)
+	}
+	if !setter.GuestPoints.IsValue() || !setter.GuestPoints.MustGet() {
+		t.Fatalf("unexpected guest_points setter value: %+v", setter.GuestPoints)
+	}
+	if !setter.RaceDistancePCT.IsValue() ||
+		setter.RaceDistancePCT.MustGet().InexactFloat64() != 0.75 {
+
+		t.Fatalf("unexpected race_distance_pct setter value: %+v", setter.RaceDistancePCT)
 	}
 }
 
@@ -52,6 +67,46 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 	resp, err := svc.CreatePointSystem(ctx, connect.NewRequest(&v1.CreatePointSystemRequest{
 		Name:        "Sprint Points",
 		Description: "Points for sprint races",
+		Eligibility: &commonv1.PointEligibility{
+			Guests:                 true,
+			MinRaceDistancePercent: 0.75,
+		},
+		RaceSettings: []*commonv1.PointRaceSettings{
+			{
+				Name: "Settings for race 1",
+				Policies: []*commonv1.PointPolicySettings{
+					{
+						Name: commonv1.PointPolicy_POINT_POLICY_FINISH_POS,
+						Config: &commonv1.PointPolicySettings_FinishPos{
+							FinishPos: &commonv1.PositionPointsConfig{
+								Tables: []*commonv1.PointTable{{Values: []int32{100, 95, 92}}},
+							},
+						},
+					},
+					{
+						Name: commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP,
+						Config: &commonv1.PointPolicySettings_FastestLap{
+							FastestLap: &commonv1.PositionPointsConfig{
+								Tables: []*commonv1.PointTable{{Values: []int32{1}}},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "Settings for race 2",
+				Policies: []*commonv1.PointPolicySettings{
+					{
+						Name: commonv1.PointPolicy_POINT_POLICY_LEAST_INCIDENTS,
+						Config: &commonv1.PointPolicySettings_LeastIncidents{
+							LeastIncidents: &commonv1.PositionPointsConfig{
+								Tables: []*commonv1.PointTable{{Values: []int32{3, 2, 1}}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -63,6 +118,21 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 		t.Fatalf(
 			"unexpected point system description: %q",
 			resp.Msg.GetPointSystem().GetDescription(),
+		)
+	}
+	if !resp.Msg.GetPointSystem().GetEligibility().GetGuests() {
+		t.Fatal("expected guests eligibility to round-trip")
+	}
+	if len(resp.Msg.GetPointSystem().GetRaceSettings()) != 2 {
+		t.Fatalf(
+			"unexpected race settings count: %d",
+			len(resp.Msg.GetPointSystem().GetRaceSettings()),
+		)
+	}
+	if resp.Msg.GetPointSystem().GetRaceSettings()[0].GetName() != "Settings for race 1" {
+		t.Fatalf(
+			"unexpected first race setting name: %q",
+			resp.Msg.GetPointSystem().GetRaceSettings()[0].GetName(),
 		)
 	}
 
@@ -77,6 +147,16 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 			stored.CreatedBy,
 			stored.UpdatedBy,
 		)
+	}
+	if !stored.GuestPoints || stored.RaceDistancePCT.InexactFloat64() != 0.75 {
+		t.Fatalf(
+			"unexpected stored eligibility: guests=%t pct=%v",
+			stored.GuestPoints,
+			stored.RaceDistancePCT,
+		)
+	}
+	if len(stored.R.PointRules) != 3 {
+		t.Fatalf("unexpected stored point rule count: %d", len(stored.R.PointRules))
 	}
 }
 
@@ -124,11 +204,38 @@ func TestCreatePointSystemFailureTransactionError(t *testing.T) {
 	}
 }
 
+//nolint:govet // ok here
 func TestUpdatePointSystemSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
 	initial := seedPointSystem(t, repo, "Original Points")
+	metadata, err := svc.conversion.MarshalPointRuleMetadata(
+		"Old settings",
+		&commonv1.PointPolicySettings{
+			Name: commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP,
+			Config: &commonv1.PointPolicySettings_FastestLap{
+				FastestLap: &commonv1.PositionPointsConfig{
+					Tables: []*commonv1.PointTable{{Values: []int32{1}}},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("failed to build point rule metadata: %v", err)
+	}
+	if _, err := repo.PointSystems().
+		PointRules().
+		Create(context.Background(), &models.PointRuleSetter{
+			PointSystemID: omit.From(initial.ID),
+			RaceNo:        omit.From(int32(0)),
+			PointPolicy:   omit.From(commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP.String()),
+			MetadataJSON:  omit.From(metadata),
+			CreatedBy:     omit.From(testUserSeed),
+			UpdatedBy:     omit.From(testUserSeed),
+		}); err != nil {
+		t.Fatalf("failed to seed initial point rule: %v", err)
+	}
 	before, err := repo.PointSystems().PointSystems().LoadByID(context.Background(), initial.ID)
 	if err != nil {
 		t.Fatalf("failed to load initial point system: %v", err)
@@ -138,12 +245,37 @@ func TestUpdatePointSystemSuccess(t *testing.T) {
 		PointSystemId: uint32(initial.ID),
 		Name:          "Updated Points",
 		Description:   "Updated description",
+		Eligibility: &commonv1.PointEligibility{
+			Guests:                 false,
+			MinRaceDistancePercent: 0.5,
+		},
+		RaceSettings: []*commonv1.PointRaceSettings{
+			{
+				Name: "Updated race 1",
+				Policies: []*commonv1.PointPolicySettings{
+					{
+						Name: commonv1.PointPolicy_POINT_POLICY_FINISH_POS,
+						Config: &commonv1.PointPolicySettings_FinishPos{
+							FinishPos: &commonv1.PositionPointsConfig{
+								Tables: []*commonv1.PointTable{{Values: []int32{25, 18, 15}}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resp.Msg.GetPointSystem().GetName() != "Updated Points" {
 		t.Fatalf("unexpected updated name: %q", resp.Msg.GetPointSystem().GetName())
+	}
+	if len(resp.Msg.GetPointSystem().GetRaceSettings()) != 1 {
+		t.Fatalf(
+			"unexpected updated race settings count: %d",
+			len(resp.Msg.GetPointSystem().GetRaceSettings()),
+		)
 	}
 
 	after, err := repo.PointSystems().PointSystems().LoadByID(context.Background(), initial.ID)
@@ -159,6 +291,19 @@ func TestUpdatePointSystemSuccess(t *testing.T) {
 			before.UpdatedAt,
 			after.UpdatedAt,
 		)
+	}
+	if after.GuestPoints || after.RaceDistancePCT.InexactFloat64() != 0.5 {
+		t.Fatalf(
+			"unexpected updated eligibility: guests=%t pct=%v",
+			after.GuestPoints,
+			after.RaceDistancePCT,
+		)
+	}
+	if len(after.R.PointRules) != 1 {
+		t.Fatalf("expected point rules to be replaced, got %d rules", len(after.R.PointRules))
+	}
+	if after.R.PointRules[0].PointPolicy != commonv1.PointPolicy_POINT_POLICY_FINISH_POS.String() {
+		t.Fatalf("unexpected remaining point policy: %q", after.R.PointRules[0].PointPolicy)
 	}
 }
 

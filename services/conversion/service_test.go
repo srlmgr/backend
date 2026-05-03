@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
+	"github.com/aarondl/opt/null"
+	"github.com/shopspring/decimal"
 	bobtypes "github.com/stephenafamo/bob/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -228,6 +230,87 @@ func TestServiceRacingSimsToSimulations(t *testing.T) {
 	empty := svc.RacingSimsToSimulations(nil)
 	if len(empty) != 0 {
 		t.Fatalf("expected empty slice for nil input, got len=%d", len(empty))
+	}
+}
+
+func TestServicePointSystemToPointSystem(t *testing.T) {
+	t.Parallel()
+
+	svc := New()
+	finishMetadata, err := svc.MarshalPointRuleMetadata(
+		"Settings for race 1",
+		&commonv1.PointPolicySettings{
+			Name: commonv1.PointPolicy_POINT_POLICY_FINISH_POS,
+			Config: &commonv1.PointPolicySettings_FinishPos{
+				FinishPos: &commonv1.PositionPointsConfig{
+					Tables: []*commonv1.PointTable{{Values: []int32{100, 95, 92}}},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("failed to encode finish metadata: %v", err)
+	}
+	fastestLapMetadata, err := svc.MarshalPointRuleMetadata(
+		"Settings for race 2",
+		&commonv1.PointPolicySettings{
+			Name: commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP,
+			Config: &commonv1.PointPolicySettings_FastestLap{
+				FastestLap: &commonv1.PositionPointsConfig{
+					Tables: []*commonv1.PointTable{{Values: []int32{1}}},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("failed to encode fastest lap metadata: %v", err)
+	}
+
+	model := &models.PointSystem{
+		ID:              7,
+		Name:            "VRPC",
+		Description:     null.From("Organized points"),
+		GuestPoints:     true,
+		RaceDistancePCT: decimal.NewFromFloat(0.75),
+	}
+	model.R.PointRules = models.PointRuleSlice{
+		{
+			ID:           2,
+			RaceNo:       1,
+			PointPolicy:  commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP.String(),
+			MetadataJSON: fastestLapMetadata,
+		},
+		{
+			ID:           1,
+			RaceNo:       0,
+			PointPolicy:  commonv1.PointPolicy_POINT_POLICY_FINISH_POS.String(),
+			MetadataJSON: finishMetadata,
+		},
+	}
+
+	msg := svc.PointSystemToPointSystem(model)
+	if msg == nil {
+		t.Fatal("expected point system message")
+	}
+	if !msg.GetEligibility().GetGuests() ||
+		msg.GetEligibility().GetMinRaceDistancePercent() != 0.75 {
+
+		t.Fatalf("unexpected eligibility: %+v", msg.GetEligibility())
+	}
+	if len(msg.GetRaceSettings()) != 2 {
+		t.Fatalf("unexpected race settings count: %d", len(msg.GetRaceSettings()))
+	}
+	if msg.GetRaceSettings()[0].GetName() != "Settings for race 1" {
+		t.Fatalf("unexpected first race setting name: %q", msg.GetRaceSettings()[0].GetName())
+	}
+	if msg.GetRaceSettings()[0].GetPolicies()[0].GetName() != commonv1.PointPolicy_POINT_POLICY_FINISH_POS {
+		t.Fatalf("unexpected first policy: %v", msg.GetRaceSettings()[0].GetPolicies()[0].GetName())
+	}
+	if msg.GetRaceSettings()[1].GetPolicies()[0].GetName() != commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP {
+		t.Fatalf(
+			"unexpected second policy: %v",
+			msg.GetRaceSettings()[1].GetPolicies()[0].GetName(),
+		)
 	}
 }
 
