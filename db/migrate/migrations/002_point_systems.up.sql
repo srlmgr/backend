@@ -2,10 +2,11 @@ BEGIN;
 
 CREATE TABLE point_systems (
     id serial PRIMARY KEY,
-    frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
     name text NOT NULL,
     description text,
     is_active boolean NOT NULL DEFAULT true,
+	guest_points boolean NOT NULL DEFAULT false,
+	race_distance_pct numeric(5,4) NOT NULL DEFAULT 0 CHECK (race_distance_pct >= 0 AND race_distance_pct <= 1),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
     created_by text NOT NULL DEFAULT 'system',
@@ -15,6 +16,8 @@ CREATE TABLE point_systems (
 CREATE TABLE point_rules (
     id serial PRIMARY KEY,
     point_system_id integer NOT NULL,
+	race_no integer NOT NULL DEFAULT 0,
+	point_policy text NOT NULL,
     metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),

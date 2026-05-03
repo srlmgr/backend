@@ -183,6 +183,11 @@ func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.
 		Id:          uint32(model.ID),
 		Name:        model.Name,
 		Description: model.Description.GetOr(""),
+		Eligibility: &commonv1.PointEligibility{
+			Guests:                 model.GuestPoints,
+			MinRaceDistancePercent: model.RaceDistancePCT.InexactFloat64(),
+		},
+		RaceSettings: s.pointSystemRaceSettings(model),
 	}
 }
 

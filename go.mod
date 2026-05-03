@@ -3,8 +3,8 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.2-20260426060557-f1e274e757d3.1
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260426060557-f1e274e757d3.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.2-20260501090437-30be13fba266.1
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260501090437-30be13fba266.1
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
@@ -27,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	github.com/stephenafamo/bob v0.42.0
+	github.com/stephenafamo/bob v0.43.0
 	github.com/stephenafamo/scan v0.7.0
 	github.com/testcontainers/testcontainers-go v0.42.0
 	go.opentelemetry.io/contrib/bridges/otelzap v0.18.0

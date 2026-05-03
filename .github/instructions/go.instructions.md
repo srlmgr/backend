@@ -78,7 +78,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 
 - Always use `gofmt` to format code
 - Use `goimports` to manage imports automatically
-- Keep line length reasonable (no hard limit, but consider readability)
+- Keep line length reasonable (try not to exceed 88 characters, but consider readability)
 - Add blank lines to separate logical groups of code
 - When encountering whitespace messages on multi-line function definitions, you can't make both the editor and the linter happy.
   Just add a `//nolint:whitespace // editor/linter issue' to the function definition to. For example:

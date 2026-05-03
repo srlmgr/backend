@@ -6,12 +6,15 @@ import (
 	"errors"
 	"testing"
 
+	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
+	"github.com/shopspring/decimal"
 
 	"github.com/srlmgr/backend/db/models"
 	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/services/conversion"
 )
 
 func seedPointSystem(t *testing.T, repo rootrepo.Repository, name string) *models.PointSystem {
@@ -76,10 +79,49 @@ func TestListPointSystemsReturnsAll(t *testing.T) {
 	}
 }
 
+//nolint:funlen,govet // much work to do
 func TestGetPointSystemSuccess(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	ps := seedPointSystem(t, repo, "Sprint Points")
+	ps, err := repo.PointSystems().
+		PointSystems().
+		Create(context.Background(), &models.PointSystemSetter{
+			Name:            omit.From("Sprint Points"),
+			GuestPoints:     omit.From(true),
+			RaceDistancePCT: omit.From(decimal.NewFromFloat(0.75)),
+			CreatedBy:       omit.From(testUserSeed),
+			UpdatedBy:       omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed point system: %v", err)
+	}
+	codec := conversion.New()
+	metadata, err := codec.MarshalPointRuleMetadata(
+		"Settings for race 1",
+		&commonv1.PointPolicySettings{
+			Name: commonv1.PointPolicy_POINT_POLICY_FINISH_POS,
+			Config: &commonv1.PointPolicySettings_FinishPos{
+				FinishPos: &commonv1.PositionPointsConfig{
+					Tables: []*commonv1.PointTable{{Values: []int32{100, 95, 92}}},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("failed to seed point rule metadata: %v", err)
+	}
+	if _, err := repo.PointSystems().
+		PointRules().
+		Create(context.Background(), &models.PointRuleSetter{
+			PointSystemID: omit.From(ps.ID),
+			RaceNo:        omit.From(int32(0)),
+			PointPolicy:   omit.From(commonv1.PointPolicy_POINT_POLICY_FINISH_POS.String()),
+			MetadataJSON:  omit.From(metadata),
+			CreatedBy:     omit.From(testUserSeed),
+			UpdatedBy:     omit.From(testUserSeed),
+		}); err != nil {
+		t.Fatalf("failed to seed point rule: %v", err)
+	}
 
 	resp, err := svc.GetPointSystem(
 		context.Background(),
@@ -96,6 +138,21 @@ func TestGetPointSystemSuccess(t *testing.T) {
 	}
 	if resp.Msg.GetPointSystem().GetName() != "Sprint Points" {
 		t.Errorf("expected name %q, got %q", "Sprint Points", resp.Msg.GetPointSystem().GetName())
+	}
+	if !resp.Msg.GetPointSystem().GetEligibility().GetGuests() {
+		t.Fatal("expected guests eligibility to be returned")
+	}
+	if len(resp.Msg.GetPointSystem().GetRaceSettings()) != 1 {
+		t.Fatalf(
+			"unexpected race settings count: %d",
+			len(resp.Msg.GetPointSystem().GetRaceSettings()),
+		)
+	}
+	if resp.Msg.GetPointSystem().GetRaceSettings()[0].GetPolicies()[0].GetName() != commonv1.PointPolicy_POINT_POLICY_FINISH_POS {
+		t.Fatalf(
+			"unexpected first policy: %v",
+			resp.Msg.GetPointSystem().GetRaceSettings()[0].GetPolicies()[0].GetName(),
+		)
 	}
 }
 

@@ -38,6 +38,7 @@ type PointSystemsRepository interface {
 type PointRulesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.PointRule, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByPointSystemID(ctx context.Context, pointSystemID int32) error
 	Create(ctx context.Context, input *models.PointRuleSetter) (*models.PointRule, error)
 	Update(ctx context.Context, id int32, input *models.PointRuleSetter) (*models.PointRule, error)
 }
@@ -78,7 +79,13 @@ func (r *pointSystemsRepository) LoadByID(
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("point system %d: %w", id, repoerrors.ErrNotFound)
 	}
-	return entity, err
+	if err != nil {
+		return nil, err
+	}
+	if err := entity.LoadPointRules(ctx, r.getExecutor(ctx)); err != nil {
+		return nil, err
+	}
+	return entity, nil
 }
 
 func (r *pointSystemsRepository) DeleteByID(ctx context.Context, id int32) error {
@@ -95,7 +102,16 @@ func (r *pointSystemsRepository) Create(
 }
 
 func (r *pointSystemsRepository) LoadAll(ctx context.Context) ([]*models.PointSystem, error) {
-	return models.PointSystems.Query().All(ctx, r.getExecutor(ctx))
+	entities, err := models.PointSystems.Query().All(ctx, r.getExecutor(ctx))
+	if err != nil {
+		return nil, err
+	}
+	// if err := models.PointSystemSlice(entities).
+	if err := entities.
+		LoadPointRules(ctx, r.getExecutor(ctx)); err != nil {
+		return nil, err
+	}
+	return entities, nil
 }
 
 func (r *pointSystemsRepository) Update(
@@ -125,6 +141,16 @@ func (r *pointRulesRepository) LoadByID(ctx context.Context, id int32) (*models.
 func (r *pointRulesRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.PointRules.Delete(dm.Where(models.PointRules.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *pointRulesRepository) DeleteByPointSystemID(
+	ctx context.Context,
+	pointSystemID int32,
+) error {
+	_, err := models.PointRules.Delete(
+		dm.Where(models.PointRules.Columns.PointSystemID.EQ(psql.Arg(pointSystemID))),
+	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }
 
