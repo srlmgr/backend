@@ -16,6 +16,8 @@ import (
 )
 
 // NewServerCmd creates the command that runs the Connect-based gRPC server.
+//
+//nolint:funlen // command wiring keeps all flag/config mapping local
 func NewServerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
@@ -33,13 +35,16 @@ func NewServerCmd() *cobra.Command {
 				DBURI:   config.DBURI,
 				Authn: authn.Config{
 					Enabled: config.AuthnEnabled,
-					JWT: authn.JWTConfig{
-						Enabled:         config.AuthnJWTEnabled,
-						Issuer:          config.AuthnJWTIssuer,
-						Audience:        config.AuthnJWTAudience,
-						JWKSURL:         config.AuthnJWTJWKSURL,
-						ClockSkew:       config.AuthnJWTClockSkew,
-						RefreshInterval: config.AuthnJWTRefreshInterval,
+					IDP: authn.IDPConfig{
+						Enabled:        config.IDPEnabled,
+						IssuerURL:      config.IDPIssuerURL,
+						ClientID:       config.IDPClientID,
+						ClientSecret:   config.IDPClientSecret,
+						CallbackURL:    config.IDPCallbackURL,
+						FrontendURL:    config.IDPFrontendURL,
+						RefreshSkew:    config.IDPRefreshSkew,
+						CookieSecure:   true,
+						CookieHTTPOnly: true,
 					},
 					APIToken: authn.APITokenConfig{
 						FilePath:        config.AuthnAPITokenFilePath,

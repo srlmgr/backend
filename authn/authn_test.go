@@ -1,12 +1,16 @@
-//nolint:funlen,lll // tests with multiple cases
+//nolint:funlen,noctx // ok for testcode here
 package authn
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	connect "connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -14,73 +18,8 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-func TestAuthenticatorValidateCredential(t *testing.T) {
-	t.Parallel()
-
-	principal := Principal{ID: "principal-1", Tenant: "tenant-1", Source: "api-token"}
-	a := &authenticator{
-		apiToken: &apiTokenStore{tokens: map[string]Principal{"valid-token": principal}},
-		logger:   log.New(),
-	}
-
-	tests := []struct {
-		name          string
-		cred          selectedCredential
-		expectErr     string
-		expectSuccess *Principal
-	}{
-		{
-			name:      "no credentials",
-			cred:      selectedCredential{source: authSourceNone},
-			expectErr: "no authentication credentials supplied",
-		},
-		{
-			name:      "jwt disabled",
-			cred:      selectedCredential{source: authSourceJWT, token: "jwt"},
-			expectErr: "jwt authentication is disabled",
-		},
-		{
-			name:          "api token success",
-			cred:          selectedCredential{source: authSourceAPIToken, token: "valid-token"},
-			expectSuccess: &principal,
-		},
-		{
-			name:      "unknown source",
-			cred:      selectedCredential{source: authSource(999), token: "token"},
-			expectErr: "no supported authentication source found",
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := a.validateCredential(context.Background(), tc.cred)
-			if tc.expectErr != "" {
-				if err == nil {
-					t.Fatalf("expected error %q, got nil", tc.expectErr)
-				}
-				if !strings.Contains(err.Error(), tc.expectErr) {
-					t.Fatalf("expected error containing %q, got %q", tc.expectErr, err.Error())
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("validateCredential() error = %v", err)
-			}
-			if tc.expectSuccess == nil {
-				t.Fatal("test case missing expectSuccess")
-			}
-			if !reflect.DeepEqual(got, *tc.expectSuccess) {
-				t.Fatalf("validateCredential() = %#v, want %#v", got, *tc.expectSuccess)
-			}
-		})
-	}
-}
-
-func TestAuthenticatorAuthenticate(t *testing.T) {
+//nolint:funlen // table-driven auth scenarios are intentionally compact
+func TestManagerAuthenticate(t *testing.T) {
 	t.Parallel()
 
 	principal := Principal{
@@ -93,44 +32,46 @@ func TestAuthenticatorAuthenticate(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		headers       map[string]string
-		authenticator *authenticator
-		expectErr     string
-		expectAuthn   *Principal
+		name      string
+		headers   map[string]string
+		manager   *manager
+		expectErr string
+		expect    *Principal
 	}{
 		{
-			name:          "invalid metadata",
-			headers:       map[string]string{authorizationHeader: "Basic abc"},
-			authenticator: &authenticator{logger: log.New()},
-			expectErr:     "authorization header must use bearer scheme",
+			name:    "authorization header unsupported",
+			headers: map[string]string{"Authorization": "Bearer abc"},
+			manager: &manager{
+				logger:     log.New(),
+				cfg:        &Config{Enabled: true},
+				cookieName: "backend_session",
+				sessions:   newInMemorySessionStore(),
+			},
+			expectErr: "authorization header is not supported",
 		},
 		{
-			name:          "missing credentials",
-			authenticator: &authenticator{logger: log.New()},
-			expectErr:     "missing authentication credentials",
+			name: "missing credentials",
+			manager: &manager{
+				logger:     log.New(),
+				cfg:        &Config{Enabled: true},
+				cookieName: "backend_session",
+				sessions:   newInMemorySessionStore(),
+			},
+			expectErr: "missing authentication credentials",
 		},
 		{
 			name:    "api token authenticated",
 			headers: map[string]string{apiTokenHeader: "valid-token"},
-			authenticator: &authenticator{
+			manager: &manager{
+				logger: log.New(),
+				cfg:    &Config{Enabled: true},
 				apiToken: &apiTokenStore{
 					tokens: map[string]Principal{"valid-token": principal},
 				},
-				logger: log.New(),
+				cookieName: "backend_session",
+				sessions:   newInMemorySessionStore(),
 			},
-			expectAuthn: &principal,
-		},
-		{
-			name:    "invalid api token credentials",
-			headers: map[string]string{apiTokenHeader: "invalid-token"},
-			authenticator: &authenticator{
-				apiToken: &apiTokenStore{
-					tokens: map[string]Principal{"valid-token": principal},
-				},
-				logger: log.New(),
-			},
-			expectErr: "api-token not found",
+			expect: &principal,
 		},
 	}
 
@@ -144,8 +85,7 @@ func TestAuthenticatorAuthenticate(t *testing.T) {
 				req.Header().Set(k, v)
 			}
 
-			gotCtx, err := tc.authenticator.authenticate(context.Background(), req)
-
+			gotCtx, err := tc.manager.authenticate(context.Background(), req)
 			if tc.expectErr != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tc.expectErr)
@@ -160,28 +100,32 @@ func TestAuthenticatorAuthenticate(t *testing.T) {
 				t.Fatalf("authenticate() error = %v", err)
 			}
 
-			if tc.expectAuthn == nil {
-				t.Fatal("test case missing expectAuthn")
+			if tc.expect == nil {
+				t.Fatal("missing expected principal")
 			}
-
 			gotPrincipal, ok := PrincipalFromContext(gotCtx)
 			if !ok {
 				t.Fatal("expected principal in context")
 			}
-			if !reflect.DeepEqual(gotPrincipal, *tc.expectAuthn) {
-				t.Fatalf("principal = %#v, want %#v", gotPrincipal, *tc.expectAuthn)
+			if !reflect.DeepEqual(gotPrincipal, *tc.expect) {
+				t.Fatalf("principal = %#v, want %#v", gotPrincipal, *tc.expect)
 			}
 		})
 	}
 }
 
+//nolint:funlen // keeps two key interceptor behaviors explicit
 func TestNewInterceptor(t *testing.T) {
 	t.Parallel()
 
 	t.Run("disabled passthrough", func(t *testing.T) {
 		t.Parallel()
 
-		interceptor, err := NewInterceptor(context.Background(), Config{Enabled: false}, log.New())
+		interceptor, err := NewInterceptor(
+			context.Background(),
+			&Config{Enabled: false},
+			log.New(),
+		)
 		if err != nil {
 			t.Fatalf("NewInterceptor() error = %v", err)
 		}
@@ -206,7 +150,11 @@ func TestNewInterceptor(t *testing.T) {
 	t.Run("missing credentials unauthenticated", func(t *testing.T) {
 		t.Parallel()
 
-		interceptor, err := NewInterceptor(context.Background(), Config{Enabled: true}, log.New())
+		interceptor, err := NewInterceptor(
+			context.Background(),
+			&Config{Enabled: true},
+			log.New(),
+		)
 		if err != nil {
 			t.Fatalf("NewInterceptor() error = %v", err)
 		}
@@ -228,6 +176,147 @@ func TestNewInterceptor(t *testing.T) {
 		}
 		if connectErr.Code() != connect.CodeUnauthenticated {
 			t.Fatalf("error code = %v, want %v", connectErr.Code(), connect.CodeUnauthenticated)
+		}
+	})
+}
+
+func TestCurrentPrincipalFromRequest(t *testing.T) {
+	t.Parallel()
+
+	sessions := newInMemorySessionStore()
+	const sessionID = "session-1"
+
+	principal := Principal{ID: "user-1", Name: "Ada Lovelace"}
+	if err := sessions.Put(context.Background(), Session{
+		ID:        sessionID,
+		Principal: principal,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("put session: %v", err)
+	}
+
+	m := &manager{
+		cfg:        &Config{IDP: IDPConfig{CookieName: "backend_session"}},
+		cookieName: "backend_session",
+		sessions:   sessions,
+		logger:     log.New(),
+	}
+
+	t.Run("cookie maps to principal", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest("GET", "/currentuser", http.NoBody)
+		req.AddCookie(m.sessionCookie(sessionID))
+
+		got, found, err := m.CurrentPrincipalFromRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("CurrentPrincipalFromRequest() error = %v", err)
+		}
+		if !found {
+			t.Fatal("CurrentPrincipalFromRequest() found = false, want true")
+		}
+		if !reflect.DeepEqual(got, principal) {
+			t.Fatalf("principal = %#v, want %#v", got, principal)
+		}
+	})
+
+	t.Run("missing cookie returns not found", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest("GET", "/currentuser", http.NoBody)
+
+		_, found, err := m.CurrentPrincipalFromRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("CurrentPrincipalFromRequest() error = %v", err)
+		}
+		if found {
+			t.Fatal("CurrentPrincipalFromRequest() found = true, want false")
+		}
+	})
+
+	t.Run("unknown session returns not found", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest("GET", "/currentuser", http.NoBody)
+		req.AddCookie(m.sessionCookie("missing-session"))
+
+		_, found, err := m.CurrentPrincipalFromRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("CurrentPrincipalFromRequest() error = %v", err)
+		}
+		if found {
+			t.Fatal("CurrentPrincipalFromRequest() found = true, want false")
+		}
+	})
+}
+
+func TestRegisterHTTPHandlersCurrentUser(t *testing.T) {
+	t.Parallel()
+
+	sessions := newInMemorySessionStore()
+	const sessionID = "session-2"
+	principal := Principal{ID: "user-2", Name: "Grace Hopper"}
+	if err := sessions.Put(context.Background(), Session{
+		ID:        sessionID,
+		Principal: principal,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("put session: %v", err)
+	}
+
+	m := &manager{
+		cfg:        &Config{IDP: IDPConfig{CookieName: "backend_session"}},
+		cookieName: "backend_session",
+		sessions:   sessions,
+		logger:     log.New(),
+	}
+
+	mux := http.NewServeMux()
+	m.RegisterHTTPHandlers(mux)
+
+	t.Run("returns no content when session cookie missing", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/currentuser", http.NoBody)
+		res := httptest.NewRecorder()
+		mux.ServeHTTP(res, req)
+
+		if got := res.Code; got != http.StatusNoContent {
+			t.Fatalf("status = %d, want %d", got, http.StatusNoContent)
+		}
+	})
+
+	t.Run("returns id and name when session exists", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/currentuser", http.NoBody)
+		req.AddCookie(m.sessionCookie(sessionID))
+		res := httptest.NewRecorder()
+		mux.ServeHTTP(res, req)
+
+		if got := res.Code; got != http.StatusOK {
+			t.Fatalf("status = %d, want %d", got, http.StatusOK)
+		}
+
+		var body currentUserResponse
+		if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+
+		if body.ID != principal.ID || body.Name != principal.Name {
+			t.Fatalf("body = %#v, want id=%q name=%q", body, principal.ID, principal.Name)
+		}
+	})
+
+	t.Run("returns method not allowed for non GET", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodPost, "/currentuser", http.NoBody)
+		res := httptest.NewRecorder()
+		mux.ServeHTTP(res, req)
+
+		if got := res.Code; got != http.StatusMethodNotAllowed {
+			t.Fatalf("status = %d, want %d", got, http.StatusMethodNotAllowed)
 		}
 	})
 }

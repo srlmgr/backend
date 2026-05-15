@@ -4,6 +4,8 @@ package authn
 type Principal struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	FirstName     string   `json:"firstName"`
+	LastName      string   `json:"lastName"`
 	Tenant        string   `json:"tenant"`
 	Roles         []string `json:"roles"`
 	SimulationIDs []string `json:"simulationIDs"`
