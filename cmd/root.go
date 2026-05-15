@@ -138,30 +138,34 @@ func registerAuthnFlags(cmd *cobra.Command) {
 		"authn-enabled",
 		true,
 		"enable request authentication")
-	cmd.PersistentFlags().BoolVar(&config.AuthnJWTEnabled,
-		"authn-jwt-enabled",
-		true,
-		"enable JWT authentication")
-	cmd.PersistentFlags().StringVar(&config.AuthnJWTIssuer,
-		"authn-jwt-issuer",
+	cmd.PersistentFlags().BoolVar(&config.IDPEnabled,
+		"enable-idp",
+		false,
+		"enable backend-for-frontend OIDC authentication")
+	cmd.PersistentFlags().StringVar(&config.IDPIssuerURL,
+		"idp-issuer-url",
 		"",
-		"expected JWT issuer")
-	cmd.PersistentFlags().StringVar(&config.AuthnJWTAudience,
-		"authn-jwt-audience",
+		"OIDC issuer URL")
+	cmd.PersistentFlags().StringVar(&config.IDPClientID,
+		"idp-client-id",
 		"",
-		"expected JWT audience")
-	cmd.PersistentFlags().StringVar(&config.AuthnJWTJWKSURL,
-		"authn-jwt-jwks-url",
+		"OIDC client ID")
+	cmd.PersistentFlags().StringVar(&config.IDPClientSecret,
+		"idp-client-secret",
 		"",
-		"remote JWKS URL used to validate JWT signatures")
-	cmd.PersistentFlags().DurationVar(&config.AuthnJWTClockSkew,
-		"authn-jwt-clock-skew",
+		"OIDC client secret")
+	cmd.PersistentFlags().StringVar(&config.IDPCallbackURL,
+		"idp-callback-url",
+		"",
+		"OIDC callback URL served by this backend")
+	cmd.PersistentFlags().StringVar(&config.IDPFrontendURL,
+		"idp-frontend-url",
+		"",
+		"frontend URL used as post-login/logout redirect target")
+	cmd.PersistentFlags().DurationVar(&config.IDPRefreshSkew,
+		"idp-refresh-skew",
 		30*time.Second,
-		"accepted clock skew for JWT time claims")
-	cmd.PersistentFlags().DurationVar(&config.AuthnJWTRefreshInterval,
-		"authn-jwt-refresh-interval",
-		5*time.Minute,
-		"JWKS refresh interval")
+		"token refresh skew before expiry")
 	cmd.PersistentFlags().StringVar(&config.AuthnAPITokenFilePath,
 		"authn-api-token-file",
 		"",

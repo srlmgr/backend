@@ -11,12 +11,13 @@ var (
 	ServerAddress   string
 
 	AuthnEnabled               bool
-	AuthnJWTEnabled            bool
-	AuthnJWTIssuer             string
-	AuthnJWTAudience           string
-	AuthnJWTJWKSURL            string
-	AuthnJWTClockSkew          time.Duration
-	AuthnJWTRefreshInterval    time.Duration
+	IDPEnabled                 bool
+	IDPIssuerURL               string
+	IDPClientID                string
+	IDPClientSecret            string
+	IDPCallbackURL             string
+	IDPFrontendURL             string
+	IDPRefreshSkew             time.Duration
 	AuthnAPITokenFilePath      string
 	AuthnAPITokenRefreshWindow time.Duration
 

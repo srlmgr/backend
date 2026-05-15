@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/authz"
 	"github.com/srlmgr/backend/log"
 )
@@ -22,12 +21,8 @@ func newConnectHandlerOptions(
 	cfg *Config,
 	pool *pgxpool.Pool,
 	logger *log.Logger,
+	authnInterceptor connect.Interceptor,
 ) ([]connect.HandlerOption, error) {
-	authnInterceptor, err := authn.NewInterceptor(ctx, cfg.Authn, logger)
-	if err != nil {
-		return nil, fmt.Errorf("create authentication interceptor: %w", err)
-	}
-
 	authzInterceptor, err := authz.NewInterceptor(ctx, cfg.Authz, pool, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create authorization interceptor: %w", err)

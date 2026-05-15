@@ -77,12 +77,24 @@ func newHTTPServer(
 	pool *pgxpool.Pool,
 	logger *log.Logger,
 ) (*http.Server, error) {
-	handlerOptions, err := newConnectHandlerOptions(ctx, cfg, pool, logger)
+	authnManager, err := authn.NewManager(ctx, &cfg.Authn, logger)
+	if err != nil {
+		return nil, fmt.Errorf("create authentication manager: %w", err)
+	}
+
+	handlerOptions, err := newConnectHandlerOptions(
+		ctx,
+		cfg,
+		pool,
+		logger,
+		authnManager.Interceptor(),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	mux := http.NewServeMux()
+	authnManager.RegisterHTTPHandlers(mux)
 	registerConnectHandlers(mux, pool, logger, handlerOptions...)
 	registerHealthServer(mux)
 	registerReflectionServer(mux)
@@ -105,20 +117,27 @@ func validateSecurityConfig(cfg *Config) error {
 		return nil
 	}
 
-	jwtEnabled := cfg.Authn.JWT.Enabled
 	apiTokenEnabled := strings.TrimSpace(cfg.Authn.APIToken.FilePath) != ""
-	if !jwtEnabled && !apiTokenEnabled {
+	idpEnabled := cfg.Authn.IDP.Enabled
+	if !idpEnabled && !apiTokenEnabled {
 		return fmt.Errorf(
-			"authentication is enabled but both JWT and api-token validators are disabled",
+			"authentication is enabled but both idp and api-token validators are disabled",
 		)
 	}
 
-	if jwtEnabled {
-		if strings.TrimSpace(cfg.Authn.JWT.Issuer) == "" ||
-			strings.TrimSpace(cfg.Authn.JWT.Audience) == "" ||
-			strings.TrimSpace(cfg.Authn.JWT.JWKSURL) == "" {
+	if idpEnabled {
+		if strings.TrimSpace(cfg.Authn.IDP.IssuerURL) == "" ||
+			strings.TrimSpace(cfg.Authn.IDP.ClientID) == "" ||
+			strings.TrimSpace(cfg.Authn.IDP.ClientSecret) == "" ||
+			strings.TrimSpace(cfg.Authn.IDP.CallbackURL) == "" {
 
-			return fmt.Errorf("jwt authn requires issuer, audience and jwks-url")
+			return fmt.Errorf(
+				"idp authn requires issuer-url, client-id, client-secret and callback-url",
+			)
+		}
+
+		if strings.TrimSpace(cfg.Authn.IDP.FrontendURL) == "" {
+			return fmt.Errorf("idp authn requires frontend-url for post-login redirects")
 		}
 	}
 
