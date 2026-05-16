@@ -40,10 +40,6 @@ ALTER TABLE simulation_driver_aliases
     FOREIGN KEY (simulation_id) REFERENCES racing_sims (id);
 
 ALTER TABLE simulation_driver_aliases
-    ADD CONSTRAINT simulation_driver_aliases_driver_id_simulation_id_unique
-    UNIQUE (driver_id, simulation_id);
-
-ALTER TABLE simulation_driver_aliases
     ADD CONSTRAINT simulation_driver_aliases_simulation_id_driver_key_unique
     UNIQUE (simulation_id, simulation_driver_id);
 

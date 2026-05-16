@@ -2,6 +2,8 @@ package authn
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -9,6 +11,8 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
+
+	"github.com/srlmgr/backend/log"
 )
 
 type tokenBundle struct {
@@ -23,6 +27,16 @@ type oidcClient struct {
 	oauthConfig *oauth2.Config
 	verifier    *oidc.IDTokenVerifier
 }
+
+type (
+	//nolint:tagliatelle // external API
+	KeycloakClaims struct {
+		RealmAccess RealmAccess `json:"realm_access"`
+	}
+	RealmAccess struct {
+		Roles []string `json:"roles"`
+	}
+)
 
 func newOIDCClient(ctx context.Context, cfg *IDPConfig) (*oidcClient, error) {
 	if cfg == nil {
@@ -151,12 +165,41 @@ func (c *oidcClient) principalFromIDToken(
 	if claimsErr != nil {
 		return Principal{}, "", fmt.Errorf("decode id token claims: %w", claimsErr)
 	}
+	if kcClaims, kcErr := c.extractKeycloakClaims(token.AccessToken); kcErr == nil {
+		claims["roles"] = kcClaims.RealmAccess.Roles
+	}
 
 	principal, err := mapClaimsToPrincipal(claims)
 	if err != nil {
 		return Principal{}, "", err
 	}
+	log.Debug("claims", log.Any("claims", claims))
+	log.Debug("mapped id token claims to principal", log.Any("principal", principal))
 	principal.Source = "session"
 
 	return principal, stringFromAny(claims["nonce"]), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (c *oidcClient) extractKeycloakClaims(accessToken string) (
+	ret *KeycloakClaims,
+	err error,
+) {
+	parts := strings.Split(accessToken, ".")
+	if len(parts) < 3 {
+		log.Warn("invalid access token format")
+		return nil, fmt.Errorf("invalid access token format")
+	}
+	var payload []byte
+	payload, err = base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
+	}
+
+	claims := KeycloakClaims{}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		log.Warn("failed to unmarshal access token claims", log.ErrorField(err))
+		return nil, fmt.Errorf("failed to unmarshal access token claims: %w", err)
+	}
+	return &claims, nil
 }

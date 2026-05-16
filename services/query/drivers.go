@@ -1,8 +1,8 @@
-//nolint:dupl // some operations are very similar across entities
 package query
 
 import (
 	"context"
+	"sort"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
@@ -71,7 +71,13 @@ func (s *service) GetDriver(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("GetDriver", log.Uint32("id", req.Msg.GetId()))
 
-	item, err := s.repo.Drivers().Drivers().LoadByID(ctx, int32(req.Msg.GetId()))
+	driverRepo := s.repo.Drivers().Drivers()
+	aliasRepo := s.repo.Drivers().SimulationDriverAliases()
+	var (
+		item *models.Driver
+		err  error
+	)
+	item, err = driverRepo.LoadByID(ctx, int32(req.Msg.GetId()))
 	if err != nil {
 		l.Error("failed to load driver", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load driver")
@@ -79,7 +85,54 @@ func (s *service) GetDriver(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "driver loaded")
-	return connect.NewResponse(&queryv1.GetDriverResponse{
+	response := &queryv1.GetDriverResponse{
 		Driver: s.conversion.DriverToDriver(item),
-	}), nil
+	}
+	if req.Msg.GetIncludeAliases() {
+		aliases, err := aliasRepo.GetDriverAliases(ctx, int32(req.Msg.GetId()))
+		if err != nil {
+			l.Error("failed to load driver aliases", log.ErrorField(err))
+			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load driver aliases")
+			return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		}
+		response.Aliases = simulationDriverAliasesToProto(aliases)
+	}
+	return connect.NewResponse(response), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func simulationDriverAliasesToProto(
+	items []*models.SimulationDriverAlias,
+) []*commonv1.DriverAlias {
+	if len(items) == 0 {
+		return nil
+	}
+
+	grouped := lo.GroupBy(items, func(item *models.SimulationDriverAlias) int32 {
+		return item.SimulationID
+	})
+
+	simulationIDs := make([]int32, 0, len(grouped))
+	for simulationID := range grouped {
+		simulationIDs = append(simulationIDs, simulationID)
+	}
+	sort.Slice(simulationIDs, func(i, j int) bool {
+		return simulationIDs[i] < simulationIDs[j]
+	})
+
+	aliases := make([]*commonv1.DriverAlias, 0, len(grouped))
+	for _, simulationID := range simulationIDs {
+		group := grouped[simulationID]
+		groupAliases := make([]string, 0, len(group))
+		for _, item := range group {
+			groupAliases = append(groupAliases, item.SimulationDriverID)
+		}
+		sort.Strings(groupAliases)
+		aliases = append(aliases, &commonv1.DriverAlias{
+			SimulationId:       uint32(simulationID),
+			SimulationDriverId: groupAliases,
+		})
+	}
+
+	return aliases
 }
