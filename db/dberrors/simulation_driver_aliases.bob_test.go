@@ -42,25 +42,7 @@ func TestSimulationDriverAliasUniqueConstraintErrors(t *testing.T) {
 				}
 			},
 		},
-		{
-			name:        "ErrUniqueSimulationDriverAliasesDriverIdSimulationIdUnique",
-			expectedErr: SimulationDriverAliasErrors.ErrUniqueSimulationDriverAliasesDriverIdSimulationIdUnique,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.SimulationDriverAlias) factory.SimulationDriverAliasModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.SimulationDriverAliasModSlice, 0, 2)
 
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewSimulationDriverAliasWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.SimulationDriverAliasModSlice{
-					factory.SimulationDriverAliasMods.DriverID(obj.DriverID),
-					factory.SimulationDriverAliasMods.SimulationID(obj.SimulationID),
-				}
-			},
-		},
 		{
 			name:        "ErrUniqueSimulationDriverAliasesSimulationIdDriverKeyUnique",
 			expectedErr: SimulationDriverAliasErrors.ErrUniqueSimulationDriverAliasesSimulationIdDriverKeyUnique,

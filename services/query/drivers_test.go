@@ -1,4 +1,4 @@
-//nolint:dupl // test files can have some duplication for test data setup
+//nolint:dupl,funlen // test files can have some duplication for test data setup
 package query
 
 import (
@@ -117,23 +117,27 @@ func TestGetDriverSuccessWithAliases(t *testing.T) {
 
 	d := seedDriver(t, repo, "2002", "Alias Driver")
 	sim := seedSimulation(t, repo, "iRacing")
-	_, err := repo.Drivers().SimulationDriverAliases().Create(context.Background(), &models.SimulationDriverAliasSetter{
-		DriverID:           omit.From(int32(d.ID)),
-		SimulationID:       omit.From(sim.ID),
-		SimulationDriverID: omit.From("alias-one"),
-		CreatedBy:          omit.From(testUserSeed),
-		UpdatedBy:          omit.From(testUserSeed),
-	})
+	_, err := repo.Drivers().
+		SimulationDriverAliases().
+		Create(context.Background(), &models.SimulationDriverAliasSetter{
+			DriverID:           omit.From(d.ID),
+			SimulationID:       omit.From(sim.ID),
+			SimulationDriverID: omit.From("alias-one"),
+			CreatedBy:          omit.From(testUserSeed),
+			UpdatedBy:          omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed first alias: %v", err)
 	}
-	_, err = repo.Drivers().SimulationDriverAliases().Create(context.Background(), &models.SimulationDriverAliasSetter{
-		DriverID:           omit.From(int32(d.ID)),
-		SimulationID:       omit.From(sim.ID),
-		SimulationDriverID: omit.From("alias-two"),
-		CreatedBy:          omit.From(testUserSeed),
-		UpdatedBy:          omit.From(testUserSeed),
-	})
+	_, err = repo.Drivers().
+		SimulationDriverAliases().
+		Create(context.Background(), &models.SimulationDriverAliasSetter{
+			DriverID:           omit.From(d.ID),
+			SimulationID:       omit.From(sim.ID),
+			SimulationDriverID: omit.From("alias-two"),
+			CreatedBy:          omit.From(testUserSeed),
+			UpdatedBy:          omit.From(testUserSeed),
+		})
 	if err != nil {
 		t.Fatalf("failed to seed second alias: %v", err)
 	}
@@ -154,9 +158,12 @@ func TestGetDriverSuccessWithAliases(t *testing.T) {
 		t.Fatalf("expected 1 alias group, got %d", len(aliases))
 	}
 	if aliases[0].GetSimulationId() != uint32(sim.ID) {
-		t.Fatalf("expected simulation id %d, got %d", sim.ID, aliases[0].GetSimulationId())
+		t.Fatalf("expected simulation id %d, got %d",
+			sim.ID, aliases[0].GetSimulationId())
 	}
-	if got := aliases[0].GetSimulationDriverId(); len(got) != 2 || got[0] != "alias-one" || got[1] != "alias-two" {
+	if got := aliases[0].GetSimulationDriverId(); len(got) != 2 || got[0] != "alias-one" ||
+		got[1] != "alias-two" {
+
 		t.Fatalf("unexpected aliases: %#v", got)
 	}
 
@@ -164,7 +171,8 @@ func TestGetDriverSuccessWithAliases(t *testing.T) {
 		t.Fatalf("expected driver id %d, got %d", d.ID, resp.Msg.GetDriver().GetId())
 	}
 	if resp.Msg.GetDriver().GetName() != "Alias Driver" {
-		t.Fatalf("expected driver name %q, got %q", "Alias Driver", resp.Msg.GetDriver().GetName())
+		t.Fatalf("expected driver name %q, got %q", "Alias Driver",
+			resp.Msg.GetDriver().GetName())
 	}
 }
 

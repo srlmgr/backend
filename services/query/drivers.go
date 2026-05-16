@@ -1,4 +1,3 @@
-//nolint:dupl // some operations are very similar across entities
 package query
 
 import (
@@ -101,7 +100,10 @@ func (s *service) GetDriver(
 	return connect.NewResponse(response), nil
 }
 
-func simulationDriverAliasesToProto(items []*models.SimulationDriverAlias) []*commonv1.DriverAlias {
+//nolint:whitespace // editor/linter issue
+func simulationDriverAliasesToProto(
+	items []*models.SimulationDriverAlias,
+) []*commonv1.DriverAlias {
 	if len(items) == 0 {
 		return nil
 	}

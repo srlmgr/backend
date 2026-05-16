@@ -215,7 +215,10 @@ func (r *simulationDriverAliasesRepository) DeleteByID(ctx context.Context, id i
 	return err
 }
 
-func (r *simulationDriverAliasesRepository) DeleteByDriverID(ctx context.Context, driverID int32) error {
+func (r *simulationDriverAliasesRepository) DeleteByDriverID(
+	ctx context.Context,
+	driverID int32,
+) error {
 	_, err := models.SimulationDriverAliases.Delete(dm.Where(models.SimulationDriverAliases.Columns.DriverID.EQ(psql.Arg(driverID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err

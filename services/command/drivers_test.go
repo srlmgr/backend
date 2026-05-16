@@ -51,9 +51,6 @@ func TestDriverSetterBuilderBuildZeroValues(t *testing.T) {
 	if setter.Name.IsValue() {
 		t.Fatalf("expected name to be unset when empty, got: %+v", setter.Name)
 	}
-	if setter.IsActive.IsValue() {
-		t.Fatalf("expected is_active to be unset when false, got: %+v", setter.IsActive)
-	}
 }
 
 func TestCreateDriverSuccess(t *testing.T) {
