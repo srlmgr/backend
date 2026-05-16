@@ -36,9 +36,7 @@ func (b driverSetterBuilder) Build(msg driverRequest) *driverSetter {
 		setter.Name = omit.From(name)
 	}
 
-	if msg.GetIsActive() {
-		setter.IsActive = omit.From(true)
-	}
+	setter.IsActive = omit.From(msg.GetIsActive())
 
 	return setter
 }
@@ -143,16 +141,16 @@ func (s *service) SetSimulationDriverAliases(
 		driverID := int32(req.Msg.GetDriverId())
 		simulationID := int32(req.Msg.GetSimulationId())
 
-		existing, err := s.repo.Drivers().SimulationDriverAliases().LoadBySimulationID(
+		existing, err := s.repo.Drivers().SimulationDriverAliases().GetDriverAliases(
 			ctx,
-			simulationID,
+			driverID,
 		)
 		if err != nil {
 			return err
 		}
 
 		for _, alias := range existing {
-			if alias.DriverID != driverID {
+			if alias.SimulationID != simulationID {
 				continue
 			}
 			if err := s.repo.Drivers().
