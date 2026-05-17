@@ -24,6 +24,7 @@ import (
 // RacingSimsRepository defines persistence operations for RacingSim entities.
 type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.RacingSim, error)
+	LoadByIDs(ctx context.Context, ids []int32) ([]*models.RacingSim, error)
 	LoadAll(ctx context.Context) ([]*models.RacingSim, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.RacingSimSetter) (*models.RacingSim, error)
@@ -49,6 +50,22 @@ func (r *racingSimsRepository) LoadByID(ctx context.Context, id int32) (*models.
 		return nil, fmt.Errorf("racing sim %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *racingSimsRepository) LoadByIDs(
+	ctx context.Context,
+	ids []int32,
+) ([]*models.RacingSim, error) {
+	if len(ids) == 0 {
+		return []*models.RacingSim{}, nil
+	}
+	entities, err := models.RacingSims.Query(
+		sm.Where(models.RacingSims.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids)))),
+	).All(ctx, r.getExecutor(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return entities, nil
 }
 
 func (r *racingSimsRepository) LoadAll(ctx context.Context) ([]*models.RacingSim, error) {
