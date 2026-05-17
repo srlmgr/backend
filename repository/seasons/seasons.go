@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aarondl/opt/omit"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,6 +26,7 @@ import (
 // Repository defines persistence operations for Season entities.
 type Repository interface {
 	LoadAll(ctx context.Context) ([]*models.Season, error)
+	LoadActiveAt(ctx context.Context, refDate time.Time) ([]*models.Season, error)
 	LoadBySeriesID(ctx context.Context, seriesID int32) ([]*models.Season, error)
 	LoadByID(ctx context.Context, id int32) (*models.Season, error)
 	DeleteByID(ctx context.Context, id int32) error
@@ -43,6 +45,22 @@ func New(pool *pgxpool.Pool) Repository {
 
 func (r *seasonsRepository) LoadAll(ctx context.Context) ([]*models.Season, error) {
 	return models.Seasons.Query().All(ctx, r.getExecutor(ctx))
+}
+
+func (r *seasonsRepository) LoadActiveAt(
+	ctx context.Context,
+	refDate time.Time,
+) ([]*models.Season, error) {
+	return models.Seasons.Query(
+		sm.Where(
+			models.Seasons.Columns.StartsAt.IsNull().
+				Or(models.Seasons.Columns.StartsAt.LTE(psql.Arg(refDate))),
+		),
+		sm.Where(
+			models.Seasons.Columns.EndsAt.IsNull().
+				Or(models.Seasons.Columns.EndsAt.GTE(psql.Arg(refDate))),
+		),
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *seasonsRepository) LoadBySeriesID(

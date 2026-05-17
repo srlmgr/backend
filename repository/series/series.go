@@ -26,6 +26,7 @@ type Repository interface {
 	LoadAll(ctx context.Context) ([]*models.Series, error)
 	LoadBySimulationID(ctx context.Context, simulationID int32) ([]*models.Series, error)
 	LoadByID(ctx context.Context, id int32) (*models.Series, error)
+	LoadByIDs(ctx context.Context, ids []int32) ([]*models.Series, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeriesSetter) (*models.Series, error)
 	Update(ctx context.Context, id int32, input *models.SeriesSetter) (*models.Series, error)
@@ -58,6 +59,19 @@ func (r *seriesRepository) LoadByID(ctx context.Context, id int32) (*models.Seri
 		return nil, fmt.Errorf("series %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *seriesRepository) LoadByIDs(ctx context.Context, ids []int32) ([]*models.Series, error) {
+	if len(ids) == 0 {
+		return []*models.Series{}, nil
+	}
+	entities, err := models.Serieses.Query(
+		sm.Where(models.Serieses.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids)))),
+	).All(ctx, r.getExecutor(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return entities, nil
 }
 
 func (r *seriesRepository) DeleteByID(ctx context.Context, id int32) error {
