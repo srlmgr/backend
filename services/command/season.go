@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/omitnull"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
@@ -25,6 +26,8 @@ type seasonRequest interface {
 	GetSkipEvents() int32
 	GetTeamPointsTopN() int32
 	GetStatus() string
+	GetStartsAt() *timestamppb.Timestamp
+	GetEndsAt() *timestamppb.Timestamp
 }
 
 type seasonSetter = models.SeasonSetter
@@ -56,6 +59,14 @@ func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 
 	if status := msg.GetStatus(); status != "" {
 		setter.Status = omit.From(status)
+	}
+
+	if startsAt := msg.GetStartsAt(); startsAt != nil {
+		setter.StartsAt = omitnull.From(startsAt.AsTime())
+	}
+
+	if endsAt := msg.GetEndsAt(); endsAt != nil {
+		setter.EndsAt = omitnull.From(endsAt.AsTime())
 	}
 
 	return setter
