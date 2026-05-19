@@ -26,6 +26,7 @@ func procedure(service, method string) string {
 func defaultProcedurePolicies() map[string]ProcedurePolicy {
 	policies := map[string]ProcedurePolicy{}
 	addQueryPolicies(policies)
+	addFrontendPolicies(policies)
 	addCommandPolicies(policies)
 	addImportPolicies(policies)
 	addAdminPolicies(policies)
@@ -73,6 +74,19 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"ListTrackLayouts",
 	} {
 		policies[procedure(queryService, method)] = ProcedurePolicy{
+			Capability:     "query.read",
+			AllowAnonymous: true,
+			Scope:          scopeNone,
+		}
+	}
+}
+
+func addFrontendPolicies(policies map[string]ProcedurePolicy) {
+	frontendService := "backend.query.v1.FrontendService"
+	for _, method := range []string{
+		"ListSeasonsOverview",
+	} {
+		policies[procedure(frontendService, method)] = ProcedurePolicy{
 			Capability:     "query.read",
 			AllowAnonymous: true,
 			Scope:          scopeNone,

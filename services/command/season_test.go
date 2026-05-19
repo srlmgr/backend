@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/authn"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
@@ -16,6 +18,8 @@ import (
 
 func TestSeasonSetterBuilderBuildSuccess(t *testing.T) {
 	t.Parallel()
+	startsAt := timestamppb.New(time.Date(2024, 3, 1, 10, 0, 0, 0, time.UTC))
+	endsAt := timestamppb.New(time.Date(2024, 11, 30, 18, 0, 0, 0, time.UTC))
 
 	setter := (seasonSetterBuilder{}).Build(&v1.CreateSeasonRequest{
 		Name:           "2024 Season",
@@ -26,6 +30,8 @@ func TestSeasonSetterBuilderBuildSuccess(t *testing.T) {
 		TeamPointsTopN: 2,
 		SkipEvents:     2,
 		Status:         "active",
+		StartsAt:       startsAt,
+		EndsAt:         endsAt,
 	})
 
 	if !setter.Name.IsValue() || setter.Name.MustGet() != "2024 Season" {
@@ -54,6 +60,12 @@ func TestSeasonSetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.Status.IsValue() || setter.Status.MustGet() != "active" {
 		t.Fatalf("unexpected status setter value: %+v", setter.Status)
 	}
+	if !setter.StartsAt.IsValue() || !setter.StartsAt.MustGet().Equal(startsAt.AsTime()) {
+		t.Fatalf("unexpected starts_at setter value: %+v", setter.StartsAt)
+	}
+	if !setter.EndsAt.IsValue() || !setter.EndsAt.MustGet().Equal(endsAt.AsTime()) {
+		t.Fatalf("unexpected ends_at setter value: %+v", setter.EndsAt)
+	}
 }
 
 func TestSeasonSetterBuilderBuildZeroValues(t *testing.T) {
@@ -79,6 +91,12 @@ func TestSeasonSetterBuilderBuildZeroValues(t *testing.T) {
 	if setter.Status.IsValue() {
 		t.Fatalf("expected status to be unset, got %+v", setter.Status)
 	}
+	if setter.StartsAt.IsValue() {
+		t.Fatalf("expected starts_at to be unset, got %+v", setter.StartsAt)
+	}
+	if setter.EndsAt.IsValue() {
+		t.Fatalf("expected ends_at to be unset, got %+v", setter.EndsAt)
+	}
 }
 
 func TestCreateSeasonSuccess(t *testing.T) {
@@ -87,6 +105,8 @@ func TestCreateSeasonSuccess(t *testing.T) {
 	series := seedSeries(t, repo, sim.ID, "GT3")
 	ps := seedPointSystem(t, repo, "Formula Points")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
+	startsAt := timestamppb.New(time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC))
+	endsAt := timestamppb.New(time.Date(2024, 11, 30, 0, 0, 0, 0, time.UTC))
 
 	resp, err := svc.CreateSeason(ctx, connect.NewRequest(&v1.CreateSeasonRequest{
 		SeriesId:      uint32(series.ID),
@@ -94,6 +114,8 @@ func TestCreateSeasonSuccess(t *testing.T) {
 		PointSystemId: uint32(ps.ID),
 		HasTeams:      true,
 		Status:        "active",
+		StartsAt:      startsAt,
+		EndsAt:        endsAt,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -114,6 +136,15 @@ func TestCreateSeasonSuccess(t *testing.T) {
 			resp.Msg.GetSeason().GetPointSystemId(),
 			ps.ID,
 		)
+	}
+	if got := resp.Msg.GetSeason().
+		GetStartsAt(); got == nil ||
+		!got.AsTime().Equal(startsAt.AsTime()) {
+
+		t.Fatalf("unexpected starts_at response value: %+v", got)
+	}
+	if got := resp.Msg.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
+		t.Fatalf("unexpected ends_at response value: %+v", got)
 	}
 
 	id := int32(resp.Msg.GetSeason().GetId())
@@ -137,6 +168,12 @@ func TestCreateSeasonSuccess(t *testing.T) {
 			stored.PointSystemID,
 			ps.ID,
 		)
+	}
+	if got, ok := stored.StartsAt.Get(); !ok || !got.Equal(startsAt.AsTime()) {
+		t.Fatalf("unexpected stored starts_at value: %+v", stored.StartsAt)
+	}
+	if got, ok := stored.EndsAt.Get(); !ok || !got.Equal(endsAt.AsTime()) {
+		t.Fatalf("unexpected stored ends_at value: %+v", stored.EndsAt)
 	}
 }
 
@@ -225,6 +262,8 @@ func TestUpdateSeasonSuccess(t *testing.T) {
 	series := seedSeries(t, repo, sim.ID, "LMP2")
 	ps := seedPointSystem(t, repo, "F1 Points")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
+	startsAt := timestamppb.New(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))
+	endsAt := timestamppb.New(time.Date(2025, 10, 15, 0, 0, 0, 0, time.UTC))
 
 	initial := seedSeason(t, repo, series.ID, ps.ID, "2023 LMP2")
 	before, err := repo.Seasons().LoadByID(context.Background(), initial.ID)
@@ -237,12 +276,23 @@ func TestUpdateSeasonSuccess(t *testing.T) {
 		Name:          "2023 LMP2 Updated",
 		PointSystemId: uint32(ps.ID),
 		Status:        "completed",
+		StartsAt:      startsAt,
+		EndsAt:        endsAt,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resp.Msg.GetSeason().GetName() != "2023 LMP2 Updated" {
 		t.Fatalf("unexpected updated name: %q", resp.Msg.GetSeason().GetName())
+	}
+	if got := resp.Msg.GetSeason().
+		GetStartsAt(); got == nil ||
+		!got.AsTime().Equal(startsAt.AsTime()) {
+
+		t.Fatalf("unexpected updated starts_at response value: %+v", got)
+	}
+	if got := resp.Msg.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
+		t.Fatalf("unexpected updated ends_at response value: %+v", got)
 	}
 
 	after, err := repo.Seasons().LoadByID(context.Background(), initial.ID)
@@ -261,6 +311,12 @@ func TestUpdateSeasonSuccess(t *testing.T) {
 	}
 	if after.Status != "completed" {
 		t.Fatalf("unexpected status after update: %q", after.Status)
+	}
+	if got, ok := after.StartsAt.Get(); !ok || !got.Equal(startsAt.AsTime()) {
+		t.Fatalf("unexpected updated stored starts_at value: %+v", after.StartsAt)
+	}
+	if got, ok := after.EndsAt.Get(); !ok || !got.Equal(endsAt.AsTime()) {
+		t.Fatalf("unexpected updated stored ends_at value: %+v", after.EndsAt)
 	}
 }
 

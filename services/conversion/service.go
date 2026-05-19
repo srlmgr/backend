@@ -219,6 +219,16 @@ func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
 		return nil
 	}
 
+	var startsAt *timestamppb.Timestamp
+	if value := model.StartsAt.Ptr(); value != nil {
+		startsAt = timestamppb.New(*value)
+	}
+
+	var endsAt *timestamppb.Timestamp
+	if value := model.EndsAt.Ptr(); value != nil {
+		endsAt = timestamppb.New(*value)
+	}
+
 	return &commonv1.Season{
 		Id:             uint32(model.ID),
 		SeriesId:       uint32(model.SeriesID),
@@ -230,6 +240,8 @@ func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
 		TeamPointsTopN: model.TeamPointsTopN.GetOrZero(),
 		SkipEvents:     model.SkipEvents,
 		Status:         model.Status,
+		StartsAt:       startsAt,
+		EndsAt:         endsAt,
 	}
 }
 

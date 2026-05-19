@@ -62,5 +62,5 @@ func (c *Config) WithDefaults() {
 
 // IsAnonymousProcedure returns true for procedures that allow anonymous access.
 func IsAnonymousProcedure(procedure string) bool {
-	return strings.HasPrefix(procedure, "/backend.query.v1.QueryService/")
+	return strings.HasPrefix(procedure, "/backend.query.")
 }
