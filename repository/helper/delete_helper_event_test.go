@@ -1,16 +1,20 @@
-//nolint:lll // test code can be verbose
+//nolint:lll,funlen,dupl // test code can be verbose
 package helper
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"testing"
 
+	"github.com/aarondl/opt/omit"
+	"github.com/lib/pq"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
+	bobtypes "github.com/stephenafamo/bob/types"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/repository/pgbob"
@@ -18,12 +22,15 @@ import (
 )
 
 type eventFixture struct {
-	event        *models.Event
-	race         *models.Race
-	raceGrid     *models.RaceGrid
-	resultEntry  *models.ResultEntry
-	bookingEntry *models.BookingEntry
-	importBatch  *models.ImportBatch
+	event          *models.Event
+	race           *models.Race
+	raceGrid       *models.RaceGrid
+	resultEntry    *models.ResultEntry
+	bookingEntry   *models.BookingEntry
+	importBatch    *models.ImportBatch
+	driverStanding *models.EventDriverStanding
+	teamStanding   *models.EventTeamStanding
+	auditEntry     *models.EventProcessingAudit
 }
 
 func TestDeleteEventRelated(t *testing.T) {
@@ -40,6 +47,9 @@ func TestDeleteEventRelated(t *testing.T) {
 	assertMissingResultEntry(t, ctx, target.resultEntry.ID)
 	assertMissingBookingEntry(t, ctx, target.bookingEntry.ID)
 	assertMissingImportBatch(t, ctx, target.importBatch.ID)
+	assertMissingEventDriverStanding(t, ctx, target.driverStanding.ID)
+	assertMissingEventTeamStanding(t, ctx, target.teamStanding.ID)
+	assertMissingEventProcessingAudit(t, ctx, target.auditEntry.ID)
 	assertMissingRace(t, ctx, target.race.ID)
 	assertEventExists(t, ctx, target.event.ID)
 
@@ -47,8 +57,57 @@ func TestDeleteEventRelated(t *testing.T) {
 	assertResultEntryExists(t, ctx, other.resultEntry.ID)
 	assertBookingEntryExists(t, ctx, other.bookingEntry.ID)
 	assertImportBatchExists(t, ctx, other.importBatch.ID)
+	assertEventDriverStandingExists(t, ctx, other.driverStanding.ID)
+	assertEventTeamStandingExists(t, ctx, other.teamStanding.ID)
+	assertEventProcessingAuditExists(t, ctx, other.auditEntry.ID)
 	assertRaceExists(t, ctx, other.race.ID)
 	assertEventExists(t, ctx, other.event.ID)
+}
+
+func TestDeleteRaceRelated(t *testing.T) {
+	ctx := newTxContext(t)
+
+	target := seedEventFixture(t, ctx, "target")
+	other := seedEventFixture(t, ctx, "other")
+
+	if err := DeleteRaceRelated(ctx, target.race.ID); err != nil {
+		t.Fatalf("DeleteRaceRelated returned error: %v", err)
+	}
+
+	assertMissingRaceGrid(t, ctx, target.raceGrid.ID)
+	assertMissingResultEntry(t, ctx, target.resultEntry.ID)
+	assertMissingBookingEntry(t, ctx, target.bookingEntry.ID)
+	assertMissingImportBatch(t, ctx, target.importBatch.ID)
+	assertEventExists(t, ctx, target.event.ID)
+
+	assertRaceExists(t, ctx, other.race.ID)
+	assertRaceGridExists(t, ctx, other.raceGrid.ID)
+	assertResultEntryExists(t, ctx, other.resultEntry.ID)
+	assertBookingEntryExists(t, ctx, other.bookingEntry.ID)
+	assertImportBatchExists(t, ctx, other.importBatch.ID)
+}
+
+func TestDeleteRaceGridRelated(t *testing.T) {
+	ctx := newTxContext(t)
+
+	target := seedEventFixture(t, ctx, "target")
+	other := seedEventFixture(t, ctx, "other")
+
+	if err := DeleteRaceGridRelated(ctx, target.raceGrid.ID); err != nil {
+		t.Fatalf("DeleteRaceGridRelated returned error: %v", err)
+	}
+
+	assertRaceExists(t, ctx, target.race.ID)
+	assertRaceGridExists(t, ctx, target.raceGrid.ID)
+	assertMissingResultEntry(t, ctx, target.resultEntry.ID)
+	assertMissingBookingEntry(t, ctx, target.bookingEntry.ID)
+	assertMissingImportBatch(t, ctx, target.importBatch.ID)
+
+	assertRaceExists(t, ctx, other.race.ID)
+	assertRaceGridExists(t, ctx, other.raceGrid.ID)
+	assertResultEntryExists(t, ctx, other.resultEntry.ID)
+	assertBookingEntryExists(t, ctx, other.bookingEntry.ID)
+	assertImportBatchExists(t, ctx, other.importBatch.ID)
 }
 
 func TestDeleteEventRaceGrids(t *testing.T) {
@@ -163,6 +222,18 @@ func TestDeleteEventHelpersRequireExecutor(t *testing.T) {
 		{name: "DeleteEventRaces", fn: DeleteEventRaces},
 		{name: "DeleteEventResultEntries", fn: DeleteEventResultEntries},
 		{name: "DeleteEventImportBatches", fn: DeleteEventImportBatches},
+		{name: "DeleteEventDriverStandings", fn: DeleteEventDriverStandings},
+		{name: "DeleteEventTeamStandings", fn: DeleteEventTeamStandings},
+		{name: "DeleteEventProcessingAudit", fn: DeleteEventProcessingAudit},
+		{name: "DeleteRaceRelated", fn: DeleteRaceRelated},
+		{name: "DeleteRaceBookingEntries", fn: DeleteRaceBookingEntries},
+		{name: "DeleteRaceResultEntries", fn: DeleteRaceResultEntries},
+		{name: "DeleteRaceImportBatches", fn: DeleteRaceImportBatches},
+		{name: "DeleteRaceRaceGrids", fn: DeleteRaceRaceGrids},
+		{name: "DeleteRaceGridRelated", fn: DeleteRaceGridRelated},
+		{name: "DeleteRaceGridBookingEntries", fn: DeleteRaceGridBookingEntries},
+		{name: "DeleteRaceGridResultEntries", fn: DeleteRaceGridResultEntries},
+		{name: "DeleteRaceGridImportBatches", fn: DeleteRaceGridImportBatches},
 	}
 
 	for _, tt := range tests {
@@ -217,6 +288,7 @@ func seedEventFixture(t *testing.T, ctx context.Context, suffix string) eventFix
 		base.raceGrid.ID,
 		suffix+".json",
 	)
+	seedStandingsAndAuditDependents(t, ctx, suffix, &base)
 
 	return base
 }
@@ -425,6 +497,163 @@ func queryImportBatchByID(ctx context.Context, exec bob.Executor, id int32) erro
 	_, err := models.ImportBatches.Query(sm.Where(models.ImportBatches.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, exec)
 	return err
+}
+
+func assertEventDriverStandingExists(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertExists(
+		t,
+		ctx,
+		"event driver standing",
+		queryEventDriverStandingByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func assertMissingEventDriverStanding(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertMissing(
+		t,
+		ctx,
+		"event driver standing",
+		queryEventDriverStandingByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func assertEventTeamStandingExists(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertExists(
+		t,
+		ctx,
+		"event team standing",
+		queryEventTeamStandingByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func assertMissingEventTeamStanding(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertMissing(
+		t,
+		ctx,
+		"event team standing",
+		queryEventTeamStandingByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func assertEventProcessingAuditExists(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertExists(
+		t,
+		ctx,
+		"event processing audit",
+		queryEventProcessingAuditByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func assertMissingEventProcessingAudit(t *testing.T, ctx context.Context, id int32) {
+	t.Helper()
+	assertMissing(
+		t,
+		ctx,
+		"event processing audit",
+		queryEventProcessingAuditByID(ctx, getExecutorFromContext(t, ctx), id),
+	)
+}
+
+func queryEventDriverStandingByID(ctx context.Context, exec bob.Executor, id int32) error {
+	_, err := models.EventDriverStandings.Query(
+		sm.Where(models.EventDriverStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, exec)
+	return err
+}
+
+func queryEventTeamStandingByID(ctx context.Context, exec bob.Executor, id int32) error {
+	_, err := models.EventTeamStandings.Query(
+		sm.Where(models.EventTeamStandings.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, exec)
+	return err
+}
+
+func queryEventProcessingAuditByID(ctx context.Context, exec bob.Executor, id int32) error {
+	_, err := models.EventProcessingAudits.Query(
+		sm.Where(models.EventProcessingAudits.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, exec)
+	return err
+}
+
+//nolint:whitespace //editor/linter issue
+func seedStandingsAndAuditDependents(
+	t *testing.T,
+	ctx context.Context,
+	suffix string,
+	fixture *eventFixture,
+) {
+	t.Helper()
+
+	exec := getExecutorFromContext(t, ctx)
+
+	driver, err := models.Drivers.Insert(&models.DriverSetter{
+		ExternalID: omit.From("driver-" + suffix),
+		Name:       omit.From("Driver " + suffix),
+		IsActive:   omit.From(true),
+		CreatedBy:  omit.From(testhelpers.TestUserSeed),
+		UpdatedBy:  omit.From(testhelpers.TestUserSeed),
+	}).One(ctx, exec)
+	if err != nil {
+		t.Fatalf("failed to seed driver standing dependency: %v", err)
+	}
+
+	team, err := models.Teams.Insert(&models.TeamSetter{
+		SeasonID:  omit.From(fixture.event.SeasonID),
+		Name:      omit.From("Team " + suffix),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(testhelpers.TestUserSeed),
+		UpdatedBy: omit.From(testhelpers.TestUserSeed),
+	}).One(ctx, exec)
+	if err != nil {
+		t.Fatalf("failed to seed team standing dependency: %v", err)
+	}
+
+	fixture.driverStanding, err = models.EventDriverStandings.Insert(&models.EventDriverStandingSetter{
+		EventID:         omit.From(fixture.event.ID),
+		SeasonID:        omit.From(fixture.event.SeasonID),
+		DriverID:        omit.From(driver.ID),
+		Position:        omit.From(int32(1)),
+		TotalPoints:     omit.From(int32(25)),
+		DroppedEventIds: omit.From(pq.Int32Array{}),
+		CreatedBy:       omit.From(testhelpers.TestUserSeed),
+		UpdatedBy:       omit.From(testhelpers.TestUserSeed),
+	}).
+		One(ctx, exec)
+	if err != nil {
+		t.Fatalf("failed to seed event driver standing: %v", err)
+	}
+
+	fixture.teamStanding, err = models.EventTeamStandings.Insert(&models.EventTeamStandingSetter{
+		EventID:         omit.From(fixture.event.ID),
+		SeasonID:        omit.From(fixture.event.SeasonID),
+		TeamID:          omit.From(team.ID),
+		Position:        omit.From(int32(1)),
+		TotalPoints:     omit.From(int32(25)),
+		DroppedEventIds: omit.From(pq.Int32Array{}),
+		CreatedBy:       omit.From(testhelpers.TestUserSeed),
+		UpdatedBy:       omit.From(testhelpers.TestUserSeed),
+	}).One(ctx, exec)
+	if err != nil {
+		t.Fatalf("failed to seed event team standing: %v", err)
+	}
+
+	fixture.auditEntry, err = models.EventProcessingAudits.Insert(&models.EventProcessingAuditSetter{
+		EventID:     omit.From(fixture.event.ID),
+		ToState:     omit.From("raw_imported"),
+		Action:      omit.From("seeded"),
+		PayloadJSON: omit.From(bobtypes.NewJSON[json.RawMessage]([]byte("{}"))),
+		CreatedBy:   omit.From(testhelpers.TestUserSeed),
+		UpdatedBy:   omit.From(testhelpers.TestUserSeed),
+	}).
+		One(ctx, exec)
+	if err != nil {
+		t.Fatalf("failed to seed event processing audit: %v", err)
+	}
 }
 
 func getExecutorFromContext(t *testing.T, ctx context.Context) bob.Executor {
