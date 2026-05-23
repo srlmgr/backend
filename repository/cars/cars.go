@@ -72,13 +72,20 @@ type CarClassesRepository interface {
 // SimulationCarAliasesRepository defines persistence operations for SimulationCarAlias entities.
 type SimulationCarAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationCarAlias, error)
+	LoadByModelID(ctx context.Context, modelID int32) ([]*models.SimulationCarAlias, error)
 	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.SimulationCarAlias, error)
 	FindBySimID(
 		ctx context.Context,
 		simID int32,
 		aliases ...string,
 	) (*models.SimulationCarAlias, error)
+	ReplaceForModelID(
+		ctx context.Context,
+		modelID int32,
+		aliases []*models.SimulationCarAliasSetter,
+	) ([]*models.SimulationCarAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByModelID(ctx context.Context, modelID int32) error
 	Create(
 		ctx context.Context,
 		input *models.SimulationCarAliasSetter,
@@ -385,6 +392,20 @@ func (r *simulationCarAliasesRepository) LoadBySimulationID(
 	return entity, err
 }
 
+func (r *simulationCarAliasesRepository) LoadByModelID(
+	ctx context.Context,
+	modelID int32,
+) ([]*models.SimulationCarAlias, error) {
+	entity, err := models.SimulationCarAliases.
+		Query(
+			sm.Where(
+				models.SimulationCarAliases.Columns.CarModelID.EQ(psql.Arg(modelID))),
+		).
+		All(ctx, r.getExecutor(ctx))
+
+	return entity, err
+}
+
 func (r *simulationCarAliasesRepository) FindBySimID(
 	ctx context.Context,
 	simID int32,
@@ -407,8 +428,38 @@ func (r *simulationCarAliasesRepository) FindBySimID(
 	return entity, err
 }
 
+func (r *simulationCarAliasesRepository) ReplaceForModelID(
+	ctx context.Context,
+	carModelID int32,
+	aliases []*models.SimulationCarAliasSetter,
+) ([]*models.SimulationCarAlias, error) {
+	if err := r.DeleteByModelID(ctx, carModelID); err != nil {
+		return nil, err
+	}
+
+	var created []*models.SimulationCarAlias
+	for _, alias := range aliases {
+		entity, err := models.SimulationCarAliases.Insert(alias).
+			One(ctx, r.getExecutor(ctx))
+		if err != nil {
+			return nil, err
+		}
+		created = append(created, entity)
+	}
+
+	return created, nil
+}
+
 func (r *simulationCarAliasesRepository) DeleteByID(ctx context.Context, id int32) error {
-	_, err := models.SimulationCarAliases.Delete(dm.Where(models.SimulationCarAliases.Columns.ID.EQ(psql.Arg(id)))).
+	_, err := models.SimulationCarAliases.Delete(
+		dm.Where(models.SimulationCarAliases.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *simulationCarAliasesRepository) DeleteByModelID(ctx context.Context, modelID int32) error {
+	_, err := models.SimulationCarAliases.Delete(
+		dm.Where(models.SimulationCarAliases.Columns.CarModelID.EQ(psql.Arg(modelID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

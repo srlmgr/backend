@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
+	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"go.opentelemetry.io/otel/codes"
@@ -277,7 +278,21 @@ func (s *service) CreateCarModel(
 		setter.CreatedBy = omit.From(s.execUser(ctx))
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarModel, err = s.repo.Cars().CarModels().Create(ctx, setter)
-		return err
+		if err != nil {
+			return err
+		}
+		setters := s.createCarAliasSetters(
+			ctx,
+			newCarModel.ID,
+			req.Msg.GetSimulationAliases())
+		aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
+			ReplaceForModelID(
+				ctx,
+				newCarModel.ID,
+				setters,
+			)
+		_ = aliases // currently not used
+		return aliasErr
 	}); txErr != nil {
 		l.Error("failed to create car model", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create car model")
@@ -302,6 +317,21 @@ func (s *service) UpdateCarModel(
 
 	var newCarModel *models.CarModel
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		setters := s.createCarAliasSetters(
+			ctx,
+			int32(req.Msg.GetCarModelId()),
+			req.Msg.GetSimulationAliases())
+		aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
+			ReplaceForModelID(
+				ctx,
+				int32(req.Msg.GetCarModelId()),
+				setters,
+			)
+		_ = aliases // currently not used
+		if aliasErr != nil {
+			return aliasErr
+		}
+
 		setter.UpdatedAt = omit.From(time.Now())
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarModel, err = s.repo.Cars().CarModels().Update(
@@ -332,6 +362,12 @@ func (s *service) DeleteCarModel(
 	l.Debug("DeleteCarModel")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		err = s.repo.Cars().SimulationCarAliases().DeleteByModelID(
+			ctx, int32(req.Msg.GetCarModelId()),
+		)
+		if err != nil {
+			return err
+		}
 		err = s.repo.Cars().CarModels().DeleteByID(
 			ctx,
 			int32(req.Msg.GetCarModelId()),
@@ -347,6 +383,27 @@ func (s *service) DeleteCarModel(
 	return connect.NewResponse(&v1.DeleteCarModelResponse{
 		Deleted: true,
 	}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) createCarAliasSetters(
+	ctx context.Context,
+	carModelID int32,
+	aliases []*commonv1.SimulationAliases,
+) []*models.SimulationCarAliasSetter {
+	setters := make([]*models.SimulationCarAliasSetter, 0)
+	for _, item := range aliases {
+		for _, externalName := range item.Identifiers {
+			setters = append(setters, &models.SimulationCarAliasSetter{
+				CarModelID:   omit.From(carModelID),
+				SimulationID: omit.From(int32(item.SimulationId)),
+				ExternalName: omit.From(externalName),
+				CreatedBy:    omit.From(s.execUser(ctx)),
+				UpdatedBy:    omit.From(s.execUser(ctx)),
+			})
+		}
+	}
+	return setters
 }
 
 //nolint:whitespace,funlen // editor/linter issue

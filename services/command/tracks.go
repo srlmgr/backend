@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
+	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
@@ -190,7 +191,21 @@ func (s *service) CreateTrackLayout(
 		setter.CreatedBy = omit.From(s.execUser(ctx))
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newTrackLayout, err = s.repo.Tracks().TrackLayouts().Create(ctx, setter)
-		return err
+		if err != nil {
+			return err
+		}
+		setters := s.createTrackAliasSetters(
+			ctx,
+			newTrackLayout.ID,
+			req.Msg.GetSimulationAliases())
+		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
+			ReplaceForLayoutID(
+				ctx,
+				newTrackLayout.ID,
+				setters,
+			)
+		_ = aliases // currently not used
+		return aliasErr
 	}); txErr != nil {
 		l.Error("failed to create track layout", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create track layout")
@@ -215,6 +230,20 @@ func (s *service) UpdateTrackLayout(
 
 	var newTrackLayout *models.TrackLayout
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		setters := s.createTrackAliasSetters(
+			ctx,
+			int32(req.Msg.GetTrackLayoutId()),
+			req.Msg.GetSimulationAliases())
+		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
+			ReplaceForLayoutID(
+				ctx,
+				int32(req.Msg.GetTrackLayoutId()),
+				setters,
+			)
+		_ = aliases // currently not used
+		if aliasErr != nil {
+			return aliasErr
+		}
 		setter.UpdatedAt = omit.From(time.Now())
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newTrackLayout, err = s.repo.Tracks().TrackLayouts().Update(
@@ -236,6 +265,27 @@ func (s *service) UpdateTrackLayout(
 }
 
 //nolint:whitespace // editor/linter issue
+func (s *service) createTrackAliasSetters(
+	ctx context.Context,
+	layoutID int32,
+	aliases []*commonv1.SimulationAliases,
+) []*models.SimulationTrackLayoutAliasSetter {
+	setters := make([]*models.SimulationTrackLayoutAliasSetter, 0)
+	for _, item := range aliases {
+		for _, externalName := range item.Identifiers {
+			setters = append(setters, &models.SimulationTrackLayoutAliasSetter{
+				TrackLayoutID: omit.From(layoutID),
+				SimulationID:  omit.From(int32(item.SimulationId)),
+				ExternalName:  omit.From(externalName),
+				CreatedBy:     omit.From(s.execUser(ctx)),
+				UpdatedBy:     omit.From(s.execUser(ctx)),
+			})
+		}
+	}
+	return setters
+}
+
+//nolint:whitespace // editor/linter issue
 func (s *service) DeleteTrackLayout(
 	ctx context.Context,
 	req *connect.Request[v1.DeleteTrackLayoutRequest]) (
@@ -245,6 +295,13 @@ func (s *service) DeleteTrackLayout(
 	l.Debug("DeleteTrackLayout")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		err = s.repo.Tracks().SimulationTrackLayoutAliases().DeleteByLayoutID(
+			ctx,
+			int32(req.Msg.GetTrackLayoutId()),
+		)
+		if err != nil {
+			return err
+		}
 		err = s.repo.Tracks().TrackLayouts().DeleteByID(
 			ctx,
 			int32(req.Msg.GetTrackLayoutId()),

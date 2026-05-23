@@ -25,6 +25,7 @@ import (
 type TracksRepository interface {
 	LoadAll(ctx context.Context) ([]*models.Track, error)
 	LoadByID(ctx context.Context, id int32) (*models.Track, error)
+	LoadByIDs(ctx context.Context, ids []int32) ([]*models.Track, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TrackSetter) (*models.Track, error)
 	Update(ctx context.Context, id int32, input *models.TrackSetter) (*models.Track, error)
@@ -35,6 +36,7 @@ type TrackLayoutsRepository interface {
 	LoadAll(ctx context.Context) ([]*models.TrackLayout, error)
 	LoadByTrackID(ctx context.Context, trackID int32) ([]*models.TrackLayout, error)
 	LoadByID(ctx context.Context, id int32) (*models.TrackLayout, error)
+	LoadByIDs(ctx context.Context, ids []int32) ([]*models.TrackLayout, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.TrackLayoutSetter) (*models.TrackLayout, error)
 	Update(
@@ -47,6 +49,10 @@ type TrackLayoutsRepository interface {
 // SimulationTrackLayoutAliasesRepository defines persistence operations for SimulationTrackLayoutAlias entities.
 type SimulationTrackLayoutAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationTrackLayoutAlias, error)
+	LoadByLayoutID(
+		ctx context.Context,
+		layoutID int32,
+	) ([]*models.SimulationTrackLayoutAlias, error)
 	LoadBySimulationID(
 		ctx context.Context,
 		simID int32,
@@ -57,6 +63,12 @@ type SimulationTrackLayoutAliasesRepository interface {
 		aliases ...string,
 	) (*models.SimulationTrackLayoutAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByLayoutID(ctx context.Context, layoutID int32) error
+	ReplaceForLayoutID(
+		ctx context.Context,
+		layoutID int32,
+		aliases []*models.SimulationTrackLayoutAliasSetter,
+	) ([]*models.SimulationTrackLayoutAlias, error)
 	Create(
 		ctx context.Context,
 		input *models.SimulationTrackLayoutAliasSetter,
@@ -117,6 +129,16 @@ func (r *tracksRepository) LoadByID(ctx context.Context, id int32) (*models.Trac
 	return entity, err
 }
 
+func (r *tracksRepository) LoadByIDs(ctx context.Context, ids []int32) ([]*models.Track, error) {
+	entities, err := models.Tracks.Query(
+		sm.Where(models.Tracks.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids)))),
+	).All(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("tracks %v: %w", ids, repoerrors.ErrNotFound)
+	}
+	return entities, err
+}
+
 func (r *tracksRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.Tracks.Delete(dm.Where(models.Tracks.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
@@ -170,6 +192,19 @@ func (r *trackLayoutsRepository) LoadByID(
 	return entity, err
 }
 
+func (r *trackLayoutsRepository) LoadByIDs(
+	ctx context.Context,
+	ids []int32,
+) ([]*models.TrackLayout, error) {
+	entities, err := models.TrackLayouts.Query(
+		sm.Where(models.TrackLayouts.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids)))),
+	).All(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("track layouts %v: %w", ids, repoerrors.ErrNotFound)
+	}
+	return entities, err
+}
+
 func (r *trackLayoutsRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.TrackLayouts.Delete(dm.Where(models.TrackLayouts.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
@@ -214,14 +249,28 @@ func (r *simulationTrackLayoutAliasesRepository) LoadBySimulationID(
 	ctx context.Context,
 	simID int32,
 ) ([]*models.SimulationTrackLayoutAlias, error) {
-	entity, err := models.SimulationTrackLayoutAliases.
+	entities, err := models.SimulationTrackLayoutAliases.
 		Query(
 			sm.Where(
 				models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
 		).
 		All(ctx, r.getExecutor(ctx))
 
-	return entity, err
+	return entities, err
+}
+
+func (r *simulationTrackLayoutAliasesRepository) LoadByLayoutID(
+	ctx context.Context,
+	layoutID int32,
+) ([]*models.SimulationTrackLayoutAlias, error) {
+	entities, err := models.SimulationTrackLayoutAliases.
+		Query(
+			sm.Where(
+				models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID))),
+		).
+		All(ctx, r.getExecutor(ctx))
+
+	return entities, err
 }
 
 func (r *simulationTrackLayoutAliasesRepository) FindBySimID(
@@ -249,7 +298,18 @@ func (r *simulationTrackLayoutAliasesRepository) FindBySimID(
 }
 
 func (r *simulationTrackLayoutAliasesRepository) DeleteByID(ctx context.Context, id int32) error {
-	_, err := models.SimulationTrackLayoutAliases.Delete(dm.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id)))).
+	_, err := models.SimulationTrackLayoutAliases.Delete(
+		dm.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id)))).
+		Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *simulationTrackLayoutAliasesRepository) DeleteByLayoutID(
+	ctx context.Context,
+	layoutID int32,
+) error {
+	_, err := models.SimulationTrackLayoutAliases.Delete(
+		dm.Where(models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -274,6 +334,28 @@ func (r *simulationTrackLayoutAliasesRepository) Update(
 		return nil, fmt.Errorf("simulation track layout alias %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *simulationTrackLayoutAliasesRepository) ReplaceForLayoutID(
+	ctx context.Context,
+	layoutID int32,
+	aliases []*models.SimulationTrackLayoutAliasSetter,
+) ([]*models.SimulationTrackLayoutAlias, error) {
+	if err := r.DeleteByLayoutID(ctx, layoutID); err != nil {
+		return nil, err
+	}
+
+	var created []*models.SimulationTrackLayoutAlias
+	for _, alias := range aliases {
+		entity, err := models.SimulationTrackLayoutAliases.Insert(alias).
+			One(ctx, r.getExecutor(ctx))
+		if err != nil {
+			return nil, err
+		}
+		created = append(created, entity)
+	}
+
+	return created, nil
 }
 
 func (r *tracksRepository) getExecutor(ctx context.Context) bob.Executor {

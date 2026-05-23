@@ -185,9 +185,19 @@ func (s *service) GetCarModel(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
+	aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
+		LoadByModelID(ctx, int32(req.Msg.GetId()))
+	if aliasErr != nil {
+		l.Error("failed to load simulation car aliases", log.ErrorField(aliasErr))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to load simulation car aliases")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
+	}
+
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model loaded")
 	return connect.NewResponse(&queryv1.GetCarModelResponse{
-		CarModel: s.conversion.CarModelToCarModel(item),
+		CarModel:          s.conversion.CarModelToCarModel(item),
+		SimulationAliases: s.conversion.SimulationCarAliasToProto(aliases),
 	}), nil
 }
 

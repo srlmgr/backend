@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -295,6 +297,78 @@ func (s *Service) TrackLayoutToTrackLayout(model *models.TrackLayout) *commonv1.
 		LengthMeters:   model.LengthMeters.GetOr(0),
 		LayoutImageUrl: model.LayoutImageURL.GetOr(""),
 	}
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *Service) SimulationTrackAliasToProto(
+	items []*models.SimulationTrackLayoutAlias,
+) []*commonv1.SimulationAliases {
+	if len(items) == 0 {
+		return nil
+	}
+
+	grouped := lo.GroupBy(items, func(item *models.SimulationTrackLayoutAlias) int32 {
+		return item.SimulationID
+	})
+
+	simulationIDs := make([]int32, 0, len(grouped))
+	for simulationID := range grouped {
+		simulationIDs = append(simulationIDs, simulationID)
+	}
+	sort.Slice(simulationIDs, func(i, j int) bool {
+		return simulationIDs[i] < simulationIDs[j]
+	})
+
+	aliases := make([]*commonv1.SimulationAliases, 0, len(grouped))
+	for _, simulationID := range simulationIDs {
+		group := grouped[simulationID]
+		groupAliases := make([]string, 0, len(group))
+		for _, item := range group {
+			groupAliases = append(groupAliases, item.ExternalName)
+		}
+		sort.Strings(groupAliases)
+		aliases = append(aliases, &commonv1.SimulationAliases{
+			SimulationId: uint32(simulationID),
+			Identifiers:  groupAliases,
+		})
+	}
+	return aliases
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *Service) SimulationCarAliasToProto(
+	items []*models.SimulationCarAlias,
+) []*commonv1.SimulationAliases {
+	if len(items) == 0 {
+		return nil
+	}
+
+	grouped := lo.GroupBy(items, func(item *models.SimulationCarAlias) int32 {
+		return item.SimulationID
+	})
+
+	simulationIDs := make([]int32, 0, len(grouped))
+	for simulationID := range grouped {
+		simulationIDs = append(simulationIDs, simulationID)
+	}
+	sort.Slice(simulationIDs, func(i, j int) bool {
+		return simulationIDs[i] < simulationIDs[j]
+	})
+
+	aliases := make([]*commonv1.SimulationAliases, 0, len(grouped))
+	for _, simulationID := range simulationIDs {
+		group := grouped[simulationID]
+		groupAliases := make([]string, 0, len(group))
+		for _, item := range group {
+			groupAliases = append(groupAliases, item.ExternalName)
+		}
+		sort.Strings(groupAliases)
+		aliases = append(aliases, &commonv1.SimulationAliases{
+			SimulationId: uint32(simulationID),
+			Identifiers:  groupAliases,
+		})
+	}
+	return aliases
 }
 
 // CarManufacturerToCarManufacturer converts a CarManufacturer model to a
