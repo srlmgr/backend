@@ -53,6 +53,7 @@ func (s *service) ListTrackLayouts(
 	}), nil
 }
 
+//nolint:whitespace //  editor/linter issue
 func (s *service) toTrackLayoutContainers(
 	items []*rootrepo.TrackLayoutContainer,
 ) []*queryv1.TrackLayoutContainer {

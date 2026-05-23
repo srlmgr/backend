@@ -56,7 +56,7 @@ func (r *queryTrackLayouts) GetAll(
 	return containers, nil
 }
 
-//nolint:lll,whitespace // readability, editor/linter issue
+//nolint:whitespace // readability, editor/linter issue
 func (r *queryTrackLayouts) ForSimulationID(
 	ctx context.Context,
 	simulationID int32,
@@ -69,7 +69,8 @@ func (r *queryTrackLayouts) ForSimulationID(
 		psql.Select(
 			sm.Columns(tl.WithPrefix("track_layout."), t.WithPrefix("track.")),
 			sm.From(models.SimulationTrackLayoutAliases.Name().As(stla.Alias())),
-			sm.InnerJoin(models.TrackLayouts.Name().As(tl.Alias())).On(tl.ID.EQ(stla.TrackLayoutID)),
+			sm.InnerJoin(models.TrackLayouts.Name().As(tl.Alias())).
+				On(tl.ID.EQ(stla.TrackLayoutID)),
 			sm.InnerJoin(models.Tracks.Name().As(t.Alias())).On(t.ID.EQ(tl.TrackID)),
 			sm.Where(stla.SimulationID.EQ(psql.Arg(simulationID))),
 		),

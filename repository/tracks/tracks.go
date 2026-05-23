@@ -304,7 +304,10 @@ func (r *simulationTrackLayoutAliasesRepository) DeleteByID(ctx context.Context,
 	return err
 }
 
-func (r *simulationTrackLayoutAliasesRepository) DeleteByLayoutID(ctx context.Context, layoutID int32) error {
+func (r *simulationTrackLayoutAliasesRepository) DeleteByLayoutID(
+	ctx context.Context,
+	layoutID int32,
+) error {
 	_, err := models.SimulationTrackLayoutAliases.Delete(
 		dm.Where(models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID)))).
 		Exec(ctx, r.getExecutor(ctx))
