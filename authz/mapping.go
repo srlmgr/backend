@@ -85,6 +85,8 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 	frontendService := "backend.query.v1.FrontendService"
 	for _, method := range []string{
 		"ListSeasonsOverview",
+		"ListSeasonEvents",
+		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
 			Capability:     "query.read",

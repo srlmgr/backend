@@ -125,9 +125,19 @@ func (s *service) GetTrackLayout(
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track layout")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
+	aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
+		LoadByLayoutID(ctx, int32(req.Msg.GetId()))
+	if aliasErr != nil {
+		l.Error("failed to load track layout aliases", log.ErrorField(aliasErr))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to load track layout aliases")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
+	}
+
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layout loaded")
 
 	return connect.NewResponse(&queryv1.GetTrackLayoutResponse{
-		TrackLayout: s.conversion.TrackLayoutToTrackLayout(item),
+		TrackLayout:       s.conversion.TrackLayoutToTrackLayout(item),
+		SimulationAliases: s.conversion.SimulationTrackAliasToProto(aliases),
 	}), nil
 }
