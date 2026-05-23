@@ -15,6 +15,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/repository/helper"
 	"github.com/srlmgr/backend/services/conversion"
 )
 
@@ -156,6 +157,11 @@ func (s *service) DeleteEvent(
 	l.Debug("DeleteEvent")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		if relErr := helper.DeleteEventRelated(
+			ctx, int32(req.Msg.GetEventId())); relErr != nil {
+			return relErr
+		}
+
 		err = s.repo.Events().DeleteByID(
 			ctx,
 			int32(req.Msg.GetEventId()),

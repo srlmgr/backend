@@ -15,6 +15,7 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/repository/helper"
 	"github.com/srlmgr/backend/services/conversion"
 )
 
@@ -181,6 +182,11 @@ func (s *service) DeleteRace(
 	l.Debug("DeleteRace")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		if relErr := helper.DeleteRaceRelated(
+			ctx, int32(req.Msg.GetRaceId())); relErr != nil {
+			return relErr
+		}
+
 		err = s.repo.Races().Races().DeleteByID(
 			ctx,
 			int32(req.Msg.GetRaceId()),
@@ -279,6 +285,13 @@ func (s *service) DeleteRaceGrid(
 	l.Debug("DeleteRaceGrid")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		if relErr := helper.DeleteRaceGridRelated(
+			ctx,
+			int32(req.Msg.GetRaceGridId()),
+		); relErr != nil {
+			return relErr
+		}
+
 		err = s.repo.Races().RaceGrids().DeleteByID(
 			ctx,
 			int32(req.Msg.GetRaceGridId()),
