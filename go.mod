@@ -3,16 +3,16 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.19.2-20260520051157-8030a099413b.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260520051157-8030a099413b.1
 	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260520051157-8030a099413b.1
-	connectrpc.com/connect v1.19.2
+	connectrpc.com/connect v1.20.0
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.9.0
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/docker/go-connections v0.7.0
-	github.com/exaring/otelpgx v0.10.0
+	github.com/exaring/otelpgx v0.11.1
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx-gofrs-uuid v0.0.0-20230224015001-1d428863c2e2
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	github.com/stephenafamo/bob v0.43.0
+	github.com/stephenafamo/bob v0.44.0
 	github.com/stephenafamo/scan v0.7.0
 	github.com/testcontainers/testcontainers-go v0.42.0
 	go.opentelemetry.io/contrib/bridges/otelzap v0.18.0
