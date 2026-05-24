@@ -94,9 +94,26 @@ func newHTTPServer(
 		return nil, err
 	}
 
+	httpCapabilityAuthorizer, err := authz.NewCapabilityAuthorizer(ctx, cfg.Authz)
+	if err != nil {
+		return nil, fmt.Errorf("create http authorization evaluator: %w", err)
+	}
+
+	txManager := repository.NewBobTransactionFromPool(pool)
+	repo := pgRepos.New(pool)
+	importHandler := importservice.New(repo, txManager, logger.Named("services.import"))
+
 	mux := http.NewServeMux()
 	authnManager.RegisterHTTPHandlers(mux)
-	registerConnectHandlers(mux, pool, logger, handlerOptions...)
+	registerMultipartUploadHandler(
+		mux,
+		logger,
+		authnManager,
+		httpCapabilityAuthorizer,
+		repo,
+		importHandler,
+	)
+	registerConnectHandlers(mux, txManager, repo, logger, handlerOptions...)
 	registerHealthServer(mux)
 	registerReflectionServer(mux)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -196,13 +213,12 @@ func serveHTTPServer(
 //nolint:whitespace //editor/linter issue
 func registerConnectHandlers(
 	mux *http.ServeMux,
-	pool *pgxpool.Pool,
+	txManager repository.TransactionManager,
+	repo repository.Repository,
 	logger *log.Logger,
 	opts ...connect.HandlerOption,
 ) {
-	txManager := repository.NewBobTransactionFromPool(pool)
 	tracer := otel.Tracer("backend.server")
-	repo := pgRepos.New(pool)
 	adminPath, adminHandler := adminv1connect.NewAdminServiceHandler(
 		adminservice.New(repo, txManager, logger.Named("services.admin")),
 		opts...,
