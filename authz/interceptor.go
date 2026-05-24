@@ -21,11 +21,11 @@ type authorizer struct {
 }
 
 type policyInput struct {
-	Procedure      string          `json:"procedure"`
-	Capability     string          `json:"capability"`
-	AllowAnonymous bool            `json:"allowAnonymous"`
-	Principal      authn.Principal `json:"principal"`
-	Resource       ResourceScope   `json:"resource"`
+	Procedure      string           `json:"procedure"`
+	Capability     string           `json:"capability"`
+	AllowAnonymous bool             `json:"allowAnonymous"`
+	Principal      *authn.Principal `json:"principal"`
+	Resource       ResourceScope    `json:"resource"`
 }
 
 // NewInterceptor creates the authorization interceptor.
@@ -99,7 +99,7 @@ func (a *authorizer) authorize(ctx context.Context, req connect.AnyRequest) erro
 		Procedure:      req.Spec().Procedure,
 		Capability:     policy.Capability,
 		AllowAnonymous: policy.AllowAnonymous,
-		Principal:      principal,
+		Principal:      &principal,
 		Resource:       resourceScope,
 	}
 

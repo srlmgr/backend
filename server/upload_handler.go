@@ -29,6 +29,7 @@ const (
 	uploadRoutePathPattern = "POST /upload/{raceGridId}"
 )
 
+//nolint:lll // readability
 type currentPrincipalResolver interface {
 	CurrentPrincipalFromRequest(ctx context.Context, r *http.Request) (authn.Principal, bool, error)
 }
@@ -68,10 +69,13 @@ func registerMultipartUploadHandler(
 	mux.HandleFunc(uploadRoutePathPattern, handler.handleUpload)
 }
 
+//nolint:govet,funlen // error handling by design
 func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
-	principal, found, err := h.principalResolver.CurrentPrincipalFromRequest(r.Context(), r)
+	principal, found, err := h.principalResolver.CurrentPrincipalFromRequest(
+		r.Context(), r)
 	if err != nil {
-		h.logger.WithCtx(r.Context()).Warn("resolve principal from request", log.ErrorField(err))
+		h.logger.WithCtx(r.Context()).Warn("resolve principal from request",
+			log.ErrorField(err))
 		http.Error(w, "invalid session", http.StatusUnauthorized)
 		return
 	}
@@ -97,10 +101,12 @@ func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.authorizer.Authorize(r.Context(), principal, uploadCapability, authz.ResourceScope{
-		SeriesID: strconv.FormatInt(int64(seriesID), 10),
-	}); err != nil {
-		h.logger.WithCtx(r.Context()).Warn("upload authorization denied", log.ErrorField(err))
+	if err := h.authorizer.Authorize(
+		r.Context(), &principal, uploadCapability, authz.ResourceScope{
+			SeriesID: strconv.FormatInt(int64(seriesID), 10),
+		}); err != nil {
+		h.logger.WithCtx(r.Context()).Warn("upload authorization denied",
+			log.ErrorField(err))
 		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
@@ -130,11 +136,16 @@ func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Req
 		"raceGridId":      resp.Msg.GetRaceGridId(),
 		"processingState": resp.Msg.GetProcessingState(),
 	}); encodeErr != nil {
-		h.logger.WithCtx(r.Context()).Warn("encode upload response", log.ErrorField(encodeErr))
+		h.logger.WithCtx(r.Context()).Warn("encode upload response",
+			log.ErrorField(encodeErr))
 	}
 }
 
-func (h *multipartUploadHandler) resolveSeriesID(ctx context.Context, raceGridID int32) (int32, error) {
+//nolint:whitespace // editor/linter issue
+func (h *multipartUploadHandler) resolveSeriesID(
+	ctx context.Context,
+	raceGridID int32,
+) (int32, error) {
 	event, err := h.repo.Events().LoadByGridID(ctx, raceGridID)
 	if err != nil {
 		return 0, err
@@ -162,7 +173,10 @@ func parseRaceGridID(r *http.Request) (int32, error) {
 	return int32(gridID64), nil
 }
 
-func parseMultipartUploadRequest(r *http.Request) (commonv1.ImportFormat, []byte, error) {
+//nolint:whitespace // editor/linter issue
+func parseMultipartUploadRequest(r *http.Request) (
+	commonv1.ImportFormat, []byte, error,
+) {
 	if err := r.ParseMultipartForm(uploadMultipartMaxMem); err != nil {
 		return 0, nil, fmt.Errorf("invalid multipart form data")
 	}
@@ -226,7 +240,10 @@ func openUploadPayload(r *http.Request) (commonv1.ImportFormat, multipartFile, e
 	return 0, nil, fmt.Errorf("file form field is required")
 }
 
-func detectImportFormatFromPartHeader(header *multipart.FileHeader) (commonv1.ImportFormat, error) {
+//nolint:whitespace // editor/linter issue
+func detectImportFormatFromPartHeader(
+	header *multipart.FileHeader,
+) (commonv1.ImportFormat, error) {
 	if header == nil {
 		return 0, fmt.Errorf("file content type is required")
 	}
@@ -247,11 +264,15 @@ func detectImportFormatFromPartHeader(header *multipart.FileHeader) (commonv1.Im
 func detectImportFormatFromMediaType(mediaType string) (commonv1.ImportFormat, error) {
 	normalized := strings.ToLower(strings.TrimSpace(mediaType))
 	switch {
-	case normalized == "application/json", normalized == "text/json", strings.HasSuffix(normalized, "+json"):
+	case normalized == "application/json",
+		normalized == "text/json",
+		strings.HasSuffix(normalized, "+json"):
 		return commonv1.ImportFormat_IMPORT_FORMAT_JSON, nil
 	case normalized == "text/csv", normalized == "application/csv":
 		return commonv1.ImportFormat_IMPORT_FORMAT_CSV, nil
-	case normalized == "application/xml", normalized == "text/xml", strings.HasSuffix(normalized, "+xml"):
+	case normalized == "application/xml",
+		normalized == "text/xml",
+		strings.HasSuffix(normalized, "+xml"):
 		return commonv1.ImportFormat_IMPORT_FORMAT_XML, nil
 	default:
 		return 0, fmt.Errorf("unsupported file content type %q", mediaType)
@@ -274,7 +295,7 @@ func writeUploadServiceError(w http.ResponseWriter, err error) {
 	if message == "" {
 		message = "upload failed"
 	}
-
+	//nolint:exhaustive // only map expected error codes, default to 500 for others
 	switch connectErr.Code() {
 	case connect.CodeInvalidArgument:
 		http.Error(w, message, http.StatusBadRequest)

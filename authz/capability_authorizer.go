@@ -16,6 +16,8 @@ type CapabilityAuthorizer struct {
 
 // NewCapabilityAuthorizer creates a capability-based authorizer that uses the
 // same OPA policy as the Connect interceptor.
+//
+//nolint:whitespace // editor/linter issue
 func NewCapabilityAuthorizer(
 	ctx context.Context,
 	cfg Config,
@@ -38,9 +40,11 @@ func NewCapabilityAuthorizer(
 
 // Authorize evaluates whether the given principal can use capability within
 // the provided resource scope.
+//
+//nolint:whitespace // editor/linter issue
 func (a *CapabilityAuthorizer) Authorize(
 	ctx context.Context,
-	principal authn.Principal,
+	principal *authn.Principal,
 	capability string,
 	scope ResourceScope,
 ) error {

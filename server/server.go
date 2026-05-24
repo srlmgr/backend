@@ -71,7 +71,7 @@ func getLogger(ctx context.Context) *log.Logger {
 	return log.Default()
 }
 
-//nolint:whitespace //editor/linter issue
+//nolint:whitespace,funlen //editor/linter issue
 func newHTTPServer(
 	ctx context.Context,
 	cfg *Config,

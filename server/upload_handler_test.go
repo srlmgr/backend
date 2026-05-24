@@ -1,8 +1,10 @@
+//nolint:lll,noctx,govet // test code, by design
 package server
 
 import (
 	"bytes"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"net/textproto"
 	"strings"
@@ -12,7 +14,7 @@ import (
 )
 
 func TestParseRaceGridID(t *testing.T) {
-	req := httptest.NewRequest("POST", "/upload/123", nil)
+	req := httptest.NewRequest("POST", "/upload/123", http.NoBody)
 	req.SetPathValue("raceGridId", "123")
 
 	got, err := parseRaceGridID(req)
@@ -31,8 +33,16 @@ func TestDetectImportFormatFromMediaType(t *testing.T) {
 		want      commonv1.ImportFormat
 		wantErr   bool
 	}{
-		{name: "json", mediaType: "application/json", want: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
-		{name: "json with suffix", mediaType: "application/vnd.api+json", want: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
+		{
+			name:      "json",
+			mediaType: "application/json",
+			want:      commonv1.ImportFormat_IMPORT_FORMAT_JSON,
+		},
+		{
+			name:      "json with suffix",
+			mediaType: "application/vnd.api+json",
+			want:      commonv1.ImportFormat_IMPORT_FORMAT_JSON,
+		},
 		{name: "csv", mediaType: "text/csv", want: commonv1.ImportFormat_IMPORT_FORMAT_CSV},
 		{name: "xml", mediaType: "application/xml", want: commonv1.ImportFormat_IMPORT_FORMAT_XML},
 		{name: "unsupported", mediaType: "application/octet-stream", wantErr: true},
@@ -84,7 +94,11 @@ func TestParseMultipartUploadRequest(t *testing.T) {
 		t.Fatalf("parseMultipartUploadRequest returned error: %v", err)
 	}
 	if gotFormat != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
-		t.Fatalf("unexpected format: got %v want %v", gotFormat, commonv1.ImportFormat_IMPORT_FORMAT_JSON)
+		t.Fatalf(
+			"unexpected format: got %v want %v",
+			gotFormat,
+			commonv1.ImportFormat_IMPORT_FORMAT_JSON,
+		)
 	}
 	if string(payload) != "{\"ok\":true}" {
 		t.Fatalf("unexpected payload: %q", payload)
