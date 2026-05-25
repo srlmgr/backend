@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,6 +46,10 @@ type multipartUploadHandler struct {
 	authorizer        *authz.CapabilityAuthorizer
 	repo              rootrepo.Repository
 	service           uploadResultsService
+}
+type importData struct {
+	format  commonv1.ImportFormat
+	payload []byte
 }
 
 //nolint:whitespace // multiline signature for line-length compliance
@@ -111,30 +114,37 @@ func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	format, payload, err := parseMultipartUploadRequest(r)
+	uploads, err := parseMultipartUploadRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	resp, err := h.service.UploadResultsFile(
-		authn.AddPrincipal(r.Context(), &principal),
-		connect.NewRequest(&importv1.UploadResultsFileRequest{
-			RaceGridId:   uint32(raceGridID),
-			ImportFormat: format,
-			Payload:      payload,
-		}),
-	)
-	if err != nil {
-		writeUploadServiceError(w, err)
-		return
+	processingStates := make([]any, 0, len(uploads))
+	for i := range uploads {
+		upload := uploads[i]
+		resp, serviceErr := h.service.UploadResultsFile(
+			authn.AddPrincipal(r.Context(), &principal),
+			connect.NewRequest(&importv1.UploadResultsFileRequest{
+				RaceGridId:   uint32(raceGridID),
+				ImportFormat: upload.format,
+				Payload:      upload.payload,
+			}),
+		)
+		if serviceErr != nil {
+			writeUploadServiceError(w, serviceErr)
+			return
+		}
+
+		processingStates = append(processingStates, resp.Msg.GetProcessingState())
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if encodeErr := json.NewEncoder(w).Encode(map[string]any{
-		"raceGridId":      resp.Msg.GetRaceGridId(),
-		"processingState": resp.Msg.GetProcessingState(),
+		"raceGridId":       raceGridID,
+		"uploadedParts":    len(uploads),
+		"processingStates": processingStates,
 	}); encodeErr != nil {
 		h.logger.WithCtx(r.Context()).Warn("encode upload response",
 			log.ErrorField(encodeErr))
@@ -173,82 +183,63 @@ func parseRaceGridID(r *http.Request) (int32, error) {
 	return int32(gridID64), nil
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue, much to do
 func parseMultipartUploadRequest(r *http.Request) (
-	commonv1.ImportFormat, []byte, error,
+	[]importData, error,
 ) {
-	if err := r.ParseMultipartForm(uploadMultipartMaxMem); err != nil {
-		return 0, nil, fmt.Errorf("invalid multipart form data")
-	}
-
-	format, file, err := openUploadPayload(r)
+	reader, err := r.MultipartReader()
 	if err != nil {
-		return 0, nil, err
-	}
-	defer file.Close()
-
-	payload, err := io.ReadAll(file)
-	if err != nil {
-		return 0, nil, fmt.Errorf("read upload payload: %w", err)
-	}
-	if len(payload) == 0 {
-		return 0, nil, fmt.Errorf("payload is required")
+		return nil, fmt.Errorf("invalid multipart form data")
 	}
 
-	return format, payload, nil
-}
-
-func openUploadPayload(r *http.Request) (commonv1.ImportFormat, multipartFile, error) {
-	for _, field := range []string{"file", "payload"} {
-		file, header, err := r.FormFile(field)
-		if err == nil {
-			format, detectErr := detectImportFormatFromPartHeader(header)
-			if detectErr != nil {
-				file.Close()
-				return 0, nil, detectErr
-			}
-			return format, file, nil
+	uploads := make([]importData, 0, 1)
+	for {
+		part, nextErr := reader.NextPart()
+		if errors.Is(nextErr, io.EOF) {
+			break
 		}
-		if !errors.Is(err, http.ErrMissingFile) {
-			return 0, nil, fmt.Errorf("read multipart file %q: %w", field, err)
+		if nextErr != nil {
+			return nil, fmt.Errorf("read multipart part: %w", nextErr)
 		}
-	}
 
-	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
-		return 0, nil, fmt.Errorf("file form field is required")
-	}
-
-	for _, headers := range r.MultipartForm.File {
-		if len(headers) == 0 {
+		// Skip non-file form fields and only process upload-like parts.
+		if strings.TrimSpace(part.FileName()) == "" &&
+			strings.TrimSpace(part.FormName()) != "file" &&
+			strings.TrimSpace(part.FormName()) != "payload" {
+			part.Close()
 			continue
 		}
-		header := headers[0]
-		file, err := header.Open()
-		if err != nil {
-			return 0, nil, fmt.Errorf("open multipart file: %w", err)
-		}
 
-		format, detectErr := detectImportFormatFromPartHeader(header)
+		format, detectErr := detectImportFormatFromContentType(
+			part.Header.Get("Content-Type"),
+		)
 		if detectErr != nil {
-			file.Close()
-			return 0, nil, detectErr
+			part.Close()
+			return nil, detectErr
 		}
 
-		return format, file, nil
+		payload, readErr := io.ReadAll(part)
+		part.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("read upload payload: %w", readErr)
+		}
+		if len(payload) == 0 {
+			return nil, fmt.Errorf("payload is required")
+		}
+
+		uploads = append(uploads, importData{format: format, payload: payload})
 	}
 
-	return 0, nil, fmt.Errorf("file form field is required")
+	if len(uploads) == 0 {
+		return nil, fmt.Errorf("file form field is required")
+	}
+
+	return uploads, nil
 }
 
-//nolint:whitespace // editor/linter issue
-func detectImportFormatFromPartHeader(
-	header *multipart.FileHeader,
-) (commonv1.ImportFormat, error) {
-	if header == nil {
-		return 0, fmt.Errorf("file content type is required")
-	}
-
-	contentType := strings.TrimSpace(header.Header.Get("Content-Type"))
+//nolint:lll // readability
+func detectImportFormatFromContentType(contentType string) (commonv1.ImportFormat, error) {
+	contentType = strings.TrimSpace(contentType)
 	if contentType == "" {
 		return 0, fmt.Errorf("file content type is required")
 	}
@@ -277,11 +268,6 @@ func detectImportFormatFromMediaType(mediaType string) (commonv1.ImportFormat, e
 	default:
 		return 0, fmt.Errorf("unsupported file content type %q", mediaType)
 	}
-}
-
-type multipartFile interface {
-	io.Reader
-	io.Closer
 }
 
 func writeUploadServiceError(w http.ResponseWriter, err error) {

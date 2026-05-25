@@ -27,6 +27,7 @@ func defaultProcedurePolicies() map[string]ProcedurePolicy {
 	policies := map[string]ProcedurePolicy{}
 	addQueryPolicies(policies)
 	addFrontendPolicies(policies)
+	addBookingPolicies(policies)
 	addCommandPolicies(policies)
 	addImportPolicies(policies)
 	addAdminPolicies(policies)
@@ -89,6 +90,19 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
+			Capability:     "query.read",
+			AllowAnonymous: true,
+			Scope:          scopeNone,
+		}
+	}
+}
+
+func addBookingPolicies(policies map[string]ProcedurePolicy) {
+	bookingService := "backend.query.v1.BookingsService"
+	for _, method := range []string{
+		"GetBookingEntries",
+	} {
+		policies[procedure(bookingService, method)] = ProcedurePolicy{
 			Capability:     "query.read",
 			AllowAnonymous: true,
 			Scope:          scopeNone,

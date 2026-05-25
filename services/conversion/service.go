@@ -559,6 +559,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		AdminNotes:        model.AdminNotes.GetOr(""),
 		RawDriverName:     model.RawDriverName.GetOr(""),
 		RawTeamName:       model.RawTeamName.GetOr(""),
+		RawCarName:        model.RawCarName.GetOr(""),
 		IsGuestDriver:     model.IsGuestStarter,
 	}
 

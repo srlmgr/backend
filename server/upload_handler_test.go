@@ -1,4 +1,4 @@
-//nolint:lll,noctx,govet // test code, by design
+//nolint:lll,noctx,govet,funlen // test code, by design
 package server
 
 import (
@@ -89,19 +89,84 @@ func TestParseMultipartUploadRequest(t *testing.T) {
 	req := httptest.NewRequest("POST", "/upload/1", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	gotFormat, payload, err := parseMultipartUploadRequest(req)
+	uploads, err := parseMultipartUploadRequest(req)
 	if err != nil {
 		t.Fatalf("parseMultipartUploadRequest returned error: %v", err)
 	}
-	if gotFormat != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
+	if len(uploads) != 1 {
+		t.Fatalf("unexpected upload count: got %d want 1", len(uploads))
+	}
+	if uploads[0].format != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
 		t.Fatalf(
 			"unexpected format: got %v want %v",
-			gotFormat,
+			uploads[0].format,
 			commonv1.ImportFormat_IMPORT_FORMAT_JSON,
 		)
 	}
-	if string(payload) != "{\"ok\":true}" {
-		t.Fatalf("unexpected payload: %q", payload)
+	if string(uploads[0].payload) != "{\"ok\":true}" {
+		t.Fatalf("unexpected payload: %q", uploads[0].payload)
+	}
+}
+
+func TestParseMultipartUploadRequest_MultipleParts(t *testing.T) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	jsonPart, err := writer.CreatePart(textProtoMIMEHeader(
+		"form-data; name=\"file\"; filename=\"results.json\"",
+		"application/json",
+	))
+	if err != nil {
+		t.Fatalf("CreatePart returned error: %v", err)
+	}
+	if _, err := jsonPart.Write([]byte("{\"ok\":true}")); err != nil {
+		t.Fatalf("Write returned error: %v", err)
+	}
+
+	xmlPart, err := writer.CreatePart(textProtoMIMEHeader(
+		"form-data; name=\"payload\"; filename=\"results.xml\"",
+		"application/xml",
+	))
+	if err != nil {
+		t.Fatalf("CreatePart returned error: %v", err)
+	}
+	if _, err := xmlPart.Write([]byte("<ok>true</ok>")); err != nil {
+		t.Fatalf("Write returned error: %v", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close returned error: %v", err)
+	}
+
+	req := httptest.NewRequest("POST", "/upload/1", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	uploads, err := parseMultipartUploadRequest(req)
+	if err != nil {
+		t.Fatalf("parseMultipartUploadRequest returned error: %v", err)
+	}
+	if len(uploads) != 2 {
+		t.Fatalf("unexpected upload count: got %d want 2", len(uploads))
+	}
+	if uploads[0].format != commonv1.ImportFormat_IMPORT_FORMAT_JSON {
+		t.Fatalf(
+			"unexpected first format: got %v want %v",
+			uploads[0].format,
+			commonv1.ImportFormat_IMPORT_FORMAT_JSON,
+		)
+	}
+	if string(uploads[0].payload) != "{\"ok\":true}" {
+		t.Fatalf("unexpected first payload: %q", uploads[0].payload)
+	}
+	if uploads[1].format != commonv1.ImportFormat_IMPORT_FORMAT_XML {
+		t.Fatalf(
+			"unexpected second format: got %v want %v",
+			uploads[1].format,
+			commonv1.ImportFormat_IMPORT_FORMAT_XML,
+		)
+	}
+	if string(uploads[1].payload) != "<ok>true</ok>" {
+		t.Fatalf("unexpected second payload: %q", uploads[1].payload)
 	}
 }
 
@@ -126,7 +191,7 @@ func TestParseMultipartUploadRequest_MissingFileContentType(t *testing.T) {
 	req := httptest.NewRequest("POST", "/upload/1", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	_, _, err = parseMultipartUploadRequest(req)
+	_, err = parseMultipartUploadRequest(req)
 	if err == nil {
 		t.Fatal("expected error for missing file content type")
 	}

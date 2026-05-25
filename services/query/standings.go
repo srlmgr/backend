@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"errors"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
@@ -95,8 +94,10 @@ func (s *service) GetDriverStandings(
 			return booking.DriverID.GetOrZero()
 		},
 	})
+	driverIDSet := make(map[int32]struct{})
 	for i := range computedStandings {
 		computedStanding := computedStandings[i]
+		driverIDSet[computedStanding.ReferenceID] = struct{}{}
 		items = append(items, &commonv1.DriverStanding{
 			DriverId:        uint32(computedStanding.ReferenceID),
 			EventId:         uint32(eventID),
@@ -104,13 +105,44 @@ func (s *service) GetDriverStandings(
 			DroppedEventIds: toUint32Slice(computedStanding.SkipEventIDs),
 		})
 	}
+
+	drivers, err := s.loadDrivers(ctx, lo.Keys(driverIDSet))
+	if err != nil {
+		l.Error("failed to load drivers", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load drivers")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
 	// TODO:remove
 	_ = event
 	_ = epi
 	_ = bookingEntries
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "driver standings computed")
-	return connect.NewResponse(&queryv1.GetDriverStandingsResponse{Standings: items}), nil
+	return connect.NewResponse(&queryv1.GetDriverStandingsResponse{
+		Standings: items,
+		Drivers:   drivers,
+	}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) loadDrivers(
+	ctx context.Context,
+	driverIDs []int32,
+) ([]*commonv1.Driver, error) {
+	driverItems, err := s.repo.Drivers().Drivers().LoadByIDs(ctx, driverIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*commonv1.Driver, 0, len(driverItems))
+	for _, item := range driverItems {
+		if converted := s.conversion.DriverToDriver(item); converted != nil {
+			items = append(items, converted)
+		}
+	}
+
+	return items, nil
 }
 
 func toUint32Slice(items []int32) []uint32 {
@@ -127,8 +159,7 @@ func (s *service) GetTeamStandings(
 	context.Context,
 	*connect.Request[queryv1.GetTeamStandingsRequest],
 ) (*connect.Response[queryv1.GetTeamStandingsResponse], error) {
-	return nil, connect.NewError(
-		connect.CodeUnimplemented,
-		errors.New("backend.query.v1.QueryService.GetTeamStandings is not implemented"),
-	)
+	return connect.NewResponse(&queryv1.GetTeamStandingsResponse{
+		Standings: []*commonv1.TeamStanding{},
+	}), nil
 }

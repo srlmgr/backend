@@ -224,7 +224,7 @@ func TestDeleteEventHelpersRequireExecutor(t *testing.T) {
 		{name: "DeleteEventImportBatches", fn: DeleteEventImportBatches},
 		{name: "DeleteEventDriverStandings", fn: DeleteEventDriverStandings},
 		{name: "DeleteEventTeamStandings", fn: DeleteEventTeamStandings},
-		{name: "DeleteEventProcessingAudit", fn: DeleteEventProcessingAudit},
+		{name: "DeleteEventProcessingAudit", fn: DeleteEventProcessingAuditForEvent},
 		{name: "DeleteRaceRelated", fn: DeleteRaceRelated},
 		{name: "DeleteRaceBookingEntries", fn: DeleteRaceBookingEntries},
 		{name: "DeleteRaceResultEntries", fn: DeleteRaceResultEntries},

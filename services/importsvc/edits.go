@@ -42,13 +42,13 @@ func (s *service) ApplyResultEdits(
 			errors.New("edited_rows must not be empty"))
 	}
 
-	race, err := s.repo.Races().Races().LoadByID(ctx, gridID)
+	// Load event to get current processing state.
+	event, err := s.repo.Events().LoadByGridID(ctx, gridID)
 	if err != nil {
-		l.Error("failed to load race", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
+		l.Error("failed to load event", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
-	eventID := race.EventID
 
 	// Resolve the import batch for the race.
 	batch, err := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
@@ -108,7 +108,7 @@ func (s *service) ApplyResultEdits(
 		// Advance event state.
 		_, updateErr = s.repo.Events().Update(
 			ctx,
-			eventID,
+			event.ID,
 			&models.EventSetter{
 				ProcessingState: omit.From(toState),
 				UpdatedAt:       omit.From(time.Now()),
@@ -122,7 +122,7 @@ func (s *service) ApplyResultEdits(
 		_, updateErr = s.repo.EventProcessingAudit().Create(
 			ctx,
 			&models.EventProcessingAuditSetter{
-				EventID:       omit.From(eventID),
+				EventID:       omit.From(event.ID),
 				ImportBatchID: omitnull.From(batch.ID),
 				FromState:     omitnull.From(fromState),
 				ToState:       omit.From(toState),

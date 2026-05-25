@@ -27,6 +27,7 @@ type Repository interface {
 	LoadByID(ctx context.Context, id int32) (*models.BookingEntry, error)
 	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.BookingEntry, error)
 	LoadByEventID(ctx context.Context, eventID int32) ([]*models.BookingEntry, error)
+	LoadByRaceGridID(ctx context.Context, raceGridID int32) ([]*models.BookingEntry, error)
 	LoadByEventIDAndSourceType(
 		ctx context.Context,
 		eventID int32,
@@ -147,6 +148,15 @@ func (r *bookingEntriesRepository) LoadByRaceID(
 ) ([]*models.BookingEntry, error) {
 	return models.BookingEntries.Query(
 		sm.Where(models.BookingEntries.Columns.RaceID.EQ(psql.Arg(raceID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *bookingEntriesRepository) LoadByRaceGridID(
+	ctx context.Context,
+	raceGridID int32,
+) ([]*models.BookingEntry, error) {
+	return models.BookingEntries.Query(
+		sm.Where(models.BookingEntries.Columns.RaceGridID.EQ(psql.Arg(raceGridID))),
 	).All(ctx, r.getExecutor(ctx))
 }
 
