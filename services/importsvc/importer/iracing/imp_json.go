@@ -125,7 +125,7 @@ func buildQualiBestLapMap(qualiSession *SimSession, hasQuali bool) map[string]in
 	for i := range qualiSession.Results {
 		r := &qualiSession.Results[i]
 		if r.BestLapTime > 0 {
-			m[resultKey(r)] = r.BestLapTime
+			m[resultKey(r)] = iRacingTimeToMillis(r.BestLapTime)
 		}
 	}
 
@@ -154,14 +154,14 @@ func mapResultRow(r *Result, hasRace, isTeamRace bool) *processor.ResultRow {
 		row.Laps = r.LapsComplete
 		row.LapsLed = r.LapsLead
 		row.Incidents = r.Incidents
-		row.TotalTime = r.AverageLap * r.LapsComplete
+		row.TotalTime = iRacingTimeToMillis(r.AverageLap) * r.LapsComplete
 		if r.BestLapTime > 0 {
-			row.FastestLapTime = r.BestLapTime
+			row.FastestLapTime = iRacingTimeToMillis(r.BestLapTime)
 		}
 	} else {
 		row.FinPos = r.FinishPosition + 1
 		if r.BestLapTime > 0 {
-			row.QualiLapTime = r.BestLapTime
+			row.QualiLapTime = iRacingTimeToMillis(r.BestLapTime)
 		}
 	}
 
@@ -222,7 +222,7 @@ func collectTeamDriverIDs(sessions []SimSession) TeamDriverIDs {
 					(existing.FastestLapTime == 0 ||
 						driver.BestLapTime < existing.FastestLapTime)
 				if isBetterBestLap {
-					existing.FastestLapTime = driver.BestLapTime
+					existing.FastestLapTime = iRacingTimeToMillis(driver.BestLapTime)
 				}
 				if driver.LapsComplete > existing.Laps {
 					existing.Laps = driver.LapsComplete
@@ -279,6 +279,11 @@ func formatTrackName(t Track) string {
 	}
 
 	return t.TrackName
+}
+
+// we need millis but iRacing provides microseconds
+func iRacingTimeToMillis(iTime int) int {
+	return iTime / 10
 }
 
 func payloadToEventResult(payload any) (*EventResultEnvelope, error) {

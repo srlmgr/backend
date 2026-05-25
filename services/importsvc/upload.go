@@ -64,7 +64,8 @@ func (s *service) UploadResultsFile(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	if !slices.Contains([]string{
+	// TODO: activate later if state check is in effect
+	if false && !slices.Contains([]string{
 		conversion.EventProcessingStateDraft,
 		conversion.EventProcessingStatePreprocessed,
 		conversion.EventProcessingStateMappingError,

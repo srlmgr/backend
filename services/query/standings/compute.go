@@ -134,7 +134,8 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 			case "qualification_pos", "least_incidents", "fastest_lap", "top_n_finishers":
 				eventData.bonusPoints += booking.Points
 			case "penalty_points":
-				eventData.penaltyPoints += booking.Points
+				// booking points are negative, for standings we want positives
+				eventData.penaltyPoints += -booking.Points
 			}
 		}
 

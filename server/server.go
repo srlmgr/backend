@@ -30,6 +30,7 @@ import (
 	commandservice "github.com/srlmgr/backend/services/command"
 	importservice "github.com/srlmgr/backend/services/importsvc"
 	queryservice "github.com/srlmgr/backend/services/query"
+	bookingservice "github.com/srlmgr/backend/services/query/bookings"
 	frontendservice "github.com/srlmgr/backend/services/query/frontend"
 )
 
@@ -239,12 +240,17 @@ func registerConnectHandlers(
 		frontendservice.New(repo, logger.Named("services.frontend"), tracer),
 		opts...,
 	)
+	bookingsPath, bookingsHandler := queryv1connect.NewBookingsServiceHandler(
+		bookingservice.New(repo, logger.Named("services.bookings"), tracer),
+		opts...,
+	)
 
 	mux.Handle(adminPath, adminHandler)
 	mux.Handle(commandPath, commandHandler)
 	mux.Handle(importPath, importHandler)
 	mux.Handle(queryPath, queryHandler)
 	mux.Handle(frontendPath, frontendHandler)
+	mux.Handle(bookingsPath, bookingsHandler)
 }
 
 func registerHealthServer(mux *http.ServeMux) {

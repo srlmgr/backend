@@ -87,11 +87,11 @@ func TestParseJSONRaceAndQualifying(t *testing.T) {
 	if row.FinPos != 1 || row.StartPos != 2 || row.Laps != 23 || row.LapsLed != 23 {
 		t.Fatalf("unexpected race mapping: %+v", row)
 	}
-	if row.FastestLapTime != 787479 {
-		t.Fatalf("unexpected fastest lap: got %d want %d", row.FastestLapTime, 787479)
+	if row.FastestLapTime != 78747 {
+		t.Fatalf("unexpected fastest lap: got %d want %d", row.FastestLapTime, 78747)
 	}
-	if row.QualiLapTime != 784241 {
-		t.Fatalf("unexpected quali lap: got %d want %d", row.QualiLapTime, 784241)
+	if row.QualiLapTime != 78424 {
+		t.Fatalf("unexpected quali lap: got %d want %d", row.QualiLapTime, 78424)
 	}
 }
 
@@ -144,7 +144,7 @@ func TestParseJSONQualifyingOnlyType6(t *testing.T) {
 		t.Fatalf("unexpected result count: got %d want %d", len(parsed.Results), 1)
 	}
 	row := parsed.Results[0]
-	if row.FinPos != 1 || row.QualiLapTime != 1119626 {
+	if row.FinPos != 1 || row.QualiLapTime != 111962 {
 		t.Fatalf("unexpected quali mapping: %+v", row)
 	}
 }
@@ -247,8 +247,8 @@ func TestParseJSONTeamDriversFromAllSessions(t *testing.T) {
 	if row.TeamID != "-385239" {
 		t.Fatalf("unexpected team ids: got team=%q ", row.TeamID)
 	}
-	if row.QualiLapTime != 1119626 {
-		t.Fatalf("unexpected quali lap: got %d want %d", row.QualiLapTime, 1119626)
+	if row.QualiLapTime != 111962 {
+		t.Fatalf("unexpected quali lap: got %d want %d", row.QualiLapTime, 111962)
 	}
 
 	wantDrivers := []string{"111", "222", "333"}

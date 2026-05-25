@@ -34,7 +34,7 @@ func DeleteEventRelated(
 	if err := DeleteEventTeamStandings(ctx, eventID); err != nil {
 		return err
 	}
-	if err := DeleteEventProcessingAudit(ctx, eventID); err != nil {
+	if err := DeleteEventProcessingAuditForEvent(ctx, eventID); err != nil {
 		return err
 	}
 	if err := DeleteEventResultEntries(ctx, eventID); err != nil {
@@ -181,7 +181,7 @@ func DeleteEventTeamStandings(
 }
 
 //nolint:whitespace //editor/linter issue
-func DeleteEventProcessingAudit(
+func DeleteEventProcessingAuditForEvent(
 	ctx context.Context,
 	eventID int32,
 ) error {
@@ -197,6 +197,54 @@ func DeleteEventProcessingAudit(
 }
 
 //nolint:whitespace //editor/linter issue
+func DeleteEventProcessingAuditForRace(
+	ctx context.Context,
+	raceID int32,
+) error {
+	var executor bob.Executor
+	if executor = pgbob.FromContext(ctx); executor == nil {
+		return ErrNoBobExecutorInContext
+	}
+
+	subRaceGridIDs := psql.Select(
+		sm.Columns(models.RaceGrids.Columns.ID),
+		sm.From(models.RaceGrids.Name()),
+		models.SelectJoins.RaceGrids.InnerJoin.Race,
+		models.SelectWhere.Races.ID.EQ(raceID),
+	)
+
+	subQuery := psql.Select(
+		sm.Columns(models.ImportBatches.Columns.ID),
+		sm.From(models.ImportBatches.Name()),
+		sm.Where(models.ImportBatches.Columns.RaceGridID.In(subRaceGridIDs)),
+	)
+	_, err := models.EventProcessingAudits.Delete(
+		dm.Where(models.EventProcessingAudits.Columns.ImportBatchID.In(subQuery)),
+	).Exec(ctx, bob.Debug(executor))
+	return err
+}
+
+//nolint:whitespace //editor/linter issue
+func DeleteEventProcessingAuditForRaceGrid(
+	ctx context.Context,
+	raceGridID int32,
+) error {
+	var executor bob.Executor
+	if executor = pgbob.FromContext(ctx); executor == nil {
+		return ErrNoBobExecutorInContext
+	}
+	subQuery := psql.Select(
+		sm.Columns(models.ImportBatches.Columns.ID),
+		sm.From(models.ImportBatches.Name()),
+		models.SelectWhere.ImportBatches.RaceGridID.EQ(raceGridID),
+	)
+	_, err := models.EventProcessingAudits.Delete(
+		dm.Where(models.EventProcessingAudits.Columns.ImportBatchID.In(subQuery)),
+	).Exec(ctx, executor)
+	return err
+}
+
+//nolint:whitespace //editor/linter issue
 func DeleteRaceRelated(
 	ctx context.Context,
 	raceID int32,
@@ -205,6 +253,9 @@ func DeleteRaceRelated(
 		return err
 	}
 	if err := DeleteRaceResultEntries(ctx, raceID); err != nil {
+		return err
+	}
+	if err := DeleteEventProcessingAuditForRace(ctx, raceID); err != nil {
 		return err
 	}
 	if err := DeleteRaceImportBatches(ctx, raceID); err != nil {
@@ -301,6 +352,9 @@ func DeleteRaceGridRelated(
 		return err
 	}
 	if err := DeleteRaceGridResultEntries(ctx, raceGridID); err != nil {
+		return err
+	}
+	if err := DeleteEventProcessingAuditForRaceGrid(ctx, raceGridID); err != nil {
 		return err
 	}
 	if err := DeleteRaceGridImportBatches(ctx, raceGridID); err != nil {
