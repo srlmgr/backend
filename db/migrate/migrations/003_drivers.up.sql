@@ -24,6 +24,7 @@ CREATE TABLE simulation_driver_aliases (
     updated_by text NOT NULL DEFAULT 'system'
 );
 
+
 ALTER TABLE drivers
     ADD CONSTRAINT drivers_frontend_id_unique UNIQUE (frontend_id);
 
@@ -43,9 +44,11 @@ ALTER TABLE simulation_driver_aliases
     ADD CONSTRAINT simulation_driver_aliases_simulation_id_driver_key_unique
     UNIQUE (simulation_id, simulation_driver_id);
 
+
 CREATE INDEX idx_drivers_name ON drivers (name);
 CREATE INDEX idx_drivers_is_active ON drivers (is_active);
 CREATE INDEX idx_simulation_driver_aliases_driver_id ON simulation_driver_aliases (driver_id);
 CREATE INDEX idx_simulation_driver_aliases_simulation_id ON simulation_driver_aliases (simulation_id);
+
 
 COMMIT;
