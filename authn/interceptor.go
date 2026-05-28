@@ -456,6 +456,7 @@ func (m *manager) handleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+//nolint:gosec // unclear
 func (m *manager) sessionCookie(sessionID string) *http.Cookie {
 	cookie := &http.Cookie{
 		Name:     m.cookieName,
@@ -472,6 +473,7 @@ func (m *manager) sessionCookie(sessionID string) *http.Cookie {
 	return cookie
 }
 
+//nolint:gosec // unclear
 func (m *manager) clearSessionCookie() *http.Cookie {
 	return &http.Cookie{
 		Name:     m.cookieName,

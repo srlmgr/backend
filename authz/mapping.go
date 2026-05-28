@@ -116,6 +116,7 @@ func addCommandPolicies(policies map[string]ProcedurePolicy) {
 	addMasterDataCommandPolicies(policies)
 }
 
+//nolint:funlen // long list
 func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 	commandService := commandServiceName
 	for _, method := range []string{
@@ -135,6 +136,10 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"UpdateDriver",
 		"DeleteDriver",
 		"SetSimulationDriverAliases",
+		"AddSeasonDriver",
+		"RemoveSeasonDriver",
+		"DeleteSeasonDriver",
+		"SetSeasonDrivers",
 		"CreateCarClass",
 		"UpdateCarClass",
 		"DeleteCarClass",
