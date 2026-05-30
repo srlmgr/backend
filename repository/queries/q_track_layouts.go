@@ -35,8 +35,8 @@ func (r *queryTrackLayouts) GetAll(
 	rows, err := bob.All(ctx, r.getExecutor(ctx),
 		psql.Select(
 			sm.Columns(tl.WithPrefix("track_layout."), t.WithPrefix("track.")),
-			sm.From(models.TrackLayouts.Name().As(tl.Alias())),
-			sm.InnerJoin(models.Tracks.Name().As(t.Alias())).On(t.ID.EQ(tl.TrackID)),
+			sm.From(models.TrackLayouts.NameExpr().As(tl.Alias())),
+			sm.InnerJoin(models.Tracks.NameExpr().As(t.Alias())).On(t.ID.EQ(tl.TrackID)),
 		),
 		scan.StructMapper[qTLData](),
 	)
@@ -68,10 +68,10 @@ func (r *queryTrackLayouts) ForSimulationID(
 	rows, err := bob.All(ctx, r.getExecutor(ctx),
 		psql.Select(
 			sm.Columns(tl.WithPrefix("track_layout."), t.WithPrefix("track.")),
-			sm.From(models.SimulationTrackLayoutAliases.Name().As(stla.Alias())),
-			sm.InnerJoin(models.TrackLayouts.Name().As(tl.Alias())).
+			sm.From(models.SimulationTrackLayoutAliases.NameExpr().As(stla.Alias())),
+			sm.InnerJoin(models.TrackLayouts.NameExpr().As(tl.Alias())).
 				On(tl.ID.EQ(stla.TrackLayoutID)),
-			sm.InnerJoin(models.Tracks.Name().As(t.Alias())).On(t.ID.EQ(tl.TrackID)),
+			sm.InnerJoin(models.Tracks.NameExpr().As(t.Alias())).On(t.ID.EQ(tl.TrackID)),
 			sm.Where(stla.SimulationID.EQ(psql.Arg(simulationID))),
 		),
 		scan.StructMapper[qTLData](),
