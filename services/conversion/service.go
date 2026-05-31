@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
@@ -438,6 +439,33 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 		Name:       model.Name,
 		IsActive:   model.IsActive,
 	}
+}
+
+// SeasonDriverToSeasonDriver converts a SeasonDriver model to a SeasonDriver
+// message.
+//
+//nolint:whitespace // editor/linter issue
+func (s *Service) SeasonDriverToSeasonDriver(
+	model *models.SeasonDriver,
+) *commonv1.SeasonDriver {
+	if model == nil {
+		return nil
+	}
+
+	seasonDriver := &commonv1.SeasonDriver{
+		Id:         uint32(model.ID),
+		DriverId:   uint32(model.DriverID),
+		SeasonId:   uint32(model.SeasonID),
+		CarModelId: strconv.FormatInt(int64(model.CarModelID), 10),
+		CarNumber:  model.CarNumber,
+		JoinedAt:   timestamppb.New(model.JoinedAt),
+	}
+
+	if value := model.LeftAt.Ptr(); value != nil {
+		seasonDriver.LeftAt = timestamppb.New(*value)
+	}
+
+	return seasonDriver
 }
 
 // TeamToTeam converts a Team model to a Team message.

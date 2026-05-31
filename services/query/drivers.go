@@ -100,6 +100,29 @@ func (s *service) GetDriver(
 	return connect.NewResponse(response), nil
 }
 
+// GetSeasonDriver returns a season driver by ID.
+//
+//nolint:whitespace,dupl // editor/linter issue, dupl with other services likely
+func (s *service) GetSeasonDriver(
+	ctx context.Context,
+	req *connect.Request[queryv1.GetSeasonDriverRequest],
+) (*connect.Response[queryv1.GetSeasonDriverResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("GetSeasonDriver", log.Uint32("id", req.Msg.GetId()))
+
+	item, err := s.repo.Drivers().SeasonDrivers().LoadByID(ctx, int32(req.Msg.GetId()))
+	if err != nil {
+		l.Error("failed to load season driver", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season driver")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season driver loaded")
+	return connect.NewResponse(&queryv1.GetSeasonDriverResponse{
+		SeasonDriver: s.conversion.SeasonDriverToSeasonDriver(item),
+	}), nil
+}
+
 //nolint:whitespace // editor/linter issue
 func simulationDriverAliasesToProto(
 	items []*models.SimulationDriverAlias,

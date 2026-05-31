@@ -34,6 +34,7 @@ func defaultProcedurePolicies() map[string]ProcedurePolicy {
 	return policies
 }
 
+//nolint:funlen // long list of policies
 func addQueryPolicies(policies map[string]ProcedurePolicy) {
 	queryService := "backend.query.v1.QueryService"
 	for _, method := range []string{
@@ -49,6 +50,7 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetRace",
 		"GetRaceGrid",
 		"GetDriver",
+		"GetSeasonDriver",
 		"GetTeam",
 		"GetResultEntry",
 		"GetSummary",
@@ -87,6 +89,7 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 	for _, method := range []string{
 		"ListSeasonsOverview",
 		"ListSeasonEvents",
+		"ListSeasonDrivers",
 		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
