@@ -3,8 +3,8 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260530162519-f414c68b4b7b.1
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260530162519-f414c68b4b7b.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260604070610-ceee650b2a6f.1
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260604070610-ceee650b2a6f.1
 	connectrpc.com/connect v1.20.0
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
@@ -16,7 +16,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx-gofrs-uuid v0.0.0-20230224015001-1d428863c2e2
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lib/pq v1.12.3
 	github.com/open-policy-agent/opa v1.17.0
