@@ -53,6 +53,18 @@ func (s *service) CreateTeam(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateTeam")
 	setter := (teamSetterBuilder{}).Build(req.Msg)
+	if carModelID := int32(req.Msg.GetCarModelId()); carModelID > 0 {
+		setter.CarModelID = omitnull.From(carModelID)
+	}
+	if carNumber := req.Msg.GetCarNumber(); carNumber != "" {
+		setter.CarNumber = omitnull.From(carNumber)
+	}
+	if req.Msg.HasJoinedAt() {
+		setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())
+	}
+	if req.Msg.HasLeftAt() {
+		setter.LeftAt = omitnull.From(req.Msg.GetLeftAt().AsTime())
+	}
 
 	var newTeam *models.Team
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -81,6 +93,18 @@ func (s *service) UpdateTeam(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateTeam")
 	setter := (teamSetterBuilder{}).Build(req.Msg)
+	if carModelID := int32(req.Msg.GetCarModelId()); carModelID > 0 {
+		setter.CarModelID = omitnull.From(carModelID)
+	}
+	if carNumber := req.Msg.GetCarNumber(); carNumber != "" {
+		setter.CarNumber = omitnull.From(carNumber)
+	}
+	if req.Msg.HasJoinedAt() {
+		setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())
+	}
+	if req.Msg.HasLeftAt() {
+		setter.LeftAt = omitnull.From(req.Msg.GetLeftAt().AsTime())
+	}
 
 	var newTeam *models.Team
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -114,6 +138,13 @@ func (s *service) DeleteTeam(
 	l.Debug("DeleteTeam")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		err = s.repo.Teams().TeamDrivers().DeleteByTeamID(
+			ctx,
+			int32(req.Msg.GetTeamId()),
+		)
+		if err != nil {
+			return err
+		}
 		err = s.repo.Teams().Teams().DeleteByID(
 			ctx,
 			int32(req.Msg.GetTeamId()),
@@ -148,11 +179,20 @@ func (s *service) SetTeamMembers(
 		if err != nil {
 			return err
 		}
-		for _, driverID := range req.Msg.GetDriverIds() {
-			_, err = s.repo.Teams().TeamDrivers().Create(ctx, &models.TeamDriverSetter{
+		for _, member := range req.Msg.GetMembers() {
+			tdSetter := &models.TeamDriverSetter{
 				TeamID:   omit.From(int32(req.Msg.GetTeamId())),
-				DriverID: omit.From(int32(driverID)),
-			})
+				DriverID: omit.From(int32(member.GetDriverId())),
+			}
+			if member.HasJoinedAt() {
+				tdSetter.JoinedAt = omit.From(member.GetJoinedAt().AsTime())
+			} else {
+				tdSetter.JoinedAt = omit.From(time.Now())
+			}
+			if member.HasLeftAt() {
+				tdSetter.LeftAt = omitnull.From(member.GetLeftAt().AsTime())
+			}
+			_, err = s.repo.Teams().TeamDrivers().Create(ctx, tdSetter)
 			if err != nil {
 				return err
 			}
@@ -188,21 +228,23 @@ func (s *service) AddTeamMember(
 			codes.Error, "failed to load current team members")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
-	for _, member := range currentMembers {
-		if member.DriverID == int32(req.Msg.GetDriverId()) {
-			l.Debug("driver is already a team member, skipping")
-			trace.SpanFromContext(ctx).SetStatus(
-				codes.Ok, "driver is already a team member, skipping")
-			return connect.NewResponse(&v1.AddTeamMemberResponse{}), nil
-		}
-	}
+	_ = currentMembers // TODO: maybe check if data for overlap existing member
+
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
+		setter := &models.TeamDriverSetter{
+			TeamID:   omit.From(int32(req.Msg.GetTeamId())),
+			DriverID: omit.From(int32(req.Msg.GetDriverId())),
+		}
+		if req.Msg.HasJoinedAt() {
+			setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())
+		} else {
+			setter.JoinedAt = omit.From(time.Now())
+		}
+		if req.Msg.HasLeftAt() {
+			setter.LeftAt = omitnull.From(req.Msg.GetLeftAt().AsTime())
+		}
 		_, err = s.repo.Teams().TeamDrivers().Create(
-			ctx,
-			&models.TeamDriverSetter{
-				TeamID:   omit.From(int32(req.Msg.GetTeamId())),
-				DriverID: omit.From(int32(req.Msg.GetDriverId())),
-			},
+			ctx, setter,
 		)
 		if err != nil {
 			return err
@@ -219,7 +261,7 @@ func (s *service) AddTeamMember(
 	return connect.NewResponse(&v1.AddTeamMemberResponse{}), nil
 }
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace // editor/linter issue
 func (s *service) RemoveTeamMember(
 	ctx context.Context,
 	req *connect.Request[v1.RemoveTeamMemberRequest]) (
@@ -227,33 +269,27 @@ func (s *service) RemoveTeamMember(
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("RemoveTeamMember")
-	var currentMembers []*models.TeamDriver
+
 	var err error
-	currentMembers, err = s.repo.Teams().TeamDrivers().LoadByTeamID(
+	_, err = s.repo.Teams().TeamDrivers().LoadByID(
 		ctx,
-		int32(req.Msg.GetTeamId()),
+		int32(req.Msg.GetId()),
 	)
 	if err != nil {
-		l.Error("failed to load current team members", log.ErrorField(err))
+		l.Error("failed to load current team member entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load current team members")
+			codes.Error, "failed to load current team member entry")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
-	for _, member := range currentMembers {
-		if member.DriverID == int32(req.Msg.GetDriverId()) {
-			l.Debug("driver is not a team member, skipping")
-			trace.SpanFromContext(ctx).SetStatus(
-				codes.Ok, "driver is not a team member, skipping")
-			return connect.NewResponse(&v1.RemoveTeamMemberResponse{}), nil
-		}
-	}
+
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		_, err = s.repo.Teams().TeamDrivers().Update(
 			ctx,
-			int32(req.Msg.GetTeamId()),
+			int32(req.Msg.GetId()),
 			&models.TeamDriverSetter{
-				DriverID: omit.From(int32(req.Msg.GetDriverId())),
-				LeftAt:   omitnull.From(time.Now()),
+				LeftAt:    omitnull.From(time.Now()),
+				UpdatedAt: omit.From(time.Now()),
+				UpdatedBy: omit.From(s.execUser(ctx)),
 			},
 		)
 		if err != nil {
@@ -269,4 +305,28 @@ func (s *service) RemoveTeamMember(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "removed team member")
 	return connect.NewResponse(&v1.RemoveTeamMemberResponse{}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) DeleteTeamMember(
+	ctx context.Context,
+	req *connect.Request[v1.DeleteTeamMemberRequest]) (
+	*connect.Response[v1.DeleteTeamMemberResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("DeleteTeamMember")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		return s.repo.Teams().TeamDrivers().DeleteByID(
+			ctx,
+			int32(req.Msg.GetId()),
+		)
+	}); txErr != nil {
+		l.Error("failed to delete team member", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete team member")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "team member deleted")
+	return connect.NewResponse(&v1.DeleteTeamMemberResponse{}), nil
 }

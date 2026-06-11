@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
@@ -25,36 +24,15 @@ type seasonDriverInput struct {
 	leftAt     *time.Time
 }
 
-func parseSeasonDriverCarModelID(value string) (int32, error) {
-	if value == "" {
-		return 0, fmt.Errorf("car_model_id is required")
-	}
-
-	parsed, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("invalid car_model_id %q: %w", value, err)
-	}
-	if parsed <= 0 {
-		return 0, fmt.Errorf("invalid car_model_id %q: must be greater than 0", value)
-	}
-
-	return int32(parsed), nil
-}
-
 //nolint:whitespace // editor/linter issue
 func convertSetSeasonDriversInput(
 	msg *v1.SetSeasonDriversRequest,
-) ([]seasonDriverInput, error) {
+) []seasonDriverInput {
 	inputs := make([]seasonDriverInput, 0, len(msg.GetDrivers()))
 	for _, driver := range msg.GetDrivers() {
-		carModelID, err := parseSeasonDriverCarModelID(driver.GetCarModelId())
-		if err != nil {
-			return nil, err
-		}
-
 		input := seasonDriverInput{
 			driverID:   int32(driver.GetDriverId()),
-			carModelID: carModelID,
+			carModelID: int32(driver.GetCarModelId()),
 			carNumber:  driver.GetCarNumber(),
 		}
 		if driver.HasJoinedAt() {
@@ -69,7 +47,7 @@ func convertSetSeasonDriversInput(
 		inputs = append(inputs, input)
 	}
 
-	return inputs, nil
+	return inputs
 }
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -82,12 +60,7 @@ func (s *service) SetSeasonDrivers(
 	l.Debug("SetSeasonDrivers")
 
 	seasonID := int32(req.Msg.GetSeasonId())
-	inputs, err := convertSetSeasonDriversInput(req.Msg)
-	if err != nil {
-		l.Error("invalid season driver payload", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid season driver payload")
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
+	inputs := convertSetSeasonDriversInput(req.Msg)
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		existing, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(ctx, seasonID)
@@ -144,8 +117,9 @@ func (s *service) AddSeasonDriver(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("AddSeasonDriver")
 
-	carModelID, err := parseSeasonDriverCarModelID(req.Msg.GetCarModelId())
-	if err != nil {
+	carModelID := int32(req.Msg.GetCarModelId())
+	if carModelID <= 0 {
+		err := fmt.Errorf("invalid car_model_id %d: must be greater than 0", carModelID)
 		l.Error("invalid season driver payload", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid season driver payload")
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -254,7 +228,7 @@ func (s *service) RemoveSeasonDriver(
 	return connect.NewResponse(&v1.RemoveSeasonDriverResponse{}), nil
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,dupl // editor/linter issue
 func (s *service) DeleteSeasonDriver(
 	ctx context.Context,
 	req *connect.Request[v1.DeleteSeasonDriverRequest]) (

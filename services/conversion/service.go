@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"connectrpc.com/connect"
@@ -456,7 +455,7 @@ func (s *Service) SeasonDriverToSeasonDriver(
 		Id:         uint32(model.ID),
 		DriverId:   uint32(model.DriverID),
 		SeasonId:   uint32(model.SeasonID),
-		CarModelId: strconv.FormatInt(int64(model.CarModelID), 10),
+		CarModelId: uint32(model.CarModelID),
 		CarNumber:  model.CarNumber,
 		JoinedAt:   timestamppb.New(model.JoinedAt),
 	}
@@ -474,12 +473,24 @@ func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
 		return nil
 	}
 
-	return &commonv1.Team{
+	team := &commonv1.Team{
 		Id:       uint32(model.ID),
 		SeasonId: uint32(model.SeasonID),
 		Name:     model.Name,
 		IsActive: model.IsActive,
+		JoinedAt: timestamppb.New(model.JoinedAt),
 	}
+	if value := model.LeftAt.Ptr(); value != nil {
+		team.LeftAt = timestamppb.New(*value)
+	}
+	if value := model.CarModelID.Ptr(); value != nil {
+		team.CarModelId = uint32(*value)
+	}
+	if value := model.CarNumber.Ptr(); value != nil {
+		team.CarNumber = *value
+	}
+
+	return team
 }
 
 // EventToEvent converts an Event model to an Event message.
@@ -718,9 +729,7 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	if errors.Is(dberrors.DriverErrors.ErrUniqueDriversExternalIdUnique, err) {
 		return connect.CodeAlreadyExists
 	}
-	if errors.Is(dberrors.TeamErrors.ErrUniqueTeamsSeasonIdNameUnique, err) {
-		return connect.CodeAlreadyExists
-	}
+
 	if errors.Is(dberrors.RaceErrors.ErrUniqueRacesEventIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}

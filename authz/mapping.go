@@ -52,6 +52,7 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetDriver",
 		"GetSeasonDriver",
 		"GetTeam",
+		"GetTeamMembers",
 		"GetResultEntry",
 		"GetSummary",
 		"GetPointSystem",
@@ -90,6 +91,7 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 		"ListSeasonsOverview",
 		"ListSeasonEvents",
 		"ListSeasonDrivers",
+		"ListSeasonTeams",
 		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
@@ -156,6 +158,7 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"SetTeamMembers",
 		"AddTeamMember",
 		"RemoveTeamMember",
+		"DeleteTeamMember",
 		"CreatePointSystem",
 		"UpdatePointSystem",
 		"DeletePointSystem",

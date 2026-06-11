@@ -1,13 +1,15 @@
-//nolint:lll,dupl // test files can have some duplication and long lines for test data setup
+//nolint:lll,dupl,funlen,whitespace // test files can have some duplication and long lines for test data setup
 package command
 
 import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/authn"
 	postgresrepo "github.com/srlmgr/backend/repository/postgres"
@@ -24,6 +26,50 @@ func countTeamRows(t *testing.T) int {
 	}
 
 	return count
+}
+
+func assertStoredTeamIdentity(
+	t *testing.T,
+	storedSeasonID int32,
+	storedCreatedBy string,
+	storedUpdatedBy string,
+	wantSeasonID int32,
+	wantUser string,
+) {
+	t.Helper()
+
+	if storedCreatedBy != wantUser || storedUpdatedBy != wantUser {
+		t.Fatalf(
+			"unexpected created/updated by values: %q / %q",
+			storedCreatedBy,
+			storedUpdatedBy,
+		)
+	}
+	if storedSeasonID != wantSeasonID {
+		t.Fatalf("unexpected stored season id: got %d want %d", storedSeasonID, wantSeasonID)
+	}
+}
+
+func assertStoredTeamCarAndTimes(
+	t *testing.T,
+	storedCarModelID int32,
+	storedCarNumber string,
+	storedJoinedAt time.Time,
+	wantCarModelID int32,
+	wantCarNumber string,
+	wantJoinedAt time.Time,
+) {
+	t.Helper()
+
+	if storedCarModelID != wantCarModelID {
+		t.Fatalf("unexpected car_model_id: got %d want %d", storedCarModelID, wantCarModelID)
+	}
+	if storedCarNumber != wantCarNumber {
+		t.Fatalf("unexpected car_number: got %q want %q", storedCarNumber, wantCarNumber)
+	}
+	if !storedJoinedAt.Equal(wantJoinedAt) {
+		t.Fatalf("unexpected joined_at: got %s want %s", storedJoinedAt, wantJoinedAt)
+	}
 }
 
 func TestTeamSetterBuilderBuildSuccess(t *testing.T) {
@@ -72,12 +118,18 @@ func TestCreateTeamSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "GT3 Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
+	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Alpine").ID, "Alpine")
+	carModel := seedCarModel(t, repo, brand.ID, "A110 GT4")
+	joinedAt := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateTeam(ctx, connect.NewRequest(&v1.CreateTeamRequest{
-		SeasonId: uint32(season.ID),
-		Name:     "Alpine Racing",
-		IsActive: true,
+		SeasonId:   uint32(season.ID),
+		Name:       "Alpine Racing",
+		IsActive:   true,
+		CarModelId: uint32(carModel.ID),
+		CarNumber:  "36",
+		JoinedAt:   timestamppb.New(joinedAt),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -98,43 +150,30 @@ func TestCreateTeamSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load created team: %v", err)
 	}
-	if stored.CreatedBy != testUserTester || stored.UpdatedBy != testUserTester {
+	if stored.CarModelID.IsNull() || stored.CarNumber.IsNull() {
 		t.Fatalf(
-			"unexpected created/updated by values: %q / %q",
-			stored.CreatedBy,
-			stored.UpdatedBy,
+			"expected car fields to be set: car_model_id=%+v car_number=%+v",
+			stored.CarModelID,
+			stored.CarNumber,
 		)
 	}
-	if stored.SeasonID != season.ID {
-		t.Fatalf("unexpected stored season id: got %d want %d", stored.SeasonID, season.ID)
-	}
-}
-
-func TestCreateTeamFailureDuplicateNameSameSeason(t *testing.T) {
-	svc, repo := newDBBackedTestService(t)
-	sim := seedSimulation(t, repo, "iRacing")
-	ps := seedPointSystem(t, repo, "Standard Points")
-	series := seedSeries(t, repo, sim.ID, "LMP2 Series")
-	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	seedTeam(t, repo, season.ID, "Mercedes AMG")
-
-	_, err := svc.CreateTeam(
-		context.Background(),
-		connect.NewRequest(&v1.CreateTeamRequest{
-			SeasonId: uint32(season.ID),
-			Name:     "Mercedes AMG",
-			IsActive: true,
-		}),
+	assertStoredTeamIdentity(
+		t,
+		stored.SeasonID,
+		stored.CreatedBy,
+		stored.UpdatedBy,
+		season.ID,
+		testUserTester,
 	)
-	if err == nil {
-		t.Fatal("expected duplicate create error")
-	}
-	if got := connect.CodeOf(err); got != connect.CodeAlreadyExists {
-		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeAlreadyExists)
-	}
-	if got := countTeamRows(t); got != 1 {
-		t.Fatalf("unexpected team count after duplicate create: got %d want %d", got, 1)
-	}
+	assertStoredTeamCarAndTimes(
+		t,
+		stored.CarModelID.MustGet(),
+		stored.CarNumber.MustGet(),
+		stored.JoinedAt,
+		carModel.ID,
+		"36",
+		joinedAt,
+	)
 }
 
 func TestCreateTeamSuccessDuplicateNameDifferentSeason(t *testing.T) {
@@ -202,6 +241,10 @@ func TestUpdateTeamSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "Hypercar Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
+	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Toyota").ID, "Toyota")
+	carModel := seedCarModel(t, repo, brand.ID, "GR010 Hybrid")
+	joinedAt := time.Now().Add(-4 * time.Hour).UTC().Truncate(time.Second)
+	leftAt := joinedAt.Add(2 * time.Hour)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
 	initial := seedTeam(t, repo, season.ID, "Toyota Gazoo Racing")
@@ -211,10 +254,14 @@ func TestUpdateTeamSuccess(t *testing.T) {
 	}
 
 	resp, err := svc.UpdateTeam(ctx, connect.NewRequest(&v1.UpdateTeamRequest{
-		TeamId:   uint32(initial.ID),
-		SeasonId: uint32(season.ID),
-		Name:     "Toyota Gazoo Racing Updated",
-		IsActive: true,
+		TeamId:     uint32(initial.ID),
+		SeasonId:   uint32(season.ID),
+		Name:       "Toyota Gazoo Racing Updated",
+		IsActive:   true,
+		CarModelId: uint32(carModel.ID),
+		CarNumber:  "7",
+		JoinedAt:   timestamppb.New(joinedAt),
+		LeftAt:     timestamppb.New(leftAt),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -237,6 +284,21 @@ func TestUpdateTeamSuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
+	if after.CarModelID.IsNull() || after.CarNumber.IsNull() || after.LeftAt.IsNull() {
+		t.Fatalf("unexpected left_at: %+v", after.LeftAt)
+	}
+	assertStoredTeamCarAndTimes(
+		t,
+		after.CarModelID.MustGet(),
+		after.CarNumber.MustGet(),
+		after.JoinedAt,
+		carModel.ID,
+		"7",
+		joinedAt,
+	)
+	if !after.LeftAt.MustGet().Equal(leftAt) {
+		t.Fatalf("unexpected left_at: got %s want %s", after.LeftAt.MustGet(), leftAt)
+	}
 }
 
 func TestUpdateTeamFailureNotFound(t *testing.T) {
@@ -254,42 +316,6 @@ func TestUpdateTeamFailureNotFound(t *testing.T) {
 	}
 	if got := connect.CodeOf(err); got != connect.CodeNotFound {
 		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeNotFound)
-	}
-}
-
-func TestUpdateTeamFailureDuplicateNameSameSeason(t *testing.T) {
-	svc, repo := newDBBackedTestService(t)
-	sim := seedSimulation(t, repo, "Automobilista 2")
-	ps := seedPointSystem(t, repo, "Standard Points")
-	series := seedSeries(t, repo, sim.ID, "GT4 Series")
-	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	first := seedTeam(t, repo, season.ID, "Porsche Cayman")
-	second := seedTeam(t, repo, season.ID, "BMW M4")
-
-	_, err := svc.UpdateTeam(
-		context.Background(),
-		connect.NewRequest(&v1.UpdateTeamRequest{
-			TeamId: uint32(second.ID),
-			Name:   first.Name,
-		}),
-	)
-	if err == nil {
-		t.Fatal("expected duplicate update error")
-	}
-	if got := connect.CodeOf(err); got != connect.CodeAlreadyExists {
-		t.Fatalf("unexpected code: got %v want %v", got, connect.CodeAlreadyExists)
-	}
-
-	stored, loadErr := repo.Teams().Teams().LoadByID(context.Background(), second.ID)
-	if loadErr != nil {
-		t.Fatalf("failed to load team after duplicate update: %v", loadErr)
-	}
-	if stored.Name != "BMW M4" {
-		t.Fatalf(
-			"unexpected name after failed duplicate update: got %q want %q",
-			stored.Name,
-			"BMW M4",
-		)
 	}
 }
 

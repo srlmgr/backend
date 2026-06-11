@@ -496,6 +496,44 @@ func TestCreateCarModelWithSimulationCarAliasesDoesNotDuplicateParent(t *testing
 	}
 }
 
+func TestCreateCarModelWithTeamsDoesNotDuplicateParent(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	before, err := models.CarModels.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarModels: %v", err)
+	}
+
+	if _, err := New().NewCarModelWithContext(ctx, CarModelMods.WithNewTeams(2)).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarModel with Teams: %v", err)
+	}
+
+	after, err := models.CarModels.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarModels: %v", err)
+	}
+
+	if got := after - before; got != 1 {
+		t.Fatalf("Expected CarModels to increase by 1, got %d", got)
+	}
+}
+
 func TestCreateDriver(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")

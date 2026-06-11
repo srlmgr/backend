@@ -57,6 +57,7 @@ type carModelR struct {
 	ResultEntries         []*carModelRResultEntriesR
 	SeasonDrivers         []*carModelRSeasonDriversR
 	SimulationCarAliases  []*carModelRSimulationCarAliasesR
+	Teams                 []*carModelRTeamsR
 }
 
 type carModelRCarClassesToCarModelsR struct {
@@ -77,6 +78,10 @@ type carModelRSeasonDriversR struct {
 type carModelRSimulationCarAliasesR struct {
 	number int
 	o      *SimulationCarAliasTemplate
+}
+type carModelRTeamsR struct {
+	number int
+	o      *TeamTemplate
 }
 
 // Apply mods to the CarModelTemplate
@@ -155,6 +160,21 @@ func (t CarModelTemplate) setModelRels(o *models.CarModel) {
 		}
 		o.R.SimulationCarAliases = rel
 		o.R.Loaded.SimulationCarAliases = true
+	}
+
+	if t.r.Teams != nil {
+		rel := models.TeamSlice{}
+		for _, r := range t.r.Teams {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.CarModelID = null.From(o.ID) // h2
+				rel.R.CarModel = o
+				rel.R.Loaded.CarModel = true
+			}
+			rel = append(rel, related...)
+		}
+		o.R.Teams = rel
+		o.R.Loaded.Teams = true
 	}
 }
 
@@ -357,6 +377,26 @@ func (o *CarModelTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 		}
 	}
 
+	isTeamsDone, _ := carModelRelTeamsCtx.Value(ctx)
+	if !isTeamsDone && o.r.Teams != nil {
+		ctx = carModelRelTeamsCtx.WithValue(ctx, true)
+		for _, r := range o.r.Teams {
+			if r.o.alreadyPersisted {
+				m.R.Teams = append(m.R.Teams, r.o.Build())
+			} else {
+				rel5, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachTeams(ctx, exec, rel5...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	return err
 }
 
@@ -416,6 +456,7 @@ func (o *CarModelTemplate) Create(ctx context.Context, exec bob.Executor) (*mode
 	newMInCreation["car_models:result_entries:result_entries.result_entries_car_model_id_fk"] = m
 	newMInCreation["car_models:season_drivers:season_drivers.season_drivers_car_model_id_fk"] = m
 	newMInCreation["car_models:simulation_car_aliases:simulation_car_aliases.simulation_car_aliases_car_model_id_fk"] = m
+	newMInCreation["car_models:teams:teams.teams_car_model_id_fk"] = m
 
 	ctx = modelsInCreationCtx.WithValue(ctx, newMInCreation)
 
@@ -991,5 +1032,53 @@ func (m carModelMods) AddExistingSimulationCarAliases(existingModels ...*models.
 func (m carModelMods) WithoutSimulationCarAliases() CarModelMod {
 	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
 		o.r.SimulationCarAliases = nil
+	})
+}
+
+func (m carModelMods) WithTeams(number int, related *TeamTemplate) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.Teams = []*carModelRTeamsR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m carModelMods) WithNewTeams(number int, mods ...TeamMod) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		related := o.f.NewTeamWithContext(ctx, mods...)
+		m.WithTeams(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carModelMods) AddTeams(number int, related *TeamTemplate) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.Teams = append(o.r.Teams, &carModelRTeamsR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m carModelMods) AddNewTeams(number int, mods ...TeamMod) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		related := o.f.NewTeamWithContext(ctx, mods...)
+		m.AddTeams(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carModelMods) AddExistingTeams(existingModels ...*models.Team) CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		for _, em := range existingModels {
+			o.r.Teams = append(o.r.Teams, &carModelRTeamsR{
+				o: o.f.fromExistingTeam(ctx, em),
+			})
+		}
+	})
+}
+
+func (m carModelMods) WithoutTeams() CarModelMod {
+	return CarModelModFunc(func(ctx context.Context, o *CarModelTemplate) {
+		o.r.Teams = nil
 	})
 }

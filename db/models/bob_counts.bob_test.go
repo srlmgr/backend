@@ -193,6 +193,9 @@ func TestCarModelCountStruct(t *testing.T) {
 
 	// Verify SimulationCarAliases count field exists and is *int64
 	var _ *int64 = m.C.SimulationCarAliases
+
+	// Verify Teams count field exists and is *int64
+	var _ *int64 = m.C.Teams
 }
 
 // Test that CarModel has LoadCount methods for to-many relationships
@@ -224,6 +227,12 @@ func TestCarModelLoadCountMethods(t *testing.T) {
 
 	// Verify LoadCountSimulationCarAliases method exists on slice
 	_ = ms.LoadCountSimulationCarAliases(ctx, nil)
+
+	// Verify LoadCountTeams method exists on single model
+	_ = m.LoadCountTeams(ctx, nil)
+
+	// Verify LoadCountTeams method exists on slice
+	_ = ms.LoadCountTeams(ctx, nil)
 }
 
 // Test that SelectThenLoadCount has CarModel with methods for to-many relationships
@@ -241,6 +250,9 @@ func TestSelectThenLoadCountCarModel(t *testing.T) {
 
 	// Verify SimulationCarAliases loader exists
 	_ = SelectThenLoadCount.CarModel.SimulationCarAliases
+
+	// Verify Teams loader exists
+	_ = SelectThenLoadCount.CarModel.Teams
 }
 
 // Test that PreloadCount has CarModel with methods for to-many relationships
@@ -258,6 +270,9 @@ func TestPreloadCountCarModel(t *testing.T) {
 
 	// Verify SimulationCarAliases preloader exists and returns a Preloader
 	_ = PreloadCount.CarModel.SimulationCarAliases()
+
+	// Verify Teams preloader exists and returns a Preloader
+	_ = PreloadCount.CarModel.Teams()
 }
 
 // Test that CarModel has PreloadCount method
@@ -271,6 +286,8 @@ func TestCarModelPreloadCountMethod(t *testing.T) {
 	_ = m.PreloadCount("SeasonDrivers", 0)
 
 	_ = m.PreloadCount("SimulationCarAliases", 0)
+
+	_ = m.PreloadCount("Teams", 0)
 }
 
 // Test that Driver has a C field with count pointers for to-many relationships

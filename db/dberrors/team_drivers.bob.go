@@ -11,13 +11,6 @@ var TeamDriverErrors = &teamDriverErrors{
 		s:       "team_drivers_pkey",
 	},
 
-	ErrUniqueTeamDriversFrontendIdUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "team_drivers",
-		columns: []string{"frontend_id"},
-		s:       "team_drivers_frontend_id_unique",
-	},
-
 	ErrUniqueTeamDriversTeamIdDriverIdJoinedAtUnique: &UniqueConstraintError{
 		schema:  "",
 		table:   "team_drivers",
@@ -28,8 +21,6 @@ var TeamDriverErrors = &teamDriverErrors{
 
 type teamDriverErrors struct {
 	ErrUniqueTeamDriversPkey *UniqueConstraintError
-
-	ErrUniqueTeamDriversFrontendIdUnique *UniqueConstraintError
 
 	ErrUniqueTeamDriversTeamIdDriverIdJoinedAtUnique *UniqueConstraintError
 }

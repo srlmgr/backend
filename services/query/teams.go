@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
@@ -75,4 +76,65 @@ func (s *service) GetTeam(
 	return connect.NewResponse(&queryv1.GetTeamResponse{
 		Team: s.conversion.TeamToTeam(item),
 	}), nil
+}
+
+// GetTeamMembers returns all members for a team.
+//
+//nolint:whitespace,funlen // editor/linter issue
+func (s *service) GetTeamMembers(
+	ctx context.Context,
+	req *connect.Request[queryv1.GetTeamMembersRequest],
+) (*connect.Response[queryv1.GetTeamMembersResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("GetTeamMembers", log.Uint32("id", req.Msg.GetId()))
+
+	teamID := int32(req.Msg.GetId())
+	if _, err := s.repo.Teams().Teams().LoadByID(ctx, teamID); err != nil {
+		l.Error("failed to load team", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load team")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	teamDrivers, err := s.repo.Teams().TeamDrivers().LoadByTeamID(ctx, teamID)
+	if err != nil {
+		l.Error("failed to load team members", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load team members")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	driverByID := map[int32]*models.Driver{}
+	if len(teamDrivers) > 0 {
+		driverIDs := make([]int32, 0, len(teamDrivers))
+		for _, teamDriver := range teamDrivers {
+			driverIDs = append(driverIDs, teamDriver.DriverID)
+		}
+
+		drivers, err := s.repo.Drivers().Drivers().LoadByIDs(ctx, driverIDs)
+		if err != nil {
+			l.Error("failed to load drivers for team members", log.ErrorField(err))
+			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load drivers")
+			return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		}
+
+		for _, driver := range drivers {
+			driverByID[driver.ID] = driver
+		}
+	}
+
+	members := make([]*commonv1.TeamMember, 0, len(teamDrivers))
+	for _, teamDriver := range teamDrivers {
+		member := &commonv1.TeamMember{
+			Id:       uint32(teamDriver.ID),
+			TeamId:   uint32(teamDriver.TeamID),
+			Driver:   s.conversion.DriverToDriver(driverByID[teamDriver.DriverID]),
+			JoinedAt: timestamppb.New(teamDriver.JoinedAt),
+		}
+		if leftAt := teamDriver.LeftAt.Ptr(); leftAt != nil {
+			member.LeftAt = timestamppb.New(*leftAt)
+		}
+		members = append(members, member)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "team members loaded")
+	return connect.NewResponse(&queryv1.GetTeamMembersResponse{Members: members}), nil
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -27,16 +26,15 @@ import (
 
 // TeamDriver is an object representing the database table.
 type TeamDriver struct {
-	ID         int32               `db:"id,pk" `
-	FrontendID uuid.UUID           `db:"frontend_id" `
-	TeamID     int32               `db:"team_id" `
-	DriverID   int32               `db:"driver_id" `
-	JoinedAt   time.Time           `db:"joined_at" `
-	LeftAt     null.Val[time.Time] `db:"left_at" `
-	CreatedAt  time.Time           `db:"created_at" `
-	UpdatedAt  time.Time           `db:"updated_at" `
-	CreatedBy  string              `db:"created_by" `
-	UpdatedBy  string              `db:"updated_by" `
+	ID        int32               `db:"id,pk" `
+	TeamID    int32               `db:"team_id" `
+	DriverID  int32               `db:"driver_id" `
+	JoinedAt  time.Time           `db:"joined_at" `
+	LeftAt    null.Val[time.Time] `db:"left_at" `
+	CreatedAt time.Time           `db:"created_at" `
+	UpdatedAt time.Time           `db:"updated_at" `
+	CreatedBy string              `db:"created_by" `
+	UpdatedBy string              `db:"updated_by" `
 
 	R teamDriverR `db:"-" `
 }
@@ -69,7 +67,7 @@ type teamDriverRLoaded struct {
 
 func buildTeamDriverColumns(tableName string) teamDriverColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "frontend_id", "team_id", "driver_id", "joined_at", "left_at", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "team_id", "driver_id", "joined_at", "left_at", "created_at", "updated_at", "created_by", "updated_by",
 	)
 
 	if tableName != "" {
@@ -80,7 +78,6 @@ func buildTeamDriverColumns(tableName string) teamDriverColumns {
 		ColumnsExpr: columnsExpr,
 		tableAlias:  tableName,
 		ID:          buildTeamDriverColumn(tableName, "id"),
-		FrontendID:  buildTeamDriverColumn(tableName, "frontend_id"),
 		TeamID:      buildTeamDriverColumn(tableName, "team_id"),
 		DriverID:    buildTeamDriverColumn(tableName, "driver_id"),
 		JoinedAt:    buildTeamDriverColumn(tableName, "joined_at"),
@@ -96,7 +93,6 @@ type teamDriverColumns struct {
 	expr.ColumnsExpr
 	tableAlias string
 	ID         teamDriverColumn
-	FrontendID teamDriverColumn
 	TeamID     teamDriverColumn
 	DriverID   teamDriverColumn
 	JoinedAt   teamDriverColumn
@@ -150,25 +146,21 @@ func (c teamDriverColumn) ShouldOmitParens() bool {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type TeamDriverSetter struct {
-	ID         omit.Val[int32]         `db:"id,pk" `
-	FrontendID omit.Val[uuid.UUID]     `db:"frontend_id" `
-	TeamID     omit.Val[int32]         `db:"team_id" `
-	DriverID   omit.Val[int32]         `db:"driver_id" `
-	JoinedAt   omit.Val[time.Time]     `db:"joined_at" `
-	LeftAt     omitnull.Val[time.Time] `db:"left_at" `
-	CreatedAt  omit.Val[time.Time]     `db:"created_at" `
-	UpdatedAt  omit.Val[time.Time]     `db:"updated_at" `
-	CreatedBy  omit.Val[string]        `db:"created_by" `
-	UpdatedBy  omit.Val[string]        `db:"updated_by" `
+	ID        omit.Val[int32]         `db:"id,pk" `
+	TeamID    omit.Val[int32]         `db:"team_id" `
+	DriverID  omit.Val[int32]         `db:"driver_id" `
+	JoinedAt  omit.Val[time.Time]     `db:"joined_at" `
+	LeftAt    omitnull.Val[time.Time] `db:"left_at" `
+	CreatedAt omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy omit.Val[string]        `db:"created_by" `
+	UpdatedBy omit.Val[string]        `db:"updated_by" `
 }
 
 func (s TeamDriverSetter) SetColumns() []string {
-	vals := make([]string, 0, 10)
+	vals := make([]string, 0, 9)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
-	}
-	if s.FrontendID.IsValue() {
-		vals = append(vals, "frontend_id")
 	}
 	if s.TeamID.IsValue() {
 		vals = append(vals, "team_id")
@@ -200,9 +192,6 @@ func (s TeamDriverSetter) SetColumns() []string {
 func (s TeamDriverSetter) Overwrite(t *TeamDriver) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
-	}
-	if s.FrontendID.IsValue() {
-		t.FrontendID = s.FrontendID.MustGet()
 	}
 	if s.TeamID.IsValue() {
 		t.TeamID = s.TeamID.MustGet()
@@ -236,65 +225,59 @@ func (s *TeamDriverSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 10)
+		vals := make([]bob.Expression, 9)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.FrontendID.IsValue() {
-			vals[1] = psql.Arg(s.FrontendID.MustGet())
+		if s.TeamID.IsValue() {
+			vals[1] = psql.Arg(s.TeamID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.TeamID.IsValue() {
-			vals[2] = psql.Arg(s.TeamID.MustGet())
+		if s.DriverID.IsValue() {
+			vals[2] = psql.Arg(s.DriverID.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.DriverID.IsValue() {
-			vals[3] = psql.Arg(s.DriverID.MustGet())
+		if s.JoinedAt.IsValue() {
+			vals[3] = psql.Arg(s.JoinedAt.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.JoinedAt.IsValue() {
-			vals[4] = psql.Arg(s.JoinedAt.MustGet())
+		if !s.LeftAt.IsUnset() {
+			vals[4] = psql.Arg(s.LeftAt.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if !s.LeftAt.IsUnset() {
-			vals[5] = psql.Arg(s.LeftAt.MustGetNull())
+		if s.CreatedAt.IsValue() {
+			vals[5] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[6] = psql.Arg(s.CreatedAt.MustGet())
+		if s.UpdatedAt.IsValue() {
+			vals[6] = psql.Arg(s.UpdatedAt.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[7] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.CreatedBy.IsValue() {
+			vals[7] = psql.Arg(s.CreatedBy.MustGet())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[8] = psql.Arg(s.CreatedBy.MustGet())
+		if s.UpdatedBy.IsValue() {
+			vals[8] = psql.Arg(s.UpdatedBy.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
-		}
-
-		if s.UpdatedBy.IsValue() {
-			vals[9] = psql.Arg(s.UpdatedBy.MustGet())
-		} else {
-			vals[9] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -306,19 +289,12 @@ func (s TeamDriverSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s TeamDriverSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 10)
+	exprs := make([]bob.Expression, 0, 9)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
-		}})
-	}
-
-	if s.FrontendID.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "frontend_id")...),
-			psql.Arg(s.FrontendID),
 		}})
 	}
 
@@ -785,16 +761,15 @@ func (teamDriver0 *TeamDriver) AttachTeam(ctx context.Context, exec bob.Executor
 }
 
 type teamDriverWhere[Q psql.Filterable] struct {
-	ID         psql.WhereMod[Q, int32]
-	FrontendID psql.WhereMod[Q, uuid.UUID]
-	TeamID     psql.WhereMod[Q, int32]
-	DriverID   psql.WhereMod[Q, int32]
-	JoinedAt   psql.WhereMod[Q, time.Time]
-	LeftAt     psql.WhereNullMod[Q, time.Time]
-	CreatedAt  psql.WhereMod[Q, time.Time]
-	UpdatedAt  psql.WhereMod[Q, time.Time]
-	CreatedBy  psql.WhereMod[Q, string]
-	UpdatedBy  psql.WhereMod[Q, string]
+	ID        psql.WhereMod[Q, int32]
+	TeamID    psql.WhereMod[Q, int32]
+	DriverID  psql.WhereMod[Q, int32]
+	JoinedAt  psql.WhereMod[Q, time.Time]
+	LeftAt    psql.WhereNullMod[Q, time.Time]
+	CreatedAt psql.WhereMod[Q, time.Time]
+	UpdatedAt psql.WhereMod[Q, time.Time]
+	CreatedBy psql.WhereMod[Q, string]
+	UpdatedBy psql.WhereMod[Q, string]
 }
 
 func (teamDriverWhere[Q]) AliasedAs(alias string) teamDriverWhere[Q] {
@@ -803,16 +778,15 @@ func (teamDriverWhere[Q]) AliasedAs(alias string) teamDriverWhere[Q] {
 
 func buildTeamDriverWhere[Q psql.Filterable](cols teamDriverColumns) teamDriverWhere[Q] {
 	return teamDriverWhere[Q]{
-		ID:         psql.Where[Q, int32](cols.ID.Expression),
-		FrontendID: psql.Where[Q, uuid.UUID](cols.FrontendID.Expression),
-		TeamID:     psql.Where[Q, int32](cols.TeamID.Expression),
-		DriverID:   psql.Where[Q, int32](cols.DriverID.Expression),
-		JoinedAt:   psql.Where[Q, time.Time](cols.JoinedAt.Expression),
-		LeftAt:     psql.WhereNull[Q, time.Time](cols.LeftAt.Expression),
-		CreatedAt:  psql.Where[Q, time.Time](cols.CreatedAt.Expression),
-		UpdatedAt:  psql.Where[Q, time.Time](cols.UpdatedAt.Expression),
-		CreatedBy:  psql.Where[Q, string](cols.CreatedBy.Expression),
-		UpdatedBy:  psql.Where[Q, string](cols.UpdatedBy.Expression),
+		ID:        psql.Where[Q, int32](cols.ID.Expression),
+		TeamID:    psql.Where[Q, int32](cols.TeamID.Expression),
+		DriverID:  psql.Where[Q, int32](cols.DriverID.Expression),
+		JoinedAt:  psql.Where[Q, time.Time](cols.JoinedAt.Expression),
+		LeftAt:    psql.WhereNull[Q, time.Time](cols.LeftAt.Expression),
+		CreatedAt: psql.Where[Q, time.Time](cols.CreatedAt.Expression),
+		UpdatedAt: psql.Where[Q, time.Time](cols.UpdatedAt.Expression),
+		CreatedBy: psql.Where[Q, string](cols.CreatedBy.Expression),
+		UpdatedBy: psql.Where[Q, string](cols.UpdatedBy.Expression),
 	}
 }
 

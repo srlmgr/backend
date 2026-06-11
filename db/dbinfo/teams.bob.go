@@ -24,15 +24,6 @@ var Teams = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		FrontendID: column{
-			Name:      "frontend_id",
-			DBType:    "uuid",
-			Default:   "uuid_generate_v4()",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		SeasonID: column{
 			Name:      "season_id",
 			DBType:    "integer",
@@ -57,6 +48,42 @@ var Teams = Table[
 			Default:   "true",
 			Comment:   "",
 			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		CarModelID: column{
+			Name:      "car_model_id",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		CarNumber: column{
+			Name:      "car_number",
+			DBType:    "text",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		JoinedAt: column{
+			Name:      "joined_at",
+			DBType:    "timestamp with time zone",
+			Default:   "now()",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
+		LeftAt: column{
+			Name:      "left_at",
+			DBType:    "timestamp with time zone",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
 			Generated: false,
 			AutoIncr:  false,
 		},
@@ -115,23 +142,6 @@ var Teams = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		IdxTeamsIsActive: index{
-			Type: "btree",
-			Name: "idx_teams_is_active",
-			Columns: []indexColumn{
-				{
-					Name:         "is_active",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        false,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 		IdxTeamsSeasonID: index{
 			Type: "btree",
 			Name: "idx_teams_season_id",
@@ -149,45 +159,6 @@ var Teams = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		TeamsFrontendIDUnique: index{
-			Type: "btree",
-			Name: "teams_frontend_id_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "frontend_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
-		TeamsSeasonIDNameUnique: index{
-			Type: "btree",
-			Name: "teams_season_id_name_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "season_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-				{
-					Name:         "name",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false, false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 	},
 	PrimaryKey: &constraint{
 		Name:    "teams_pkey",
@@ -195,6 +166,15 @@ var Teams = Table[
 		Comment: "",
 	},
 	ForeignKeys: teamForeignKeys{
+		TeamsTeamsCarModelIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "teams.teams_car_model_id_fk",
+				Columns: []string{"car_model_id"},
+				Comment: "",
+			},
+			ForeignTable:   "car_models",
+			ForeignColumns: []string{"id"},
+		},
 		TeamsTeamsSeasonIDFK: foreignKey{
 			constraint: constraint{
 				Name:    "teams.teams_season_id_fk",
@@ -205,28 +185,29 @@ var Teams = Table[
 			ForeignColumns: []string{"id"},
 		},
 	},
-	Uniques: teamUniques{
-		TeamsFrontendIDUnique: constraint{
-			Name:    "teams_frontend_id_unique",
-			Columns: []string{"frontend_id"},
-			Comment: "",
-		},
-		TeamsSeasonIDNameUnique: constraint{
-			Name:    "teams_season_id_name_unique",
-			Columns: []string{"season_id", "name"},
-			Comment: "",
+
+	Checks: teamChecks{
+		TeamsLeftAtCheck: check{
+			constraint: constraint{
+				Name:    "teams_left_at_check",
+				Columns: []string{"left_at", "joined_at"},
+				Comment: "",
+			},
+			Expression: "((left_at IS NULL) OR (left_at >= joined_at))",
 		},
 	},
-
 	Comment: "",
 }
 
 type teamColumns struct {
 	ID         column
-	FrontendID column
 	SeasonID   column
 	Name       column
 	IsActive   column
+	CarModelID column
+	CarNumber  column
+	JoinedAt   column
+	LeftAt     column
 	CreatedAt  column
 	UpdatedAt  column
 	CreatedBy  column
@@ -235,47 +216,44 @@ type teamColumns struct {
 
 func (c teamColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.SeasonID, c.Name, c.IsActive, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.SeasonID, c.Name, c.IsActive, c.CarModelID, c.CarNumber, c.JoinedAt, c.LeftAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
 type teamIndexes struct {
-	TeamsPkey               index
-	IdxTeamsIsActive        index
-	IdxTeamsSeasonID        index
-	TeamsFrontendIDUnique   index
-	TeamsSeasonIDNameUnique index
+	TeamsPkey        index
+	IdxTeamsSeasonID index
 }
 
 func (i teamIndexes) AsSlice() []index {
 	return []index{
-		i.TeamsPkey, i.IdxTeamsIsActive, i.IdxTeamsSeasonID, i.TeamsFrontendIDUnique, i.TeamsSeasonIDNameUnique,
+		i.TeamsPkey, i.IdxTeamsSeasonID,
 	}
 }
 
 type teamForeignKeys struct {
-	TeamsTeamsSeasonIDFK foreignKey
+	TeamsTeamsCarModelIDFK foreignKey
+	TeamsTeamsSeasonIDFK   foreignKey
 }
 
 func (f teamForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.TeamsTeamsSeasonIDFK,
+		f.TeamsTeamsCarModelIDFK, f.TeamsTeamsSeasonIDFK,
 	}
 }
 
-type teamUniques struct {
-	TeamsFrontendIDUnique   constraint
-	TeamsSeasonIDNameUnique constraint
-}
+type teamUniques struct{}
 
 func (u teamUniques) AsSlice() []constraint {
-	return []constraint{
-		u.TeamsFrontendIDUnique, u.TeamsSeasonIDNameUnique,
-	}
+	return []constraint{}
 }
 
-type teamChecks struct{}
+type teamChecks struct {
+	TeamsLeftAtCheck check
+}
 
 func (c teamChecks) AsSlice() []check {
-	return []check{}
+	return []check{
+		c.TeamsLeftAtCheck,
+	}
 }
