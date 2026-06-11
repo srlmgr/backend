@@ -11,7 +11,6 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	"github.com/gofrs/uuid/v5"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -38,16 +37,15 @@ func (mods TeamDriverModSlice) Apply(ctx context.Context, n *TeamDriverTemplate)
 // TeamDriverTemplate is an object representing the database table.
 // all columns are optional and should be set by mods
 type TeamDriverTemplate struct {
-	ID         func() int32
-	FrontendID func() uuid.UUID
-	TeamID     func() int32
-	DriverID   func() int32
-	JoinedAt   func() time.Time
-	LeftAt     func() null.Val[time.Time]
-	CreatedAt  func() time.Time
-	UpdatedAt  func() time.Time
-	CreatedBy  func() string
-	UpdatedBy  func() string
+	ID        func() int32
+	TeamID    func() int32
+	DriverID  func() int32
+	JoinedAt  func() time.Time
+	LeftAt    func() null.Val[time.Time]
+	CreatedAt func() time.Time
+	UpdatedAt func() time.Time
+	CreatedBy func() string
+	UpdatedBy func() string
 
 	r teamDriverR
 	f *Factory
@@ -102,10 +100,6 @@ func (o TeamDriverTemplate) BuildSetter() *models.TeamDriverSetter {
 	if o.ID != nil {
 		val := o.ID()
 		m.ID = omit.From(val)
-	}
-	if o.FrontendID != nil {
-		val := o.FrontendID()
-		m.FrontendID = omit.From(val)
 	}
 	if o.TeamID != nil {
 		val := o.TeamID()
@@ -163,9 +157,6 @@ func (o TeamDriverTemplate) Build() *models.TeamDriver {
 
 	if o.ID != nil {
 		m.ID = o.ID()
-	}
-	if o.FrontendID != nil {
-		m.FrontendID = o.FrontendID()
 	}
 	if o.TeamID != nil {
 		m.TeamID = o.TeamID()
@@ -395,7 +386,6 @@ type teamDriverMods struct{}
 func (m teamDriverMods) RandomizeAllColumns(f *faker.Faker) TeamDriverMod {
 	return TeamDriverModSlice{
 		TeamDriverMods.RandomID(f),
-		TeamDriverMods.RandomFrontendID(f),
 		TeamDriverMods.RandomTeamID(f),
 		TeamDriverMods.RandomDriverID(f),
 		TeamDriverMods.RandomJoinedAt(f),
@@ -434,37 +424,6 @@ func (m teamDriverMods) RandomID(f *faker.Faker) TeamDriverMod {
 	return TeamDriverModFunc(func(_ context.Context, o *TeamDriverTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m teamDriverMods) FrontendID(val uuid.UUID) TeamDriverMod {
-	return TeamDriverModFunc(func(_ context.Context, o *TeamDriverTemplate) {
-		o.FrontendID = func() uuid.UUID { return val }
-	})
-}
-
-// Set the Column from the function
-func (m teamDriverMods) FrontendIDFunc(f func() uuid.UUID) TeamDriverMod {
-	return TeamDriverModFunc(func(_ context.Context, o *TeamDriverTemplate) {
-		o.FrontendID = f
-	})
-}
-
-// Clear any values for the column
-func (m teamDriverMods) UnsetFrontendID() TeamDriverMod {
-	return TeamDriverModFunc(func(_ context.Context, o *TeamDriverTemplate) {
-		o.FrontendID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m teamDriverMods) RandomFrontendID(f *faker.Faker) TeamDriverMod {
-	return TeamDriverModFunc(func(_ context.Context, o *TeamDriverTemplate) {
-		o.FrontendID = func() uuid.UUID {
-			return random_uuid_UUID(f)
 		}
 	})
 }

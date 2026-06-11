@@ -140,6 +140,8 @@ func (r *teamDriversRepository) LoadByTeamID(
 ) ([]*models.TeamDriver, error) {
 	return models.TeamDrivers.Query(
 		sm.Where(models.TeamDrivers.Columns.TeamID.EQ(psql.Arg(teamID))),
+		sm.OrderBy(models.TeamDrivers.Columns.DriverID),
+		sm.OrderBy(models.TeamDrivers.Columns.JoinedAt),
 	).All(ctx, r.getExecutor(ctx))
 }
 

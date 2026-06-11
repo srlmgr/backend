@@ -43,24 +43,6 @@ func TestTeamDriverUniqueConstraintErrors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ErrUniqueTeamDriversFrontendIdUnique",
-			expectedErr: TeamDriverErrors.ErrUniqueTeamDriversFrontendIdUnique,
-			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.TeamDriver) factory.TeamDriverModSlice {
-				shouldUpdate := false
-				updateMods := make(factory.TeamDriverModSlice, 0, 1)
-
-				if shouldUpdate {
-					if err := obj.Update(ctx, exec, f.NewTeamDriverWithContext(ctx, updateMods...).BuildSetter()); err != nil {
-						t.Fatalf("Error updating object: %v", err)
-					}
-				}
-
-				return factory.TeamDriverModSlice{
-					factory.TeamDriverMods.FrontendID(obj.FrontendID),
-				}
-			},
-		},
-		{
 			name:        "ErrUniqueTeamDriversTeamIdDriverIdJoinedAtUnique",
 			expectedErr: TeamDriverErrors.ErrUniqueTeamDriversTeamIdDriverIdJoinedAtUnique,
 			conflictMods: func(ctx context.Context, t *testing.T, exec bob.Executor, obj *models.TeamDriver) factory.TeamDriverModSlice {

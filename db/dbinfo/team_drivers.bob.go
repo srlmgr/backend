@@ -24,15 +24,6 @@ var TeamDrivers = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
-		FrontendID: column{
-			Name:      "frontend_id",
-			DBType:    "uuid",
-			Default:   "uuid_generate_v4()",
-			Comment:   "",
-			Nullable:  false,
-			Generated: false,
-			AutoIncr:  false,
-		},
 		TeamID: column{
 			Name:      "team_id",
 			DBType:    "integer",
@@ -175,23 +166,6 @@ var TeamDrivers = Table[
 			Where:         "",
 			Include:       []string{},
 		},
-		TeamDriversFrontendIDUnique: index{
-			Type: "btree",
-			Name: "team_drivers_frontend_id_unique",
-			Columns: []indexColumn{
-				{
-					Name:         "frontend_id",
-					Desc:         null.FromCond(false, true),
-					IsExpression: false,
-				},
-			},
-			Unique:        true,
-			Comment:       "",
-			NullsFirst:    []bool{false},
-			NullsDistinct: false,
-			Where:         "",
-			Include:       []string{},
-		},
 		TeamDriversTeamIDDriverIDJoinedAtUnique: index{
 			Type: "btree",
 			Name: "team_drivers_team_id_driver_id_joined_at_unique",
@@ -246,11 +220,6 @@ var TeamDrivers = Table[
 		},
 	},
 	Uniques: teamDriverUniques{
-		TeamDriversFrontendIDUnique: constraint{
-			Name:    "team_drivers_frontend_id_unique",
-			Columns: []string{"frontend_id"},
-			Comment: "",
-		},
 		TeamDriversTeamIDDriverIDJoinedAtUnique: constraint{
 			Name:    "team_drivers_team_id_driver_id_joined_at_unique",
 			Columns: []string{"team_id", "driver_id", "joined_at"},
@@ -271,21 +240,20 @@ var TeamDrivers = Table[
 }
 
 type teamDriverColumns struct {
-	ID         column
-	FrontendID column
-	TeamID     column
-	DriverID   column
-	JoinedAt   column
-	LeftAt     column
-	CreatedAt  column
-	UpdatedAt  column
-	CreatedBy  column
-	UpdatedBy  column
+	ID        column
+	TeamID    column
+	DriverID  column
+	JoinedAt  column
+	LeftAt    column
+	CreatedAt column
+	UpdatedAt column
+	CreatedBy column
+	UpdatedBy column
 }
 
 func (c teamDriverColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.TeamID, c.DriverID, c.JoinedAt, c.LeftAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.TeamID, c.DriverID, c.JoinedAt, c.LeftAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
@@ -294,13 +262,12 @@ type teamDriverIndexes struct {
 	IdxTeamDriversDriverID                  index
 	IdxTeamDriversJoinedAt                  index
 	IdxTeamDriversTeamID                    index
-	TeamDriversFrontendIDUnique             index
 	TeamDriversTeamIDDriverIDJoinedAtUnique index
 }
 
 func (i teamDriverIndexes) AsSlice() []index {
 	return []index{
-		i.TeamDriversPkey, i.IdxTeamDriversDriverID, i.IdxTeamDriversJoinedAt, i.IdxTeamDriversTeamID, i.TeamDriversFrontendIDUnique, i.TeamDriversTeamIDDriverIDJoinedAtUnique,
+		i.TeamDriversPkey, i.IdxTeamDriversDriverID, i.IdxTeamDriversJoinedAt, i.IdxTeamDriversTeamID, i.TeamDriversTeamIDDriverIDJoinedAtUnique,
 	}
 }
 
@@ -316,13 +283,12 @@ func (f teamDriverForeignKeys) AsSlice() []foreignKey {
 }
 
 type teamDriverUniques struct {
-	TeamDriversFrontendIDUnique             constraint
 	TeamDriversTeamIDDriverIDJoinedAtUnique constraint
 }
 
 func (u teamDriverUniques) AsSlice() []constraint {
 	return []constraint{
-		u.TeamDriversFrontendIDUnique, u.TeamDriversTeamIDDriverIDJoinedAtUnique,
+		u.TeamDriversTeamIDDriverIDJoinedAtUnique,
 	}
 }
 

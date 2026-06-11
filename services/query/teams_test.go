@@ -1,4 +1,4 @@
-//nolint:dupl // test files can have some duplication for test data setup
+//nolint:dupl,lll,funlen // test files can have some duplication for test data setup
 package query
 
 import (
@@ -163,6 +163,110 @@ func TestGetTeamNotFound(t *testing.T) {
 		connect.NewRequest(&queryv1.GetTeamRequest{
 			Id: 99999,
 		}),
+	)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T: %v", err, err)
+	}
+	if connectErr.Code() != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+	}
+}
+
+func TestGetTeamMembersSuccess(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3 Series")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
+	team := seedTeam(t, repo, season.ID, "Test Team")
+	driver1 := seedDriver(t, repo, "3001", "Driver One")
+	driver2 := seedDriver(t, repo, "3002", "Driver Two")
+
+	_, err := repo.Teams().TeamDrivers().Create(context.Background(), &models.TeamDriverSetter{
+		TeamID:   omit.From(team.ID),
+		DriverID: omit.From(driver1.ID),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed first team member: %v", err)
+	}
+	_, err = repo.Teams().TeamDrivers().Create(context.Background(), &models.TeamDriverSetter{
+		TeamID:   omit.From(team.ID),
+		DriverID: omit.From(driver2.ID),
+	})
+	if err != nil {
+		t.Fatalf("failed to seed second team member: %v", err)
+	}
+
+	resp, err := svc.GetTeamMembers(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetTeamMembersRequest{
+			Id: uint32(team.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	members := resp.Msg.GetMembers()
+	if len(members) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(members))
+	}
+
+	driverIDs := map[uint32]bool{}
+	for _, member := range members {
+		if member.GetTeamId() != uint32(team.ID) {
+			t.Fatalf("expected team id %d, got %d", team.ID, member.GetTeamId())
+		}
+		if member.GetDriver() == nil {
+			t.Fatal("expected driver to be set")
+		}
+		if member.GetJoinedAt() == nil {
+			t.Fatal("expected joined_at to be set")
+		}
+		driverIDs[member.GetDriver().GetId()] = true
+	}
+
+	if !driverIDs[uint32(driver1.ID)] {
+		t.Fatalf("expected driver id %d in members", driver1.ID)
+	}
+	if !driverIDs[uint32(driver2.ID)] {
+		t.Fatalf("expected driver id %d in members", driver2.ID)
+	}
+}
+
+func TestGetTeamMembersEmpty(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	sim := seedSimulation(t, repo, "iRacing")
+	series := seedSeries(t, repo, sim.ID, "GT3 Series")
+	pointSystem := seedPointSystem(t, repo, "GT3 Points")
+	season := seedSeason(t, repo, series.ID, pointSystem.ID, "2024 Season")
+	team := seedTeam(t, repo, season.ID, "Test Team")
+
+	resp, err := svc.GetTeamMembers(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetTeamMembersRequest{Id: uint32(team.ID)}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Msg.GetMembers()) != 0 {
+		t.Fatalf("expected empty members, got %d", len(resp.Msg.GetMembers()))
+	}
+}
+
+func TestGetTeamMembersNotFound(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	_, err := svc.GetTeamMembers(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetTeamMembersRequest{Id: 99999}),
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

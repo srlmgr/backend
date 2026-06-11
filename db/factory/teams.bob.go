@@ -10,7 +10,7 @@ import (
 
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
-	"github.com/gofrs/uuid/v5"
+	"github.com/aarondl/opt/omitnull"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -38,10 +38,13 @@ func (mods TeamModSlice) Apply(ctx context.Context, n *TeamTemplate) {
 // all columns are optional and should be set by mods
 type TeamTemplate struct {
 	ID         func() int32
-	FrontendID func() uuid.UUID
 	SeasonID   func() int32
 	Name       func() string
 	IsActive   func() bool
+	CarModelID func() null.Val[int32]
+	CarNumber  func() null.Val[string]
+	JoinedAt   func() time.Time
+	LeftAt     func() null.Val[time.Time]
 	CreatedAt  func() time.Time
 	UpdatedAt  func() time.Time
 	CreatedBy  func() string
@@ -59,6 +62,7 @@ type teamR struct {
 	ResultEntries       []*teamRResultEntriesR
 	SeasonTeamStandings []*teamRSeasonTeamStandingsR
 	TeamDrivers         []*teamRTeamDriversR
+	CarModel            *teamRCarModelR
 	Season              *teamRSeasonR
 }
 
@@ -81,6 +85,9 @@ type teamRSeasonTeamStandingsR struct {
 type teamRTeamDriversR struct {
 	number int
 	o      *TeamDriverTemplate
+}
+type teamRCarModelR struct {
+	o *CarModelTemplate
 }
 type teamRSeasonR struct {
 	o *SeasonTemplate
@@ -171,6 +178,14 @@ func (t TeamTemplate) setModelRels(o *models.Team) {
 		o.R.Loaded.TeamDrivers = true
 	}
 
+	if t.r.CarModel != nil {
+		rel := t.r.CarModel.o.Build()
+		rel.R.Teams = append(rel.R.Teams, o)
+		o.CarModelID = null.From(rel.ID) // h2
+		o.R.CarModel = rel
+		o.R.Loaded.CarModel = true
+	}
+
 	if t.r.Season != nil {
 		rel := t.r.Season.o.Build()
 		rel.R.Teams = append(rel.R.Teams, o)
@@ -189,10 +204,6 @@ func (o TeamTemplate) BuildSetter() *models.TeamSetter {
 		val := o.ID()
 		m.ID = omit.From(val)
 	}
-	if o.FrontendID != nil {
-		val := o.FrontendID()
-		m.FrontendID = omit.From(val)
-	}
 	if o.SeasonID != nil {
 		val := o.SeasonID()
 		m.SeasonID = omit.From(val)
@@ -204,6 +215,22 @@ func (o TeamTemplate) BuildSetter() *models.TeamSetter {
 	if o.IsActive != nil {
 		val := o.IsActive()
 		m.IsActive = omit.From(val)
+	}
+	if o.CarModelID != nil {
+		val := o.CarModelID()
+		m.CarModelID = omitnull.FromNull(val)
+	}
+	if o.CarNumber != nil {
+		val := o.CarNumber()
+		m.CarNumber = omitnull.FromNull(val)
+	}
+	if o.JoinedAt != nil {
+		val := o.JoinedAt()
+		m.JoinedAt = omit.From(val)
+	}
+	if o.LeftAt != nil {
+		val := o.LeftAt()
+		m.LeftAt = omitnull.FromNull(val)
 	}
 	if o.CreatedAt != nil {
 		val := o.CreatedAt()
@@ -246,9 +273,6 @@ func (o TeamTemplate) Build() *models.Team {
 	if o.ID != nil {
 		m.ID = o.ID()
 	}
-	if o.FrontendID != nil {
-		m.FrontendID = o.FrontendID()
-	}
 	if o.SeasonID != nil {
 		m.SeasonID = o.SeasonID()
 	}
@@ -257,6 +281,18 @@ func (o TeamTemplate) Build() *models.Team {
 	}
 	if o.IsActive != nil {
 		m.IsActive = o.IsActive()
+	}
+	if o.CarModelID != nil {
+		m.CarModelID = o.CarModelID()
+	}
+	if o.CarNumber != nil {
+		m.CarNumber = o.CarNumber()
+	}
+	if o.JoinedAt != nil {
+		m.JoinedAt = o.JoinedAt()
+	}
+	if o.LeftAt != nil {
+		m.LeftAt = o.LeftAt()
 	}
 	if o.CreatedAt != nil {
 		m.CreatedAt = o.CreatedAt()
@@ -406,6 +442,26 @@ func (o *TeamTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *
 		}
 	}
 
+	isCarModelDone, _ := teamRelCarModelCtx.Value(ctx)
+	if !isCarModelDone && o.r.CarModel != nil {
+		ctx = teamRelCarModelCtx.WithValue(ctx, true)
+		if o.r.CarModel.o.alreadyPersisted {
+			m.R.CarModel = o.r.CarModel.o.Build()
+			m.R.Loaded.CarModel = true
+		} else {
+			var rel5 *models.CarModel
+			rel5, err = o.r.CarModel.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachCarModel(ctx, exec, rel5)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
 	return err
 }
 
@@ -421,32 +477,32 @@ func (o *TeamTemplate) Create(ctx context.Context, exec bob.Executor) (*models.T
 	// This works regardless of NoBackReferencing since it only uses child-side metadata.
 	mInCreation, _ := modelsInCreationCtx.Value(ctx)
 
-	var rel5 *models.Season
+	var rel6 *models.Season
 
 	if o.r.Season == nil {
 		if parentModel, found := mInCreation["seasons:teams:teams.teams_season_id_fk"]; found {
 			if pModel, ok := parentModel.(*models.Season); ok {
-				rel5 = pModel
+				rel6 = pModel
 			}
 		}
 	}
 
-	if rel5 == nil {
+	if rel6 == nil {
 		if o.r.Season == nil {
 			TeamMods.WithNewSeason().Apply(ctx, o)
 		}
 
 		if o.r.Season.o.alreadyPersisted {
-			rel5 = o.r.Season.o.Build()
+			rel6 = o.r.Season.o.Build()
 		} else {
-			rel5, err = o.r.Season.o.Create(ctx, exec)
+			rel6, err = o.r.Season.o.Create(ctx, exec)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	opt.SeasonID = omit.From(rel5.ID)
+	opt.SeasonID = omit.From(rel6.ID)
 
 	m, err := models.Teams.Insert(opt).One(ctx, exec)
 	if err != nil {
@@ -469,7 +525,7 @@ func (o *TeamTemplate) Create(ctx context.Context, exec bob.Executor) (*models.T
 
 	ctx = modelsInCreationCtx.WithValue(ctx, newMInCreation)
 
-	m.R.Season = rel5
+	m.R.Season = rel6
 	m.R.Loaded.Season = true
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
@@ -550,10 +606,13 @@ type teamMods struct{}
 func (m teamMods) RandomizeAllColumns(f *faker.Faker) TeamMod {
 	return TeamModSlice{
 		TeamMods.RandomID(f),
-		TeamMods.RandomFrontendID(f),
 		TeamMods.RandomSeasonID(f),
 		TeamMods.RandomName(f),
 		TeamMods.RandomIsActive(f),
+		TeamMods.RandomCarModelID(f),
+		TeamMods.RandomCarNumber(f),
+		TeamMods.RandomJoinedAt(f),
+		TeamMods.RandomLeftAt(f),
 		TeamMods.RandomCreatedAt(f),
 		TeamMods.RandomUpdatedAt(f),
 		TeamMods.RandomCreatedBy(f),
@@ -588,37 +647,6 @@ func (m teamMods) RandomID(f *faker.Faker) TeamMod {
 	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
 		o.ID = func() int32 {
 			return random_int32(f)
-		}
-	})
-}
-
-// Set the model columns to this value
-func (m teamMods) FrontendID(val uuid.UUID) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.FrontendID = func() uuid.UUID { return val }
-	})
-}
-
-// Set the Column from the function
-func (m teamMods) FrontendIDFunc(f func() uuid.UUID) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.FrontendID = f
-	})
-}
-
-// Clear any values for the column
-func (m teamMods) UnsetFrontendID() TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.FrontendID = nil
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-func (m teamMods) RandomFrontendID(f *faker.Faker) TeamMod {
-	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
-		o.FrontendID = func() uuid.UUID {
-			return random_uuid_UUID(f)
 		}
 	})
 }
@@ -712,6 +740,196 @@ func (m teamMods) RandomIsActive(f *faker.Faker) TeamMod {
 	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
 		o.IsActive = func() bool {
 			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m teamMods) CarModelID(val null.Val[int32]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarModelID = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m teamMods) CarModelIDFunc(f func() null.Val[int32]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarModelID = f
+	})
+}
+
+// Clear any values for the column
+func (m teamMods) UnsetCarModelID() TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarModelID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m teamMods) RandomCarModelID(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarModelID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m teamMods) RandomCarModelIDNotNull(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarModelID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m teamMods) CarNumber(val null.Val[string]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarNumber = func() null.Val[string] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m teamMods) CarNumberFunc(f func() null.Val[string]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarNumber = f
+	})
+}
+
+// Clear any values for the column
+func (m teamMods) UnsetCarNumber() TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarNumber = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m teamMods) RandomCarNumber(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarNumber = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m teamMods) RandomCarNumberNotNull(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.CarNumber = func() null.Val[string] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_string(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m teamMods) JoinedAt(val time.Time) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.JoinedAt = func() time.Time { return val }
+	})
+}
+
+// Set the Column from the function
+func (m teamMods) JoinedAtFunc(f func() time.Time) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.JoinedAt = f
+	})
+}
+
+// Clear any values for the column
+func (m teamMods) UnsetJoinedAt() TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.JoinedAt = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m teamMods) RandomJoinedAt(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.JoinedAt = func() time.Time {
+			return random_time_Time(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m teamMods) LeftAt(val null.Val[time.Time]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.LeftAt = func() null.Val[time.Time] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m teamMods) LeftAtFunc(f func() null.Val[time.Time]) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.LeftAt = f
+	})
+}
+
+// Clear any values for the column
+func (m teamMods) UnsetLeftAt() TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.LeftAt = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m teamMods) RandomLeftAt(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.LeftAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m teamMods) RandomLeftAtNotNull(f *faker.Faker) TeamMod {
+	return TeamModFunc(func(_ context.Context, o *TeamTemplate) {
+		o.LeftAt = func() null.Val[time.Time] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_time_Time(f)
+			return null.From(val)
 		}
 	})
 }
@@ -848,9 +1066,44 @@ func (m teamMods) WithParentsCascading() TeamMod {
 		ctx = teamWithParentsCascadingCtx.WithValue(ctx, true)
 		{
 
+			related := o.f.NewCarModelWithContext(ctx, CarModelMods.WithParentsCascading())
+			m.WithCarModel(related).Apply(ctx, o)
+		}
+		{
+
 			related := o.f.NewSeasonWithContext(ctx, SeasonMods.WithParentsCascading())
 			m.WithSeason(related).Apply(ctx, o)
 		}
+	})
+}
+
+func (m teamMods) WithCarModel(rel *CarModelTemplate) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.CarModel = &teamRCarModelR{
+			o: rel,
+		}
+	})
+}
+
+func (m teamMods) WithNewCarModel(mods ...CarModelMod) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		related := o.f.NewCarModelWithContext(ctx, mods...)
+
+		m.WithCarModel(related).Apply(ctx, o)
+	})
+}
+
+func (m teamMods) WithExistingCarModel(em *models.CarModel) TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.CarModel = &teamRCarModelR{
+			o: o.f.fromExistingCarModel(ctx, em),
+		}
+	})
+}
+
+func (m teamMods) WithoutCarModel() TeamMod {
+	return TeamModFunc(func(ctx context.Context, o *TeamTemplate) {
+		o.r.CarModel = nil
 	})
 }
 

@@ -10,26 +10,8 @@ var TeamErrors = &teamErrors{
 		columns: []string{"id"},
 		s:       "teams_pkey",
 	},
-
-	ErrUniqueTeamsFrontendIdUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "teams",
-		columns: []string{"frontend_id"},
-		s:       "teams_frontend_id_unique",
-	},
-
-	ErrUniqueTeamsSeasonIdNameUnique: &UniqueConstraintError{
-		schema:  "",
-		table:   "teams",
-		columns: []string{"season_id", "name"},
-		s:       "teams_season_id_name_unique",
-	},
 }
 
 type teamErrors struct {
 	ErrUniqueTeamsPkey *UniqueConstraintError
-
-	ErrUniqueTeamsFrontendIdUnique *UniqueConstraintError
-
-	ErrUniqueTeamsSeasonIdNameUnique *UniqueConstraintError
 }

@@ -9,9 +9,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
-	"github.com/gofrs/uuid/v5"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -27,15 +27,18 @@ import (
 
 // Team is an object representing the database table.
 type Team struct {
-	ID         int32     `db:"id,pk" `
-	FrontendID uuid.UUID `db:"frontend_id" `
-	SeasonID   int32     `db:"season_id" `
-	Name       string    `db:"name" `
-	IsActive   bool      `db:"is_active" `
-	CreatedAt  time.Time `db:"created_at" `
-	UpdatedAt  time.Time `db:"updated_at" `
-	CreatedBy  string    `db:"created_by" `
-	UpdatedBy  string    `db:"updated_by" `
+	ID         int32               `db:"id,pk" `
+	SeasonID   int32               `db:"season_id" `
+	Name       string              `db:"name" `
+	IsActive   bool                `db:"is_active" `
+	CarModelID null.Val[int32]     `db:"car_model_id" `
+	CarNumber  null.Val[string]    `db:"car_number" `
+	JoinedAt   time.Time           `db:"joined_at" `
+	LeftAt     null.Val[time.Time] `db:"left_at" `
+	CreatedAt  time.Time           `db:"created_at" `
+	UpdatedAt  time.Time           `db:"updated_at" `
+	CreatedBy  string              `db:"created_by" `
+	UpdatedBy  string              `db:"updated_by" `
 
 	R teamR `db:"-" `
 
@@ -59,6 +62,7 @@ type teamR struct {
 	ResultEntries       ResultEntrySlice        // result_entries.result_entries_team_id_fk
 	SeasonTeamStandings SeasonTeamStandingSlice // season_team_standings.season_team_standings_team_id_fk
 	TeamDrivers         TeamDriverSlice         // team_drivers.team_drivers_team_id_fk
+	CarModel            *CarModel               // teams.teams_car_model_id_fk
 	Season              *Season                 // teams.teams_season_id_fk
 	// Loaded reports whether each relationship has been loaded.
 	// A relationship's bool is set by Load*, Preload, ThenLoad, factory builds,
@@ -73,12 +77,13 @@ type teamRLoaded struct {
 	ResultEntries       bool // result_entries.result_entries_team_id_fk
 	SeasonTeamStandings bool // season_team_standings.season_team_standings_team_id_fk
 	TeamDrivers         bool // team_drivers.team_drivers_team_id_fk
+	CarModel            bool // teams.teams_car_model_id_fk
 	Season              bool // teams.teams_season_id_fk
 }
 
 func buildTeamColumns(tableName string) teamColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "frontend_id", "season_id", "name", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "season_id", "name", "is_active", "car_model_id", "car_number", "joined_at", "left_at", "created_at", "updated_at", "created_by", "updated_by",
 	)
 
 	if tableName != "" {
@@ -89,10 +94,13 @@ func buildTeamColumns(tableName string) teamColumns {
 		ColumnsExpr: columnsExpr,
 		tableAlias:  tableName,
 		ID:          buildTeamColumn(tableName, "id"),
-		FrontendID:  buildTeamColumn(tableName, "frontend_id"),
 		SeasonID:    buildTeamColumn(tableName, "season_id"),
 		Name:        buildTeamColumn(tableName, "name"),
 		IsActive:    buildTeamColumn(tableName, "is_active"),
+		CarModelID:  buildTeamColumn(tableName, "car_model_id"),
+		CarNumber:   buildTeamColumn(tableName, "car_number"),
+		JoinedAt:    buildTeamColumn(tableName, "joined_at"),
+		LeftAt:      buildTeamColumn(tableName, "left_at"),
 		CreatedAt:   buildTeamColumn(tableName, "created_at"),
 		UpdatedAt:   buildTeamColumn(tableName, "updated_at"),
 		CreatedBy:   buildTeamColumn(tableName, "created_by"),
@@ -104,10 +112,13 @@ type teamColumns struct {
 	expr.ColumnsExpr
 	tableAlias string
 	ID         teamColumn
-	FrontendID teamColumn
 	SeasonID   teamColumn
 	Name       teamColumn
 	IsActive   teamColumn
+	CarModelID teamColumn
+	CarNumber  teamColumn
+	JoinedAt   teamColumn
+	LeftAt     teamColumn
 	CreatedAt  teamColumn
 	UpdatedAt  teamColumn
 	CreatedBy  teamColumn
@@ -157,24 +168,24 @@ func (c teamColumn) ShouldOmitParens() bool {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type TeamSetter struct {
-	ID         omit.Val[int32]     `db:"id,pk" `
-	FrontendID omit.Val[uuid.UUID] `db:"frontend_id" `
-	SeasonID   omit.Val[int32]     `db:"season_id" `
-	Name       omit.Val[string]    `db:"name" `
-	IsActive   omit.Val[bool]      `db:"is_active" `
-	CreatedAt  omit.Val[time.Time] `db:"created_at" `
-	UpdatedAt  omit.Val[time.Time] `db:"updated_at" `
-	CreatedBy  omit.Val[string]    `db:"created_by" `
-	UpdatedBy  omit.Val[string]    `db:"updated_by" `
+	ID         omit.Val[int32]         `db:"id,pk" `
+	SeasonID   omit.Val[int32]         `db:"season_id" `
+	Name       omit.Val[string]        `db:"name" `
+	IsActive   omit.Val[bool]          `db:"is_active" `
+	CarModelID omitnull.Val[int32]     `db:"car_model_id" `
+	CarNumber  omitnull.Val[string]    `db:"car_number" `
+	JoinedAt   omit.Val[time.Time]     `db:"joined_at" `
+	LeftAt     omitnull.Val[time.Time] `db:"left_at" `
+	CreatedAt  omit.Val[time.Time]     `db:"created_at" `
+	UpdatedAt  omit.Val[time.Time]     `db:"updated_at" `
+	CreatedBy  omit.Val[string]        `db:"created_by" `
+	UpdatedBy  omit.Val[string]        `db:"updated_by" `
 }
 
 func (s TeamSetter) SetColumns() []string {
-	vals := make([]string, 0, 9)
+	vals := make([]string, 0, 12)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
-	}
-	if s.FrontendID.IsValue() {
-		vals = append(vals, "frontend_id")
 	}
 	if s.SeasonID.IsValue() {
 		vals = append(vals, "season_id")
@@ -184,6 +195,18 @@ func (s TeamSetter) SetColumns() []string {
 	}
 	if s.IsActive.IsValue() {
 		vals = append(vals, "is_active")
+	}
+	if !s.CarModelID.IsUnset() {
+		vals = append(vals, "car_model_id")
+	}
+	if !s.CarNumber.IsUnset() {
+		vals = append(vals, "car_number")
+	}
+	if s.JoinedAt.IsValue() {
+		vals = append(vals, "joined_at")
+	}
+	if !s.LeftAt.IsUnset() {
+		vals = append(vals, "left_at")
 	}
 	if s.CreatedAt.IsValue() {
 		vals = append(vals, "created_at")
@@ -204,9 +227,6 @@ func (s TeamSetter) Overwrite(t *Team) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
-	if s.FrontendID.IsValue() {
-		t.FrontendID = s.FrontendID.MustGet()
-	}
 	if s.SeasonID.IsValue() {
 		t.SeasonID = s.SeasonID.MustGet()
 	}
@@ -215,6 +235,18 @@ func (s TeamSetter) Overwrite(t *Team) {
 	}
 	if s.IsActive.IsValue() {
 		t.IsActive = s.IsActive.MustGet()
+	}
+	if !s.CarModelID.IsUnset() {
+		t.CarModelID = s.CarModelID.MustGetNull()
+	}
+	if !s.CarNumber.IsUnset() {
+		t.CarNumber = s.CarNumber.MustGetNull()
+	}
+	if s.JoinedAt.IsValue() {
+		t.JoinedAt = s.JoinedAt.MustGet()
+	}
+	if !s.LeftAt.IsUnset() {
+		t.LeftAt = s.LeftAt.MustGetNull()
 	}
 	if s.CreatedAt.IsValue() {
 		t.CreatedAt = s.CreatedAt.MustGet()
@@ -236,59 +268,77 @@ func (s *TeamSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 9)
+		vals := make([]bob.Expression, 12)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if s.FrontendID.IsValue() {
-			vals[1] = psql.Arg(s.FrontendID.MustGet())
+		if s.SeasonID.IsValue() {
+			vals[1] = psql.Arg(s.SeasonID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if s.SeasonID.IsValue() {
-			vals[2] = psql.Arg(s.SeasonID.MustGet())
+		if s.Name.IsValue() {
+			vals[2] = psql.Arg(s.Name.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if s.Name.IsValue() {
-			vals[3] = psql.Arg(s.Name.MustGet())
+		if s.IsActive.IsValue() {
+			vals[3] = psql.Arg(s.IsActive.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
 
-		if s.IsActive.IsValue() {
-			vals[4] = psql.Arg(s.IsActive.MustGet())
+		if !s.CarModelID.IsUnset() {
+			vals[4] = psql.Arg(s.CarModelID.MustGetNull())
 		} else {
 			vals[4] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedAt.IsValue() {
-			vals[5] = psql.Arg(s.CreatedAt.MustGet())
+		if !s.CarNumber.IsUnset() {
+			vals[5] = psql.Arg(s.CarNumber.MustGetNull())
 		} else {
 			vals[5] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedAt.IsValue() {
-			vals[6] = psql.Arg(s.UpdatedAt.MustGet())
+		if s.JoinedAt.IsValue() {
+			vals[6] = psql.Arg(s.JoinedAt.MustGet())
 		} else {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
-		if s.CreatedBy.IsValue() {
-			vals[7] = psql.Arg(s.CreatedBy.MustGet())
+		if !s.LeftAt.IsUnset() {
+			vals[7] = psql.Arg(s.LeftAt.MustGetNull())
 		} else {
 			vals[7] = psql.Raw("DEFAULT")
 		}
 
-		if s.UpdatedBy.IsValue() {
-			vals[8] = psql.Arg(s.UpdatedBy.MustGet())
+		if s.CreatedAt.IsValue() {
+			vals[8] = psql.Arg(s.CreatedAt.MustGet())
 		} else {
 			vals[8] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedAt.IsValue() {
+			vals[9] = psql.Arg(s.UpdatedAt.MustGet())
+		} else {
+			vals[9] = psql.Raw("DEFAULT")
+		}
+
+		if s.CreatedBy.IsValue() {
+			vals[10] = psql.Arg(s.CreatedBy.MustGet())
+		} else {
+			vals[10] = psql.Raw("DEFAULT")
+		}
+
+		if s.UpdatedBy.IsValue() {
+			vals[11] = psql.Arg(s.UpdatedBy.MustGet())
+		} else {
+			vals[11] = psql.Raw("DEFAULT")
 		}
 
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
@@ -300,19 +350,12 @@ func (s TeamSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s TeamSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 9)
+	exprs := make([]bob.Expression, 0, 12)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "id")...),
 			psql.Arg(s.ID),
-		}})
-	}
-
-	if s.FrontendID.IsValue() {
-		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
-			psql.Quote(append(prefix, "frontend_id")...),
-			psql.Arg(s.FrontendID),
 		}})
 	}
 
@@ -334,6 +377,34 @@ func (s TeamSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "is_active")...),
 			psql.Arg(s.IsActive),
+		}})
+	}
+
+	if !s.CarModelID.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "car_model_id")...),
+			psql.Arg(s.CarModelID),
+		}})
+	}
+
+	if !s.CarNumber.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "car_number")...),
+			psql.Arg(s.CarNumber),
+		}})
+	}
+
+	if s.JoinedAt.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "joined_at")...),
+			psql.Arg(s.JoinedAt),
+		}})
+	}
+
+	if !s.LeftAt.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "left_at")...),
+			psql.Arg(s.LeftAt),
 		}})
 	}
 
@@ -743,6 +814,30 @@ func (os TeamSlice) TeamDrivers(mods ...bob.Mod[*dialect.SelectQuery]) TeamDrive
 	)...)
 }
 
+// CarModel starts a query for related objects on car_models
+func (o *Team) CarModel(mods ...bob.Mod[*dialect.SelectQuery]) CarModelsQuery {
+	return CarModels.Query(append(mods,
+		sm.Where(CarModels.Columns.ID.EQ(psql.Arg(o.CarModelID))),
+	)...)
+}
+
+func (os TeamSlice) CarModel(mods ...bob.Mod[*dialect.SelectQuery]) CarModelsQuery {
+	pkCarModelID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkCarModelID = append(pkCarModelID, o.CarModelID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkCarModelID), "integer[]")),
+	))
+
+	return CarModels.Query(append(mods,
+		sm.Where(psql.Group(CarModels.Columns.ID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Season starts a query for related objects on seasons
 func (o *Team) Season(mods ...bob.Mod[*dialect.SelectQuery]) SeasonsQuery {
 	return Seasons.Query(append(mods,
@@ -1117,6 +1212,56 @@ func (team0 *Team) AttachTeamDrivers(ctx context.Context, exec bob.Executor, rel
 	return nil
 }
 
+func attachTeamCarModel0(ctx context.Context, exec bob.Executor, count int, team0 *Team, carModel1 *CarModel) (*Team, error) {
+	setter := &TeamSetter{
+		CarModelID: omitnull.From(carModel1.ID),
+	}
+
+	err := team0.Update(ctx, exec, setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachTeamCarModel0: %w", err)
+	}
+
+	return team0, nil
+}
+
+func (team0 *Team) InsertCarModel(ctx context.Context, exec bob.Executor, related *CarModelSetter) error {
+	var err error
+
+	carModel1, err := CarModels.Insert(related).One(ctx, exec)
+	if err != nil {
+		return fmt.Errorf("inserting related objects: %w", err)
+	}
+
+	_, err = attachTeamCarModel0(ctx, exec, 1, team0, carModel1)
+	if err != nil {
+		return err
+	}
+
+	team0.R.CarModel = carModel1
+	team0.R.Loaded.CarModel = true
+
+	carModel1.R.Teams = append(carModel1.R.Teams, team0)
+
+	return nil
+}
+
+func (team0 *Team) AttachCarModel(ctx context.Context, exec bob.Executor, carModel1 *CarModel) error {
+	var err error
+
+	_, err = attachTeamCarModel0(ctx, exec, 1, team0, carModel1)
+	if err != nil {
+		return err
+	}
+
+	team0.R.CarModel = carModel1
+	team0.R.Loaded.CarModel = true
+
+	carModel1.R.Teams = append(carModel1.R.Teams, team0)
+
+	return nil
+}
+
 func attachTeamSeason0(ctx context.Context, exec bob.Executor, count int, team0 *Team, season1 *Season) (*Team, error) {
 	setter := &TeamSetter{
 		SeasonID: omit.From(season1.ID),
@@ -1169,10 +1314,13 @@ func (team0 *Team) AttachSeason(ctx context.Context, exec bob.Executor, season1 
 
 type teamWhere[Q psql.Filterable] struct {
 	ID         psql.WhereMod[Q, int32]
-	FrontendID psql.WhereMod[Q, uuid.UUID]
 	SeasonID   psql.WhereMod[Q, int32]
 	Name       psql.WhereMod[Q, string]
 	IsActive   psql.WhereMod[Q, bool]
+	CarModelID psql.WhereNullMod[Q, int32]
+	CarNumber  psql.WhereNullMod[Q, string]
+	JoinedAt   psql.WhereMod[Q, time.Time]
+	LeftAt     psql.WhereNullMod[Q, time.Time]
 	CreatedAt  psql.WhereMod[Q, time.Time]
 	UpdatedAt  psql.WhereMod[Q, time.Time]
 	CreatedBy  psql.WhereMod[Q, string]
@@ -1186,10 +1334,13 @@ func (teamWhere[Q]) AliasedAs(alias string) teamWhere[Q] {
 func buildTeamWhere[Q psql.Filterable](cols teamColumns) teamWhere[Q] {
 	return teamWhere[Q]{
 		ID:         psql.Where[Q, int32](cols.ID.Expression),
-		FrontendID: psql.Where[Q, uuid.UUID](cols.FrontendID.Expression),
 		SeasonID:   psql.Where[Q, int32](cols.SeasonID.Expression),
 		Name:       psql.Where[Q, string](cols.Name.Expression),
 		IsActive:   psql.Where[Q, bool](cols.IsActive.Expression),
+		CarModelID: psql.WhereNull[Q, int32](cols.CarModelID.Expression),
+		CarNumber:  psql.WhereNull[Q, string](cols.CarNumber.Expression),
+		JoinedAt:   psql.Where[Q, time.Time](cols.JoinedAt.Expression),
+		LeftAt:     psql.WhereNull[Q, time.Time](cols.LeftAt.Expression),
 		CreatedAt:  psql.Where[Q, time.Time](cols.CreatedAt.Expression),
 		UpdatedAt:  psql.Where[Q, time.Time](cols.UpdatedAt.Expression),
 		CreatedBy:  psql.Where[Q, string](cols.CreatedBy.Expression),
@@ -1283,6 +1434,19 @@ func (o *Team) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "CarModel":
+		rel, ok := retrieved.(*CarModel)
+		if !ok {
+			return fmt.Errorf("team cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.CarModel = rel
+		o.R.Loaded.CarModel = true
+
+		if rel != nil {
+			rel.R.Teams = TeamSlice{o}
+		}
+		return nil
 	case "Season":
 		rel, ok := retrieved.(*Season)
 		if !ok {
@@ -1302,11 +1466,25 @@ func (o *Team) Preload(name string, retrieved any) error {
 }
 
 type teamPreloader struct {
-	Season func(...psql.PreloadOption) psql.Preloader
+	CarModel func(...psql.PreloadOption) psql.Preloader
+	Season   func(...psql.PreloadOption) psql.Preloader
 }
 
 func buildTeamPreloader() teamPreloader {
 	return teamPreloader{
+		CarModel: func(opts ...psql.PreloadOption) psql.Preloader {
+			return psql.Preload[*CarModel, CarModelSlice](psql.PreloadRel{
+				Name: "CarModel",
+				Sides: []psql.PreloadSide{
+					{
+						From:        Teams,
+						To:          CarModels,
+						FromColumns: []string{"car_model_id"},
+						ToColumns:   []string{"id"},
+					},
+				},
+			}, CarModels.Columns.Names(), opts...)
+		},
 		Season: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*Season, SeasonSlice](psql.PreloadRel{
 				Name: "Season",
@@ -1329,6 +1507,7 @@ type teamThenLoader[Q orm.Loadable] struct {
 	ResultEntries       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonTeamStandings func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	TeamDrivers         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	CarModel            func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Season              func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
@@ -1347,6 +1526,9 @@ func buildTeamThenLoader[Q orm.Loadable]() teamThenLoader[Q] {
 	}
 	type TeamDriversLoadInterface interface {
 		LoadTeamDrivers(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type CarModelLoadInterface interface {
+		LoadCarModel(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type SeasonLoadInterface interface {
 		LoadSeason(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1381,6 +1563,12 @@ func buildTeamThenLoader[Q orm.Loadable]() teamThenLoader[Q] {
 			"TeamDrivers",
 			func(ctx context.Context, exec bob.Executor, retrieved TeamDriversLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadTeamDrivers(ctx, exec, mods...)
+			},
+		),
+		CarModel: thenLoadBuilder[Q](
+			"CarModel",
+			func(ctx context.Context, exec bob.Executor, retrieved CarModelLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCarModel(ctx, exec, mods...)
 			},
 		),
 		Season: thenLoadBuilder[Q](
@@ -1722,6 +1910,72 @@ func (os TeamSlice) LoadTeamDrivers(ctx context.Context, exec bob.Executor, mods
 			rel.R.Loaded.Team = true
 
 			o.R.TeamDrivers = append(o.R.TeamDrivers, rel)
+		}
+	}
+
+	return nil
+}
+
+// LoadCarModel loads the team's CarModel into the .R struct
+func (o *Team) LoadCarModel(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.CarModel = nil
+	o.R.Loaded.CarModel = false
+
+	related, err := o.CarModel(mods...).One(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	related.R.Teams = TeamSlice{o}
+
+	o.R.CarModel = related
+	o.R.Loaded.CarModel = true
+	return nil
+}
+
+// LoadCarModel loads the team's CarModel into the .R struct
+func (os TeamSlice) LoadCarModel(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	carModels, err := os.CarModel(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.CarModel = nil
+		o.R.Loaded.CarModel = true
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		for _, rel := range carModels {
+			if !o.CarModelID.IsValue() {
+				continue
+			}
+
+			if !(o.CarModelID.IsValue() && o.CarModelID.MustGet() == rel.ID) {
+				continue
+			}
+
+			rel.R.Teams = append(rel.R.Teams, o)
+
+			o.R.CarModel = rel
+			break
 		}
 	}
 
@@ -2390,6 +2644,7 @@ type teamJoins[Q dialect.Joinable] struct {
 	ResultEntries       modAs[Q, resultEntryColumns]
 	SeasonTeamStandings modAs[Q, seasonTeamStandingColumns]
 	TeamDrivers         modAs[Q, teamDriverColumns]
+	CarModel            modAs[Q, carModelColumns]
 	Season              modAs[Q, seasonColumns]
 }
 
@@ -2464,6 +2719,20 @@ func buildTeamJoins[Q dialect.Joinable](cols teamColumns, typ string) teamJoins[
 				{
 					mods = append(mods, dialect.Join[Q](typ, TeamDrivers.NameExpr().As(to.Alias())).On(
 						to.TeamID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		CarModel: modAs[Q, carModelColumns]{
+			c: CarModels.Columns,
+			f: func(to carModelColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, CarModels.NameExpr().As(to.Alias())).On(
+						to.ID.EQ(cols.CarModelID),
 					))
 				}
 

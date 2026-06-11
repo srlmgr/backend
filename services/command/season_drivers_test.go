@@ -4,7 +4,6 @@ package command
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 	"time"
 
@@ -50,7 +49,7 @@ func TestSetSeasonDriversSuccessReplacesEntries(t *testing.T) {
 		Drivers: []*v1.SetSeasonDriver{
 			{
 				DriverId:   uint32(newDriver.ID),
-				CarModelId: strconv.Itoa(int(carModel.ID)),
+				CarModelId: uint32(carModel.ID),
 				CarNumber:  "27",
 			},
 		},
@@ -96,7 +95,7 @@ func TestAddSeasonDriverSuccess(t *testing.T) {
 	resp, err := svc.AddSeasonDriver(ctx, connect.NewRequest(&v1.AddSeasonDriverRequest{
 		DriverId:   uint32(driver.ID),
 		SeasonId:   uint32(season.ID),
-		CarModelId: strconv.Itoa(int(carModel.ID)),
+		CarModelId: uint32(carModel.ID),
 		CarNumber:  "12",
 		JoinedAt:   timestamppb.New(joinedAt),
 	}))
@@ -141,7 +140,7 @@ func TestAddSeasonDriverFailureInvalidCarModelID(t *testing.T) {
 		connect.NewRequest(&v1.AddSeasonDriverRequest{
 			DriverId:   uint32(driver.ID),
 			SeasonId:   uint32(season.ID),
-			CarModelId: "not-a-number",
+			CarModelId: uint32(0), // invalid car model ID
 			CarNumber:  "12",
 		}),
 	)

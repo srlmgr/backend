@@ -378,6 +378,9 @@ func (f *Factory) fromExistingCarModel(ctx context.Context, m *models.CarModel) 
 	if len(m.R.SimulationCarAliases) > 0 {
 		CarModelMods.AddExistingSimulationCarAliases(m.R.SimulationCarAliases...).Apply(ctx, o)
 	}
+	if len(m.R.Teams) > 0 {
+		CarModelMods.AddExistingTeams(m.R.Teams...).Apply(ctx, o)
+	}
 
 	return o
 }
@@ -1629,7 +1632,6 @@ func (f *Factory) fromExistingTeamDriver(ctx context.Context, m *models.TeamDriv
 	o := &TeamDriverTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.TeamID = func() int32 { return m.TeamID }
 	o.DriverID = func() int32 { return m.DriverID }
 	o.JoinedAt = func() time.Time { return m.JoinedAt }
@@ -1682,10 +1684,13 @@ func (f *Factory) fromExistingTeam(ctx context.Context, m *models.Team) *TeamTem
 	o := &TeamTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int32 { return m.ID }
-	o.FrontendID = func() uuid.UUID { return m.FrontendID }
 	o.SeasonID = func() int32 { return m.SeasonID }
 	o.Name = func() string { return m.Name }
 	o.IsActive = func() bool { return m.IsActive }
+	o.CarModelID = func() null.Val[int32] { return m.CarModelID }
+	o.CarNumber = func() null.Val[string] { return m.CarNumber }
+	o.JoinedAt = func() time.Time { return m.JoinedAt }
+	o.LeftAt = func() null.Val[time.Time] { return m.LeftAt }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
@@ -1712,6 +1717,9 @@ func (f *Factory) fromExistingTeam(ctx context.Context, m *models.Team) *TeamTem
 	}
 	if len(m.R.TeamDrivers) > 0 {
 		TeamMods.AddExistingTeamDrivers(m.R.TeamDrivers...).Apply(ctx, o)
+	}
+	if m.R.CarModel != nil {
+		TeamMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
 	}
 	if m.R.Season != nil {
 		TeamMods.WithExistingSeason(m.R.Season).Apply(ctx, o)

@@ -45,6 +45,7 @@ var (
 	carModelRelResultEntriesCtx         = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
 	carModelRelSeasonDriversCtx         = newContextual[bool]("car_models.season_drivers.season_drivers.season_drivers_car_model_id_fk")
 	carModelRelSimulationCarAliasesCtx  = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
+	carModelRelTeamsCtx                 = newContextual[bool]("car_models.teams.teams.teams_car_model_id_fk")
 
 	// Relationship Contexts for drivers
 	driverWithParentsCascadingCtx       = newContextual[bool]("driverWithParentsCascading")
@@ -191,6 +192,7 @@ var (
 	teamRelResultEntriesCtx       = newContextual[bool]("result_entries.teams.result_entries.result_entries_team_id_fk")
 	teamRelSeasonTeamStandingsCtx = newContextual[bool]("season_team_standings.teams.season_team_standings.season_team_standings_team_id_fk")
 	teamRelTeamDriversCtx         = newContextual[bool]("team_drivers.teams.team_drivers.team_drivers_team_id_fk")
+	teamRelCarModelCtx            = newContextual[bool]("car_models.teams.teams.teams_car_model_id_fk")
 	teamRelSeasonCtx              = newContextual[bool]("seasons.teams.teams.teams_season_id_fk")
 
 	// Relationship Contexts for track_layouts
