@@ -17,11 +17,12 @@ import (
 )
 
 type seasonDriverInput struct {
-	driverID   int32
-	carModelID int32
-	carNumber  string
-	joinedAt   *time.Time
-	leftAt     *time.Time
+	driverID      int32
+	carModelID    int32
+	carNumber     string
+	isGuestDriver bool
+	joinedAt      *time.Time
+	leftAt        *time.Time
 }
 
 //nolint:whitespace // editor/linter issue
@@ -31,9 +32,10 @@ func convertSetSeasonDriversInput(
 	inputs := make([]seasonDriverInput, 0, len(msg.GetDrivers()))
 	for _, driver := range msg.GetDrivers() {
 		input := seasonDriverInput{
-			driverID:   int32(driver.GetDriverId()),
-			carModelID: int32(driver.GetCarModelId()),
-			carNumber:  driver.GetCarNumber(),
+			driverID:      int32(driver.GetDriverId()),
+			carModelID:    int32(driver.GetCarModelId()),
+			carNumber:     driver.GetCarNumber(),
+			isGuestDriver: driver.GetIsGuestDriver(),
 		}
 		if driver.HasJoinedAt() {
 			joinedAt := driver.GetJoinedAt().AsTime()
@@ -78,12 +80,13 @@ func (s *service) SetSeasonDrivers(
 		for i := range inputs {
 			input := inputs[i]
 			setter := &models.SeasonDriverSetter{
-				DriverID:   omit.From(input.driverID),
-				SeasonID:   omit.From(seasonID),
-				CarModelID: omit.From(input.carModelID),
-				CarNumber:  omit.From(input.carNumber),
-				CreatedBy:  omit.From(user),
-				UpdatedBy:  omit.From(user),
+				DriverID:       omit.From(input.driverID),
+				SeasonID:       omit.From(seasonID),
+				CarModelID:     omit.From(input.carModelID),
+				CarNumber:      omit.From(input.carNumber),
+				IsGuestStarter: omit.From(input.isGuestDriver),
+				CreatedBy:      omit.From(user),
+				UpdatedBy:      omit.From(user),
 			}
 			if input.joinedAt != nil {
 				setter.JoinedAt = omit.From(*input.joinedAt)
@@ -145,12 +148,13 @@ func (s *service) AddSeasonDriver(
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		setter := &models.SeasonDriverSetter{
-			DriverID:   omit.From(driverID),
-			SeasonID:   omit.From(seasonID),
-			CarModelID: omit.From(carModelID),
-			CarNumber:  omit.From(req.Msg.GetCarNumber()),
-			CreatedBy:  omit.From(s.execUser(ctx)),
-			UpdatedBy:  omit.From(s.execUser(ctx)),
+			DriverID:       omit.From(driverID),
+			SeasonID:       omit.From(seasonID),
+			CarModelID:     omit.From(carModelID),
+			CarNumber:      omit.From(req.Msg.GetCarNumber()),
+			IsGuestStarter: omit.From(req.Msg.GetIsGuestDriver()),
+			CreatedBy:      omit.From(s.execUser(ctx)),
+			UpdatedBy:      omit.From(s.execUser(ctx)),
 		}
 		if req.Msg.HasJoinedAt() {
 			setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())

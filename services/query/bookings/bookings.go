@@ -164,6 +164,8 @@ func bookingEntryToProto(item *models.BookingEntry) *commonv1.BookingEntry {
 	entry := &commonv1.BookingEntry{
 		Id:          uint32(item.ID),
 		EventId:     uint32(item.EventID),
+		RaceId:      uint32(item.RaceID.GetOrZero()),
+		RaceGridId:  uint32(item.RaceGridID.GetOrZero()),
 		TargetType:  toBookingTargetType(item.TargetType),
 		SourceType:  toBookingSourceType(item.SourceType),
 		Points:      item.Points,

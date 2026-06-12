@@ -29,7 +29,7 @@ ALTER TABLE import_batches
 
 ALTER TABLE import_batches
     ADD CONSTRAINT import_batches_processing_state_check
-    CHECK (processing_state IN ('raw_imported', 'preprocessed', 'driver_entries_computed', 'team_entries_computed', 'finalized', 'failed'));
+    CHECK (processing_state IN ('raw_imported', 'pre_processed', 'driver_entries_computed', 'team_entries_computed', 'finalized', 'failed'));
 
 CREATE INDEX idx_import_batches_race_grid_id ON import_batches (race_grid_id);
 CREATE INDEX idx_import_batches_processing_state ON import_batches (processing_state);

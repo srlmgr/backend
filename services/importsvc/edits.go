@@ -182,6 +182,8 @@ func buildResultEntrySetterFromProto(
 		setter.State = omit.From(resultStateToStr(state))
 	}
 
+	setter.IsGuestStarter = omit.From(row.GetIsGuestDriver())
+
 	if notes := row.GetAdminNotes(); notes != "" {
 		setter.AdminNotes = omitnull.From(notes)
 	}

@@ -6,6 +6,7 @@ CREATE TABLE season_drivers (
     season_id integer NOT NULL,
     car_model_id integer NOT NULL,
 	car_number text not null,
+	is_guest_starter boolean NOT NULL DEFAULT false,
     joined_at timestamp with time zone NOT NULL DEFAULT now(),
     left_at timestamp with time zone,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
