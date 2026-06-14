@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
 	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/samber/lo"
 	"github.com/stephenafamo/bob/types"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -17,6 +19,7 @@ import (
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/services/importsvc/processor"
 )
 
 //nolint:whitespace // editor/linter issue
@@ -122,6 +125,10 @@ func (s *service) buildPenaltyBookingEntry(
 	if err != nil {
 		return nil, err
 	}
+	carClassID, err := s.resolveCarClassID(ctx, resolvedTarget.eventID, req)
+	if err != nil {
+		return nil, err
+	}
 
 	emptyJSON := types.JSON[json.RawMessage]{Val: json.RawMessage("{}")}
 	execUser := s.execUser(ctx)
@@ -133,6 +140,7 @@ func (s *service) buildPenaltyBookingEntry(
 		TargetType:   omit.From(resolvedTarget.targetType),
 		DriverID:     resolvedTarget.driverID,
 		TeamID:       resolvedTarget.teamID,
+		CarClassID:   carClassID,
 		SourceType:   omit.From(mytypes.SourceType("penalty_points")),
 		Points:       omit.From(penaltyPoints),
 		Description:  omit.From(req.GetReason()),
@@ -235,6 +243,88 @@ func (s *service) resolvePenaltyTarget(
 	}
 
 	return data, nil
+}
+
+// additional computation logic filters by carClassID,
+// so we need to resolve it as part of the target resolution to ensure correct behavior
+//
+//nolint:whitespace,gocyclo,nestif,funlen // editor/linter issue
+func (s *service) resolveCarClassID(
+	ctx context.Context,
+	eventID int32,
+	req *importv1.AddPenaltyRequest,
+) (omitnull.Val[int32], error) {
+	epi, err := processor.NewEventProcInfoCollector(s.repo).ForEvent(ctx, eventID)
+	if err != nil {
+		return omitnull.Val[int32]{}, err
+	}
+	// need it only for multiclass seasons
+	if !epi.Season.IsMulticlass {
+		return omitnull.Val[int32]{}, nil
+	}
+
+	// resolve by driver
+	if req.Target.HasDriverId() {
+		sDrivers, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(
+			ctx, epi.Event.SeasonID)
+		if err != nil {
+			return omitnull.Val[int32]{}, err
+		}
+		if sd, ok := lo.Find(sDrivers, func(item *models.SeasonDriver) bool {
+			lower := item.JoinedAt
+			upper := time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
+			if item.LeftAt.IsValue() {
+				upper = item.LeftAt.MustGet()
+			}
+			return epi.Event.EventDate.After(lower) &&
+				epi.Event.EventDate.Before(upper) &&
+				item.ID == int32(req.Target.GetDriverId())
+		}); ok {
+			_ = sd
+			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+				ctx,
+				epi.Season.ID,
+				sd.CarModelID,
+			)
+			if err != nil {
+				return omitnull.Val[int32]{}, err
+			}
+			return omitnull.From(carClass.ID), nil
+		}
+
+	}
+
+	// resolve by team
+	if req.Target.HasTeamId() {
+		sTeams, err := s.repo.Teams().Teams().LoadBySeasonID(
+			ctx, epi.Event.SeasonID)
+		if err != nil {
+			return omitnull.Val[int32]{}, err
+		}
+		if t, ok := lo.Find(sTeams, func(item *models.Team) bool {
+			lower := item.JoinedAt
+			upper := time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
+			if item.LeftAt.IsValue() {
+				upper = item.LeftAt.MustGet()
+			}
+			return epi.Event.EventDate.After(lower) &&
+				epi.Event.EventDate.Before(upper) &&
+				item.ID == int32(req.Target.GetTeamId())
+		}); ok {
+			_ = t
+			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+				ctx,
+				epi.Season.ID,
+				t.CarModelID.GetOrZero(),
+			)
+			if err != nil {
+				return omitnull.Val[int32]{}, err
+			}
+			return omitnull.From(carClass.ID), nil
+		}
+	}
+
+	return omitnull.Val[int32]{}, nil
 }
 
 func (s *service) toRPCError(err error) error {

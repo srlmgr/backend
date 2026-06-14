@@ -64,6 +64,7 @@ type (
 
 	Output interface {
 		ReferenceID() int32
+		ClassID() int32
 		Points() PointType
 		Msg() string
 		Origin() PointPolicyType

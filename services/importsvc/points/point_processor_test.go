@@ -9,20 +9,22 @@ import (
 )
 
 type outputSnapshot struct {
-	refID  int32
-	points PointType
-	msg    string
-	origin PointPolicyType
+	refID   int32
+	classID int32
+	points  PointType
+	msg     string
+	origin  PointPolicyType
 }
 
 func toOutputSnapshots(outputs []Output) []outputSnapshot {
 	ret := make([]outputSnapshot, 0, len(outputs))
 	for _, out := range outputs {
 		ret = append(ret, outputSnapshot{
-			refID:  out.ReferenceID(),
-			points: out.Points(),
-			msg:    out.Msg(),
-			origin: out.Origin(),
+			refID:   out.ReferenceID(),
+			classID: out.ClassID(),
+			points:  out.Points(),
+			msg:     out.Msg(),
+			origin:  out.Origin(),
 		})
 	}
 	return ret
@@ -225,22 +227,25 @@ func TestPointSystemProcessorProcessPoints_FinishPolicySortsByFinishPosition(t *
 
 	expected := []Output{
 		workOutput{
-			refID:  102,
-			points: 25,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   102,
+			classID: 1,
+			points:  25,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  103,
-			points: 18,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   103,
+			classID: 1,
+			points:  18,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  101,
-			points: 15,
-			msg:    fmt.Sprintf("for pos %d", 3),
-			origin: PointsPolicyFinishPos,
+			refID:   101,
+			classID: 1,
+			points:  15,
+			msg:     fmt.Sprintf("for pos %d", 3),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
@@ -301,16 +306,18 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 
 	expected := []Output{
 		workOutput{
-			refID:  201,
-			points: 25,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   201,
+			classID: 1,
+			points:  25,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  201,
-			points: 5,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyQualificationPos,
+			refID:   201,
+			classID: 1,
+			points:  5,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyQualificationPos,
 		},
 	}
 
@@ -369,28 +376,32 @@ func TestPointSystemProcessorProcessPoints_MultipleClassesProcessIndependently(t
 
 	expected := []Output{
 		workOutput{
-			refID:  302,
-			points: 10,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   302,
+			classID: 1,
+			points:  10,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  301,
-			points: 7,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   301,
+			classID: 1,
+			points:  7,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  401,
-			points: 10,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   401,
+			classID: 2,
+			points:  10,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  402,
-			points: 7,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   402,
+			classID: 2,
+			points:  7,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
@@ -445,22 +456,25 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 
 	expected := []Output{
 		workOutput{
-			refID:  501,
-			points: 25,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   501,
+			classID: 1,
+			points:  25,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  502,
-			points: 18,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   502,
+			classID: 1,
+			points:  18,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  502,
-			points: -2,
-			msg:    "10% reduction for 5 incidents (limit: 3)",
-			origin: PointsPolicyIncidentsExceeded,
+			refID:   502,
+			classID: 1,
+			points:  -2,
+			msg:     "10% reduction for 5 incidents (limit: 3)",
+			origin:  PointsPolicyIncidentsExceeded,
 		},
 	}
 

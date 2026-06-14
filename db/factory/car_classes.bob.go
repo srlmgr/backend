@@ -51,11 +51,16 @@ type CarClassTemplate struct {
 }
 
 type carClassR struct {
+	BookingEntries        []*carClassRBookingEntriesR
 	CarClassesToCarModels []*carClassRCarClassesToCarModelsR
 	ResultEntries         []*carClassRResultEntriesR
 	SeasonCarClasses      []*carClassRSeasonCarClassesR
 }
 
+type carClassRBookingEntriesR struct {
+	number int
+	o      *BookingEntryTemplate
+}
 type carClassRCarClassesToCarModelsR struct {
 	number int
 	o      *CarClassesToCarModelTemplate
@@ -79,6 +84,21 @@ func (o *CarClassTemplate) Apply(ctx context.Context, mods ...CarClassMod) {
 // setModelRels creates and sets the relationships on *models.CarClass
 // according to the relationships in the template. Nothing is inserted into the db
 func (t CarClassTemplate) setModelRels(o *models.CarClass) {
+	if t.r.BookingEntries != nil {
+		rel := models.BookingEntrySlice{}
+		for _, r := range t.r.BookingEntries {
+			related := r.o.BuildMany(r.number)
+			for _, rel := range related {
+				rel.CarClassID = null.From(o.ID) // h2
+				rel.R.CarClass = o
+				rel.R.Loaded.CarClass = true
+			}
+			rel = append(rel, related...)
+		}
+		o.R.BookingEntries = rel
+		o.R.Loaded.BookingEntries = true
+	}
+
 	if t.r.CarClassesToCarModels != nil {
 		rel := models.CarClassesToCarModelSlice{}
 		for _, r := range t.r.CarClassesToCarModels {
@@ -233,6 +253,26 @@ func ensureCreatableCarClass(m *models.CarClassSetter) {
 func (o *CarClassTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.CarClass) error {
 	var err error
 
+	isBookingEntriesDone, _ := carClassRelBookingEntriesCtx.Value(ctx)
+	if !isBookingEntriesDone && o.r.BookingEntries != nil {
+		ctx = carClassRelBookingEntriesCtx.WithValue(ctx, true)
+		for _, r := range o.r.BookingEntries {
+			if r.o.alreadyPersisted {
+				m.R.BookingEntries = append(m.R.BookingEntries, r.o.Build())
+			} else {
+				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				if err != nil {
+					return err
+				}
+
+				err = m.AttachBookingEntries(ctx, exec, rel0...)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	isCarClassesToCarModelsDone, _ := carClassRelCarClassesToCarModelsCtx.Value(ctx)
 	if !isCarClassesToCarModelsDone && o.r.CarClassesToCarModels != nil {
 		ctx = carClassRelCarClassesToCarModelsCtx.WithValue(ctx, true)
@@ -240,12 +280,12 @@ func (o *CarClassTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.CarClassesToCarModels = append(m.R.CarClassesToCarModels, r.o.Build())
 			} else {
-				rel0, err := r.o.CreateMany(ctx, exec, r.number)
+				rel1, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachCarClassesToCarModels(ctx, exec, rel0...)
+				err = m.AttachCarClassesToCarModels(ctx, exec, rel1...)
 				if err != nil {
 					return err
 				}
@@ -260,12 +300,12 @@ func (o *CarClassTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.ResultEntries = append(m.R.ResultEntries, r.o.Build())
 			} else {
-				rel1, err := r.o.CreateMany(ctx, exec, r.number)
+				rel2, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachResultEntries(ctx, exec, rel1...)
+				err = m.AttachResultEntries(ctx, exec, rel2...)
 				if err != nil {
 					return err
 				}
@@ -280,12 +320,12 @@ func (o *CarClassTemplate) insertOptRels(ctx context.Context, exec bob.Executor,
 			if r.o.alreadyPersisted {
 				m.R.SeasonCarClasses = append(m.R.SeasonCarClasses, r.o.Build())
 			} else {
-				rel2, err := r.o.CreateMany(ctx, exec, r.number)
+				rel3, err := r.o.CreateMany(ctx, exec, r.number)
 				if err != nil {
 					return err
 				}
 
-				err = m.AttachSeasonCarClasses(ctx, exec, rel2...)
+				err = m.AttachSeasonCarClasses(ctx, exec, rel3...)
 				if err != nil {
 					return err
 				}
@@ -321,6 +361,7 @@ func (o *CarClassTemplate) Create(ctx context.Context, exec bob.Executor) (*mode
 	for k, v := range mInCreation {
 		newMInCreation[k] = v
 	}
+	newMInCreation["car_classes:booking_entries:booking_entries.booking_entries_car_class_id_fk"] = m
 	newMInCreation["car_classes:car_classes_to_car_models:car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk"] = m
 	newMInCreation["car_classes:result_entries:result_entries.result_entries_car_class_id_fk"] = m
 	newMInCreation["car_classes:season_car_classes:season_car_classes.season_car_classes_car_class_id_fk"] = m
@@ -637,6 +678,54 @@ func (m carClassMods) WithParentsCascading() CarClassMod {
 			return
 		}
 		ctx = carClassWithParentsCascadingCtx.WithValue(ctx, true)
+	})
+}
+
+func (m carClassMods) WithBookingEntries(number int, related *BookingEntryTemplate) CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		o.r.BookingEntries = []*carClassRBookingEntriesR{{
+			number: number,
+			o:      related,
+		}}
+	})
+}
+
+func (m carClassMods) WithNewBookingEntries(number int, mods ...BookingEntryMod) CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.WithBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carClassMods) AddBookingEntries(number int, related *BookingEntryTemplate) CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		o.r.BookingEntries = append(o.r.BookingEntries, &carClassRBookingEntriesR{
+			number: number,
+			o:      related,
+		})
+	})
+}
+
+func (m carClassMods) AddNewBookingEntries(number int, mods ...BookingEntryMod) CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		related := o.f.NewBookingEntryWithContext(ctx, mods...)
+		m.AddBookingEntries(number, related).Apply(ctx, o)
+	})
+}
+
+func (m carClassMods) AddExistingBookingEntries(existingModels ...*models.BookingEntry) CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		for _, em := range existingModels {
+			o.r.BookingEntries = append(o.r.BookingEntries, &carClassRBookingEntriesR{
+				o: o.f.fromExistingBookingEntry(ctx, em),
+			})
+		}
+	})
+}
+
+func (m carClassMods) WithoutBookingEntries() CarClassMod {
+	return CarClassModFunc(func(ctx context.Context, o *CarClassTemplate) {
+		o.r.BookingEntries = nil
 	})
 }
 

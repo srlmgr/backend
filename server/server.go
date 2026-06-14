@@ -32,6 +32,7 @@ import (
 	queryservice "github.com/srlmgr/backend/services/query"
 	bookingservice "github.com/srlmgr/backend/services/query/bookings"
 	frontendservice "github.com/srlmgr/backend/services/query/frontend"
+	standingsservice "github.com/srlmgr/backend/services/query/standings"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -244,6 +245,10 @@ func registerConnectHandlers(
 		bookingservice.New(repo, logger.Named("services.bookings"), tracer),
 		opts...,
 	)
+	standingsPath, standingsHandler := queryv1connect.NewStandingsServiceHandler(
+		standingsservice.New(repo, logger.Named("services.standings"), tracer),
+		opts...,
+	)
 
 	mux.Handle(adminPath, adminHandler)
 	mux.Handle(commandPath, commandHandler)
@@ -251,6 +256,7 @@ func registerConnectHandlers(
 	mux.Handle(queryPath, queryHandler)
 	mux.Handle(frontendPath, frontendHandler)
 	mux.Handle(bookingsPath, bookingsHandler)
+	mux.Handle(standingsPath, standingsHandler)
 }
 
 func registerHealthServer(mux *http.ServeMux) {

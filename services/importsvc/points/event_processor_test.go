@@ -134,31 +134,35 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 
 	expectedFirst := []Output{
 		workOutput{
-			refID:  12,
-			points: 5,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   12,
+			classID: 1,
+			points:  5,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  11,
-			points: 3,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   11,
+			classID: 1,
+			points:  3,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
 	expectedSecond := []Output{
 		workOutput{
-			refID:  21,
-			points: 20,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   21,
+			classID: 2,
+			points:  20,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  22,
-			points: 15,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   22,
+			classID: 2,
+			points:  15,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
@@ -248,16 +252,18 @@ func TestEventProcessorProcessAll_ClampsResolvedIndexesToLastConfiguredRaceAndGr
 
 	expected := []Output{
 		workOutput{
-			refID:  702,
-			points: 50,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   702,
+			classID: 1,
+			points:  50,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  701,
-			points: 40,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   701,
+			classID: 1,
+			points:  40,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
@@ -336,16 +342,18 @@ func TestEventProcessorProcessAll_WhenRaceNoIsBeyondConfigured_UsesLastRaceSetti
 
 	expected := []Output{
 		workOutput{
-			refID:  9002,
-			points: 30,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   9002,
+			classID: 1,
+			points:  30,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  9001,
-			points: 20,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   9001,
+			classID: 1,
+			points:  20,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 	}
 
@@ -440,22 +448,25 @@ func TestEventProcessorProcessAll_WhenGridNoIsBeyondConfigured_UsesLastGridAward
 
 	expected := []Output{
 		workOutput{
-			refID:  9101,
-			points: 100,
-			msg:    fmt.Sprintf("for pos %d", 1),
-			origin: PointsPolicyFinishPos,
+			refID:   9101,
+			classID: 1,
+			points:  100,
+			msg:     fmt.Sprintf("for pos %d", 1),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  9102,
-			points: 70,
-			msg:    fmt.Sprintf("for pos %d", 2),
-			origin: PointsPolicyFinishPos,
+			refID:   9102,
+			classID: 1,
+			points:  70,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyFinishPos,
 		},
 		workOutput{
-			refID:  9102,
-			points: -35,
-			msg:    "50% reduction for 3 incidents (limit: 1)",
-			origin: PointsPolicyIncidentsExceeded,
+			refID:   9102,
+			classID: 1,
+			points:  -35,
+			msg:     "50% reduction for 3 incidents (limit: 1)",
+			origin:  PointsPolicyIncidentsExceeded,
 		},
 	}
 

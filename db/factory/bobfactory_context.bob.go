@@ -12,6 +12,7 @@ var (
 
 	// Relationship Contexts for booking_entries
 	bookingEntryWithParentsCascadingCtx = newContextual[bool]("bookingEntryWithParentsCascading")
+	bookingEntryRelCarClassCtx          = newContextual[bool]("booking_entries.car_classes.booking_entries.booking_entries_car_class_id_fk")
 	bookingEntryRelDriverCtx            = newContextual[bool]("booking_entries.drivers.booking_entries.booking_entries_driver_id_fk")
 	bookingEntryRelEventCtx             = newContextual[bool]("booking_entries.events.booking_entries.booking_entries_event_id_fk")
 	bookingEntryRelRaceGridCtx          = newContextual[bool]("booking_entries.race_grids.booking_entries.booking_entries_race_grid_id_fk")
@@ -25,6 +26,7 @@ var (
 
 	// Relationship Contexts for car_classes
 	carClassWithParentsCascadingCtx     = newContextual[bool]("carClassWithParentsCascading")
+	carClassRelBookingEntriesCtx        = newContextual[bool]("booking_entries.car_classes.booking_entries.booking_entries_car_class_id_fk")
 	carClassRelCarClassesToCarModelsCtx = newContextual[bool]("car_classes.car_classes_to_car_models.car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk")
 	carClassRelResultEntriesCtx         = newContextual[bool]("car_classes.result_entries.result_entries.result_entries_car_class_id_fk")
 	carClassRelSeasonCarClassesCtx      = newContextual[bool]("car_classes.season_car_classes.season_car_classes.season_car_classes_car_class_id_fk")

@@ -85,6 +85,7 @@ func (f *Factory) fromExistingBookingEntry(ctx context.Context, m *models.Bookin
 	o.EventID = func() int32 { return m.EventID }
 	o.RaceID = func() null.Val[int32] { return m.RaceID }
 	o.RaceGridID = func() null.Val[int32] { return m.RaceGridID }
+	o.CarClassID = func() null.Val[int32] { return m.CarClassID }
 	o.TargetType = func() mytypes.TargetType { return m.TargetType }
 	o.DriverID = func() null.Val[int32] { return m.DriverID }
 	o.TeamID = func() null.Val[int32] { return m.TeamID }
@@ -105,6 +106,9 @@ func (f *Factory) fromExistingBookingEntry(ctx context.Context, m *models.Bookin
 			return o
 		}
 		visited[ptr] = struct{}{}
+	}
+	if m.R.CarClass != nil {
+		BookingEntryMods.WithExistingCarClass(m.R.CarClass).Apply(ctx, o)
 	}
 	if m.R.Driver != nil {
 		BookingEntryMods.WithExistingDriver(m.R.Driver).Apply(ctx, o)
@@ -215,6 +219,9 @@ func (f *Factory) fromExistingCarClass(ctx context.Context, m *models.CarClass) 
 			return o
 		}
 		visited[ptr] = struct{}{}
+	}
+	if len(m.R.BookingEntries) > 0 {
+		CarClassMods.AddExistingBookingEntries(m.R.BookingEntries...).Apply(ctx, o)
 	}
 	if len(m.R.CarClassesToCarModels) > 0 {
 		CarClassMods.AddExistingCarClassesToCarModels(m.R.CarClassesToCarModels...).Apply(ctx, o)
