@@ -597,3 +597,29 @@ func (s *service) AssignCarModelToCarClass(
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model assigned to car class")
 	return connect.NewResponse(&v1.AssignCarModelToCarClassResponse{}), nil
 }
+
+//nolint:whitespace // editor/linter issue
+func (s *service) UnassignCarModelFromCarClass(
+	ctx context.Context,
+	req *connect.Request[v1.UnassignCarModelFromCarClassRequest]) (
+	*connect.Response[v1.UnassignCarModelFromCarClassResponse], error,
+) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("UnassignCarModelFromCarClass")
+
+	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		return s.repo.Cars().CarClasses().UnassignCarModel(
+			ctx,
+			int32(req.Msg.GetCarClassId()),
+			int32(req.Msg.GetCarModelId()),
+		)
+	}); txErr != nil {
+		l.Error("failed to unassign car model from car class", log.ErrorField(txErr))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to unassign car model from car class")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model unassigned from car class")
+	return connect.NewResponse(&v1.UnassignCarModelFromCarClassResponse{}), nil
+}

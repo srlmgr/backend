@@ -7,6 +7,7 @@ import (
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -249,5 +250,32 @@ func (s *service) GetCarClass(
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class loaded")
 	return connect.NewResponse(&queryv1.GetCarClassResponse{
 		CarClass: s.conversion.CarClassToCarClass(item),
+	}), nil
+}
+
+// ListCarClassModels returns a list of car models for a given car class ID.
+//
+//nolint:whitespace // editor/linter issue
+func (s *service) ListCarClassModels(
+	ctx context.Context,
+	req *connect.Request[queryv1.ListCarClassModelsRequest],
+) (*connect.Response[queryv1.ListCarClassModelsResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("ListCarClassModels", log.Uint32("classID", req.Msg.GetClassId()))
+
+	carModels, err := s.repo.Cars().CarModels().LoadByCarClassID(
+		ctx, int32(req.Msg.GetClassId()))
+	if err != nil {
+		l.Error("failed to load car models for car class", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to load car models for car class")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car models loaded for car class")
+	return connect.NewResponse(&queryv1.ListCarClassModelsResponse{
+		Items: lo.Map(carModels, func(m *models.CarModel, _ int) *commonv1.CarModel {
+			return s.conversion.CarModelToCarModel(m)
+		}),
 	}), nil
 }
