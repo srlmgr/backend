@@ -44,6 +44,7 @@ type BookingEntryTemplate struct {
 	EventID      func() int32
 	RaceID       func() null.Val[int32]
 	RaceGridID   func() null.Val[int32]
+	CarClassID   func() null.Val[int32]
 	TargetType   func() mytypes.TargetType
 	DriverID     func() null.Val[int32]
 	TeamID       func() null.Val[int32]
@@ -65,6 +66,7 @@ type BookingEntryTemplate struct {
 }
 
 type bookingEntryR struct {
+	CarClass *bookingEntryRCarClassR
 	Driver   *bookingEntryRDriverR
 	Event    *bookingEntryREventR
 	RaceGrid *bookingEntryRRaceGridR
@@ -72,6 +74,9 @@ type bookingEntryR struct {
 	Team     *bookingEntryRTeamR
 }
 
+type bookingEntryRCarClassR struct {
+	o *CarClassTemplate
+}
 type bookingEntryRDriverR struct {
 	o *DriverTemplate
 }
@@ -98,6 +103,14 @@ func (o *BookingEntryTemplate) Apply(ctx context.Context, mods ...BookingEntryMo
 // setModelRels creates and sets the relationships on *models.BookingEntry
 // according to the relationships in the template. Nothing is inserted into the db
 func (t BookingEntryTemplate) setModelRels(o *models.BookingEntry) {
+	if t.r.CarClass != nil {
+		rel := t.r.CarClass.o.Build()
+		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
+		o.CarClassID = null.From(rel.ID) // h2
+		o.R.CarClass = rel
+		o.R.Loaded.CarClass = true
+	}
+
 	if t.r.Driver != nil {
 		rel := t.r.Driver.o.Build()
 		rel.R.BookingEntries = append(rel.R.BookingEntries, o)
@@ -159,6 +172,10 @@ func (o BookingEntryTemplate) BuildSetter() *models.BookingEntrySetter {
 	if o.RaceGridID != nil {
 		val := o.RaceGridID()
 		m.RaceGridID = omitnull.FromNull(val)
+	}
+	if o.CarClassID != nil {
+		val := o.CarClassID()
+		m.CarClassID = omitnull.FromNull(val)
 	}
 	if o.TargetType != nil {
 		val := o.TargetType()
@@ -246,6 +263,9 @@ func (o BookingEntryTemplate) Build() *models.BookingEntry {
 	if o.RaceGridID != nil {
 		m.RaceGridID = o.RaceGridID()
 	}
+	if o.CarClassID != nil {
+		m.CarClassID = o.CarClassID()
+	}
 	if o.TargetType != nil {
 		m.TargetType = o.TargetType()
 	}
@@ -329,6 +349,26 @@ func ensureCreatableBookingEntry(m *models.BookingEntrySetter) {
 func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.BookingEntry) error {
 	var err error
 
+	isCarClassDone, _ := bookingEntryRelCarClassCtx.Value(ctx)
+	if !isCarClassDone && o.r.CarClass != nil {
+		ctx = bookingEntryRelCarClassCtx.WithValue(ctx, true)
+		if o.r.CarClass.o.alreadyPersisted {
+			m.R.CarClass = o.r.CarClass.o.Build()
+			m.R.Loaded.CarClass = true
+		} else {
+			var rel0 *models.CarClass
+			rel0, err = o.r.CarClass.o.Create(ctx, exec)
+			if err != nil {
+				return err
+			}
+			err = m.AttachCarClass(ctx, exec, rel0)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
 	isDriverDone, _ := bookingEntryRelDriverCtx.Value(ctx)
 	if !isDriverDone && o.r.Driver != nil {
 		ctx = bookingEntryRelDriverCtx.WithValue(ctx, true)
@@ -336,12 +376,12 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 			m.R.Driver = o.r.Driver.o.Build()
 			m.R.Loaded.Driver = true
 		} else {
-			var rel0 *models.Driver
-			rel0, err = o.r.Driver.o.Create(ctx, exec)
+			var rel1 *models.Driver
+			rel1, err = o.r.Driver.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachDriver(ctx, exec, rel0)
+			err = m.AttachDriver(ctx, exec, rel1)
 			if err != nil {
 				return err
 			}
@@ -356,12 +396,12 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 			m.R.RaceGrid = o.r.RaceGrid.o.Build()
 			m.R.Loaded.RaceGrid = true
 		} else {
-			var rel2 *models.RaceGrid
-			rel2, err = o.r.RaceGrid.o.Create(ctx, exec)
+			var rel3 *models.RaceGrid
+			rel3, err = o.r.RaceGrid.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachRaceGrid(ctx, exec, rel2)
+			err = m.AttachRaceGrid(ctx, exec, rel3)
 			if err != nil {
 				return err
 			}
@@ -376,12 +416,12 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 			m.R.Race = o.r.Race.o.Build()
 			m.R.Loaded.Race = true
 		} else {
-			var rel3 *models.Race
-			rel3, err = o.r.Race.o.Create(ctx, exec)
+			var rel4 *models.Race
+			rel4, err = o.r.Race.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachRace(ctx, exec, rel3)
+			err = m.AttachRace(ctx, exec, rel4)
 			if err != nil {
 				return err
 			}
@@ -396,12 +436,12 @@ func (o *BookingEntryTemplate) insertOptRels(ctx context.Context, exec bob.Execu
 			m.R.Team = o.r.Team.o.Build()
 			m.R.Loaded.Team = true
 		} else {
-			var rel4 *models.Team
-			rel4, err = o.r.Team.o.Create(ctx, exec)
+			var rel5 *models.Team
+			rel5, err = o.r.Team.o.Create(ctx, exec)
 			if err != nil {
 				return err
 			}
-			err = m.AttachTeam(ctx, exec, rel4)
+			err = m.AttachTeam(ctx, exec, rel5)
 			if err != nil {
 				return err
 			}
@@ -424,32 +464,32 @@ func (o *BookingEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*
 	// This works regardless of NoBackReferencing since it only uses child-side metadata.
 	mInCreation, _ := modelsInCreationCtx.Value(ctx)
 
-	var rel1 *models.Event
+	var rel2 *models.Event
 
 	if o.r.Event == nil {
 		if parentModel, found := mInCreation["events:booking_entries:booking_entries.booking_entries_event_id_fk"]; found {
 			if pModel, ok := parentModel.(*models.Event); ok {
-				rel1 = pModel
+				rel2 = pModel
 			}
 		}
 	}
 
-	if rel1 == nil {
+	if rel2 == nil {
 		if o.r.Event == nil {
 			BookingEntryMods.WithNewEvent().Apply(ctx, o)
 		}
 
 		if o.r.Event.o.alreadyPersisted {
-			rel1 = o.r.Event.o.Build()
+			rel2 = o.r.Event.o.Build()
 		} else {
-			rel1, err = o.r.Event.o.Create(ctx, exec)
+			rel2, err = o.r.Event.o.Create(ctx, exec)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	opt.EventID = omit.From(rel1.ID)
+	opt.EventID = omit.From(rel2.ID)
 
 	m, err := models.BookingEntries.Insert(opt).One(ctx, exec)
 	if err != nil {
@@ -467,7 +507,7 @@ func (o *BookingEntryTemplate) Create(ctx context.Context, exec bob.Executor) (*
 
 	ctx = modelsInCreationCtx.WithValue(ctx, newMInCreation)
 
-	m.R.Event = rel1
+	m.R.Event = rel2
 	m.R.Loaded.Event = true
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
@@ -551,6 +591,7 @@ func (m bookingEntryMods) RandomizeAllColumns(f *faker.Faker) BookingEntryMod {
 		BookingEntryMods.RandomEventID(f),
 		BookingEntryMods.RandomRaceID(f),
 		BookingEntryMods.RandomRaceGridID(f),
+		BookingEntryMods.RandomCarClassID(f),
 		BookingEntryMods.RandomTargetType(f),
 		BookingEntryMods.RandomDriverID(f),
 		BookingEntryMods.RandomTeamID(f),
@@ -725,6 +766,59 @@ func (m bookingEntryMods) RandomRaceGridID(f *faker.Faker) BookingEntryMod {
 func (m bookingEntryMods) RandomRaceGridIDNotNull(f *faker.Faker) BookingEntryMod {
 	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
 		o.RaceGridID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m bookingEntryMods) CarClassID(val null.Val[int32]) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.CarClassID = func() null.Val[int32] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m bookingEntryMods) CarClassIDFunc(f func() null.Val[int32]) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.CarClassID = f
+	})
+}
+
+// Clear any values for the column
+func (m bookingEntryMods) UnsetCarClassID() BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.CarClassID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m bookingEntryMods) RandomCarClassID(f *faker.Faker) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.CarClassID = func() null.Val[int32] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_int32(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m bookingEntryMods) RandomCarClassIDNotNull(f *faker.Faker) BookingEntryMod {
+	return BookingEntryModFunc(func(_ context.Context, o *BookingEntryTemplate) {
+		o.CarClassID = func() null.Val[int32] {
 			if f == nil {
 				f = &defaultFaker
 			}
@@ -1212,6 +1306,11 @@ func (m bookingEntryMods) WithParentsCascading() BookingEntryMod {
 		ctx = bookingEntryWithParentsCascadingCtx.WithValue(ctx, true)
 		{
 
+			related := o.f.NewCarClassWithContext(ctx, CarClassMods.WithParentsCascading())
+			m.WithCarClass(related).Apply(ctx, o)
+		}
+		{
+
 			related := o.f.NewDriverWithContext(ctx, DriverMods.WithParentsCascading())
 			m.WithDriver(related).Apply(ctx, o)
 		}
@@ -1235,6 +1334,36 @@ func (m bookingEntryMods) WithParentsCascading() BookingEntryMod {
 			related := o.f.NewTeamWithContext(ctx, TeamMods.WithParentsCascading())
 			m.WithTeam(related).Apply(ctx, o)
 		}
+	})
+}
+
+func (m bookingEntryMods) WithCarClass(rel *CarClassTemplate) BookingEntryMod {
+	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
+		o.r.CarClass = &bookingEntryRCarClassR{
+			o: rel,
+		}
+	})
+}
+
+func (m bookingEntryMods) WithNewCarClass(mods ...CarClassMod) BookingEntryMod {
+	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
+		related := o.f.NewCarClassWithContext(ctx, mods...)
+
+		m.WithCarClass(related).Apply(ctx, o)
+	})
+}
+
+func (m bookingEntryMods) WithExistingCarClass(em *models.CarClass) BookingEntryMod {
+	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
+		o.r.CarClass = &bookingEntryRCarClassR{
+			o: o.f.fromExistingCarClass(ctx, em),
+		}
+	})
+}
+
+func (m bookingEntryMods) WithoutCarClass() BookingEntryMod {
+	return BookingEntryModFunc(func(ctx context.Context, o *BookingEntryTemplate) {
+		o.r.CarClass = nil
 	})
 }
 

@@ -187,7 +187,9 @@ func buildResultEntrySetterFromProto(
 	if notes := row.GetAdminNotes(); notes != "" {
 		setter.AdminNotes = omitnull.From(notes)
 	}
-
+	setter.RawCarName = omitnull.From(row.GetRawCarName())
+	setter.RawDriverName = omitnull.From(row.GetRawDriverName())
+	setter.RawTeamName = omitnull.From(row.GetRawTeamName())
 	return setter
 }
 

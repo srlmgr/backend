@@ -51,6 +51,7 @@ type CarClassesQuery = *psql.ViewQuery[*CarClass, CarClassSlice]
 
 // carClassR is where relationships are stored.
 type carClassR struct {
+	BookingEntries        BookingEntrySlice         // booking_entries.booking_entries_car_class_id_fk
 	CarClassesToCarModels CarClassesToCarModelSlice // car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk
 	ResultEntries         ResultEntrySlice          // result_entries.result_entries_car_class_id_fk
 	SeasonCarClasses      SeasonCarClassSlice       // season_car_classes.season_car_classes_car_class_id_fk
@@ -62,6 +63,7 @@ type carClassR struct {
 
 // carClassRLoaded tracks which relationships on CarClass have been loaded.
 type carClassRLoaded struct {
+	BookingEntries        bool // booking_entries.booking_entries_car_class_id_fk
 	CarClassesToCarModels bool // car_classes_to_car_models.car_classes_to_car_models_car_class_id_fk
 	ResultEntries         bool // result_entries.result_entries_car_class_id_fk
 	SeasonCarClasses      bool // season_car_classes.season_car_classes_car_class_id_fk
@@ -561,6 +563,30 @@ func (o CarClassSlice) ReloadAll(ctx context.Context, exec bob.Executor) error {
 	return nil
 }
 
+// BookingEntries starts a query for related objects on booking_entries
+func (o *CarClass) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	return BookingEntries.Query(append(mods,
+		sm.Where(BookingEntries.Columns.CarClassID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os CarClassSlice) BookingEntries(mods ...bob.Mod[*dialect.SelectQuery]) BookingEntriesQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return BookingEntries.Query(append(mods,
+		sm.Where(psql.Group(BookingEntries.Columns.CarClassID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // CarClassesToCarModels starts a query for related objects on car_classes_to_car_models
 func (o *CarClass) CarClassesToCarModels(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesToCarModelsQuery {
 	return CarClassesToCarModels.Query(append(mods,
@@ -631,6 +657,76 @@ func (os CarClassSlice) SeasonCarClasses(mods ...bob.Mod[*dialect.SelectQuery]) 
 	return SeasonCarClasses.Query(append(mods,
 		sm.Where(psql.Group(SeasonCarClasses.Columns.CarClassID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+func insertCarClassBookingEntries0(ctx context.Context, exec bob.Executor, bookingEntries1 []*BookingEntrySetter, carClass0 *CarClass) (BookingEntrySlice, error) {
+	for i := range bookingEntries1 {
+		bookingEntries1[i].CarClassID = omitnull.From(carClass0.ID)
+	}
+
+	ret, err := BookingEntries.Insert(bob.ToMods(bookingEntries1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertCarClassBookingEntries0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachCarClassBookingEntries0(ctx context.Context, exec bob.Executor, count int, bookingEntries1 BookingEntrySlice, carClass0 *CarClass) (BookingEntrySlice, error) {
+	setter := &BookingEntrySetter{
+		CarClassID: omitnull.From(carClass0.ID),
+	}
+
+	err := bookingEntries1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachCarClassBookingEntries0: %w", err)
+	}
+
+	return bookingEntries1, nil
+}
+
+func (carClass0 *CarClass) InsertBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntrySetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	bookingEntries1, err := insertCarClassBookingEntries0(ctx, exec, related, carClass0)
+	if err != nil {
+		return err
+	}
+
+	carClass0.R.BookingEntries = append(carClass0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range bookingEntries1 {
+		rel.R.CarClass = carClass0
+		rel.R.Loaded.CarClass = true
+	}
+	return nil
+}
+
+func (carClass0 *CarClass) AttachBookingEntries(ctx context.Context, exec bob.Executor, related ...*BookingEntry) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	bookingEntries1 := BookingEntrySlice(related)
+
+	_, err = attachCarClassBookingEntries0(ctx, exec, len(related), bookingEntries1, carClass0)
+	if err != nil {
+		return err
+	}
+
+	carClass0.R.BookingEntries = append(carClass0.R.BookingEntries, bookingEntries1...)
+
+	for _, rel := range related {
+		rel.R.CarClass = carClass0
+		rel.R.Loaded.CarClass = true
+	}
+
+	return nil
 }
 
 func insertCarClassCarClassesToCarModels0(ctx context.Context, exec bob.Executor, carClassesToCarModels1 []*CarClassesToCarModelSetter, carClass0 *CarClass) (CarClassesToCarModelSlice, error) {
@@ -875,6 +971,22 @@ func (o *CarClass) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "BookingEntries":
+		rels, ok := retrieved.(BookingEntrySlice)
+		if !ok {
+			return fmt.Errorf("carClass cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.BookingEntries = rels
+		o.R.Loaded.BookingEntries = true
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.CarClass = o
+				rel.R.Loaded.CarClass = true
+			}
+		}
+		return nil
 	case "CarClassesToCarModels":
 		rels, ok := retrieved.(CarClassesToCarModelSlice)
 		if !ok {
@@ -935,12 +1047,16 @@ func buildCarClassPreloader() carClassPreloader {
 }
 
 type carClassThenLoader[Q orm.Loadable] struct {
+	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonCarClasses      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
+	type BookingEntriesLoadInterface interface {
+		LoadBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type CarClassesToCarModelsLoadInterface interface {
 		LoadCarClassesToCarModels(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -952,6 +1068,12 @@ func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
 	}
 
 	return carClassThenLoader[Q]{
+		BookingEntries: thenLoadBuilder[Q](
+			"BookingEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadBookingEntries(ctx, exec, mods...)
+			},
+		),
 		CarClassesToCarModels: thenLoadBuilder[Q](
 			"CarClassesToCarModels",
 			func(ctx context.Context, exec bob.Executor, retrieved CarClassesToCarModelsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -971,6 +1093,84 @@ func buildCarClassThenLoader[Q orm.Loadable]() carClassThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadBookingEntries loads the carClass's BookingEntries into the .R struct
+func (o *CarClass) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.BookingEntries = nil
+	o.R.Loaded.BookingEntries = false
+
+	related, err := o.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.CarClass = o
+		rel.R.Loaded.CarClass = true
+	}
+
+	o.R.BookingEntries = related
+	o.R.Loaded.BookingEntries = true
+	return nil
+}
+
+// LoadBookingEntries loads the carClass's BookingEntries into the .R struct
+func (os CarClassSlice) LoadBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	bookingEntries, err := os.BookingEntries(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.BookingEntries = nil
+		o.R.Loaded.BookingEntries = true
+	}
+	// O(N+M) stitch via a map keyed by the join column (key -> []parent; was O(N*M)).
+	carClassByKey := make(map[int32][]*CarClass, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		carClassByKey[o.ID] = append(carClassByKey[o.ID], o)
+	}
+
+	for _, rel := range bookingEntries {
+
+		if !rel.CarClassID.IsValue() {
+			continue
+		}
+
+		owners, ok := carClassByKey[rel.CarClassID.MustGet()]
+		if !ok {
+			continue
+		}
+
+		for _, o := range owners {
+
+			rel.R.CarClass = o
+			rel.R.Loaded.CarClass = true
+
+			o.R.BookingEntries = append(o.R.BookingEntries, rel)
+
+		}
+	}
+
+	return nil
 }
 
 // LoadCarClassesToCarModels loads the carClass's CarClassesToCarModels into the .R struct
@@ -1201,6 +1401,7 @@ func (os CarClassSlice) LoadSeasonCarClasses(ctx context.Context, exec bob.Execu
 
 // carClassC is where relationship counts are stored.
 type carClassC struct {
+	BookingEntries        *int64
 	CarClassesToCarModels *int64
 	ResultEntries         *int64
 	SeasonCarClasses      *int64
@@ -1213,6 +1414,8 @@ func (o *CarClass) PreloadCount(name string, count int64) error {
 	}
 
 	switch name {
+	case "BookingEntries":
+		o.C.BookingEntries = &count
 	case "CarClassesToCarModels":
 		o.C.CarClassesToCarModels = &count
 	case "ResultEntries":
@@ -1224,6 +1427,7 @@ func (o *CarClass) PreloadCount(name string, count int64) error {
 }
 
 type carClassCountPreloader struct {
+	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	SeasonCarClasses      func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
@@ -1231,6 +1435,23 @@ type carClassCountPreloader struct {
 
 func buildCarClassCountPreloader() carClassCountPreloader {
 	return carClassCountPreloader{
+		BookingEntries: func(mods ...bob.Mod[*dialect.SelectQuery]) psql.Preloader {
+			return countPreloader[*CarClass]("BookingEntries", func(parent string) bob.Expression {
+				// Build a correlated subquery: (SELECT COUNT(*) FROM related WHERE fk = parent.pk)
+				if parent == "" {
+					parent = CarClasses.Alias()
+				}
+
+				subqueryMods := []bob.Mod[*dialect.SelectQuery]{
+					sm.Columns(psql.Raw("count(*)")),
+
+					sm.From(BookingEntries.NameAsExpr()),
+					sm.Where(psql.Quote(BookingEntries.Alias(), "car_class_id").EQ(psql.Quote(parent, "id"))),
+				}
+				subqueryMods = append(subqueryMods, mods...)
+				return psql.Group(psql.Select(subqueryMods...).Expression)
+			})
+		},
 		CarClassesToCarModels: func(mods ...bob.Mod[*dialect.SelectQuery]) psql.Preloader {
 			return countPreloader[*CarClass]("CarClassesToCarModels", func(parent string) bob.Expression {
 				// Build a correlated subquery: (SELECT COUNT(*) FROM related WHERE fk = parent.pk)
@@ -1286,12 +1507,16 @@ func buildCarClassCountPreloader() carClassCountPreloader {
 }
 
 type carClassCountThenLoader[Q orm.Loadable] struct {
+	BookingEntries        func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonCarClasses      func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 }
 
 func buildCarClassCountThenLoader[Q orm.Loadable]() carClassCountThenLoader[Q] {
+	type BookingEntriesCountInterface interface {
+		LoadCountBookingEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type CarClassesToCarModelsCountInterface interface {
 		LoadCountCarClassesToCarModels(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -1303,6 +1528,12 @@ func buildCarClassCountThenLoader[Q orm.Loadable]() carClassCountThenLoader[Q] {
 	}
 
 	return carClassCountThenLoader[Q]{
+		BookingEntries: countThenLoadBuilder[Q](
+			"BookingEntries",
+			func(ctx context.Context, exec bob.Executor, retrieved BookingEntriesCountInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCountBookingEntries(ctx, exec, mods...)
+			},
+		),
 		CarClassesToCarModels: countThenLoadBuilder[Q](
 			"CarClassesToCarModels",
 			func(ctx context.Context, exec bob.Executor, retrieved CarClassesToCarModelsCountInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -1322,6 +1553,87 @@ func buildCarClassCountThenLoader[Q orm.Loadable]() carClassCountThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadCountBookingEntries loads the count of BookingEntries into the C struct
+func (o *CarClass) LoadCountBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	count, err := o.BookingEntries(mods...).Count(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	o.C.BookingEntries = &count
+	return nil
+}
+
+// LoadCountBookingEntries loads the count of BookingEntries for a slice in a single batch query
+func (os CarClassSlice) LoadCountBookingEntries(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	// Build the IN arg expression from parent PKs
+
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	// countResult holds one scanned row from the batch count query.
+	// FK columns are aliased to the parent PK column names for direct map lookup.
+	type countResult struct {
+		ID    int32
+		Count int64
+	}
+
+	batchMods := []bob.Mod[*dialect.SelectQuery]{
+		// SELECT fk AS parent_pk, count(*)
+		sm.Columns(
+			BookingEntries.Columns.CarClassID.As("id"),
+			psql.Raw("count(*) as count"),
+		),
+		// Single-hop: FROM related table directly
+		sm.From(BookingEntries.NameAsExpr()),
+
+		// WHERE fk IN (parent PKs)
+		sm.Where(BookingEntries.Columns.CarClassID.OP("IN", PKArgExpr)),
+		// GROUP BY fk columns
+		sm.GroupBy(BookingEntries.Columns.CarClassID),
+	}
+	batchMods = append(batchMods, mods...)
+
+	results, err := bob.All(ctx, exec,
+		psql.Select(batchMods...),
+		scan.StructMapper[countResult](),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Single-column FK: direct map lookup
+	countMap := make(map[int32]int64, len(results))
+	for _, r := range results {
+		countMap[r.ID] = r.Count
+	}
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		count := countMap[o.ID]
+		o.C.BookingEntries = &count
+	}
+
+	return nil
 }
 
 // LoadCountCarClassesToCarModels loads the count of CarClassesToCarModels into the C struct
@@ -1569,6 +1881,7 @@ func (os CarClassSlice) LoadCountSeasonCarClasses(ctx context.Context, exec bob.
 
 type carClassJoins[Q dialect.Joinable] struct {
 	typ                   string
+	BookingEntries        modAs[Q, bookingEntryColumns]
 	CarClassesToCarModels modAs[Q, carClassesToCarModelColumns]
 	ResultEntries         modAs[Q, resultEntryColumns]
 	SeasonCarClasses      modAs[Q, seasonCarClassColumns]
@@ -1581,6 +1894,20 @@ func (j carClassJoins[Q]) aliasedAs(alias string) carClassJoins[Q] {
 func buildCarClassJoins[Q dialect.Joinable](cols carClassColumns, typ string) carClassJoins[Q] {
 	return carClassJoins[Q]{
 		typ: typ,
+		BookingEntries: modAs[Q, bookingEntryColumns]{
+			c: BookingEntries.Columns,
+			f: func(to bookingEntryColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, BookingEntries.NameExpr().As(to.Alias())).On(
+						to.CarClassID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
 		CarClassesToCarModels: modAs[Q, carClassesToCarModelColumns]{
 			c: CarClassesToCarModels.Columns,
 			f: func(to carClassesToCarModelColumns) bob.Mod[Q] {

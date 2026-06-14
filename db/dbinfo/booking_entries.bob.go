@@ -51,6 +51,15 @@ var BookingEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		CarClassID: column{
+			Name:      "car_class_id",
+			DBType:    "integer",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		TargetType: column{
 			Name:      "target_type",
 			DBType:    "text",
@@ -313,6 +322,15 @@ var BookingEntries = Table[
 		Comment: "",
 	},
 	ForeignKeys: bookingEntryForeignKeys{
+		BookingEntriesBookingEntriesCarClassIDFK: foreignKey{
+			constraint: constraint{
+				Name:    "booking_entries.booking_entries_car_class_id_fk",
+				Columns: []string{"car_class_id"},
+				Comment: "",
+			},
+			ForeignTable:   "car_classes",
+			ForeignColumns: []string{"id"},
+		},
 		BookingEntriesBookingEntriesDriverIDFK: foreignKey{
 			constraint: constraint{
 				Name:    "booking_entries.booking_entries_driver_id_fk",
@@ -386,6 +404,7 @@ type bookingEntryColumns struct {
 	EventID      column
 	RaceID       column
 	RaceGridID   column
+	CarClassID   column
 	TargetType   column
 	DriverID     column
 	TeamID       column
@@ -403,7 +422,7 @@ type bookingEntryColumns struct {
 
 func (c bookingEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.EventID, c.RaceID, c.RaceGridID, c.TargetType, c.DriverID, c.TeamID, c.SourceType, c.Points, c.Description, c.IsManual, c.LockedAt, c.MetadataJSON, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.EventID, c.RaceID, c.RaceGridID, c.CarClassID, c.TargetType, c.DriverID, c.TeamID, c.SourceType, c.Points, c.Description, c.IsManual, c.LockedAt, c.MetadataJSON, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
@@ -425,6 +444,7 @@ func (i bookingEntryIndexes) AsSlice() []index {
 }
 
 type bookingEntryForeignKeys struct {
+	BookingEntriesBookingEntriesCarClassIDFK foreignKey
 	BookingEntriesBookingEntriesDriverIDFK   foreignKey
 	BookingEntriesBookingEntriesEventIDFK    foreignKey
 	BookingEntriesBookingEntriesRaceGridIDFK foreignKey
@@ -434,7 +454,7 @@ type bookingEntryForeignKeys struct {
 
 func (f bookingEntryForeignKeys) AsSlice() []foreignKey {
 	return []foreignKey{
-		f.BookingEntriesBookingEntriesDriverIDFK, f.BookingEntriesBookingEntriesEventIDFK, f.BookingEntriesBookingEntriesRaceGridIDFK, f.BookingEntriesBookingEntriesRaceIDFK, f.BookingEntriesBookingEntriesTeamIDFK,
+		f.BookingEntriesBookingEntriesCarClassIDFK, f.BookingEntriesBookingEntriesDriverIDFK, f.BookingEntriesBookingEntriesEventIDFK, f.BookingEntriesBookingEntriesRaceGridIDFK, f.BookingEntriesBookingEntriesRaceIDFK, f.BookingEntriesBookingEntriesTeamIDFK,
 	}
 }
 

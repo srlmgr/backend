@@ -329,6 +329,7 @@ func (s *bookingProc) createSecondaryTeamEntries(
 
 	type _driverData struct {
 		driverID int32
+		classID  int32
 		points   float64
 	}
 	driverData := make([]_driverData, 0)
@@ -345,6 +346,7 @@ func (s *bookingProc) createSecondaryTeamEntries(
 		}
 		driverData = append(driverData, _driverData{
 			driverID: driverID,
+			classID:  entries[0].ClassID(),
 			points:   pointsSum,
 		})
 	}
@@ -365,20 +367,23 @@ func (s *bookingProc) createSecondaryTeamEntries(
 			continue // driver not assigned to team, skip
 		}
 		if len(settersByTeamID[teamID]) < int(s.epi.Season.TeamPointsTopN.GetOrZero()) {
-			settersByTeamID[teamID] = append(settersByTeamID[teamID],
-				&models.BookingEntrySetter{
-					EventID:    omit.From(s.epi.Event.ID),
-					TeamID:     omitnull.From(teamID),
-					SourceType: omit.From(mytypes.SourceType("team_contribution")),
-					TargetType: omit.From(mytypes.TargetType("team")),
-					Points:     omit.From(int32(data.points)),
-					Description: omit.From(
-						fmt.Sprintf("contribution of driverID %d", data.driverID),
-					),
-					IsManual:  omit.From(false),
-					CreatedBy: omit.From(s.execUser),
-					UpdatedBy: omit.From(s.execUser),
-				})
+			setter := &models.BookingEntrySetter{
+				EventID:    omit.From(s.epi.Event.ID),
+				TeamID:     omitnull.From(teamID),
+				SourceType: omit.From(mytypes.SourceType("team_contribution")),
+				TargetType: omit.From(mytypes.TargetType("team")),
+				Points:     omit.From(int32(data.points)),
+				Description: omit.From(
+					fmt.Sprintf("contribution of driverID %d", data.driverID),
+				),
+				IsManual:  omit.From(false),
+				CreatedBy: omit.From(s.execUser),
+				UpdatedBy: omit.From(s.execUser),
+			}
+			if s.epi.Season.IsMulticlass {
+				setter.CarClassID = omitnull.From(data.classID)
+			}
+			settersByTeamID[teamID] = append(settersByTeamID[teamID], setter)
 		}
 	}
 
@@ -467,6 +472,9 @@ func (s *bookingProc) baseSetter(output points.Output) *models.BookingEntrySette
 		MetadataJSON: omit.From(createJSON(output.Meta())),
 		CreatedBy:    omit.From(s.execUser),
 		UpdatedBy:    omit.From(s.execUser),
+	}
+	if s.epi.Season.IsMulticlass {
+		setter.CarClassID = omitnull.From(output.ClassID())
 	}
 	return setter
 }

@@ -58,6 +58,9 @@ func TestCarClassCountStruct(t *testing.T) {
 	var m CarClass
 	_ = m.C // Verify C field exists
 
+	// Verify BookingEntries count field exists and is *int64
+	var _ *int64 = m.C.BookingEntries
+
 	// Verify CarClassesToCarModels count field exists and is *int64
 	var _ *int64 = m.C.CarClassesToCarModels
 
@@ -73,6 +76,12 @@ func TestCarClassLoadCountMethods(t *testing.T) {
 	var m *CarClass
 	var ms CarClassSlice
 	ctx := context.Background()
+
+	// Verify LoadCountBookingEntries method exists on single model
+	_ = m.LoadCountBookingEntries(ctx, nil)
+
+	// Verify LoadCountBookingEntries method exists on slice
+	_ = ms.LoadCountBookingEntries(ctx, nil)
 
 	// Verify LoadCountCarClassesToCarModels method exists on single model
 	_ = m.LoadCountCarClassesToCarModels(ctx, nil)
@@ -97,6 +106,9 @@ func TestCarClassLoadCountMethods(t *testing.T) {
 func TestSelectThenLoadCountCarClass(t *testing.T) {
 	_ = SelectThenLoadCount.CarClass
 
+	// Verify BookingEntries loader exists
+	_ = SelectThenLoadCount.CarClass.BookingEntries
+
 	// Verify CarClassesToCarModels loader exists
 	_ = SelectThenLoadCount.CarClass.CarClassesToCarModels
 
@@ -111,6 +123,9 @@ func TestSelectThenLoadCountCarClass(t *testing.T) {
 func TestPreloadCountCarClass(t *testing.T) {
 	_ = PreloadCount.CarClass
 
+	// Verify BookingEntries preloader exists and returns a Preloader
+	_ = PreloadCount.CarClass.BookingEntries()
+
 	// Verify CarClassesToCarModels preloader exists and returns a Preloader
 	_ = PreloadCount.CarClass.CarClassesToCarModels()
 
@@ -124,6 +139,8 @@ func TestPreloadCountCarClass(t *testing.T) {
 // Test that CarClass has PreloadCount method
 func TestCarClassPreloadCountMethod(t *testing.T) {
 	var m *CarClass
+
+	_ = m.PreloadCount("BookingEntries", 0)
 
 	_ = m.PreloadCount("CarClassesToCarModels", 0)
 

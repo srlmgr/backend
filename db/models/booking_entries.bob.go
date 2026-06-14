@@ -33,6 +33,7 @@ type BookingEntry struct {
 	EventID      int32                       `db:"event_id" `
 	RaceID       null.Val[int32]             `db:"race_id" `
 	RaceGridID   null.Val[int32]             `db:"race_grid_id" `
+	CarClassID   null.Val[int32]             `db:"car_class_id" `
 	TargetType   mytypes.TargetType          `db:"target_type" `
 	DriverID     null.Val[int32]             `db:"driver_id" `
 	TeamID       null.Val[int32]             `db:"team_id" `
@@ -62,6 +63,7 @@ type BookingEntriesQuery = *psql.ViewQuery[*BookingEntry, BookingEntrySlice]
 
 // bookingEntryR is where relationships are stored.
 type bookingEntryR struct {
+	CarClass *CarClass // booking_entries.booking_entries_car_class_id_fk
 	Driver   *Driver   // booking_entries.booking_entries_driver_id_fk
 	Event    *Event    // booking_entries.booking_entries_event_id_fk
 	RaceGrid *RaceGrid // booking_entries.booking_entries_race_grid_id_fk
@@ -75,6 +77,7 @@ type bookingEntryR struct {
 
 // bookingEntryRLoaded tracks which relationships on BookingEntry have been loaded.
 type bookingEntryRLoaded struct {
+	CarClass bool // booking_entries.booking_entries_car_class_id_fk
 	Driver   bool // booking_entries.booking_entries_driver_id_fk
 	Event    bool // booking_entries.booking_entries_event_id_fk
 	RaceGrid bool // booking_entries.booking_entries_race_grid_id_fk
@@ -84,7 +87,7 @@ type bookingEntryRLoaded struct {
 
 func buildBookingEntryColumns(tableName string) bookingEntryColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "event_id", "race_id", "race_grid_id", "target_type", "driver_id", "team_id", "source_type", "points", "description", "is_manual", "locked_at", "metadata_json", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "event_id", "race_id", "race_grid_id", "car_class_id", "target_type", "driver_id", "team_id", "source_type", "points", "description", "is_manual", "locked_at", "metadata_json", "created_at", "updated_at", "created_by", "updated_by",
 	)
 
 	if tableName != "" {
@@ -98,6 +101,7 @@ func buildBookingEntryColumns(tableName string) bookingEntryColumns {
 		EventID:      buildBookingEntryColumn(tableName, "event_id"),
 		RaceID:       buildBookingEntryColumn(tableName, "race_id"),
 		RaceGridID:   buildBookingEntryColumn(tableName, "race_grid_id"),
+		CarClassID:   buildBookingEntryColumn(tableName, "car_class_id"),
 		TargetType:   buildBookingEntryColumn(tableName, "target_type"),
 		DriverID:     buildBookingEntryColumn(tableName, "driver_id"),
 		TeamID:       buildBookingEntryColumn(tableName, "team_id"),
@@ -121,6 +125,7 @@ type bookingEntryColumns struct {
 	EventID      bookingEntryColumn
 	RaceID       bookingEntryColumn
 	RaceGridID   bookingEntryColumn
+	CarClassID   bookingEntryColumn
 	TargetType   bookingEntryColumn
 	DriverID     bookingEntryColumn
 	TeamID       bookingEntryColumn
@@ -183,6 +188,7 @@ type BookingEntrySetter struct {
 	EventID      omit.Val[int32]                       `db:"event_id" `
 	RaceID       omitnull.Val[int32]                   `db:"race_id" `
 	RaceGridID   omitnull.Val[int32]                   `db:"race_grid_id" `
+	CarClassID   omitnull.Val[int32]                   `db:"car_class_id" `
 	TargetType   omit.Val[mytypes.TargetType]          `db:"target_type" `
 	DriverID     omitnull.Val[int32]                   `db:"driver_id" `
 	TeamID       omitnull.Val[int32]                   `db:"team_id" `
@@ -199,7 +205,7 @@ type BookingEntrySetter struct {
 }
 
 func (s BookingEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 17)
+	vals := make([]string, 0, 18)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -211,6 +217,9 @@ func (s BookingEntrySetter) SetColumns() []string {
 	}
 	if s.RaceGridID.IsValue() || s.RaceGridID.IsNull() {
 		vals = append(vals, "race_grid_id")
+	}
+	if s.CarClassID.IsValue() || s.CarClassID.IsNull() {
+		vals = append(vals, "car_class_id")
 	}
 	if s.TargetType.IsValue() {
 		vals = append(vals, "target_type")
@@ -266,6 +275,9 @@ func (s BookingEntrySetter) Overwrite(t *BookingEntry) {
 	}
 	if s.RaceGridID.IsValue() || s.RaceGridID.IsNull() {
 		t.RaceGridID = s.RaceGridID.MustGetNull()
+	}
+	if s.CarClassID.IsValue() || s.CarClassID.IsNull() {
+		t.CarClassID = s.CarClassID.MustGetNull()
 	}
 	if s.TargetType.IsValue() {
 		t.TargetType = s.TargetType.MustGet()
@@ -334,6 +346,11 @@ func (s *BookingEntrySetter) Apply(q *dialect.InsertQuery) {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
 			return psql.Arg(s.RaceGridID.MustGetNull()).WriteSQL(ctx, w, d, start)
+		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+			if s.CarClassID.IsUnset() {
+				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
+			}
+			return psql.Arg(s.CarClassID.MustGetNull()).WriteSQL(ctx, w, d, start)
 		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
 			if s.TargetType.IsUnset() {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
@@ -407,7 +424,7 @@ func (s BookingEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s BookingEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 17)
+	exprs := make([]bob.Expression, 0, 18)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -434,6 +451,13 @@ func (s BookingEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "race_grid_id")...),
 			psql.Arg(s.RaceGridID),
+		}})
+	}
+
+	if s.CarClassID.IsValue() || s.CarClassID.IsNull() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "car_class_id")...),
+			psql.Arg(s.CarClassID),
 		}})
 	}
 
@@ -786,6 +810,30 @@ func (o BookingEntrySlice) ReloadAll(ctx context.Context, exec bob.Executor) err
 	return nil
 }
 
+// CarClass starts a query for related objects on car_classes
+func (o *BookingEntry) CarClass(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesQuery {
+	return CarClasses.Query(append(mods,
+		sm.Where(CarClasses.Columns.ID.EQ(psql.Arg(o.CarClassID))),
+	)...)
+}
+
+func (os BookingEntrySlice) CarClass(mods ...bob.Mod[*dialect.SelectQuery]) CarClassesQuery {
+	pkCarClassID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkCarClassID = append(pkCarClassID, o.CarClassID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkCarClassID), "integer[]")),
+	))
+
+	return CarClasses.Query(append(mods,
+		sm.Where(psql.Group(CarClasses.Columns.ID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // Driver starts a query for related objects on drivers
 func (o *BookingEntry) Driver(mods ...bob.Mod[*dialect.SelectQuery]) DriversQuery {
 	return Drivers.Query(append(mods,
@@ -904,6 +952,56 @@ func (os BookingEntrySlice) Team(mods ...bob.Mod[*dialect.SelectQuery]) TeamsQue
 	return Teams.Query(append(mods,
 		sm.Where(psql.Group(Teams.Columns.ID).OP("IN", PKArgExpr)),
 	)...)
+}
+
+func attachBookingEntryCarClass0(ctx context.Context, exec bob.Executor, count int, bookingEntry0 *BookingEntry, carClass1 *CarClass) (*BookingEntry, error) {
+	setter := &BookingEntrySetter{
+		CarClassID: omitnull.From(carClass1.ID),
+	}
+
+	err := bookingEntry0.Update(ctx, exec, setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachBookingEntryCarClass0: %w", err)
+	}
+
+	return bookingEntry0, nil
+}
+
+func (bookingEntry0 *BookingEntry) InsertCarClass(ctx context.Context, exec bob.Executor, related *CarClassSetter) error {
+	var err error
+
+	carClass1, err := CarClasses.Insert(related).One(ctx, exec)
+	if err != nil {
+		return fmt.Errorf("inserting related objects: %w", err)
+	}
+
+	_, err = attachBookingEntryCarClass0(ctx, exec, 1, bookingEntry0, carClass1)
+	if err != nil {
+		return err
+	}
+
+	bookingEntry0.R.CarClass = carClass1
+	bookingEntry0.R.Loaded.CarClass = true
+
+	carClass1.R.BookingEntries = append(carClass1.R.BookingEntries, bookingEntry0)
+
+	return nil
+}
+
+func (bookingEntry0 *BookingEntry) AttachCarClass(ctx context.Context, exec bob.Executor, carClass1 *CarClass) error {
+	var err error
+
+	_, err = attachBookingEntryCarClass0(ctx, exec, 1, bookingEntry0, carClass1)
+	if err != nil {
+		return err
+	}
+
+	bookingEntry0.R.CarClass = carClass1
+	bookingEntry0.R.Loaded.CarClass = true
+
+	carClass1.R.BookingEntries = append(carClass1.R.BookingEntries, bookingEntry0)
+
+	return nil
 }
 
 func attachBookingEntryDriver0(ctx context.Context, exec bob.Executor, count int, bookingEntry0 *BookingEntry, driver1 *Driver) (*BookingEntry, error) {
@@ -1161,6 +1259,7 @@ type bookingEntryWhere[Q psql.Filterable] struct {
 	EventID      psql.WhereMod[Q, int32]
 	RaceID       psql.WhereNullMod[Q, int32]
 	RaceGridID   psql.WhereNullMod[Q, int32]
+	CarClassID   psql.WhereNullMod[Q, int32]
 	TargetType   psql.WhereMod[Q, mytypes.TargetType]
 	DriverID     psql.WhereNullMod[Q, int32]
 	TeamID       psql.WhereNullMod[Q, int32]
@@ -1186,6 +1285,7 @@ func buildBookingEntryWhere[Q psql.Filterable](cols bookingEntryColumns) booking
 		EventID:      psql.Where[Q, int32](cols.EventID.Expression),
 		RaceID:       psql.WhereNull[Q, int32](cols.RaceID.Expression),
 		RaceGridID:   psql.WhereNull[Q, int32](cols.RaceGridID.Expression),
+		CarClassID:   psql.WhereNull[Q, int32](cols.CarClassID.Expression),
 		TargetType:   psql.Where[Q, mytypes.TargetType](cols.TargetType.Expression),
 		DriverID:     psql.WhereNull[Q, int32](cols.DriverID.Expression),
 		TeamID:       psql.WhereNull[Q, int32](cols.TeamID.Expression),
@@ -1208,6 +1308,19 @@ func (o *BookingEntry) Preload(name string, retrieved any) error {
 	}
 
 	switch name {
+	case "CarClass":
+		rel, ok := retrieved.(*CarClass)
+		if !ok {
+			return fmt.Errorf("bookingEntry cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.CarClass = rel
+		o.R.Loaded.CarClass = true
+
+		if rel != nil {
+			rel.R.BookingEntries = BookingEntrySlice{o}
+		}
+		return nil
 	case "Driver":
 		rel, ok := retrieved.(*Driver)
 		if !ok {
@@ -1279,6 +1392,7 @@ func (o *BookingEntry) Preload(name string, retrieved any) error {
 }
 
 type bookingEntryPreloader struct {
+	CarClass func(...psql.PreloadOption) psql.Preloader
 	Driver   func(...psql.PreloadOption) psql.Preloader
 	Event    func(...psql.PreloadOption) psql.Preloader
 	RaceGrid func(...psql.PreloadOption) psql.Preloader
@@ -1288,6 +1402,19 @@ type bookingEntryPreloader struct {
 
 func buildBookingEntryPreloader() bookingEntryPreloader {
 	return bookingEntryPreloader{
+		CarClass: func(opts ...psql.PreloadOption) psql.Preloader {
+			return psql.Preload[*CarClass, CarClassSlice](psql.PreloadRel{
+				Name: "CarClass",
+				Sides: []psql.PreloadSide{
+					{
+						From:        BookingEntries,
+						To:          CarClasses,
+						FromColumns: []string{"car_class_id"},
+						ToColumns:   []string{"id"},
+					},
+				},
+			}, CarClasses.Columns.Names(), opts...)
+		},
 		Driver: func(opts ...psql.PreloadOption) psql.Preloader {
 			return psql.Preload[*Driver, DriverSlice](psql.PreloadRel{
 				Name: "Driver",
@@ -1357,6 +1484,7 @@ func buildBookingEntryPreloader() bookingEntryPreloader {
 }
 
 type bookingEntryThenLoader[Q orm.Loadable] struct {
+	CarClass func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Driver   func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Event    func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	RaceGrid func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
@@ -1365,6 +1493,9 @@ type bookingEntryThenLoader[Q orm.Loadable] struct {
 }
 
 func buildBookingEntryThenLoader[Q orm.Loadable]() bookingEntryThenLoader[Q] {
+	type CarClassLoadInterface interface {
+		LoadCarClass(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
 	type DriverLoadInterface interface {
 		LoadDriver(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
@@ -1382,6 +1513,12 @@ func buildBookingEntryThenLoader[Q orm.Loadable]() bookingEntryThenLoader[Q] {
 	}
 
 	return bookingEntryThenLoader[Q]{
+		CarClass: thenLoadBuilder[Q](
+			"CarClass",
+			func(ctx context.Context, exec bob.Executor, retrieved CarClassLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCarClass(ctx, exec, mods...)
+			},
+		),
 		Driver: thenLoadBuilder[Q](
 			"Driver",
 			func(ctx context.Context, exec bob.Executor, retrieved DriverLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
@@ -1413,6 +1550,86 @@ func buildBookingEntryThenLoader[Q orm.Loadable]() bookingEntryThenLoader[Q] {
 			},
 		),
 	}
+}
+
+// LoadCarClass loads the bookingEntry's CarClass into the .R struct
+func (o *BookingEntry) LoadCarClass(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.CarClass = nil
+	o.R.Loaded.CarClass = false
+
+	related, err := o.CarClass(mods...).One(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	related.R.BookingEntries = BookingEntrySlice{o}
+
+	o.R.CarClass = related
+	o.R.Loaded.CarClass = true
+	return nil
+}
+
+// LoadCarClass loads the bookingEntry's CarClass into the .R struct
+func (os BookingEntrySlice) LoadCarClass(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	carClasses, err := os.CarClass(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.CarClass = nil
+		o.R.Loaded.CarClass = true
+	}
+	// O(N+M) stitch via a map keyed by the join column (key -> []parent; was O(N*M)).
+	bookingEntryByKey := make(map[int32][]*BookingEntry, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		// NULL never matches any row in SQL, so don't add it to the map
+		if !o.CarClassID.IsValue() {
+			continue
+		}
+
+		bookingEntryByKey[o.CarClassID.MustGet()] = append(bookingEntryByKey[o.CarClassID.MustGet()], o)
+	}
+
+	for _, rel := range carClasses {
+
+		owners, ok := bookingEntryByKey[rel.ID]
+		if !ok {
+			continue
+		}
+
+		for _, o := range owners {
+
+			// to-one: keep only the first matching child (matches the previous break)
+			if o.R.CarClass != nil {
+				continue
+			}
+
+			rel.R.BookingEntries = append(rel.R.BookingEntries, o)
+
+			o.R.CarClass = rel
+
+		}
+	}
+
+	return nil
 }
 
 // LoadDriver loads the bookingEntry's Driver into the .R struct
@@ -1812,6 +2029,7 @@ func (os BookingEntrySlice) LoadTeam(ctx context.Context, exec bob.Executor, mod
 
 type bookingEntryJoins[Q dialect.Joinable] struct {
 	typ      string
+	CarClass modAs[Q, carClassColumns]
 	Driver   modAs[Q, driverColumns]
 	Event    modAs[Q, eventColumns]
 	RaceGrid modAs[Q, raceGridColumns]
@@ -1826,6 +2044,20 @@ func (j bookingEntryJoins[Q]) aliasedAs(alias string) bookingEntryJoins[Q] {
 func buildBookingEntryJoins[Q dialect.Joinable](cols bookingEntryColumns, typ string) bookingEntryJoins[Q] {
 	return bookingEntryJoins[Q]{
 		typ: typ,
+		CarClass: modAs[Q, carClassColumns]{
+			c: CarClasses.Columns,
+			f: func(to carClassColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, CarClasses.NameExpr().As(to.Alias())).On(
+						to.ID.EQ(cols.CarClassID),
+					))
+				}
+
+				return mods
+			},
+		},
 		Driver: modAs[Q, driverColumns]{
 			c: Drivers.Columns,
 			f: func(to driverColumns) bob.Mod[Q] {

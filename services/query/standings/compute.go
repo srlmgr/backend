@@ -80,6 +80,9 @@ func ParticipationsFromResultEntries(
 		if entry == nil {
 			continue
 		}
+		if referenceID(entry) <= 0 {
+			continue
+		}
 
 		participations = append(participations, resultEntryParticipation{
 			raceGridID:     entry.RaceGridID,

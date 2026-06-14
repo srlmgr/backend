@@ -5,7 +5,7 @@ CREATE TABLE booking_entries (
     event_id integer NOT NULL,
 	race_id integer,
 	race_grid_id integer,
-
+	car_class_id integer,
     target_type text NOT NULL,
     driver_id integer,
     team_id integer,
@@ -35,12 +35,17 @@ ALTER TABLE booking_entries
     FOREIGN KEY (race_grid_id) REFERENCES race_grids (id);
 
 ALTER TABLE booking_entries
+    ADD CONSTRAINT booking_entries_car_class_id_fk
+    FOREIGN KEY (car_class_id) REFERENCES car_classes (id);
+
+ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_driver_id_fk
     FOREIGN KEY (driver_id) REFERENCES drivers (id);
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_team_id_fk
     FOREIGN KEY (team_id) REFERENCES teams (id);
+
 
 ALTER TABLE booking_entries
     ADD CONSTRAINT booking_entries_target_type_check

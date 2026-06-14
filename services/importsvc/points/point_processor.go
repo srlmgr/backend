@@ -37,11 +37,12 @@ type (
 	}
 
 	workOutput struct {
-		refID  int32
-		points PointType
-		msg    string
-		origin PointPolicyType
-		meta   MetaType
+		refID   int32
+		classID int32
+		points  PointType
+		msg     string
+		origin  PointPolicyType
+		meta    MetaType
 	}
 )
 
@@ -51,6 +52,7 @@ var (
 )
 
 func (w workOutput) ReferenceID() int32      { return w.refID }
+func (w workOutput) ClassID() int32          { return w.classID }
 func (w workOutput) Points() PointType       { return w.points }
 func (w workOutput) Msg() string             { return w.msg }
 func (w workOutput) Origin() PointPolicyType { return w.origin }
@@ -69,11 +71,12 @@ func (p *standardPosBasedProcessor) Process(
 		msg := fmt.Sprintf("for pos %d", i+1)
 
 		ret = append(ret, workOutput{
-			refID:  input.ReferenceID(),
-			points: points[i],
-			msg:    msg,
-			origin: p.policyType,
-			meta:   MetaType{Version: 1, Data: PositionMeta{Pos: i + 1}},
+			refID:   input.ReferenceID(),
+			classID: input.ClassID(),
+			points:  points[i],
+			msg:     msg,
+			origin:  p.policyType,
+			meta:    MetaType{Version: 1, Data: PositionMeta{Pos: i + 1}},
 		})
 	}
 	return ret
@@ -188,8 +191,9 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 			points, ok := byRef[refID]
 			if ok {
 				out := workOutput{
-					refID:  refID,
-					points: PointType(math.Round(float64(points) * -penaltyPct)),
+					refID:   refID,
+					classID: inp.ClassID(),
+					points:  PointType(math.Round(float64(points) * -penaltyPct)),
 					msg: fmt.Sprintf("%d%% reduction for %d incidents (limit: %d)",
 						int(penaltyPct*100), inp.Incidents(), threshold),
 					origin: PointsPolicyIncidentsExceeded,

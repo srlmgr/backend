@@ -120,6 +120,44 @@ func TestCreateCarClass(t *testing.T) {
 	}
 }
 
+func TestCreateCarClassWithBookingEntriesDoesNotDuplicateParent(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	before, err := models.CarClasses.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarClasses: %v", err)
+	}
+
+	if _, err := New().NewCarClassWithContext(ctx, CarClassMods.WithNewBookingEntries(2)).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarClass with BookingEntries: %v", err)
+	}
+
+	after, err := models.CarClasses.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarClasses: %v", err)
+	}
+
+	if got := after - before; got != 1 {
+		t.Fatalf("Expected CarClasses to increase by 1, got %d", got)
+	}
+}
+
 func TestCreateCarClassWithCarClassesToCarModelsDoesNotDuplicateParent(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
