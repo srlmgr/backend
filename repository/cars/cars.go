@@ -52,6 +52,7 @@ type CarBrandsRepository interface {
 type CarModelsRepository interface {
 	LoadAll(ctx context.Context) ([]*models.CarModel, error)
 	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarModel, error)
+	LoadByCarClassID(ctx context.Context, classID int32) ([]*models.CarModel, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarModel, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarModelSetter) (*models.CarModel, error)
@@ -253,6 +254,21 @@ func (r *carModelsRepository) LoadByManufacturerID(
 				sm.Columns(models.CarBrands.Columns.ID),
 				sm.From(models.CarBrands.Name()),
 				sm.Where(models.CarBrands.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
+			),
+		)),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelsRepository) LoadByCarClassID(
+	ctx context.Context,
+	classID int32,
+) ([]*models.CarModel, error) {
+	return models.CarModels.Query(
+		sm.Where(models.CarModels.Columns.ID.In(
+			psql.Select(
+				sm.Columns(models.CarClassesToCarModels.Columns.CarModelID),
+				sm.From(models.CarClassesToCarModels.Name()),
+				sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
 			),
 		)),
 	).All(ctx, r.getExecutor(ctx))
