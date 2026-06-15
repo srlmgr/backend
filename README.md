@@ -13,3 +13,10 @@
 Backend for SimRacing League Manager
 
 </div>
+
+[project-license]: ./LICENSE
+[github-actions]: ../../actions
+[github-releases]: ../../releases
+[precommit-config]: ./.pre-commit-config.yaml
+[gomod-file]: ../main/go.mod
+[dependabot-pulls]: ../../pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Aapp%2Fdependabot
