@@ -36,6 +36,7 @@ func Where[Q psql.Filterable]() struct {
 	RacingSims                   racingSimWhere[Q]
 	ResultEntries                resultEntryWhere[Q]
 	SeasonCarClasses             seasonCarClassWhere[Q]
+	SeasonCarModels              seasonCarModelWhere[Q]
 	SeasonDriverStandings        seasonDriverStandingWhere[Q]
 	SeasonDrivers                seasonDriverWhere[Q]
 	SeasonTeamStandings          seasonTeamStandingWhere[Q]
@@ -69,6 +70,7 @@ func Where[Q psql.Filterable]() struct {
 		RacingSims                   racingSimWhere[Q]
 		ResultEntries                resultEntryWhere[Q]
 		SeasonCarClasses             seasonCarClassWhere[Q]
+		SeasonCarModels              seasonCarModelWhere[Q]
 		SeasonDriverStandings        seasonDriverStandingWhere[Q]
 		SeasonDrivers                seasonDriverWhere[Q]
 		SeasonTeamStandings          seasonTeamStandingWhere[Q]
@@ -101,6 +103,7 @@ func Where[Q psql.Filterable]() struct {
 		RacingSims:                   buildRacingSimWhere[Q](RacingSims.Columns),
 		ResultEntries:                buildResultEntryWhere[Q](ResultEntries.Columns),
 		SeasonCarClasses:             buildSeasonCarClassWhere[Q](SeasonCarClasses.Columns),
+		SeasonCarModels:              buildSeasonCarModelWhere[Q](SeasonCarModels.Columns),
 		SeasonDriverStandings:        buildSeasonDriverStandingWhere[Q](SeasonDriverStandings.Columns),
 		SeasonDrivers:                buildSeasonDriverWhere[Q](SeasonDrivers.Columns),
 		SeasonTeamStandings:          buildSeasonTeamStandingWhere[Q](SeasonTeamStandings.Columns),

@@ -53,6 +53,7 @@ type CarModelsRepository interface {
 	LoadAll(ctx context.Context) ([]*models.CarModel, error)
 	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarModel, error)
 	LoadByCarClassID(ctx context.Context, classID int32) ([]*models.CarModel, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.CarModel, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarModel, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarModelSetter) (*models.CarModel, error)
@@ -63,6 +64,7 @@ type CarModelsRepository interface {
 type CarClassesRepository interface {
 	LoadAll(ctx context.Context) ([]*models.CarClass, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarClass, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.CarClass, error)
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarClassSetter) (*models.CarClass, error)
 	Update(ctx context.Context, id int32, input *models.CarClassSetter) (*models.CarClass, error)
@@ -274,6 +276,18 @@ func (r *carModelsRepository) LoadByCarClassID(
 	).All(ctx, r.getExecutor(ctx))
 }
 
+func (r *carModelsRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.CarModel, error) {
+	return models.CarModels.Query(
+		sm.InnerJoin(models.SeasonCarModels.Name()).
+			On(models.SeasonCarModels.Columns.CarModelID.EQ(models.CarModels.Columns.ID)),
+		sm.Where(models.SeasonCarModels.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		sm.OrderBy(models.SeasonCarModels.Columns.Pos).Asc(),
+	).All(ctx, r.getExecutor(ctx))
+}
+
 func (r *carModelsRepository) LoadByID(ctx context.Context, id int32) (*models.CarModel, error) {
 	entity, err := models.CarModels.Query(sm.Where(models.CarModels.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
@@ -322,6 +336,18 @@ func (r *carClassesRepository) LoadByID(ctx context.Context, id int32) (*models.
 		return nil, fmt.Errorf("car class %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
+}
+
+func (r *carClassesRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.CarClass, error) {
+	return models.CarClasses.Query(
+		sm.InnerJoin(models.SeasonCarClasses.Name()).
+			On(models.SeasonCarClasses.Columns.CarClassID.EQ(models.CarClasses.Columns.ID)),
+		sm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		sm.OrderBy(models.SeasonCarClasses.Columns.Pos).Asc(),
+	).All(ctx, bob.Debug(r.getExecutor(ctx)))
 }
 
 func (r *carClassesRepository) DeleteByID(ctx context.Context, id int32) error {

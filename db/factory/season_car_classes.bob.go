@@ -37,6 +37,7 @@ type SeasonCarClassTemplate struct {
 	ID         func() int32
 	SeasonID   func() int32
 	CarClassID func() int32
+	Pos        func() int32
 
 	r seasonCarClassR
 	f *Factory
@@ -100,6 +101,10 @@ func (o SeasonCarClassTemplate) BuildSetter() *models.SeasonCarClassSetter {
 		val := o.CarClassID()
 		m.CarClassID = omit.From(val)
 	}
+	if o.Pos != nil {
+		val := o.Pos()
+		m.Pos = omit.From(val)
+	}
 
 	return m
 }
@@ -130,6 +135,9 @@ func (o SeasonCarClassTemplate) Build() *models.SeasonCarClass {
 	}
 	if o.CarClassID != nil {
 		m.CarClassID = o.CarClassID()
+	}
+	if o.Pos != nil {
+		m.Pos = o.Pos()
 	}
 
 	o.setModelRels(m)
@@ -337,6 +345,7 @@ func (m seasonCarClassMods) RandomizeAllColumns(f *faker.Faker) SeasonCarClassMo
 		SeasonCarClassMods.RandomID(f),
 		SeasonCarClassMods.RandomSeasonID(f),
 		SeasonCarClassMods.RandomCarClassID(f),
+		SeasonCarClassMods.RandomPos(f),
 	}
 }
 
@@ -428,6 +437,37 @@ func (m seasonCarClassMods) UnsetCarClassID() SeasonCarClassMod {
 func (m seasonCarClassMods) RandomCarClassID(f *faker.Faker) SeasonCarClassMod {
 	return SeasonCarClassModFunc(func(_ context.Context, o *SeasonCarClassTemplate) {
 		o.CarClassID = func() int32 {
+			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonCarClassMods) Pos(val int32) SeasonCarClassMod {
+	return SeasonCarClassModFunc(func(_ context.Context, o *SeasonCarClassTemplate) {
+		o.Pos = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonCarClassMods) PosFunc(f func() int32) SeasonCarClassMod {
+	return SeasonCarClassModFunc(func(_ context.Context, o *SeasonCarClassTemplate) {
+		o.Pos = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonCarClassMods) UnsetPos() SeasonCarClassMod {
+	return SeasonCarClassModFunc(func(_ context.Context, o *SeasonCarClassTemplate) {
+		o.Pos = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonCarClassMods) RandomPos(f *faker.Faker) SeasonCarClassMod {
+	return SeasonCarClassModFunc(func(_ context.Context, o *SeasonCarClassTemplate) {
+		o.Pos = func() int32 {
 			return random_int32(f)
 		}
 	})

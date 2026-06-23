@@ -65,7 +65,8 @@ CREATE TABLE season_car_classes (
 	-- ugly workaround. don't need a pk here, but bob runs into errors creating dberrors text without it
 	id serial PRIMARY KEY,
     season_id integer NOT NULL,
-    car_class_id integer NOT NULL
+    car_class_id integer NOT NULL,
+	pos integer NOT NULL default 0
 );
 ALTER TABLE season_car_classes
     ADD CONSTRAINT season_car_classes_car_class_id_fk
@@ -78,5 +79,24 @@ ALTER TABLE season_car_classes
 ALTER TABLE season_car_classes
     ADD CONSTRAINT season_car_classes_car_class_id_season_id_unique
     UNIQUE (car_class_id, season_id);
+
+CREATE TABLE season_car_models (
+	-- ugly workaround. don't need a pk here, but bob runs into errors creating dberrors text without it
+	id serial PRIMARY KEY,
+    season_id integer NOT NULL,
+    car_model_id integer NOT NULL,
+	pos integer NOT NULL default 0
+);
+ALTER TABLE season_car_models
+    ADD CONSTRAINT season_car_models_car_model_id_fk
+    FOREIGN KEY (car_model_id) REFERENCES car_models (id);
+
+ALTER TABLE season_car_models
+    ADD CONSTRAINT season_car_models_season_id_fk
+    FOREIGN KEY (season_id) REFERENCES seasons (id);
+
+ALTER TABLE season_car_models
+    ADD CONSTRAINT season_car_models_car_model_id_season_id_unique
+    UNIQUE (car_model_id, season_id);
 
 COMMIT;

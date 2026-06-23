@@ -42,6 +42,15 @@ var SeasonCarClasses = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		Pos: column{
+			Name:      "pos",
+			DBType:    "integer",
+			Default:   "0",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: seasonCarClassIndexes{
 		SeasonCarClassesPkey: index{
@@ -124,11 +133,12 @@ type seasonCarClassColumns struct {
 	ID         column
 	SeasonID   column
 	CarClassID column
+	Pos        column
 }
 
 func (c seasonCarClassColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.SeasonID, c.CarClassID,
+		c.ID, c.SeasonID, c.CarClassID, c.Pos,
 	}
 }
 

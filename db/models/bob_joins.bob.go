@@ -51,6 +51,7 @@ type joins[Q dialect.Joinable] struct {
 	RacingSims                   joinSet[racingSimJoins[Q]]
 	ResultEntries                joinSet[resultEntryJoins[Q]]
 	SeasonCarClasses             joinSet[seasonCarClassJoins[Q]]
+	SeasonCarModels              joinSet[seasonCarModelJoins[Q]]
 	SeasonDriverStandings        joinSet[seasonDriverStandingJoins[Q]]
 	SeasonDrivers                joinSet[seasonDriverJoins[Q]]
 	SeasonTeamStandings          joinSet[seasonTeamStandingJoins[Q]]
@@ -94,6 +95,7 @@ func getJoins[Q dialect.Joinable]() joins[Q] {
 		RacingSims:                   buildJoinSet[racingSimJoins[Q]](RacingSims.Columns, buildRacingSimJoins),
 		ResultEntries:                buildJoinSet[resultEntryJoins[Q]](ResultEntries.Columns, buildResultEntryJoins),
 		SeasonCarClasses:             buildJoinSet[seasonCarClassJoins[Q]](SeasonCarClasses.Columns, buildSeasonCarClassJoins),
+		SeasonCarModels:              buildJoinSet[seasonCarModelJoins[Q]](SeasonCarModels.Columns, buildSeasonCarModelJoins),
 		SeasonDriverStandings:        buildJoinSet[seasonDriverStandingJoins[Q]](SeasonDriverStandings.Columns, buildSeasonDriverStandingJoins),
 		SeasonDrivers:                buildJoinSet[seasonDriverJoins[Q]](SeasonDrivers.Columns, buildSeasonDriverJoins),
 		SeasonTeamStandings:          buildJoinSet[seasonTeamStandingJoins[Q]](SeasonTeamStandings.Columns, buildSeasonTeamStandingJoins),

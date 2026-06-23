@@ -3,8 +3,8 @@ module github.com/srlmgr/backend
 go 1.26
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260614090957-0a598ac77b24.1
-	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260614090957-0a598ac77b24.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260621220505-8f705ff3f5a5.1
+	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260621220505-8f705ff3f5a5.1
 	connectrpc.com/connect v1.20.0
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
@@ -20,6 +20,7 @@ require (
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lib/pq v1.12.3
 	github.com/open-policy-agent/opa v1.17.1
+	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.53.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cobra v1.10.2
@@ -113,7 +114,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/qdm12/reprint v0.0.0-20200326205758-722754a53494 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	github.com/rs/cors v1.11.1 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect

@@ -458,6 +458,44 @@ func TestCreateCarModelWithResultEntriesDoesNotDuplicateParent(t *testing.T) {
 	}
 }
 
+func TestCreateCarModelWithSeasonCarModelsDoesNotDuplicateParent(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	before, err := models.CarModels.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarModels: %v", err)
+	}
+
+	if _, err := New().NewCarModelWithContext(ctx, CarModelMods.WithNewSeasonCarModels(2)).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating CarModel with SeasonCarModels: %v", err)
+	}
+
+	after, err := models.CarModels.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting CarModels: %v", err)
+	}
+
+	if got := after - before; got != 1 {
+		t.Fatalf("Expected CarModels to increase by 1, got %d", got)
+	}
+}
+
 func TestCreateCarModelWithSeasonDriversDoesNotDuplicateParent(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -1796,6 +1834,30 @@ func TestCreateSeasonCarClass(t *testing.T) {
 	}
 }
 
+func TestCreateSeasonCarModel(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	if _, err := New().NewSeasonCarModelWithContext(ctx).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating SeasonCarModel: %v", err)
+	}
+}
+
 func TestCreateSeasonDriverStanding(t *testing.T) {
 	if testDB == nil {
 		t.Skip("skipping test, no DSN provided")
@@ -2032,6 +2094,44 @@ func TestCreateSeasonWithSeasonCarClassesDoesNotDuplicateParent(t *testing.T) {
 
 	if _, err := New().NewSeasonWithContext(ctx, SeasonMods.WithNewSeasonCarClasses(2)).Create(ctx, tx); err != nil {
 		t.Fatalf("Error creating Season with SeasonCarClasses: %v", err)
+	}
+
+	after, err := models.Seasons.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting Seasons: %v", err)
+	}
+
+	if got := after - before; got != 1 {
+		t.Fatalf("Expected Seasons to increase by 1, got %d", got)
+	}
+}
+
+func TestCreateSeasonWithSeasonCarModelsDoesNotDuplicateParent(t *testing.T) {
+	if testDB == nil {
+		t.Skip("skipping test, no DSN provided")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	tx, err := testDB.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Error starting transaction: %v", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			t.Fatalf("Error rolling back transaction: %v", err)
+		}
+	}()
+
+	before, err := models.Seasons.Query().Count(ctx, tx)
+	if err != nil {
+		t.Fatalf("Error counting Seasons: %v", err)
+	}
+
+	if _, err := New().NewSeasonWithContext(ctx, SeasonMods.WithNewSeasonCarModels(2)).Create(ctx, tx); err != nil {
+		t.Fatalf("Error creating Season with SeasonCarModels: %v", err)
 	}
 
 	after, err := models.Seasons.Query().Count(ctx, tx)

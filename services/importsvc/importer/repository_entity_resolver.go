@@ -137,8 +137,9 @@ func (r *RepositoryEntityResolver) ResolveCarClass(
 func (r *RepositoryEntityResolver) ResolveTeam(
 	ownDriverID uint32,
 ) (uint32, error) {
-	td, err := r.repos.Queries().QueryTeamDrivers().FindBySeasonAndDriver(
-		r.ctx, r.epi.Season.ID, int32(ownDriverID))
+	td, err := r.repos.Queries().QueryTeamDrivers().ResolveTeamDriver(
+		r.ctx, r.epi.Season.ID, int32(ownDriverID), r.epi.Event.EventDate,
+	)
 	if err != nil {
 		return 0, fmt.Errorf("resolve team: %w", err)
 	}
