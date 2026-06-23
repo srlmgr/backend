@@ -162,8 +162,7 @@ func (sp *standingProc) computePrimaryByParam(
 	bookingsByClass := lo.GroupBy(sp.bookingEntries,
 		func(item *models.BookingEntry) int32 { return item.CarClassID.GetOrZero() })
 
-	resultsByClass := lo.GroupBy(sp.resultEntries,
-		func(item *models.ResultEntry) int32 { return item.CarClassID.GetOrZero() })
+	resultsByClass := sp.recomputeFinishPosByClassAndGrid()
 	ret = make([]*queryv1.Standing, 0)
 	for classID := range bookingsByClass {
 		classBookings := lo.Filter(bookingsByClass[classID],
@@ -189,6 +188,37 @@ func (sp *standingProc) computePrimaryByParam(
 			classID,
 			computedStandings)
 		ret = append(ret, tmp...)
+	}
+	return ret
+}
+
+// recomputes the finish position by classID as the finish pos is the overall race pos
+//
+//nolint:lll // readability
+func (sp *standingProc) recomputeFinishPosByClassAndGrid() map[int32][]*models.ResultEntry {
+	ret := make(map[int32][]*models.ResultEntry)
+	// first: split by classID
+	resultsByClass := lo.GroupBy(sp.resultEntries,
+		func(item *models.ResultEntry) int32 { return item.CarClassID.GetOrZero() })
+	for classID := range resultsByClass {
+		classResults := resultsByClass[classID]
+		// second: split by race grid
+		byRaceGrid := lo.GroupBy(classResults,
+			func(item *models.ResultEntry) int32 { return item.RaceGridID })
+		allResultsForClass := make([]*models.ResultEntry, 0)
+		for _, raceGridResults := range byRaceGrid {
+			// sort by finish position
+			slices.SortStableFunc(raceGridResults, func(a, b *models.ResultEntry) int {
+				return cmp.Compare(a.FinishPosition, b.FinishPosition)
+			})
+			// in the sorted result reset the finish pos by class/race grid
+			// and add the sorted results to the combined class results
+			for pos, result := range raceGridResults {
+				result.FinishPosition = int32(pos + 1)
+				allResultsForClass = append(allResultsForClass, result)
+			}
+		}
+		ret[classID] = allResultsForClass
 	}
 	return ret
 }
