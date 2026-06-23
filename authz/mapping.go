@@ -46,7 +46,6 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetSimulation",
 		"GetSeries",
 		"GetSeason",
-		"GetSeasonCarClasses",
 		"GetEvent",
 		"GetRace",
 		"GetRaceGrid",
@@ -95,6 +94,8 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 		"ListSeasonEvents",
 		"ListSeasonDrivers",
 		"ListSeasonTeams",
+		"ListSeasonCarClasses",
+		"ListSeasonCarModels",
 		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
@@ -168,6 +169,8 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"UnassignCarModelFromCarClass",
 		"AssignCarClassToSeason",
 		"UnassignCarClassFromSeason",
+		"SetSeasonCarClasses",
+		"SetSeasonCarModels",
 		"CreateTeam",
 		"UpdateTeam",
 		"DeleteTeam",

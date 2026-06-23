@@ -76,6 +76,9 @@ var _ bob.HookableType = &ResultEntry{}
 // Make sure the type SeasonCarClass runs hooks after queries
 var _ bob.HookableType = &SeasonCarClass{}
 
+// Make sure the type SeasonCarModel runs hooks after queries
+var _ bob.HookableType = &SeasonCarModel{}
+
 // Make sure the type SeasonDriverStanding runs hooks after queries
 var _ bob.HookableType = &SeasonDriverStanding{}
 

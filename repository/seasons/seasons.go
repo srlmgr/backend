@@ -1,6 +1,6 @@
 // Package seasons provides repositories for the seasons migration group.
 //
-//nolint:lll,whitespace // repository implementations can be verbose
+//nolint:lll,whitespace,dupl // repository implementations can be verbose
 package seasons
 
 import (
@@ -32,8 +32,11 @@ type Repository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.SeasonSetter) (*models.Season, error)
 	Update(ctx context.Context, id int32, input *models.SeasonSetter) (*models.Season, error)
-	AssignCarClass(ctx context.Context, seasonID, carClassID int32) error
-	UnassignCarClass(ctx context.Context, seasonID, carClassID int32) error
+	SetCarClasses(ctx context.Context, seasonID int32, carClassIDs []int32) error
+	SetCarModels(ctx context.Context, seasonID int32, carModelIDs []int32) error
+
+	DeleteCarClasses(ctx context.Context, seasonID int32) error
+	DeleteCarModels(ctx context.Context, seasonID int32) error
 }
 
 type seasonsRepository struct{ exec *pgbob.Executor }
@@ -110,31 +113,78 @@ func (r *seasonsRepository) Update(
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *seasonsRepository) AssignCarClass(
+func (r *seasonsRepository) SetCarClasses(
 	ctx context.Context,
-	seasonID, carClassID int32,
+	seasonID int32,
+	carClassIDs []int32,
 ) error {
-	if _, checkErr := models.SeasonCarClasses.Query(
-		sm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
-		sm.Where(models.SeasonCarClasses.Columns.CarClassID.EQ(psql.Arg(carClassID))),
-	).One(ctx, r.getExecutor(ctx)); checkErr == nil {
+	// Delete existing car classes for the season
+	if err := r.DeleteCarClasses(ctx, seasonID); err != nil {
+		return err
+	}
+
+	setters := make([]*models.SeasonCarClassSetter, len(carClassIDs))
+	for i, carClassID := range carClassIDs {
+		setters[i] = &models.SeasonCarClassSetter{
+			SeasonID:   omit.From(seasonID),
+			CarClassID: omit.From(carClassID),
+			Pos:        omit.From(int32(i)), // Set position based on the order in the input slice
+		}
+	}
+
+	if len(setters) == 0 {
 		return nil
 	}
-	_, err := models.SeasonCarClasses.Insert(&models.SeasonCarClassSetter{
-		SeasonID:   omit.From(seasonID),
-		CarClassID: omit.From(carClassID),
-	}).One(ctx, r.getExecutor(ctx))
+
+	_, err := models.SeasonCarClasses.Insert(bob.ToMods(setters...)).All(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *seasonsRepository) SetCarModels(
+	ctx context.Context,
+	seasonID int32,
+	carModelIDs []int32,
+) error {
+	// Delete existing car models for the season
+	if err := r.DeleteCarModels(ctx, seasonID); err != nil {
+		return err
+	}
+
+	setters := make([]*models.SeasonCarModelSetter, len(carModelIDs))
+	for i, carModelID := range carModelIDs {
+		setters[i] = &models.SeasonCarModelSetter{
+			SeasonID:   omit.From(seasonID),
+			CarModelID: omit.From(carModelID),
+			Pos:        omit.From(int32(i)), // Set position based on the order in the input slice
+		}
+	}
+
+	if len(setters) == 0 {
+		return nil
+	}
+
+	_, err := models.SeasonCarModels.Insert(bob.ToMods(setters...)).All(ctx, r.getExecutor(ctx))
 	return err
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *seasonsRepository) UnassignCarClass(
+func (r *seasonsRepository) DeleteCarClasses(
 	ctx context.Context,
-	seasonID, carClassID int32,
+	seasonID int32,
 ) error {
 	_, err := models.SeasonCarClasses.Delete(
 		dm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
-		dm.Where(models.SeasonCarClasses.Columns.CarClassID.EQ(psql.Arg(carClassID))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *seasonsRepository) DeleteCarModels(
+	ctx context.Context,
+	seasonID int32,
+) error {
+	_, err := models.SeasonCarModels.Delete(
+		dm.Where(models.SeasonCarModels.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }

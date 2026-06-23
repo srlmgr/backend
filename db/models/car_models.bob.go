@@ -55,6 +55,7 @@ type carModelR struct {
 	CarClassesToCarModels CarClassesToCarModelSlice // car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk
 	BrandCarBrand         *CarBrand                 // car_models.car_models_brand_id_fk
 	ResultEntries         ResultEntrySlice          // result_entries.result_entries_car_model_id_fk
+	SeasonCarModels       SeasonCarModelSlice       // season_car_models.season_car_models_car_model_id_fk
 	SeasonDrivers         SeasonDriverSlice         // season_drivers.season_drivers_car_model_id_fk
 	SimulationCarAliases  SimulationCarAliasSlice   // simulation_car_aliases.simulation_car_aliases_car_model_id_fk
 	Teams                 TeamSlice                 // teams.teams_car_model_id_fk
@@ -69,6 +70,7 @@ type carModelRLoaded struct {
 	CarClassesToCarModels bool // car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk
 	BrandCarBrand         bool // car_models.car_models_brand_id_fk
 	ResultEntries         bool // result_entries.result_entries_car_model_id_fk
+	SeasonCarModels       bool // season_car_models.season_car_models_car_model_id_fk
 	SeasonDrivers         bool // season_drivers.season_drivers_car_model_id_fk
 	SimulationCarAliases  bool // simulation_car_aliases.simulation_car_aliases_car_model_id_fk
 	Teams                 bool // teams.teams_car_model_id_fk
@@ -661,6 +663,30 @@ func (os CarModelSlice) ResultEntries(mods ...bob.Mod[*dialect.SelectQuery]) Res
 	)...)
 }
 
+// SeasonCarModels starts a query for related objects on season_car_models
+func (o *CarModel) SeasonCarModels(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarModelsQuery {
+	return SeasonCarModels.Query(append(mods,
+		sm.Where(SeasonCarModels.Columns.CarModelID.EQ(psql.Arg(o.ID))),
+	)...)
+}
+
+func (os CarModelSlice) SeasonCarModels(mods ...bob.Mod[*dialect.SelectQuery]) SeasonCarModelsQuery {
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	return SeasonCarModels.Query(append(mods,
+		sm.Where(psql.Group(SeasonCarModels.Columns.CarModelID).OP("IN", PKArgExpr)),
+	)...)
+}
+
 // SeasonDrivers starts a query for related objects on season_drivers
 func (o *CarModel) SeasonDrivers(mods ...bob.Mod[*dialect.SelectQuery]) SeasonDriversQuery {
 	return SeasonDrivers.Query(append(mods,
@@ -914,6 +940,76 @@ func (carModel0 *CarModel) AttachResultEntries(ctx context.Context, exec bob.Exe
 	}
 
 	carModel0.R.ResultEntries = append(carModel0.R.ResultEntries, resultEntries1...)
+
+	for _, rel := range related {
+		rel.R.CarModel = carModel0
+		rel.R.Loaded.CarModel = true
+	}
+
+	return nil
+}
+
+func insertCarModelSeasonCarModels0(ctx context.Context, exec bob.Executor, seasonCarModels1 []*SeasonCarModelSetter, carModel0 *CarModel) (SeasonCarModelSlice, error) {
+	for i := range seasonCarModels1 {
+		seasonCarModels1[i].CarModelID = omit.From(carModel0.ID)
+	}
+
+	ret, err := SeasonCarModels.Insert(bob.ToMods(seasonCarModels1...)).All(ctx, exec)
+	if err != nil {
+		return ret, fmt.Errorf("insertCarModelSeasonCarModels0: %w", err)
+	}
+
+	return ret, nil
+}
+
+func attachCarModelSeasonCarModels0(ctx context.Context, exec bob.Executor, count int, seasonCarModels1 SeasonCarModelSlice, carModel0 *CarModel) (SeasonCarModelSlice, error) {
+	setter := &SeasonCarModelSetter{
+		CarModelID: omit.From(carModel0.ID),
+	}
+
+	err := seasonCarModels1.UpdateAll(ctx, exec, *setter)
+	if err != nil {
+		return nil, fmt.Errorf("attachCarModelSeasonCarModels0: %w", err)
+	}
+
+	return seasonCarModels1, nil
+}
+
+func (carModel0 *CarModel) InsertSeasonCarModels(ctx context.Context, exec bob.Executor, related ...*SeasonCarModelSetter) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+
+	seasonCarModels1, err := insertCarModelSeasonCarModels0(ctx, exec, related, carModel0)
+	if err != nil {
+		return err
+	}
+
+	carModel0.R.SeasonCarModels = append(carModel0.R.SeasonCarModels, seasonCarModels1...)
+
+	for _, rel := range seasonCarModels1 {
+		rel.R.CarModel = carModel0
+		rel.R.Loaded.CarModel = true
+	}
+	return nil
+}
+
+func (carModel0 *CarModel) AttachSeasonCarModels(ctx context.Context, exec bob.Executor, related ...*SeasonCarModel) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	seasonCarModels1 := SeasonCarModelSlice(related)
+
+	_, err = attachCarModelSeasonCarModels0(ctx, exec, len(related), seasonCarModels1, carModel0)
+	if err != nil {
+		return err
+	}
+
+	carModel0.R.SeasonCarModels = append(carModel0.R.SeasonCarModels, seasonCarModels1...)
 
 	for _, rel := range related {
 		rel.R.CarModel = carModel0
@@ -1212,6 +1308,22 @@ func (o *CarModel) Preload(name string, retrieved any) error {
 			}
 		}
 		return nil
+	case "SeasonCarModels":
+		rels, ok := retrieved.(SeasonCarModelSlice)
+		if !ok {
+			return fmt.Errorf("carModel cannot load %T as %q", retrieved, name)
+		}
+
+		o.R.SeasonCarModels = rels
+		o.R.Loaded.SeasonCarModels = true
+
+		for _, rel := range rels {
+			if rel != nil {
+				rel.R.CarModel = o
+				rel.R.Loaded.CarModel = true
+			}
+		}
+		return nil
 	case "SeasonDrivers":
 		rels, ok := retrieved.(SeasonDriverSlice)
 		if !ok {
@@ -1291,6 +1403,7 @@ type carModelThenLoader[Q orm.Loadable] struct {
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	BrandCarBrand         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonCarModels       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonDrivers         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SimulationCarAliases  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Teams                 func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
@@ -1305,6 +1418,9 @@ func buildCarModelThenLoader[Q orm.Loadable]() carModelThenLoader[Q] {
 	}
 	type ResultEntriesLoadInterface interface {
 		LoadResultEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonCarModelsLoadInterface interface {
+		LoadSeasonCarModels(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type SeasonDriversLoadInterface interface {
 		LoadSeasonDrivers(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1333,6 +1449,12 @@ func buildCarModelThenLoader[Q orm.Loadable]() carModelThenLoader[Q] {
 			"ResultEntries",
 			func(ctx context.Context, exec bob.Executor, retrieved ResultEntriesLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadResultEntries(ctx, exec, mods...)
+			},
+		),
+		SeasonCarModels: thenLoadBuilder[Q](
+			"SeasonCarModels",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonCarModelsLoadInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadSeasonCarModels(ctx, exec, mods...)
 			},
 		),
 		SeasonDrivers: thenLoadBuilder[Q](
@@ -1583,6 +1705,80 @@ func (os CarModelSlice) LoadResultEntries(ctx context.Context, exec bob.Executor
 	return nil
 }
 
+// LoadSeasonCarModels loads the carModel's SeasonCarModels into the .R struct
+func (o *CarModel) LoadSeasonCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	// Reset the relationship
+	o.R.SeasonCarModels = nil
+	o.R.Loaded.SeasonCarModels = false
+
+	related, err := o.SeasonCarModels(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range related {
+		rel.R.CarModel = o
+		rel.R.Loaded.CarModel = true
+	}
+
+	o.R.SeasonCarModels = related
+	o.R.Loaded.SeasonCarModels = true
+	return nil
+}
+
+// LoadSeasonCarModels loads the carModel's SeasonCarModels into the .R struct
+func (os CarModelSlice) LoadSeasonCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	seasonCarModels, err := os.SeasonCarModels(mods...).All(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		o.R.SeasonCarModels = nil
+		o.R.Loaded.SeasonCarModels = true
+	}
+	// O(N+M) stitch via a map keyed by the join column (key -> []parent; was O(N*M)).
+	carModelByKey := make(map[int32][]*CarModel, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+
+		carModelByKey[o.ID] = append(carModelByKey[o.ID], o)
+	}
+
+	for _, rel := range seasonCarModels {
+
+		owners, ok := carModelByKey[rel.CarModelID]
+		if !ok {
+			continue
+		}
+
+		for _, o := range owners {
+
+			rel.R.CarModel = o
+			rel.R.Loaded.CarModel = true
+
+			o.R.SeasonCarModels = append(o.R.SeasonCarModels, rel)
+
+		}
+	}
+
+	return nil
+}
+
 // LoadSeasonDrivers loads the carModel's SeasonDrivers into the .R struct
 func (o *CarModel) LoadSeasonDrivers(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
 	if o == nil {
@@ -1813,6 +2009,7 @@ func (os CarModelSlice) LoadTeams(ctx context.Context, exec bob.Executor, mods .
 type carModelC struct {
 	CarClassesToCarModels *int64
 	ResultEntries         *int64
+	SeasonCarModels       *int64
 	SeasonDrivers         *int64
 	SimulationCarAliases  *int64
 	Teams                 *int64
@@ -1829,6 +2026,8 @@ func (o *CarModel) PreloadCount(name string, count int64) error {
 		o.C.CarClassesToCarModels = &count
 	case "ResultEntries":
 		o.C.ResultEntries = &count
+	case "SeasonCarModels":
+		o.C.SeasonCarModels = &count
 	case "SeasonDrivers":
 		o.C.SeasonDrivers = &count
 	case "SimulationCarAliases":
@@ -1842,6 +2041,7 @@ func (o *CarModel) PreloadCount(name string, count int64) error {
 type carModelCountPreloader struct {
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
+	SeasonCarModels       func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	SeasonDrivers         func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	SimulationCarAliases  func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
 	Teams                 func(...bob.Mod[*dialect.SelectQuery]) psql.Preloader
@@ -1878,6 +2078,23 @@ func buildCarModelCountPreloader() carModelCountPreloader {
 
 					sm.From(ResultEntries.NameAsExpr()),
 					sm.Where(psql.Quote(ResultEntries.Alias(), "car_model_id").EQ(psql.Quote(parent, "id"))),
+				}
+				subqueryMods = append(subqueryMods, mods...)
+				return psql.Group(psql.Select(subqueryMods...).Expression)
+			})
+		},
+		SeasonCarModels: func(mods ...bob.Mod[*dialect.SelectQuery]) psql.Preloader {
+			return countPreloader[*CarModel]("SeasonCarModels", func(parent string) bob.Expression {
+				// Build a correlated subquery: (SELECT COUNT(*) FROM related WHERE fk = parent.pk)
+				if parent == "" {
+					parent = CarModels.Alias()
+				}
+
+				subqueryMods := []bob.Mod[*dialect.SelectQuery]{
+					sm.Columns(psql.Raw("count(*)")),
+
+					sm.From(SeasonCarModels.NameAsExpr()),
+					sm.Where(psql.Quote(SeasonCarModels.Alias(), "car_model_id").EQ(psql.Quote(parent, "id"))),
 				}
 				subqueryMods = append(subqueryMods, mods...)
 				return psql.Group(psql.Select(subqueryMods...).Expression)
@@ -1940,6 +2157,7 @@ func buildCarModelCountPreloader() carModelCountPreloader {
 type carModelCountThenLoader[Q orm.Loadable] struct {
 	CarClassesToCarModels func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	ResultEntries         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
+	SeasonCarModels       func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SeasonDrivers         func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	SimulationCarAliases  func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
 	Teams                 func(...bob.Mod[*dialect.SelectQuery]) orm.Loader[Q]
@@ -1951,6 +2169,9 @@ func buildCarModelCountThenLoader[Q orm.Loadable]() carModelCountThenLoader[Q] {
 	}
 	type ResultEntriesCountInterface interface {
 		LoadCountResultEntries(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
+	}
+	type SeasonCarModelsCountInterface interface {
+		LoadCountSeasonCarModels(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
 	}
 	type SeasonDriversCountInterface interface {
 		LoadCountSeasonDrivers(context.Context, bob.Executor, ...bob.Mod[*dialect.SelectQuery]) error
@@ -1973,6 +2194,12 @@ func buildCarModelCountThenLoader[Q orm.Loadable]() carModelCountThenLoader[Q] {
 			"ResultEntries",
 			func(ctx context.Context, exec bob.Executor, retrieved ResultEntriesCountInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
 				return retrieved.LoadCountResultEntries(ctx, exec, mods...)
+			},
+		),
+		SeasonCarModels: countThenLoadBuilder[Q](
+			"SeasonCarModels",
+			func(ctx context.Context, exec bob.Executor, retrieved SeasonCarModelsCountInterface, mods ...bob.Mod[*dialect.SelectQuery]) error {
+				return retrieved.LoadCountSeasonCarModels(ctx, exec, mods...)
 			},
 		),
 		SeasonDrivers: countThenLoadBuilder[Q](
@@ -2153,6 +2380,87 @@ func (os CarModelSlice) LoadCountResultEntries(ctx context.Context, exec bob.Exe
 		}
 		count := countMap[o.ID]
 		o.C.ResultEntries = &count
+	}
+
+	return nil
+}
+
+// LoadCountSeasonCarModels loads the count of SeasonCarModels into the C struct
+func (o *CarModel) LoadCountSeasonCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if o == nil {
+		return nil
+	}
+
+	count, err := o.SeasonCarModels(mods...).Count(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	o.C.SeasonCarModels = &count
+	return nil
+}
+
+// LoadCountSeasonCarModels loads the count of SeasonCarModels for a slice in a single batch query
+func (os CarModelSlice) LoadCountSeasonCarModels(ctx context.Context, exec bob.Executor, mods ...bob.Mod[*dialect.SelectQuery]) error {
+	if len(os) == 0 {
+		return nil
+	}
+
+	// Build the IN arg expression from parent PKs
+
+	pkID := make(pgtypes.Array[int32], 0, len(os))
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		pkID = append(pkID, o.ID)
+	}
+	PKArgExpr := psql.Select(sm.Columns(
+		psql.F("unnest", psql.Cast(psql.Arg(pkID), "integer[]")),
+	))
+
+	// countResult holds one scanned row from the batch count query.
+	// FK columns are aliased to the parent PK column names for direct map lookup.
+	type countResult struct {
+		ID    int32
+		Count int64
+	}
+
+	batchMods := []bob.Mod[*dialect.SelectQuery]{
+		// SELECT fk AS parent_pk, count(*)
+		sm.Columns(
+			SeasonCarModels.Columns.CarModelID.As("id"),
+			psql.Raw("count(*) as count"),
+		),
+		// Single-hop: FROM related table directly
+		sm.From(SeasonCarModels.NameAsExpr()),
+
+		// WHERE fk IN (parent PKs)
+		sm.Where(SeasonCarModels.Columns.CarModelID.OP("IN", PKArgExpr)),
+		// GROUP BY fk columns
+		sm.GroupBy(SeasonCarModels.Columns.CarModelID),
+	}
+	batchMods = append(batchMods, mods...)
+
+	results, err := bob.All(ctx, exec,
+		psql.Select(batchMods...),
+		scan.StructMapper[countResult](),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Single-column FK: direct map lookup
+	countMap := make(map[int32]int64, len(results))
+	for _, r := range results {
+		countMap[r.ID] = r.Count
+	}
+	for _, o := range os {
+		if o == nil {
+			continue
+		}
+		count := countMap[o.ID]
+		o.C.SeasonCarModels = &count
 	}
 
 	return nil
@@ -2406,6 +2714,7 @@ type carModelJoins[Q dialect.Joinable] struct {
 	CarClassesToCarModels modAs[Q, carClassesToCarModelColumns]
 	BrandCarBrand         modAs[Q, carBrandColumns]
 	ResultEntries         modAs[Q, resultEntryColumns]
+	SeasonCarModels       modAs[Q, seasonCarModelColumns]
 	SeasonDrivers         modAs[Q, seasonDriverColumns]
 	SimulationCarAliases  modAs[Q, simulationCarAliasColumns]
 	Teams                 modAs[Q, teamColumns]
@@ -2453,6 +2762,20 @@ func buildCarModelJoins[Q dialect.Joinable](cols carModelColumns, typ string) ca
 
 				{
 					mods = append(mods, dialect.Join[Q](typ, ResultEntries.NameExpr().As(to.Alias())).On(
+						to.CarModelID.EQ(cols.ID),
+					))
+				}
+
+				return mods
+			},
+		},
+		SeasonCarModels: modAs[Q, seasonCarModelColumns]{
+			c: SeasonCarModels.Columns,
+			f: func(to seasonCarModelColumns) bob.Mod[Q] {
+				mods := make(mods.QueryMods[Q], 0, 1)
+
+				{
+					mods = append(mods, dialect.Join[Q](typ, SeasonCarModels.NameExpr().As(to.Alias())).On(
 						to.CarModelID.EQ(cols.ID),
 					))
 				}

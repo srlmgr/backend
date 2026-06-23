@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/srlmgr/backend/db/models"
 )
@@ -16,14 +17,29 @@ type (
 )
 
 type (
+	QuerySeasonDriver interface {
+		ResolveSeasonDriver(
+			ctx context.Context,
+			seasonID, driverID int32,
+			when time.Time) (
+			*models.SeasonDriver, error,
+		)
+	}
 	QueryTeamDriver interface {
 		FindBySeasonAndDriver(ctx context.Context, seasonID, driverID int32) (
+			*models.TeamDriver, error,
+		)
+		ResolveTeamDriver(
+			ctx context.Context,
+			seasonID, driverID int32,
+			when time.Time) (
 			*models.TeamDriver, error,
 		)
 		FindBySeason(ctx context.Context, seasonID int32) (
 			[]*models.TeamDriver, error,
 		)
 	}
+
 	QueryCarClass interface {
 		FindBySeasonAndCarModel(ctx context.Context, seasonID, carModelID int32) (
 			*models.CarClass, error,
@@ -36,6 +52,7 @@ type (
 		)
 	}
 	Queries interface {
+		QuerySeasonDrivers() QuerySeasonDriver
 		QueryTeamDrivers() QueryTeamDriver
 		QueryCarClasses() QueryCarClass
 		QueryTrackLayouts() QueryTrackLayouts

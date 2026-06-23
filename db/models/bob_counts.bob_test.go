@@ -205,6 +205,9 @@ func TestCarModelCountStruct(t *testing.T) {
 	// Verify ResultEntries count field exists and is *int64
 	var _ *int64 = m.C.ResultEntries
 
+	// Verify SeasonCarModels count field exists and is *int64
+	var _ *int64 = m.C.SeasonCarModels
+
 	// Verify SeasonDrivers count field exists and is *int64
 	var _ *int64 = m.C.SeasonDrivers
 
@@ -232,6 +235,12 @@ func TestCarModelLoadCountMethods(t *testing.T) {
 
 	// Verify LoadCountResultEntries method exists on slice
 	_ = ms.LoadCountResultEntries(ctx, nil)
+
+	// Verify LoadCountSeasonCarModels method exists on single model
+	_ = m.LoadCountSeasonCarModels(ctx, nil)
+
+	// Verify LoadCountSeasonCarModels method exists on slice
+	_ = ms.LoadCountSeasonCarModels(ctx, nil)
 
 	// Verify LoadCountSeasonDrivers method exists on single model
 	_ = m.LoadCountSeasonDrivers(ctx, nil)
@@ -262,6 +271,9 @@ func TestSelectThenLoadCountCarModel(t *testing.T) {
 	// Verify ResultEntries loader exists
 	_ = SelectThenLoadCount.CarModel.ResultEntries
 
+	// Verify SeasonCarModels loader exists
+	_ = SelectThenLoadCount.CarModel.SeasonCarModels
+
 	// Verify SeasonDrivers loader exists
 	_ = SelectThenLoadCount.CarModel.SeasonDrivers
 
@@ -282,6 +294,9 @@ func TestPreloadCountCarModel(t *testing.T) {
 	// Verify ResultEntries preloader exists and returns a Preloader
 	_ = PreloadCount.CarModel.ResultEntries()
 
+	// Verify SeasonCarModels preloader exists and returns a Preloader
+	_ = PreloadCount.CarModel.SeasonCarModels()
+
 	// Verify SeasonDrivers preloader exists and returns a Preloader
 	_ = PreloadCount.CarModel.SeasonDrivers()
 
@@ -299,6 +314,8 @@ func TestCarModelPreloadCountMethod(t *testing.T) {
 	_ = m.PreloadCount("CarClassesToCarModels", 0)
 
 	_ = m.PreloadCount("ResultEntries", 0)
+
+	_ = m.PreloadCount("SeasonCarModels", 0)
 
 	_ = m.PreloadCount("SeasonDrivers", 0)
 
@@ -928,6 +945,9 @@ func TestSeasonCountStruct(t *testing.T) {
 	// Verify SeasonCarClasses count field exists and is *int64
 	var _ *int64 = m.C.SeasonCarClasses
 
+	// Verify SeasonCarModels count field exists and is *int64
+	var _ *int64 = m.C.SeasonCarModels
+
 	// Verify SeasonDriverStandings count field exists and is *int64
 	var _ *int64 = m.C.SeasonDriverStandings
 
@@ -971,6 +991,12 @@ func TestSeasonLoadCountMethods(t *testing.T) {
 	// Verify LoadCountSeasonCarClasses method exists on slice
 	_ = ms.LoadCountSeasonCarClasses(ctx, nil)
 
+	// Verify LoadCountSeasonCarModels method exists on single model
+	_ = m.LoadCountSeasonCarModels(ctx, nil)
+
+	// Verify LoadCountSeasonCarModels method exists on slice
+	_ = ms.LoadCountSeasonCarModels(ctx, nil)
+
 	// Verify LoadCountSeasonDriverStandings method exists on single model
 	_ = m.LoadCountSeasonDriverStandings(ctx, nil)
 
@@ -1012,6 +1038,9 @@ func TestSelectThenLoadCountSeason(t *testing.T) {
 	// Verify SeasonCarClasses loader exists
 	_ = SelectThenLoadCount.Season.SeasonCarClasses
 
+	// Verify SeasonCarModels loader exists
+	_ = SelectThenLoadCount.Season.SeasonCarModels
+
 	// Verify SeasonDriverStandings loader exists
 	_ = SelectThenLoadCount.Season.SeasonDriverStandings
 
@@ -1041,6 +1070,9 @@ func TestPreloadCountSeason(t *testing.T) {
 	// Verify SeasonCarClasses preloader exists and returns a Preloader
 	_ = PreloadCount.Season.SeasonCarClasses()
 
+	// Verify SeasonCarModels preloader exists and returns a Preloader
+	_ = PreloadCount.Season.SeasonCarModels()
+
 	// Verify SeasonDriverStandings preloader exists and returns a Preloader
 	_ = PreloadCount.Season.SeasonDriverStandings()
 
@@ -1065,6 +1097,8 @@ func TestSeasonPreloadCountMethod(t *testing.T) {
 	_ = m.PreloadCount("Events", 0)
 
 	_ = m.PreloadCount("SeasonCarClasses", 0)
+
+	_ = m.PreloadCount("SeasonCarModels", 0)
 
 	_ = m.PreloadCount("SeasonDriverStandings", 0)
 

@@ -26,6 +26,7 @@ type SeasonCarClass struct {
 	ID         int32 `db:"id,pk" `
 	SeasonID   int32 `db:"season_id" `
 	CarClassID int32 `db:"car_class_id" `
+	Pos        int32 `db:"pos" `
 
 	R seasonCarClassR `db:"-" `
 }
@@ -58,7 +59,7 @@ type seasonCarClassRLoaded struct {
 
 func buildSeasonCarClassColumns(tableName string) seasonCarClassColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "season_id", "car_class_id",
+		"id", "season_id", "car_class_id", "pos",
 	)
 
 	if tableName != "" {
@@ -71,6 +72,7 @@ func buildSeasonCarClassColumns(tableName string) seasonCarClassColumns {
 		ID:          buildSeasonCarClassColumn(tableName, "id"),
 		SeasonID:    buildSeasonCarClassColumn(tableName, "season_id"),
 		CarClassID:  buildSeasonCarClassColumn(tableName, "car_class_id"),
+		Pos:         buildSeasonCarClassColumn(tableName, "pos"),
 	}
 }
 
@@ -80,6 +82,7 @@ type seasonCarClassColumns struct {
 	ID         seasonCarClassColumn
 	SeasonID   seasonCarClassColumn
 	CarClassID seasonCarClassColumn
+	Pos        seasonCarClassColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -128,10 +131,11 @@ type SeasonCarClassSetter struct {
 	ID         omit.Val[int32] `db:"id,pk" `
 	SeasonID   omit.Val[int32] `db:"season_id" `
 	CarClassID omit.Val[int32] `db:"car_class_id" `
+	Pos        omit.Val[int32] `db:"pos" `
 }
 
 func (s SeasonCarClassSetter) SetColumns() []string {
-	vals := make([]string, 0, 3)
+	vals := make([]string, 0, 4)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -140,6 +144,9 @@ func (s SeasonCarClassSetter) SetColumns() []string {
 	}
 	if s.CarClassID.IsValue() {
 		vals = append(vals, "car_class_id")
+	}
+	if s.Pos.IsValue() {
+		vals = append(vals, "pos")
 	}
 	return vals
 }
@@ -153,6 +160,9 @@ func (s SeasonCarClassSetter) Overwrite(t *SeasonCarClass) {
 	}
 	if s.CarClassID.IsValue() {
 		t.CarClassID = s.CarClassID.MustGet()
+	}
+	if s.Pos.IsValue() {
+		t.Pos = s.Pos.MustGet()
 	}
 }
 
@@ -177,6 +187,11 @@ func (s *SeasonCarClassSetter) Apply(q *dialect.InsertQuery) {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
 			return psql.Arg(s.CarClassID.MustGet()).WriteSQL(ctx, w, d, start)
+		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+			if s.Pos.IsUnset() {
+				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
+			}
+			return psql.Arg(s.Pos.MustGet()).WriteSQL(ctx, w, d, start)
 		}))
 }
 
@@ -185,7 +200,7 @@ func (s SeasonCarClassSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeasonCarClassSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 3)
+	exprs := make([]bob.Expression, 0, 4)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -205,6 +220,13 @@ func (s SeasonCarClassSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "car_class_id")...),
 			psql.Arg(s.CarClassID),
+		}})
+	}
+
+	if s.Pos.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "pos")...),
+			psql.Arg(s.Pos),
 		}})
 	}
 
@@ -618,6 +640,7 @@ type seasonCarClassWhere[Q psql.Filterable] struct {
 	ID         psql.WhereMod[Q, int32]
 	SeasonID   psql.WhereMod[Q, int32]
 	CarClassID psql.WhereMod[Q, int32]
+	Pos        psql.WhereMod[Q, int32]
 }
 
 func (seasonCarClassWhere[Q]) AliasedAs(alias string) seasonCarClassWhere[Q] {
@@ -629,6 +652,7 @@ func buildSeasonCarClassWhere[Q psql.Filterable](cols seasonCarClassColumns) sea
 		ID:         psql.Where[Q, int32](cols.ID.Expression),
 		SeasonID:   psql.Where[Q, int32](cols.SeasonID.Expression),
 		CarClassID: psql.Where[Q, int32](cols.CarClassID.Expression),
+		Pos:        psql.Where[Q, int32](cols.Pos.Expression),
 	}
 }
 

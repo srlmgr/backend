@@ -38,6 +38,7 @@ type Factory struct {
 	baseRacingSimMods                  RacingSimModSlice
 	baseResultEntryMods                ResultEntryModSlice
 	baseSeasonCarClassMods             SeasonCarClassModSlice
+	baseSeasonCarModelMods             SeasonCarModelModSlice
 	baseSeasonDriverStandingMods       SeasonDriverStandingModSlice
 	baseSeasonDriverMods               SeasonDriverModSlice
 	baseSeasonTeamStandingMods         SeasonTeamStandingModSlice
@@ -378,6 +379,9 @@ func (f *Factory) fromExistingCarModel(ctx context.Context, m *models.CarModel) 
 	}
 	if len(m.R.ResultEntries) > 0 {
 		CarModelMods.AddExistingResultEntries(m.R.ResultEntries...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonCarModels) > 0 {
+		CarModelMods.AddExistingSeasonCarModels(m.R.SeasonCarModels...).Apply(ctx, o)
 	}
 	if len(m.R.SeasonDrivers) > 0 {
 		CarModelMods.AddExistingSeasonDrivers(m.R.SeasonDrivers...).Apply(ctx, o)
@@ -1138,6 +1142,7 @@ func (f *Factory) fromExistingSeasonCarClass(ctx context.Context, m *models.Seas
 	o.ID = func() int32 { return m.ID }
 	o.SeasonID = func() int32 { return m.SeasonID }
 	o.CarClassID = func() int32 { return m.CarClassID }
+	o.Pos = func() int32 { return m.Pos }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -1151,6 +1156,53 @@ func (f *Factory) fromExistingSeasonCarClass(ctx context.Context, m *models.Seas
 	}
 	if m.R.Season != nil {
 		SeasonCarClassMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
+	}
+
+	return o
+}
+
+func (f *Factory) NewSeasonCarModel(mods ...SeasonCarModelMod) *SeasonCarModelTemplate {
+	return f.NewSeasonCarModelWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewSeasonCarModelWithContext(ctx context.Context, mods ...SeasonCarModelMod) *SeasonCarModelTemplate {
+	o := &SeasonCarModelTemplate{f: f}
+
+	if f != nil {
+		f.baseSeasonCarModelMods.Apply(ctx, o)
+	}
+
+	SeasonCarModelModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingSeasonCarModel(ctx context.Context, m *models.SeasonCarModel) *SeasonCarModelTemplate {
+	visited := make(map[uintptr]struct{})
+	ctx = factoryVisitedCtx.WithValue(ctx, visited)
+	return f.fromExistingSeasonCarModel(ctx, m)
+}
+
+func (f *Factory) fromExistingSeasonCarModel(ctx context.Context, m *models.SeasonCarModel) *SeasonCarModelTemplate {
+	o := &SeasonCarModelTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SeasonID = func() int32 { return m.SeasonID }
+	o.CarModelID = func() int32 { return m.CarModelID }
+	o.Pos = func() int32 { return m.Pos }
+
+	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
+		ptr := uintptr(unsafe.Pointer(m))
+		if _, seen := visited[ptr]; seen {
+			return o
+		}
+		visited[ptr] = struct{}{}
+	}
+	if m.R.CarModel != nil {
+		SeasonCarModelMods.WithExistingCarModel(m.R.CarModel).Apply(ctx, o)
+	}
+	if m.R.Season != nil {
+		SeasonCarModelMods.WithExistingSeason(m.R.Season).Apply(ctx, o)
 	}
 
 	return o
@@ -1385,6 +1437,9 @@ func (f *Factory) fromExistingSeason(ctx context.Context, m *models.Season) *Sea
 	}
 	if len(m.R.SeasonCarClasses) > 0 {
 		SeasonMods.AddExistingSeasonCarClasses(m.R.SeasonCarClasses...).Apply(ctx, o)
+	}
+	if len(m.R.SeasonCarModels) > 0 {
+		SeasonMods.AddExistingSeasonCarModels(m.R.SeasonCarModels...).Apply(ctx, o)
 	}
 	if len(m.R.SeasonDriverStandings) > 0 {
 		SeasonMods.AddExistingSeasonDriverStandings(m.R.SeasonDriverStandings...).Apply(ctx, o)
@@ -1993,6 +2048,14 @@ func (f *Factory) ClearBaseSeasonCarClassMods() {
 
 func (f *Factory) AddBaseSeasonCarClassMod(mods ...SeasonCarClassMod) {
 	f.baseSeasonCarClassMods = append(f.baseSeasonCarClassMods, mods...)
+}
+
+func (f *Factory) ClearBaseSeasonCarModelMods() {
+	f.baseSeasonCarModelMods = nil
+}
+
+func (f *Factory) AddBaseSeasonCarModelMod(mods ...SeasonCarModelMod) {
+	f.baseSeasonCarModelMods = append(f.baseSeasonCarModelMods, mods...)
 }
 
 func (f *Factory) ClearBaseSeasonDriverStandingMods() {

@@ -45,6 +45,7 @@ var (
 	carModelRelCarClassesToCarModelsCtx = newContextual[bool]("car_classes_to_car_models.car_models.car_classes_to_car_models.car_classes_to_car_models_car_model_id_fk")
 	carModelRelBrandCarBrandCtx         = newContextual[bool]("car_brands.car_models.car_models.car_models_brand_id_fk")
 	carModelRelResultEntriesCtx         = newContextual[bool]("car_models.result_entries.result_entries.result_entries_car_model_id_fk")
+	carModelRelSeasonCarModelsCtx       = newContextual[bool]("car_models.season_car_models.season_car_models.season_car_models_car_model_id_fk")
 	carModelRelSeasonDriversCtx         = newContextual[bool]("car_models.season_drivers.season_drivers.season_drivers_car_model_id_fk")
 	carModelRelSimulationCarAliasesCtx  = newContextual[bool]("car_models.simulation_car_aliases.simulation_car_aliases.simulation_car_aliases_car_model_id_fk")
 	carModelRelTeamsCtx                 = newContextual[bool]("car_models.teams.teams.teams_car_model_id_fk")
@@ -133,6 +134,11 @@ var (
 	seasonCarClassRelCarClassCtx          = newContextual[bool]("car_classes.season_car_classes.season_car_classes.season_car_classes_car_class_id_fk")
 	seasonCarClassRelSeasonCtx            = newContextual[bool]("season_car_classes.seasons.season_car_classes.season_car_classes_season_id_fk")
 
+	// Relationship Contexts for season_car_models
+	seasonCarModelWithParentsCascadingCtx = newContextual[bool]("seasonCarModelWithParentsCascading")
+	seasonCarModelRelCarModelCtx          = newContextual[bool]("car_models.season_car_models.season_car_models.season_car_models_car_model_id_fk")
+	seasonCarModelRelSeasonCtx            = newContextual[bool]("season_car_models.seasons.season_car_models.season_car_models_season_id_fk")
+
 	// Relationship Contexts for season_driver_standings
 	seasonDriverStandingWithParentsCascadingCtx = newContextual[bool]("seasonDriverStandingWithParentsCascading")
 	seasonDriverStandingRelDriverCtx            = newContextual[bool]("drivers.season_driver_standings.season_driver_standings.season_driver_standings_driver_id_fk")
@@ -155,6 +161,7 @@ var (
 	seasonRelEventTeamStandingsCtx    = newContextual[bool]("event_team_standings.seasons.event_team_standings.event_team_standings_season_id_fk")
 	seasonRelEventsCtx                = newContextual[bool]("events.seasons.events.events_season_id_fk")
 	seasonRelSeasonCarClassesCtx      = newContextual[bool]("season_car_classes.seasons.season_car_classes.season_car_classes_season_id_fk")
+	seasonRelSeasonCarModelsCtx       = newContextual[bool]("season_car_models.seasons.season_car_models.season_car_models_season_id_fk")
 	seasonRelSeasonDriverStandingsCtx = newContextual[bool]("season_driver_standings.seasons.season_driver_standings.season_driver_standings_season_id_fk")
 	seasonRelSeasonDriversCtx         = newContextual[bool]("season_drivers.seasons.season_drivers.season_drivers_season_id_fk")
 	seasonRelSeasonTeamStandingsCtx   = newContextual[bool]("season_team_standings.seasons.season_team_standings.season_team_standings_season_id_fk")

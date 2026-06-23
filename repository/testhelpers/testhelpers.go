@@ -1,6 +1,6 @@
 // Package testhelpers provides shared test utilities for repository sub-packages.
 //
-//nolint:dupl,whitespace // shared seed helpers are intentionally repetitive
+//nolint:dupl,whitespace,lll // shared seed helpers are intentionally repetitive
 package testhelpers
 
 import (
@@ -183,6 +183,178 @@ func SeedSeasonContext(
 	return season
 }
 
+func SeedCarManufacturer(t *testing.T, name string) *models.CarManufacturer {
+	t.Helper()
+	return SeedCarManufacturerContext(t, context.Background(), name)
+}
+
+func SeedCarManufacturerContext(
+	t *testing.T,
+	ctx context.Context,
+	name string,
+) *models.CarManufacturer {
+	t.Helper()
+
+	manufacturer, err := models.CarManufacturers.Insert(&models.CarManufacturerSetter{
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(TestUserSeed),
+		UpdatedBy: omit.From(TestUserSeed),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed car manufacturer %q: %v", name, err)
+	}
+
+	return manufacturer
+}
+
+func SeedCarBrand(t *testing.T, name string, manufacturerID int32) *models.CarBrand {
+	t.Helper()
+	return SeedCarBrandContext(t, context.Background(), name, manufacturerID)
+}
+
+func SeedCarBrandContext(
+	t *testing.T,
+	ctx context.Context,
+	name string,
+	manufacturerID int32,
+) *models.CarBrand {
+	t.Helper()
+
+	brand, err := models.CarBrands.Insert(&models.CarBrandSetter{
+		ManufacturerID: omit.From(manufacturerID),
+		Name:           omit.From(name),
+		IsActive:       omit.From(true),
+		CreatedBy:      omit.From(TestUserSeed),
+		UpdatedBy:      omit.From(TestUserSeed),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed car brand %q: %v", name, err)
+	}
+
+	return brand
+}
+
+func SeedCarModel(t *testing.T, name string, brandID int32) *models.CarModel {
+	t.Helper()
+	return SeedCarModelContext(t, context.Background(), name, brandID)
+}
+
+func SeedCarModelContext(
+	t *testing.T,
+	ctx context.Context,
+	name string,
+	brandID int32,
+) *models.CarModel {
+	t.Helper()
+
+	model, err := models.CarModels.Insert(&models.CarModelSetter{
+		BrandID:   omit.From(brandID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		CreatedBy: omit.From(TestUserSeed),
+		UpdatedBy: omit.From(TestUserSeed),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed car model %q: %v", name, err)
+	}
+
+	return model
+}
+
+func SeedSeasonCar(
+	t *testing.T,
+	seasonID int32,
+	carModelID int32,
+	pos int32,
+) *models.SeasonCarModel {
+	t.Helper()
+	return SeedSeasonCarContext(t, context.Background(), seasonID, carModelID, pos)
+}
+
+func SeedSeasonCarContext(
+	t *testing.T,
+	ctx context.Context,
+	seasonID int32,
+	carModelID int32,
+	pos int32,
+) *models.SeasonCarModel {
+	t.Helper()
+	return SeedSeasonCarModelContext(t, ctx, seasonID, carModelID, pos)
+}
+
+func SeedSeasonCarModel(
+	t *testing.T,
+	seasonID int32,
+	carModelID int32,
+	pos int32,
+) *models.SeasonCarModel {
+	t.Helper()
+	return SeedSeasonCarModelContext(t, context.Background(), seasonID, carModelID, pos)
+}
+
+func SeedSeasonCarModelContext(
+	t *testing.T,
+	ctx context.Context,
+	seasonID int32,
+	carModelID int32,
+	pos int32,
+) *models.SeasonCarModel {
+	t.Helper()
+
+	seasonCarModel, err := models.SeasonCarModels.Insert(&models.SeasonCarModelSetter{
+		SeasonID:   omit.From(seasonID),
+		CarModelID: omit.From(carModelID),
+		Pos:        omit.From(pos),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf(
+			"failed to seed season car model for season %d and car model %d: %v",
+			seasonID,
+			carModelID,
+			err,
+		)
+	}
+
+	return seasonCarModel
+}
+
+func SeedSeasonCarClass(
+	t *testing.T,
+	seasonID int32,
+	carClassID int32,
+	pos int32,
+) *models.SeasonCarClass {
+	t.Helper()
+	return SeedSeasonCarClassContext(t, context.Background(), seasonID, carClassID, pos)
+}
+
+func SeedSeasonCarClassContext(
+	t *testing.T,
+	ctx context.Context,
+	seasonID int32,
+	carClassID int32,
+	pos int32,
+) *models.SeasonCarClass {
+	t.Helper()
+
+	seasonCarClass, err := models.SeasonCarClasses.Insert(&models.SeasonCarClassSetter{
+		SeasonID:   omit.From(seasonID),
+		CarClassID: omit.From(carClassID),
+		Pos:        omit.From(pos),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf(
+			"failed to seed season car class for season %d and car class %d: %v",
+			seasonID,
+			carClassID,
+			err,
+		)
+	}
+
+	return seasonCarClass
+}
+
 func SeedTrack(t *testing.T, name string) *models.Track {
 	t.Helper()
 	return SeedTrackContext(t, context.Background(), name)
@@ -206,6 +378,152 @@ func SeedTrackContext(
 	}
 
 	return track
+}
+
+func SeedDriver(t *testing.T, name, externalID string) *models.Driver {
+	t.Helper()
+	return SeedDriverContext(t, context.Background(), name, externalID)
+}
+
+func SeedDriverContext(
+	t *testing.T,
+	ctx context.Context,
+	name, externalID string,
+) *models.Driver {
+	t.Helper()
+	setter := &models.DriverSetter{
+		ExternalID: omit.From(externalID),
+		Name:       omit.From(name),
+		IsActive:   omit.From(true),
+		CreatedBy:  omit.From(TestUserSeed),
+		UpdatedBy:  omit.From(TestUserSeed),
+	}
+	driver, err := models.Drivers.Insert(setter).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed driver %q: %v", name, err)
+	}
+
+	return driver
+}
+
+func SeedSeasonDriver(
+	t *testing.T,
+	carNumber string,
+	driverID, seasonID, carModelID int32,
+	joinedAt time.Time,
+	leftAt *time.Time,
+) *models.SeasonDriver {
+	t.Helper()
+	return SeedSeasonDriverContext(
+		t,
+		context.Background(),
+		carNumber,
+		driverID,
+		seasonID,
+		carModelID,
+		joinedAt,
+		leftAt,
+	)
+}
+
+func SeedSeasonDriverContext(
+	t *testing.T,
+	ctx context.Context,
+	carNumber string,
+	driverID, seasonID, carModelID int32,
+	joinedAt time.Time, leftAt *time.Time,
+) *models.SeasonDriver {
+	t.Helper()
+	setter := &models.SeasonDriverSetter{
+		CarNumber:  omit.From(carNumber),
+		DriverID:   omit.From(driverID),
+		SeasonID:   omit.From(seasonID),
+		CarModelID: omit.From(carModelID),
+		JoinedAt:   omit.From(joinedAt),
+		CreatedBy:  omit.From(TestUserSeed),
+		UpdatedBy:  omit.From(TestUserSeed),
+	}
+	if leftAt != nil {
+		setter.LeftAt = omitnull.From(*leftAt)
+	}
+	seasonDriver, err := models.SeasonDrivers.Insert(setter).
+		One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed season driver %q: %v", carNumber, err)
+	}
+
+	return seasonDriver
+}
+
+func SeedTeamSimple(
+	t *testing.T,
+	seasonID int32,
+	name string,
+	joinedAt time.Time,
+	leftAt *time.Time,
+) *models.Team {
+	t.Helper()
+	return SeedTeamSimpleContext(t, context.Background(), seasonID, name, joinedAt, leftAt)
+}
+
+func SeedTeamSimpleContext(
+	t *testing.T,
+	ctx context.Context,
+	seasonID int32,
+	name string,
+	joinedAt time.Time,
+	leftAt *time.Time,
+) *models.Team {
+	t.Helper()
+
+	team, err := models.Teams.Insert(&models.TeamSetter{
+		SeasonID:  omit.From(seasonID),
+		Name:      omit.From(name),
+		IsActive:  omit.From(true),
+		JoinedAt:  omit.From(joinedAt),
+		LeftAt:    omitnull.FromPtr(leftAt),
+		CreatedBy: omit.From(TestUserSeed),
+		UpdatedBy: omit.From(TestUserSeed),
+	}).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed team %q: %v", name, err)
+	}
+
+	return team
+}
+
+func SeedTeamDriver(
+	t *testing.T,
+	teamID, driverID int32,
+	joinedAt time.Time,
+	leftAt *time.Time,
+) *models.TeamDriver {
+	t.Helper()
+	return SeedTeamDriverContext(t, context.Background(), teamID, driverID, joinedAt, leftAt)
+}
+
+func SeedTeamDriverContext(
+	t *testing.T,
+	ctx context.Context,
+	teamID, driverID int32, joinedAt time.Time, leftAt *time.Time,
+) *models.TeamDriver {
+	t.Helper()
+	setter := &models.TeamDriverSetter{
+		TeamID:    omit.From(teamID),
+		DriverID:  omit.From(driverID),
+		JoinedAt:  omit.From(joinedAt),
+		CreatedBy: omit.From(TestUserSeed),
+		UpdatedBy: omit.From(TestUserSeed),
+	}
+	if leftAt != nil {
+		setter.LeftAt = omitnull.From(*leftAt)
+	}
+	teamDriver, err := models.TeamDrivers.Insert(setter).One(ctx, getExecutorFromContext(t, ctx))
+	if err != nil {
+		t.Fatalf("failed to seed team member %q: %v", driverID, err)
+	}
+
+	return teamDriver
 }
 
 func SeedTrackLayout(t *testing.T, trackID int32, name string) *models.TrackLayout {

@@ -10,9 +10,10 @@ import (
 
 type (
 	queries struct {
-		qTeamDrivers  rootrepo.QueryTeamDriver
-		qCarClasses   rootrepo.QueryCarClass
-		qTrackLayouts rootrepo.QueryTrackLayouts
+		qSeasonDrivers rootrepo.QuerySeasonDriver
+		qTeamDrivers   rootrepo.QueryTeamDriver
+		qCarClasses    rootrepo.QueryCarClass
+		qTrackLayouts  rootrepo.QueryTrackLayouts
 	}
 )
 
@@ -21,11 +22,13 @@ var _ rootrepo.Queries = (*queries)(nil)
 // New returns a postgres-backed QueryRepository.
 func New(pool *pgxpool.Pool) rootrepo.Queries {
 	return &queries{
-		qTeamDrivers:  NewTeamDriverQueries(pgbob.New(pool)),
-		qCarClasses:   NewCarClassQueries(pgbob.New(pool)),
-		qTrackLayouts: NewTrackLayoutQueries(pgbob.New(pool)),
+		qSeasonDrivers: NewSeasonDriverQueries(pgbob.New(pool)),
+		qTeamDrivers:   NewTeamDriverQueries(pgbob.New(pool)),
+		qCarClasses:    NewCarClassQueries(pgbob.New(pool)),
+		qTrackLayouts:  NewTrackLayoutQueries(pgbob.New(pool)),
 	}
 }
-func (r *queries) QueryTeamDrivers() rootrepo.QueryTeamDriver    { return r.qTeamDrivers }
-func (r *queries) QueryCarClasses() rootrepo.QueryCarClass       { return r.qCarClasses }
-func (r *queries) QueryTrackLayouts() rootrepo.QueryTrackLayouts { return r.qTrackLayouts }
+func (r *queries) QuerySeasonDrivers() rootrepo.QuerySeasonDriver { return r.qSeasonDrivers }
+func (r *queries) QueryTeamDrivers() rootrepo.QueryTeamDriver     { return r.qTeamDrivers }
+func (r *queries) QueryCarClasses() rootrepo.QueryCarClass        { return r.qCarClasses }
+func (r *queries) QueryTrackLayouts() rootrepo.QueryTrackLayouts  { return r.qTrackLayouts }
