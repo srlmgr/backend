@@ -139,6 +139,10 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 			case "penalty_points":
 				// booking points are negative, for standings we want positives
 				eventData.penaltyPoints += -booking.Points
+				// raw point will be used to compute skip results,
+				// we don't want to penalty points to be towards that.
+				// they are subtracted after the skip result from the total
+				eventData.rawPoints -= booking.Points
 			}
 		}
 
@@ -170,8 +174,16 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 				work.rawPointsByEventID,
 				input,
 			)
+			penaltiesTillHere := computeTotalPenalties(
+				processedEventIDs,
+				bookingsByEventID,
+				referenceID,
+				input.ReferenceID,
+			)
+
 			work.standingData.BonusPoints += eventData.bonusPoints
 			work.standingData.PenaltyPoints += eventData.penaltyPoints
+			work.standingData.TotalPoints -= penaltiesTillHere
 
 			if len(eventData.participations) > 0 {
 				work.standingData.NumEvents++
@@ -200,6 +212,32 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 	}
 
 	return computedStandingsSlice(workByReferenceID)
+}
+
+//nolint:whitespace // editor/linter issue
+func computeTotalPenalties(
+	processedEventIDs []int32,
+	bookingsByEventID map[int32][]*models.BookingEntry,
+	referenceID int32,
+	referenceIDFunc func(*models.BookingEntry) int32,
+) int32 {
+	totalPenalties := int32(0)
+	for _, eventID := range processedEventIDs {
+		eventBookings := bookingsByEventID[eventID]
+		for _, booking := range eventBookings {
+			if booking == nil {
+				continue
+			}
+			if referenceID != referenceIDFunc(booking) {
+				continue
+			}
+			if string(booking.SourceType) == "penalty_points" {
+				totalPenalties += -booking.Points
+			}
+		}
+	}
+
+	return totalPenalties
 }
 
 //nolint:whitespace // editor/linter issue
@@ -242,8 +280,8 @@ func calculateTotalPoints(
 	processedEventIDs []int32,
 	rawPointsByEventID map[int32]int32,
 	input *ComputeStandingsInput,
-) (int32, []int32) {
-	rawTotal := int32(0)
+) (rawTotal int32, skippedEventIDs []int32) {
+	rawTotal = 0
 	for _, eventID := range processedEventIDs {
 		rawTotal += rawPointsByEventID[eventID]
 	}
@@ -283,7 +321,7 @@ func calculateTotalPoints(
 		rawTotal -= item.points
 	}
 
-	skippedEventIDs := make([]int32, 0, numSkipped)
+	skippedEventIDs = make([]int32, 0, numSkipped)
 	for _, item := range events {
 		if _, ok := skippedByEventID[item.eventID]; ok {
 			skippedEventIDs = append(skippedEventIDs, item.eventID)

@@ -1,4 +1,4 @@
-//nolint:whitespace,funlen // editor/linter issue, test logic is long
+//nolint:whitespace,funlen,lll // editor/linter issue, test logic is long
 package standings
 
 import (
@@ -6,6 +6,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"github.com/aarondl/opt/null"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/srlmgr/backend/db/models"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
@@ -382,6 +383,214 @@ func TestComputeBreaksTiesByFinishPositionsThenPenaltyThenBonus(t *testing.T) {
 		NumTop5:        1,
 		NumTop10:       1,
 	})
+}
+
+func TestComputeWithSkipEvents(t *testing.T) {
+	compute := NewComputeStandings()
+
+	// we check the following
+	// in effect: driver 1 has 0 points if penalties are included for skip results
+	// we don't want this. Accumulated penalties should be applied at the end
+	actual := compute.Compute(&ComputeStandingsInput{
+		EventIDs: []int32{10, 20, 30},
+		Bookings: []*models.BookingEntry{
+			bookingEntry(10, 100, 1, 7, "finish_pos"),
+			bookingEntry(10, 100, 1, -7, "penalty_points"),
+			bookingEntry(10, 100, 2, 10, "finish_pos"),
+			bookingEntry(20, 200, 1, 5, "finish_pos"),
+			bookingEntry(20, 200, 2, 5, "finish_pos"),
+			bookingEntry(30, 200, 1, 6, "finish_pos"),
+		},
+		// not needed here
+		Participations: []Participation{
+			// testParticipation{raceGridID: 100, referenceID: 1, finishPosition: 1},
+			// testParticipation{raceGridID: 100, referenceID: 2, finishPosition: 2},
+			// testParticipation{raceGridID: 200, referenceID: 1, finishPosition: 4},
+			// testParticipation{raceGridID: 200, referenceID: 2, finishPosition: 3},
+		},
+		ReferenceID: func(booking *models.BookingEntry) int32 {
+			return booking.DriverID.GetOrZero()
+		},
+		NumSkip:  1,
+		SkipMode: SkipModeAlways,
+	})
+
+	if len(actual) != 2 {
+		t.Fatalf("expected 2 standings entries, got %d", len(actual))
+	}
+	check := actual[0]
+	assert.Equal(t, int32(2), check.ReferenceID, "unexpected reference ID")
+	assert.Equal(t, int32(1), check.StandingData.Position, "unexpected position")
+	assert.Equal(t, int32(15), check.StandingData.TotalPoints, "unexpected total points")
+	assert.Equal(t, int32(0), check.StandingData.BonusPoints, "unexpected bonus points")
+	assert.Equal(t, int32(0), check.StandingData.PenaltyPoints, "unexpected penalty points")
+	assert.Equal(t, []int32{30}, check.SkipEventIDs, "wrong skip event IDs")
+
+	check = actual[1]
+	assert.Equal(t, int32(1), check.ReferenceID, "unexpected reference ID")
+	assert.Equal(t, int32(2), check.StandingData.Position, "unexpected position")
+	assert.Equal(t, int32(6), check.StandingData.TotalPoints, "unexpected total points")
+	assert.Equal(t, int32(0), check.StandingData.BonusPoints, "unexpected bonus points")
+	assert.Equal(t, int32(7), check.StandingData.PenaltyPoints, "unexpected penalty points")
+	assert.Equal(t, []int32{20}, check.SkipEventIDs, "wrong skip event IDs")
+}
+
+type expectation struct {
+	referenceID   int32
+	position      int32
+	totalPoints   int32
+	bonusPoints   int32
+	penaltyPoints int32
+	skipEvents    []int32
+}
+
+func TestComputeStandings_Compute(t *testing.T) {
+	type args struct {
+		eventIDs []int32
+		numSkip  int
+		skipMode SkipModeType
+	}
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		input args
+		want  expectation // expected results
+	}{
+		{
+			name: "all",
+			input: args{
+				eventIDs: []int32{10, 20, 30},
+				numSkip:  1,
+				skipMode: SkipModeAlways,
+			},
+			want: expectation{
+				referenceID:   1,
+				position:      1,
+				totalPoints:   5,
+				bonusPoints:   0,
+				penaltyPoints: 8,
+				skipEvents:    []int32{20},
+			},
+		},
+
+		{
+			name: "event 10",
+			input: args{
+				eventIDs: []int32{10},
+				numSkip:  1,
+				skipMode: SkipModeAlways,
+			},
+			// note: totalPoints -7 looks strange, but here's why
+			// due to SkipModeAlways we lose event 1, but penalties always apply and
+			// can't be skipped.
+			want: expectation{
+				referenceID:   1,
+				position:      1,
+				totalPoints:   -7,
+				bonusPoints:   0,
+				penaltyPoints: 7,
+				skipEvents:    []int32{10},
+			},
+		},
+
+		{
+			name: "event 20",
+			input: args{
+				eventIDs: []int32{10, 20},
+				numSkip:  1,
+				skipMode: SkipModeAlways,
+			},
+			want: expectation{
+				referenceID:   1,
+				position:      1,
+				totalPoints:   -1,
+				bonusPoints:   0,
+				penaltyPoints: 8,
+				skipEvents:    []int32{20},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := NewComputeStandings()
+			computeInput := &ComputeStandingsInput{
+				EventIDs: tt.input.eventIDs,
+				Bookings: []*models.BookingEntry{
+					bookingEntry(10, 100, 1, 7, "finish_pos"),
+					bookingEntry(10, 100, 1, -7, "penalty_points"),
+					bookingEntry(20, 200, 1, 5, "finish_pos"),
+					bookingEntry(20, 200, 1, -1, "penalty_points"),
+					bookingEntry(30, 200, 1, 6, "finish_pos"),
+				},
+				// not needed here
+				Participations: []Participation{},
+				ReferenceID: func(booking *models.BookingEntry) int32 {
+					return booking.DriverID.GetOrZero()
+				},
+				NumSkip:  tt.input.numSkip,
+				SkipMode: tt.input.skipMode,
+			}
+
+			got := c.Compute(computeInput)
+
+			assertComputeStanding(t, got[0], tt.want)
+		})
+	}
+}
+
+func assertComputeStanding(t *testing.T, standing *ComputedStanding, expected expectation) {
+	t.Helper()
+	check := standing
+	assert.Equal(t, expected.referenceID, check.ReferenceID, "unexpected reference ID")
+	assert.Equal(t, expected.position, check.StandingData.Position, "unexpected position")
+	assert.Equal(t, expected.totalPoints, check.StandingData.TotalPoints, "unexpected total points")
+	assert.Equal(t, expected.bonusPoints, check.StandingData.BonusPoints, "unexpected bonus points")
+	assert.Equal(
+		t,
+		expected.penaltyPoints,
+		check.StandingData.PenaltyPoints,
+		"unexpected penalty points",
+	)
+	assert.Equal(t, expected.skipEvents, check.SkipEventIDs, "wrong skip event IDs")
+}
+
+// this is used for debugging single test cases
+// (for example,when param testsuites are too big)
+func TestComputeWithSingleDriver(t *testing.T) {
+	compute := NewComputeStandings()
+
+	// we check the following
+	// in effect: driver 1 has 0 points if penalties are included for skip results
+	// we don't want this. Accumulated penalties should be applied at the end
+	actual := compute.Compute(&ComputeStandingsInput{
+		EventIDs: []int32{10, 20, 30},
+		Bookings: []*models.BookingEntry{
+			bookingEntry(10, 100, 1, 7, "finish_pos"),
+			bookingEntry(10, 100, 1, -7, "penalty_points"),
+			bookingEntry(20, 200, 1, 5, "finish_pos"),
+			bookingEntry(20, 200, 1, -1, "penalty_points"),
+			bookingEntry(30, 200, 1, 6, "finish_pos"),
+		},
+		// not needed here
+		Participations: []Participation{},
+		ReferenceID: func(booking *models.BookingEntry) int32 {
+			return booking.DriverID.GetOrZero()
+		},
+		NumSkip:  1,
+		SkipMode: SkipModeAlways,
+	})
+
+	if len(actual) != 1 {
+		t.Fatalf("expected 1 standings entry, got %d", len(actual))
+	}
+
+	check := actual[0]
+	assert.Equal(t, int32(1), check.ReferenceID, "unexpected reference ID")
+	assert.Equal(t, int32(1), check.StandingData.Position, "unexpected position")
+	assert.Equal(t, int32(5), check.StandingData.TotalPoints, "unexpected total points")
+	assert.Equal(t, int32(0), check.StandingData.BonusPoints, "unexpected bonus points")
+	assert.Equal(t, int32(8), check.StandingData.PenaltyPoints, "unexpected penalty points")
+	assert.Equal(t, []int32{20}, check.SkipEventIDs, "wrong skip event IDs")
 }
 
 func assertComputedStanding(
