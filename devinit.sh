@@ -3,6 +3,9 @@ echo "devinit.sh called"
 
 make install
 
+mkdir -p .vscode
+cp .devcontainer/tasks.json .vscode/tasks.json
+
 # go install github.com/goreleaser/goreleaser/v2@latest
 # go install github.com/caarlos0/svu@latest
 

@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "--rcfile",
+        "${workspaceFolder}/.devcontainer/bash.test.rc",
+        "-i"
+      ],
+      "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Server",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "--rcfile",
+        "${workspaceFolder}/.devcontainer/bash.server.rc",
+        "-i"
+      ],
+      "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Migrate",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "--rcfile",
+        "${workspaceFolder}/.devcontainer/bash.migrate.rc",
+        "-i"
+      ],
+      "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      }
+    }
+  ]
+}

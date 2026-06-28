@@ -1,0 +1,5 @@
+source ~/.bashrc
+set -a
+source .env
+set +a
+export PS1="[migrate] $PS1"

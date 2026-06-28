@@ -31,6 +31,7 @@
       },
       // Set *default* container specific settings.json values on container create.
       "settings": {
+        "tasks.allowAutomaticTasks": "on",
         "go.toolsManagement.checkForUpdates": "local",
         "go.useLanguageServer": true,
         "go.gopath": "/go",
@@ -43,6 +44,35 @@
           "editor.rulers": [90],
           "editor.defaultFormatter": "golang.go",
           "editor.formatOnSave": true
+        },
+        "terminal.integrated.profiles.linux": {
+          "Server": {
+            "path": "/bin/bash",
+            "icon": "terminal-bash",
+            "overrideName": true,
+            "args": [
+              "--rcfile",
+              "${workspaceFolder}/.devcontainer/bash.server.rc"
+            ]
+          },
+          "Test": {
+            "path": "/bin/bash",
+            "icon": "terminal-bash",
+            "overrideName": true,
+            "args": [
+              "--rcfile",
+              "${workspaceFolder}/.devcontainer/bash.test.rc"
+            ]
+          },
+          "Migrate": {
+            "path": "/bin/bash",
+            "icon": "terminal-bash",
+            "overrideName": true,
+            "args": [
+              "--rcfile",
+              "${workspaceFolder}/.devcontainer/bash.migrate.rc"
+            ]
+          }
         }
       },
       // Add the IDs of extensions you want installed when the container is created.
