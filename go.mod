@@ -6,7 +6,7 @@ require (
 	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260621220505-8f705ff3f5a5.1
 	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.11-20260621220505-8f705ff3f5a5.1
 	connectrpc.com/connect v1.20.0
-	connectrpc.com/grpchealth v1.4.0
+	connectrpc.com/grpchealth v1.5.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.9.0
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
@@ -19,7 +19,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lib/pq v1.12.3
-	github.com/open-policy-agent/opa v1.18.0
+	github.com/open-policy-agent/opa v1.18.2
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.53.0
 	github.com/shopspring/decimal v1.4.0
@@ -48,7 +48,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.36.0
-	google.golang.org/grpc v1.81.1
+	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
