@@ -185,36 +185,10 @@ func seedCarManufacturer(
 }
 
 //nolint:whitespace // multiline signature style
-func seedCarBrand(
-	t *testing.T,
-	repo rootrepo.Repository,
-	manufacturerID int32,
-	name string,
-) (
-	cb *models.CarBrand,
-) {
-	t.Helper()
-
-	var err error
-	cb, err = repo.Cars().CarBrands().Create(context.Background(), &models.CarBrandSetter{
-		ManufacturerID: omit.From(manufacturerID),
-		Name:           omit.From(name),
-		IsActive:       omit.From(true),
-		CreatedBy:      omit.From(testUserSeed),
-		UpdatedBy:      omit.From(testUserSeed),
-	})
-	if err != nil {
-		t.Fatalf("failed to seed car brand %q: %v", name, err)
-	}
-
-	return cb
-}
-
-//nolint:whitespace // multiline signature style
 func seedCarModel(
 	t *testing.T,
 	repo rootrepo.Repository,
-	brandID int32,
+	manufacturerID int32,
 	name string,
 ) (
 	cmod *models.CarModel,
@@ -223,14 +197,42 @@ func seedCarModel(
 
 	var err error
 	cmod, err = repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
-		BrandID:   omit.From(brandID),
-		Name:      omit.From(name),
-		IsActive:  omit.From(true),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
+		ManufacturerID: omit.From(manufacturerID),
+		Name:           omit.From(name),
+		IsActive:       omit.From(true),
+		CreatedBy:      omit.From(testUserSeed),
+		UpdatedBy:      omit.From(testUserSeed),
 	})
 	if err != nil {
 		t.Fatalf("failed to seed car model %q: %v", name, err)
+	}
+
+	return cmod
+}
+
+//nolint:whitespace // multiline signature style
+func seedCarModelVariant(
+	t *testing.T,
+	repo rootrepo.Repository,
+	carModelV2ID int32,
+	name string,
+) (
+	cmod *models.CarModelVariant,
+) {
+	t.Helper()
+
+	var err error
+	cmod, err = repo.Cars().
+		CarModelVariants().
+		Create(context.Background(), &models.CarModelVariantSetter{
+			CarModelID: omit.From(carModelV2ID),
+			Name:       omit.From(name),
+			IsActive:   omit.From(true),
+			CreatedBy:  omit.From(testUserSeed),
+			UpdatedBy:  omit.From(testUserSeed),
+		})
+	if err != nil {
+		t.Fatalf("failed to seed car model variant %q: %v", name, err)
 	}
 
 	return cmod

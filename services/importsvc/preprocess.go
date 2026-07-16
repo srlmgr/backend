@@ -47,10 +47,10 @@ func (s *service) GetPreprocessPreview(
 				MappingType: "driver",
 			})
 		}
-		if entry.CarModelID.IsNull() && entry.RawCarName.GetOr("") != "" {
+		if entry.CarModelVariantID.IsNull() && entry.RawCarName.GetOr("") != "" {
 			unresolvedMappings = append(unresolvedMappings, &commonv1.UnresolvedMapping{
 				SourceValue: entry.RawCarName.GetOr(""),
-				MappingType: "car_model",
+				MappingType: "car_model_variant",
 			})
 		}
 	}

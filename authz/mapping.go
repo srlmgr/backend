@@ -60,13 +60,17 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"GetTrackLayout",
 		"GetCarManufacturer",
 		"GetCarModel",
+		"GetCarModelVariant",
 		"GetCarBrand",
 		"GetCarClass",
 		"ListCarManufacturers",
-		"ListCarBrands",
+		"ListCarBrands", // to be removed and currently replaced by ListCarModelsV2
 		"ListCarModels",
+		"ListCarModelsV2", // to be removed in the future, use  "ListCarModels" instead
+		"ListCarModelVariants",
 		"ListCarClasses",
-		"ListCarClassModels",
+		"ListCarClassModels", // to be removed
+		"ListCarClassModelVariants",
 		"ListSimulations",
 		"ListSeries",
 		"ListSeasons",
@@ -95,7 +99,8 @@ func addFrontendPolicies(policies map[string]ProcedurePolicy) {
 		"ListSeasonDrivers",
 		"ListSeasonTeams",
 		"ListSeasonCarClasses",
-		"ListSeasonCarModels",
+		"ListSeasonCarModels", // to be removed
+		"ListSeasonCarModelVariants",
 		"ListTrackLayouts",
 	} {
 		policies[procedure(frontendService, method)] = ProcedurePolicy{
@@ -165,12 +170,13 @@ func addSeasonWriteCommandPolicies(policies map[string]ProcedurePolicy) {
 		"CreateCarClass",
 		"UpdateCarClass",
 		"DeleteCarClass",
-		"AssignCarModelToCarClass",
-		"UnassignCarModelFromCarClass",
+		"AssignCarModelVariantToCarClass",
+		"UnassignCarModelVariantFromCarClass",
 		"AssignCarClassToSeason",
 		"UnassignCarClassFromSeason",
 		"SetSeasonCarClasses",
 		"SetSeasonCarModels",
+		"SetSeasonCarModelVariants",
 		"CreateTeam",
 		"UpdateTeam",
 		"DeleteTeam",
@@ -231,10 +237,14 @@ func addMasterDataCommandPolicies(policies map[string]ProcedurePolicy) {
 		"CreateCarManufacturer",
 		"UpdateCarManufacturer",
 		"DeleteCarManufacturer",
-		"CreateCarBrand",
-		"UpdateCarBrand",
-		"DeleteCarBrand",
+		"CreateCarBrand", // to be removed and currently replaced by CreateCarModel
+		"UpdateCarBrand", // to be removed and currently replaced by UpdateCarModel
+		"DeleteCarBrand", // to be removed and currently replaced by DeleteCarModel
 		"CreateCarModel",
+		"CreateCarModelV2", // tmp workaround for CreateCarModel
+		"CreateCarModelVariant",
+		"UpdateCarModelVariant",
+		"DeleteCarModelVariant",
 		"UpdateCarModel",
 		"DeleteCarModel",
 	} {

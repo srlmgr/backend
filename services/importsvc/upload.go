@@ -317,8 +317,8 @@ func buildResultEntryCreateSetter(
 	if !entry.RawTeamName.IsNull() {
 		setter.RawTeamName = omitnull.From(entry.RawTeamName.GetOr(""))
 	}
-	if !entry.CarModelID.IsNull() {
-		setter.CarModelID = omitnull.From(entry.CarModelID.GetOr(0))
+	if !entry.CarModelVariantID.IsNull() {
+		setter.CarModelVariantID = omitnull.From(entry.CarModelVariantID.GetOr(0))
 	}
 	if !entry.RawCarName.IsNull() {
 		setter.RawCarName = omitnull.From(entry.RawCarName.GetOr(""))

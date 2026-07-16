@@ -208,52 +208,25 @@ func SeedCarManufacturerContext(
 	return manufacturer
 }
 
-func SeedCarBrand(t *testing.T, name string, manufacturerID int32) *models.CarBrand {
+func SeedCarModelV2(t *testing.T, name string, manufacturerID int32) *models.CarModel {
 	t.Helper()
-	return SeedCarBrandContext(t, context.Background(), name, manufacturerID)
+	return SeedCarModelV2Context(t, context.Background(), name, manufacturerID)
 }
 
-func SeedCarBrandContext(
+func SeedCarModelV2Context(
 	t *testing.T,
 	ctx context.Context,
 	name string,
 	manufacturerID int32,
-) *models.CarBrand {
+) *models.CarModel {
 	t.Helper()
 
-	brand, err := models.CarBrands.Insert(&models.CarBrandSetter{
+	model, err := models.CarModels.Insert(&models.CarModelSetter{
 		ManufacturerID: omit.From(manufacturerID),
 		Name:           omit.From(name),
 		IsActive:       omit.From(true),
 		CreatedBy:      omit.From(TestUserSeed),
 		UpdatedBy:      omit.From(TestUserSeed),
-	}).One(ctx, getExecutorFromContext(t, ctx))
-	if err != nil {
-		t.Fatalf("failed to seed car brand %q: %v", name, err)
-	}
-
-	return brand
-}
-
-func SeedCarModel(t *testing.T, name string, brandID int32) *models.CarModel {
-	t.Helper()
-	return SeedCarModelContext(t, context.Background(), name, brandID)
-}
-
-func SeedCarModelContext(
-	t *testing.T,
-	ctx context.Context,
-	name string,
-	brandID int32,
-) *models.CarModel {
-	t.Helper()
-
-	model, err := models.CarModels.Insert(&models.CarModelSetter{
-		BrandID:   omit.From(brandID),
-		Name:      omit.From(name),
-		IsActive:  omit.From(true),
-		CreatedBy: omit.From(TestUserSeed),
-		UpdatedBy: omit.From(TestUserSeed),
 	}).One(ctx, getExecutorFromContext(t, ctx))
 	if err != nil {
 		t.Fatalf("failed to seed car model %q: %v", name, err)
@@ -262,61 +235,31 @@ func SeedCarModelContext(
 	return model
 }
 
-func SeedSeasonCar(
-	t *testing.T,
-	seasonID int32,
-	carModelID int32,
-	pos int32,
-) *models.SeasonCarModel {
+func SeedCarModelVariant(t *testing.T, name string, carModelV2ID int32) *models.CarModelVariant {
 	t.Helper()
-	return SeedSeasonCarContext(t, context.Background(), seasonID, carModelID, pos)
+	return SeedCarModelVariantContext(t, context.Background(), name, carModelV2ID)
 }
 
-func SeedSeasonCarContext(
+func SeedCarModelVariantContext(
 	t *testing.T,
 	ctx context.Context,
-	seasonID int32,
-	carModelID int32,
-	pos int32,
-) *models.SeasonCarModel {
-	t.Helper()
-	return SeedSeasonCarModelContext(t, ctx, seasonID, carModelID, pos)
-}
-
-func SeedSeasonCarModel(
-	t *testing.T,
-	seasonID int32,
-	carModelID int32,
-	pos int32,
-) *models.SeasonCarModel {
-	t.Helper()
-	return SeedSeasonCarModelContext(t, context.Background(), seasonID, carModelID, pos)
-}
-
-func SeedSeasonCarModelContext(
-	t *testing.T,
-	ctx context.Context,
-	seasonID int32,
-	carModelID int32,
-	pos int32,
-) *models.SeasonCarModel {
+	name string,
+	carModelV2ID int32,
+) *models.CarModelVariant {
 	t.Helper()
 
-	seasonCarModel, err := models.SeasonCarModels.Insert(&models.SeasonCarModelSetter{
-		SeasonID:   omit.From(seasonID),
-		CarModelID: omit.From(carModelID),
-		Pos:        omit.From(pos),
+	model, err := models.CarModelVariants.Insert(&models.CarModelVariantSetter{
+		CarModelID: omit.From(carModelV2ID),
+		Name:       omit.From(name),
+		IsActive:   omit.From(true),
+		CreatedBy:  omit.From(TestUserSeed),
+		UpdatedBy:  omit.From(TestUserSeed),
 	}).One(ctx, getExecutorFromContext(t, ctx))
 	if err != nil {
-		t.Fatalf(
-			"failed to seed season car model for season %d and car model %d: %v",
-			seasonID,
-			carModelID,
-			err,
-		)
+		t.Fatalf("failed to seed car model variant %q: %v", name, err)
 	}
 
-	return seasonCarModel
+	return model
 }
 
 func SeedSeasonCarClass(
@@ -385,6 +328,7 @@ func SeedDriver(t *testing.T, name, externalID string) *models.Driver {
 	return SeedDriverContext(t, context.Background(), name, externalID)
 }
 
+// note: carModelID is legacy and will be removed
 func SeedDriverContext(
 	t *testing.T,
 	ctx context.Context,
@@ -406,10 +350,11 @@ func SeedDriverContext(
 	return driver
 }
 
+// note: carModelID is legacy and will be removed
 func SeedSeasonDriver(
 	t *testing.T,
 	carNumber string,
-	driverID, seasonID, carModelID int32,
+	driverID, seasonID, carModelVariantID int32,
 	joinedAt time.Time,
 	leftAt *time.Time,
 ) *models.SeasonDriver {
@@ -420,7 +365,7 @@ func SeedSeasonDriver(
 		carNumber,
 		driverID,
 		seasonID,
-		carModelID,
+		carModelVariantID,
 		joinedAt,
 		leftAt,
 	)
@@ -430,18 +375,18 @@ func SeedSeasonDriverContext(
 	t *testing.T,
 	ctx context.Context,
 	carNumber string,
-	driverID, seasonID, carModelID int32,
+	driverID, seasonID, carModelVariantID int32,
 	joinedAt time.Time, leftAt *time.Time,
 ) *models.SeasonDriver {
 	t.Helper()
 	setter := &models.SeasonDriverSetter{
-		CarNumber:  omit.From(carNumber),
-		DriverID:   omit.From(driverID),
-		SeasonID:   omit.From(seasonID),
-		CarModelID: omit.From(carModelID),
-		JoinedAt:   omit.From(joinedAt),
-		CreatedBy:  omit.From(TestUserSeed),
-		UpdatedBy:  omit.From(TestUserSeed),
+		CarNumber:         omit.From(carNumber),
+		DriverID:          omit.From(driverID),
+		SeasonID:          omit.From(seasonID),
+		CarModelVariantID: omit.From(carModelVariantID),
+		JoinedAt:          omit.From(joinedAt),
+		CreatedBy:         omit.From(TestUserSeed),
+		UpdatedBy:         omit.From(TestUserSeed),
 	}
 	if leftAt != nil {
 		setter.LeftAt = omitnull.From(*leftAt)

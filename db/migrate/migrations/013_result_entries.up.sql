@@ -6,7 +6,7 @@ CREATE TABLE result_entries (
     race_grid_id integer NOT NULL,
     driver_id integer,
     team_id integer,
-    car_model_id integer,
+    car_model_variant_id integer,
     car_class_id integer,
     raw_car_name text,
     raw_driver_name text,
@@ -44,8 +44,8 @@ ALTER TABLE result_entries
     FOREIGN KEY (driver_id) REFERENCES drivers (id);
 
 ALTER TABLE result_entries
-    ADD CONSTRAINT result_entries_car_model_id_fk
-    FOREIGN KEY (car_model_id) REFERENCES car_models (id);
+    ADD CONSTRAINT result_entries_car_model_variant_id_fk
+    FOREIGN KEY (car_model_variant_id) REFERENCES car_model_variants (id);
 
 ALTER TABLE result_entries
     ADD CONSTRAINT result_entries_car_class_id_fk
@@ -90,7 +90,7 @@ CREATE UNIQUE INDEX idx_result_entries_race_grid_id_team_id_unique
 
 CREATE INDEX idx_result_entries_race_grid_id ON result_entries (race_grid_id);
 CREATE INDEX idx_result_entries_driver_id ON result_entries (driver_id);
-CREATE INDEX idx_result_entries_car_model_id ON result_entries (car_model_id);
+CREATE INDEX idx_result_entries_car_model_variant_id ON result_entries (car_model_variant_id);
 CREATE INDEX idx_result_entries_car_class_id ON result_entries (car_class_id);
 CREATE INDEX idx_result_entries_team_id ON result_entries (team_id);
 CREATE INDEX idx_result_entries_state ON result_entries (state);

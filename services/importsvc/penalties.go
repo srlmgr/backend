@@ -281,10 +281,10 @@ func (s *service) resolveCarClassID(
 				item.ID == int32(req.Target.GetDriverId())
 		}); ok {
 			_ = sd
-			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModelVariant(
 				ctx,
 				epi.Season.ID,
-				sd.CarModelID,
+				sd.CarModelVariantID,
 			)
 			if err != nil {
 				return omitnull.Val[int32]{}, err
@@ -312,10 +312,10 @@ func (s *service) resolveCarClassID(
 				item.ID == int32(req.Target.GetTeamId())
 		}); ok {
 			_ = t
-			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModelVariant(
 				ctx,
 				epi.Season.ID,
-				t.CarModelID.GetOrZero(),
+				t.CarModelVariantID.GetOrZero(),
 			)
 			if err != nil {
 				return omitnull.Val[int32]{}, err

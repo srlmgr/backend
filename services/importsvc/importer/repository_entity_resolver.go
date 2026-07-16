@@ -107,7 +107,7 @@ func (r *RepositoryEntityResolver) ResolveCar(
 			return 0, err
 		}
 
-		return uint32(alias.CarModelID), nil
+		return uint32(alias.CarModelVariantID), nil
 	}
 
 	return r.resolveBy("car", simCarID, simCarName, resolveArg)
@@ -121,7 +121,7 @@ func (r *RepositoryEntityResolver) ResolveCarClass(
 		return 0, fmt.Errorf("resolve car class: season is not set")
 	}
 
-	carClass, err := r.repos.Queries().QueryCarClasses().FindBySeasonAndCarModel(
+	carClass, err := r.repos.Queries().QueryCarClasses().FindBySeasonAndCarModelVariant(
 		r.ctx,
 		r.epi.Season.ID,
 		int32(ownCarID),

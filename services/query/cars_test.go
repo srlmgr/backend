@@ -35,43 +35,47 @@ func seedCarManufacturer(
 }
 
 //nolint:whitespace // multiline signature style
-func seedCarBrand(
+func seedCarModelV2(
 	t *testing.T,
 	repo rootrepo.Repository,
 	manufacturerID int32,
 	name string,
-) *models.CarBrand {
+) *models.CarModel {
 	t.Helper()
-	b, err := repo.Cars().CarBrands().Create(context.Background(), &models.CarBrandSetter{
+	cm, err := repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
 		ManufacturerID: omit.From(manufacturerID),
 		Name:           omit.From(name),
+		IsActive:       omit.From(true),
 		CreatedBy:      omit.From(testUserSeed),
 		UpdatedBy:      omit.From(testUserSeed),
 	})
 	if err != nil {
-		t.Fatalf("failed to seed car brand %q: %v", name, err)
+		t.Fatalf("failed to seed car model v2 %q: %v", name, err)
 	}
-	return b
+	return cm
 }
 
 //nolint:whitespace // multiline signature style
-func seedCarModel(
+func seedCarModelVariant(
 	t *testing.T,
 	repo rootrepo.Repository,
-	brandID int32,
+	carModelV2ID int32,
 	name string,
-) *models.CarModel {
+) *models.CarModelVariant {
 	t.Helper()
-	cm, err := repo.Cars().CarModels().Create(context.Background(), &models.CarModelSetter{
-		BrandID:   omit.From(brandID),
-		Name:      omit.From(name),
-		CreatedBy: omit.From(testUserSeed),
-		UpdatedBy: omit.From(testUserSeed),
-	})
+	variant, err := repo.Cars().
+		CarModelVariants().
+		Create(context.Background(), &models.CarModelVariantSetter{
+			CarModelID: omit.From(carModelV2ID),
+			Name:       omit.From(name),
+			IsActive:   omit.From(true),
+			CreatedBy:  omit.From(testUserSeed),
+			UpdatedBy:  omit.From(testUserSeed),
+		})
 	if err != nil {
-		t.Fatalf("failed to seed car model %q: %v", name, err)
+		t.Fatalf("failed to seed car model variant %q: %v", name, err)
 	}
-	return cm
+	return variant
 }
 
 func TestListCarManufacturersEmpty(t *testing.T) {
@@ -170,137 +174,6 @@ func TestGetCarManufacturerNotFound(t *testing.T) {
 	}
 }
 
-func TestListCarBrandsEmpty(t *testing.T) {
-	svc, _ := newDBBackedQueryService(t)
-
-	resp, err := svc.ListCarBrands(
-		context.Background(),
-		connect.NewRequest(&queryv1.ListCarBrandsRequest{}),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
-	}
-}
-
-func TestListCarBrandsReturnsAll(t *testing.T) {
-	svc, repo := newDBBackedQueryService(t)
-
-	mfr := seedCarManufacturer(t, repo, "Global Cars")
-	alpha := seedCarBrand(t, repo, mfr.ID, "Alpha Brand")
-	beta := seedCarBrand(t, repo, mfr.ID, "Beta Brand")
-
-	resp, err := svc.ListCarBrands(
-		context.Background(),
-		connect.NewRequest(&queryv1.ListCarBrandsRequest{}),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	items := resp.Msg.GetItems()
-	if len(items) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(items))
-	}
-
-	ids := make(map[uint32]bool)
-	for _, item := range items {
-		ids[item.GetId()] = true
-	}
-
-	if !ids[uint32(alpha.ID)] {
-		t.Errorf("alpha brand (id=%d) not found in response", alpha.ID)
-	}
-	if !ids[uint32(beta.ID)] {
-		t.Errorf("beta brand (id=%d) not found in response", beta.ID)
-	}
-}
-
-func TestListCarBrandsByManufacturerID(t *testing.T) {
-	svc, repo := newDBBackedQueryService(t)
-
-	mfr1 := seedCarManufacturer(t, repo, "First Manufacturer")
-	mfr2 := seedCarManufacturer(t, repo, "Second Manufacturer")
-	brand1 := seedCarBrand(t, repo, mfr1.ID, "Brand One")
-	_ = seedCarBrand(t, repo, mfr2.ID, "Brand Two")
-
-	resp, err := svc.ListCarBrands(
-		context.Background(),
-		connect.NewRequest(&queryv1.ListCarBrandsRequest{
-			ManufacturerId: uint32(mfr1.ID),
-		}),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	items := resp.Msg.GetItems()
-	if len(items) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(items))
-	}
-	if items[0].GetId() != uint32(brand1.ID) {
-		t.Errorf("expected brand id %d, got %d", brand1.ID, items[0].GetId())
-	}
-	if items[0].GetManufacturerId() != uint32(mfr1.ID) {
-		t.Errorf("expected manufacturer id %d, got %d", mfr1.ID, items[0].GetManufacturerId())
-	}
-}
-
-func TestGetCarBrandSuccess(t *testing.T) {
-	svc, repo := newDBBackedQueryService(t)
-
-	mfr := seedCarManufacturer(t, repo, "Test Manufacturer")
-	brand := seedCarBrand(t, repo, mfr.ID, "Test Brand")
-
-	resp, err := svc.GetCarBrand(
-		context.Background(),
-		connect.NewRequest(&queryv1.GetCarBrandRequest{
-			Id: uint32(brand.ID),
-		}),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if resp.Msg.GetCarBrand().GetId() != uint32(brand.ID) {
-		t.Errorf("expected id %d, got %d", brand.ID, resp.Msg.GetCarBrand().GetId())
-	}
-	if resp.Msg.GetCarBrand().GetManufacturerId() != uint32(mfr.ID) {
-		t.Errorf(
-			"expected manufacturer id %d, got %d",
-			mfr.ID,
-			resp.Msg.GetCarBrand().GetManufacturerId(),
-		)
-	}
-	if resp.Msg.GetCarBrand().GetName() != "Test Brand" {
-		t.Errorf("expected name %q, got %q", "Test Brand", resp.Msg.GetCarBrand().GetName())
-	}
-}
-
-func TestGetCarBrandNotFound(t *testing.T) {
-	svc, _ := newDBBackedQueryService(t)
-
-	_, err := svc.GetCarBrand(
-		context.Background(),
-		connect.NewRequest(&queryv1.GetCarBrandRequest{
-			Id: 99999,
-		}),
-	)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect error, got %T: %v", err, err)
-	}
-	if connectErr.Code() != connect.CodeNotFound {
-		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
-	}
-}
-
 func TestListCarModelsEmpty(t *testing.T) {
 	svc, _ := newDBBackedQueryService(t)
 
@@ -319,10 +192,9 @@ func TestListCarModelsEmpty(t *testing.T) {
 func TestListCarModelsReturnsAll(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	mfr := seedCarManufacturer(t, repo, "All Models Manufacturer")
-	brand := seedCarBrand(t, repo, mfr.ID, "All Models Brand")
-	model1 := seedCarModel(t, repo, brand.ID, "Model X")
-	model2 := seedCarModel(t, repo, brand.ID, "Model Y")
+	mfr := seedCarManufacturer(t, repo, "All Models V2 Manufacturer")
+	model1 := seedCarModelV2(t, repo, mfr.ID, "Model V2 X")
+	model2 := seedCarModelV2(t, repo, mfr.ID, "Model V2 Y")
 
 	resp, err := svc.ListCarModels(
 		context.Background(),
@@ -353,12 +225,10 @@ func TestListCarModelsReturnsAll(t *testing.T) {
 func TestListCarModelsByManufacturerID(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	mfr1 := seedCarManufacturer(t, repo, "Manufacturer One")
-	mfr2 := seedCarManufacturer(t, repo, "Manufacturer Two")
-	brand1 := seedCarBrand(t, repo, mfr1.ID, "Brand for Mfr One")
-	brand2 := seedCarBrand(t, repo, mfr2.ID, "Brand for Mfr Two")
-	model1 := seedCarModel(t, repo, brand1.ID, "Model for Mfr One")
-	_ = seedCarModel(t, repo, brand2.ID, "Model for Mfr Two")
+	mfr1 := seedCarManufacturer(t, repo, "Manufacturer V2 One")
+	mfr2 := seedCarManufacturer(t, repo, "Manufacturer V2 Two")
+	model1 := seedCarModelV2(t, repo, mfr1.ID, "Model V2 for Mfr One")
+	_ = seedCarModelV2(t, repo, mfr2.ID, "Model V2 for Mfr Two")
 
 	resp, err := svc.ListCarModels(
 		context.Background(),
@@ -377,14 +247,16 @@ func TestListCarModelsByManufacturerID(t *testing.T) {
 	if items[0].GetId() != uint32(model1.ID) {
 		t.Errorf("expected model id %d, got %d", model1.ID, items[0].GetId())
 	}
+	if items[0].GetManufacturerId() != uint32(mfr1.ID) {
+		t.Errorf("expected manufacturer id %d, got %d", mfr1.ID, items[0].GetManufacturerId())
+	}
 }
 
 func TestGetCarModelSuccess(t *testing.T) {
 	svc, repo := newDBBackedQueryService(t)
 
-	mfr := seedCarManufacturer(t, repo, "Success Manufacturer")
-	brand := seedCarBrand(t, repo, mfr.ID, "Success Brand")
-	cm := seedCarModel(t, repo, brand.ID, "Success Model")
+	mfr := seedCarManufacturer(t, repo, "Success V2 Manufacturer")
+	cm := seedCarModelV2(t, repo, mfr.ID, "Success V2 Model")
 
 	resp, err := svc.GetCarModel(
 		context.Background(),
@@ -399,11 +271,15 @@ func TestGetCarModelSuccess(t *testing.T) {
 	if resp.Msg.GetCarModel().GetId() != uint32(cm.ID) {
 		t.Errorf("expected id %d, got %d", cm.ID, resp.Msg.GetCarModel().GetId())
 	}
-	if resp.Msg.GetCarModel().GetBrandId() != uint32(brand.ID) {
-		t.Errorf("expected brand id %d, got %d", brand.ID, resp.Msg.GetCarModel().GetBrandId())
+	if resp.Msg.GetCarModel().GetManufacturerId() != uint32(mfr.ID) {
+		t.Errorf(
+			"expected manufacturer id %d, got %d",
+			mfr.ID,
+			resp.Msg.GetCarModel().GetManufacturerId(),
+		)
 	}
-	if resp.Msg.GetCarModel().GetName() != "Success Model" {
-		t.Errorf("expected name %q, got %q", "Success Model", resp.Msg.GetCarModel().GetName())
+	if resp.Msg.GetCarModel().GetName() != "Success V2 Model" {
+		t.Errorf("expected name %q, got %q", "Success V2 Model", resp.Msg.GetCarModel().GetName())
 	}
 }
 
@@ -412,9 +288,143 @@ func TestGetCarModelNotFound(t *testing.T) {
 
 	_, err := svc.GetCarModel(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarModelRequest{
-			Id: 99999,
+		connect.NewRequest(&queryv1.GetCarModelRequest{Id: 99999}),
+	)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T: %v", err, err)
+	}
+	if connectErr.Code() != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+	}
+}
+
+func TestListCarModelVariantsEmpty(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	resp, err := svc.ListCarModelVariants(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Msg.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	}
+}
+
+func TestListCarModelVariantsReturnsAll(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	mfr := seedCarManufacturer(t, repo, "All Variants Manufacturer")
+	model := seedCarModelV2(t, repo, mfr.ID, "Variant Parent Model")
+	variant1 := seedCarModelVariant(t, repo, model.ID, "Variant A")
+	variant2 := seedCarModelVariant(t, repo, model.ID, "Variant B")
+
+	resp, err := svc.ListCarModelVariants(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := resp.Msg.GetItems()
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+
+	ids := make(map[uint32]bool)
+	for _, item := range items {
+		ids[item.GetId()] = true
+	}
+
+	if !ids[uint32(variant1.ID)] {
+		t.Errorf("variant1 (id=%d) not found in response", variant1.ID)
+	}
+	if !ids[uint32(variant2.ID)] {
+		t.Errorf("variant2 (id=%d) not found in response", variant2.ID)
+	}
+}
+
+func TestListCarModelVariantsByModelID(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	mfr := seedCarManufacturer(t, repo, "Filtered Variants Manufacturer")
+	model1 := seedCarModelV2(t, repo, mfr.ID, "Filtered Variant Parent One")
+	model2 := seedCarModelV2(t, repo, mfr.ID, "Filtered Variant Parent Two")
+	variant1 := seedCarModelVariant(t, repo, model1.ID, "Variant One")
+	_ = seedCarModelVariant(t, repo, model2.ID, "Variant Two")
+
+	resp, err := svc.ListCarModelVariants(
+		context.Background(),
+		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{
+			ModelId: uint32(model1.ID),
 		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := resp.Msg.GetItems()
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+	if items[0].GetId() != uint32(variant1.ID) {
+		t.Errorf("expected variant id %d, got %d", variant1.ID, items[0].GetId())
+	}
+	if items[0].GetModelId() != uint32(model1.ID) {
+		t.Errorf("expected model id %d, got %d", model1.ID, items[0].GetModelId())
+	}
+}
+
+func TestGetCarModelVariantSuccess(t *testing.T) {
+	svc, repo := newDBBackedQueryService(t)
+
+	mfr := seedCarManufacturer(t, repo, "Success Variant Manufacturer")
+	model := seedCarModelV2(t, repo, mfr.ID, "Success Variant Parent")
+	variant := seedCarModelVariant(t, repo, model.ID, "Success Variant")
+
+	resp, err := svc.GetCarModelVariant(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetCarModelVariantRequest{
+			Id: uint32(variant.ID),
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Msg.GetCarModelVariant().GetId() != uint32(variant.ID) {
+		t.Errorf("expected id %d, got %d", variant.ID, resp.Msg.GetCarModelVariant().GetId())
+	}
+	if resp.Msg.GetCarModelVariant().GetModelId() != uint32(model.ID) {
+		t.Errorf(
+			"expected model id %d, got %d",
+			model.ID,
+			resp.Msg.GetCarModelVariant().GetModelId(),
+		)
+	}
+	if resp.Msg.GetCarModelVariant().GetName() != "Success Variant" {
+		t.Errorf(
+			"expected name %q, got %q",
+			"Success Variant",
+			resp.Msg.GetCarModelVariant().GetName(),
+		)
+	}
+}
+
+func TestGetCarModelVariantNotFound(t *testing.T) {
+	svc, _ := newDBBackedQueryService(t)
+
+	_, err := svc.GetCarModelVariant(
+		context.Background(),
+		connect.NewRequest(&queryv1.GetCarModelVariantRequest{Id: 99999}),
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

@@ -66,70 +66,8 @@ func (s *service) GetCarManufacturer(
 	}), nil
 }
 
-// ListCarBrands returns a list of car brands, optionally filtered by manufacturer ID.
-//
-//nolint:whitespace // editor/linter issue
-func (s *service) ListCarBrands(
-	ctx context.Context,
-	req *connect.Request[queryv1.ListCarBrandsRequest],
-) (*connect.Response[queryv1.ListCarBrandsResponse], error) {
-	l := s.logger.WithCtx(ctx)
-	l.Debug("ListCarBrands", log.Uint32("manufacturer_id", req.Msg.GetManufacturerId()))
-
-	brandsRepo := s.repo.Cars().CarBrands()
-
-	var (
-		brands []*models.CarBrand
-		err    error
-	)
-
-	if manufacturerID := int32(req.Msg.GetManufacturerId()); manufacturerID != 0 {
-		brands, err = brandsRepo.LoadByManufacturerID(ctx, manufacturerID)
-	} else {
-		brands, err = brandsRepo.LoadAll(ctx)
-	}
-
-	if err != nil {
-		l.Error("failed to load car brands", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car brands")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
-	}
-
-	items := make([]*commonv1.CarBrand, 0, len(brands))
-	for _, item := range brands {
-		if converted := s.conversion.CarBrandToCarBrand(item); converted != nil {
-			items = append(items, converted)
-		}
-	}
-
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car brands loaded")
-	return connect.NewResponse(&queryv1.ListCarBrandsResponse{Items: items}), nil
-}
-
-// GetCarBrand returns a car brand by ID.
-//
-//nolint:whitespace // editor/linter issue
-func (s *service) GetCarBrand(
-	ctx context.Context,
-	req *connect.Request[queryv1.GetCarBrandRequest],
-) (*connect.Response[queryv1.GetCarBrandResponse], error) {
-	l := s.logger.WithCtx(ctx)
-	l.Debug("GetCarBrand", log.Uint32("id", req.Msg.GetId()))
-
-	item, err := s.repo.Cars().CarBrands().LoadByID(ctx, int32(req.Msg.GetId()))
-	if err != nil {
-		l.Error("failed to load car brand", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car brand")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
-	}
-
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car brand loaded")
-	return connect.NewResponse(&queryv1.GetCarBrandResponse{
-		CarBrand: s.conversion.CarBrandToCarBrand(item),
-	}), nil
-}
-
-// ListCarModels returns a list of car models, optionally filtered by manufacturer ID.
+// ListCarModels returns a list of car model v2 records,
+// optionally filtered by manufacturer ID.
 //
 //nolint:whitespace // editor/linter issue
 func (s *service) ListCarModels(
@@ -142,34 +80,35 @@ func (s *service) ListCarModels(
 	modelsRepo := s.repo.Cars().CarModels()
 
 	var (
-		carModels []*models.CarModel
-		err       error
+		items []*models.CarModel
+		err   error
 	)
 
 	if manufacturerID := int32(req.Msg.GetManufacturerId()); manufacturerID != 0 {
-		carModels, err = modelsRepo.LoadByManufacturerID(ctx, manufacturerID)
+		items, err = modelsRepo.LoadByManufacturerID(ctx, manufacturerID)
 	} else {
-		carModels, err = modelsRepo.LoadAll(ctx)
+		items, err = modelsRepo.LoadAll(ctx)
 	}
 
 	if err != nil {
-		l.Error("failed to load car models", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car models")
+		l.Error("failed to load car model v2 records", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to load car model v2 records")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	items := make([]*commonv1.CarModel, 0, len(carModels))
-	for _, item := range carModels {
+	out := make([]*commonv1.CarModel, 0, len(items))
+	for _, item := range items {
 		if converted := s.conversion.CarModelToCarModel(item); converted != nil {
-			items = append(items, converted)
+			out = append(out, converted)
 		}
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car models loaded")
-	return connect.NewResponse(&queryv1.ListCarModelsResponse{Items: items}), nil
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 records loaded")
+	return connect.NewResponse(&queryv1.ListCarModelsResponse{Items: out}), nil
 }
 
-// GetCarModel returns a car model by ID.
+// GetCarModel returns a car model v2 by ID.
 //
 //nolint:whitespace // editor/linter issue
 func (s *service) GetCarModel(
@@ -181,13 +120,80 @@ func (s *service) GetCarModel(
 
 	item, err := s.repo.Cars().CarModels().LoadByID(ctx, int32(req.Msg.GetId()))
 	if err != nil {
-		l.Error("failed to load car model", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car model")
+		l.Error("failed to load car model v2", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car model v2")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
-		LoadByModelID(ctx, int32(req.Msg.GetId()))
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 loaded")
+	return connect.NewResponse(&queryv1.GetCarModelResponse{
+		CarModel: s.conversion.CarModelToCarModel(item),
+	}), nil
+}
+
+// ListCarModelVariants returns a list of car model variants,
+// optionally filtered by model ID.
+//
+//nolint:whitespace,lll // editor/linter issue
+func (s *service) ListCarModelVariants(
+	ctx context.Context,
+	req *connect.Request[queryv1.ListCarModelVariantsRequest],
+) (*connect.Response[queryv1.ListCarModelVariantsResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("ListCarModelVariants", log.Uint32("model_id", req.Msg.GetModelId()))
+
+	variantsRepo := s.repo.Cars().CarModelVariants()
+
+	var (
+		items []*models.CarModelVariant
+		err   error
+	)
+
+	if modelID := int32(req.Msg.GetModelId()); modelID != 0 {
+		items, err = variantsRepo.LoadByModelID(ctx, modelID)
+	} else {
+		items, err = variantsRepo.LoadAll(ctx)
+	}
+
+	if err != nil {
+		l.Error("failed to load car model variants", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to load car model variants")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	out := make([]*commonv1.CarModelVariant, 0, len(items))
+	for _, item := range items {
+		if converted := s.conversion.CarModelVariantToCarModelVariant(item); converted != nil {
+			out = append(out, converted)
+		}
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variants loaded")
+	return connect.NewResponse(&queryv1.ListCarModelVariantsResponse{Items: out}), nil
+}
+
+// GetCarModelVariant returns a car model variant by ID.
+//
+//nolint:whitespace // editor/linter issue
+func (s *service) GetCarModelVariant(
+	ctx context.Context,
+	req *connect.Request[queryv1.GetCarModelVariantRequest],
+) (*connect.Response[queryv1.GetCarModelVariantResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("GetCarModelVariant", log.Uint32("id", req.Msg.GetId()))
+
+	item, err := s.repo.Cars().CarModelVariants().LoadByID(ctx, int32(req.Msg.GetId()))
+	if err != nil {
+		l.Error("failed to load car model variant", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car model variant")
+		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	}
+
+	aliases, aliasErr := s.repo.Cars().SimulationCarAliases().LoadByVariantID(
+		ctx,
+		int32(req.Msg.GetId()),
+	)
 	if aliasErr != nil {
 		l.Error("failed to load simulation car aliases", log.ErrorField(aliasErr))
 		trace.SpanFromContext(ctx).SetStatus(
@@ -195,9 +201,9 @@ func (s *service) GetCarModel(
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model loaded")
-	return connect.NewResponse(&queryv1.GetCarModelResponse{
-		CarModel:          s.conversion.CarModelToCarModel(item),
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variant loaded")
+	return connect.NewResponse(&queryv1.GetCarModelVariantResponse{
+		CarModelVariant:   s.conversion.CarModelVariantToCarModelVariant(item),
 		SimulationAliases: s.conversion.SimulationCarAliasToProto(aliases),
 	}), nil
 }
@@ -253,29 +259,34 @@ func (s *service) GetCarClass(
 	}), nil
 }
 
-// ListCarClassModels returns a list of car models for a given car class ID.
+// ListCarClassModelVariants returns a list of car model variants
+// for a given car class ID.
 //
 //nolint:whitespace // editor/linter issue
-func (s *service) ListCarClassModels(
+func (s *service) ListCarClassModelVariants(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarClassModelsRequest],
-) (*connect.Response[queryv1.ListCarClassModelsResponse], error) {
+	req *connect.Request[queryv1.ListCarClassModelVariantsRequest],
+) (*connect.Response[queryv1.ListCarClassModelVariantsResponse], error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListCarClassModels", log.Uint32("classID", req.Msg.GetClassId()))
+	l.Debug("ListCarClassModelVariants", log.Uint32("classID", req.Msg.GetClassId()))
 
-	carModels, err := s.repo.Cars().CarModels().LoadByCarClassID(
+	carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
 		ctx, int32(req.Msg.GetClassId()))
 	if err != nil {
-		l.Error("failed to load car models for car class", log.ErrorField(err))
+		l.Error("failed to load car model variants for car class", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load car models for car class")
+			codes.Error, "failed to load car model variants for car class")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car models loaded for car class")
-	return connect.NewResponse(&queryv1.ListCarClassModelsResponse{
-		Items: lo.Map(carModels, func(m *models.CarModel, _ int) *commonv1.CarModel {
-			return s.conversion.CarModelToCarModel(m)
-		}),
+	trace.SpanFromContext(ctx).SetStatus(
+		codes.Ok, "car model variants loaded for car class")
+	return connect.NewResponse(&queryv1.ListCarClassModelVariantsResponse{
+		Items: lo.Map(
+			carModelVariants,
+			func(m *models.CarModelVariant, _ int) *commonv1.CarModelVariant {
+				return s.conversion.CarModelVariantToCarModelVariant(m)
+			},
+		),
 	}), nil
 }

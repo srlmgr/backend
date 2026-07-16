@@ -113,8 +113,8 @@ func (s *service) ResolveMappings(
 			if !entry.DriverID.IsNull() {
 				setter.DriverID = omitnull.From(entry.DriverID.GetOr(0))
 			}
-			if !entry.CarModelID.IsNull() {
-				setter.CarModelID = omitnull.From(entry.CarModelID.GetOr(0))
+			if !entry.CarModelVariantID.IsNull() {
+				setter.CarModelVariantID = omitnull.From(entry.CarModelVariantID.GetOr(0))
 			}
 
 			if _, err := s.repo.ResultEntries().Update(ctx, entry.ID, setter); err != nil {

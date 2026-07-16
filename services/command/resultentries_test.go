@@ -25,7 +25,7 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
 		RaceGridId:        10,
 		DriverId:          5,
-		CarModelId:        3,
+		CarModelVariantId: 3,
 		FinishingPosition: 1,
 		CompletedLaps:     25,
 		FastestLapTimeMs:  90000,
@@ -40,8 +40,8 @@ func TestResultEntrySetterBuilderBuildSuccess(t *testing.T) {
 	if !setter.DriverID.IsValue() || setter.DriverID.MustGet() != 5 {
 		t.Fatalf("unexpected driver_id setter value: %+v", setter.DriverID)
 	}
-	if !setter.CarModelID.IsValue() || setter.CarModelID.MustGet() != 3 {
-		t.Fatalf("unexpected car_model_id setter value: %+v", setter.CarModelID)
+	if !setter.CarModelVariantID.IsValue() || setter.CarModelVariantID.MustGet() != 3 {
+		t.Fatalf("unexpected car_model_variant_id setter value: %+v", setter.CarModelVariantID)
 	}
 	if !setter.FinishPosition.IsValue() || setter.FinishPosition.MustGet() != 1 {
 		t.Fatalf("unexpected finish_position setter value: %+v", setter.FinishPosition)
@@ -81,7 +81,7 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
 		RaceGridId:        0,
 		DriverId:          0,
-		CarModelId:        0,
+		CarModelVariantId: 0,
 		FinishingPosition: 0,
 		CompletedLaps:     0,
 		FastestLapTimeMs:  0,
@@ -96,8 +96,8 @@ func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	if setter.DriverID.IsValue() {
 		t.Fatalf("expected driver_id to be unset, got: %+v", setter.DriverID)
 	}
-	if setter.CarModelID.IsValue() {
-		t.Fatalf("expected car_model_id to be unset, got: %+v", setter.CarModelID)
+	if setter.CarModelVariantID.IsValue() {
+		t.Fatalf("expected car_model_variant_id to be unset, got: %+v", setter.CarModelVariantID)
 	}
 	if setter.FinishPosition.IsValue() {
 		t.Fatalf("expected finish_position to be unset, got: %+v", setter.FinishPosition)

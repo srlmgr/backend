@@ -33,10 +33,10 @@ type Repository interface {
 	Create(ctx context.Context, input *models.SeasonSetter) (*models.Season, error)
 	Update(ctx context.Context, id int32, input *models.SeasonSetter) (*models.Season, error)
 	SetCarClasses(ctx context.Context, seasonID int32, carClassIDs []int32) error
-	SetCarModels(ctx context.Context, seasonID int32, carModelIDs []int32) error
+	SetCarModelVariants(ctx context.Context, seasonID int32, carModelVariantIDs []int32) error
 
 	DeleteCarClasses(ctx context.Context, seasonID int32) error
-	DeleteCarModels(ctx context.Context, seasonID int32) error
+	DeleteCarModelVariants(ctx context.Context, seasonID int32) error
 }
 
 type seasonsRepository struct{ exec *pgbob.Executor }
@@ -140,22 +140,24 @@ func (r *seasonsRepository) SetCarClasses(
 	return err
 }
 
-func (r *seasonsRepository) SetCarModels(
+func (r *seasonsRepository) SetCarModelVariants(
 	ctx context.Context,
 	seasonID int32,
-	carModelIDs []int32,
+	carModelVariantIDs []int32,
 ) error {
-	// Delete existing car models for the season
-	if err := r.DeleteCarModels(ctx, seasonID); err != nil {
+	// Delete existing car model variants for the season
+	if err := r.DeleteCarModelVariants(ctx, seasonID); err != nil {
 		return err
 	}
 
-	setters := make([]*models.SeasonCarModelSetter, len(carModelIDs))
-	for i, carModelID := range carModelIDs {
-		setters[i] = &models.SeasonCarModelSetter{
-			SeasonID:   omit.From(seasonID),
-			CarModelID: omit.From(carModelID),
-			Pos:        omit.From(int32(i)), // Set position based on the order in the input slice
+	setters := make([]*models.SeasonCarModelVariantSetter, len(carModelVariantIDs))
+	for i, carModelVariantID := range carModelVariantIDs {
+		setters[i] = &models.SeasonCarModelVariantSetter{
+			SeasonID:          omit.From(seasonID),
+			CarModelVariantID: omit.From(carModelVariantID),
+			Pos: omit.From(
+				int32(i),
+			), // Set position based on the order in the input slice
 		}
 	}
 
@@ -163,7 +165,8 @@ func (r *seasonsRepository) SetCarModels(
 		return nil
 	}
 
-	_, err := models.SeasonCarModels.Insert(bob.ToMods(setters...)).All(ctx, r.getExecutor(ctx))
+	_, err := models.SeasonCarModelVariants.Insert(bob.ToMods(setters...)).
+		All(ctx, r.getExecutor(ctx))
 	return err
 }
 
@@ -179,12 +182,12 @@ func (r *seasonsRepository) DeleteCarClasses(
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *seasonsRepository) DeleteCarModels(
+func (r *seasonsRepository) DeleteCarModelVariants(
 	ctx context.Context,
 	seasonID int32,
 ) error {
-	_, err := models.SeasonCarModels.Delete(
-		dm.Where(models.SeasonCarModels.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+	_, err := models.SeasonCarModelVariants.Delete(
+		dm.Where(models.SeasonCarModelVariants.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }

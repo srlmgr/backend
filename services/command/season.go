@@ -146,24 +146,24 @@ func (s *service) SetSeasonCarClasses(
 	l.Debug("SetSeasonCarClasses")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		toSetCarModelIDs := make([]int32, 0)
-		collectCarModels := func() error {
-			if err := s.repo.Seasons().SetCarModels(
+		toSetCarModelVariantIDs := make([]int32, 0)
+		collectCarModelVariants := func() error {
+			if err := s.repo.Seasons().SetCarModelVariants(
 				ctx, int32(req.Msg.GetSeasonId()), []int32{}); err != nil {
 				return err
 			}
 
 			for _, carClassID := range lo.Uniq(req.Msg.GetCarClassIds()) {
-				carModels, err := s.repo.Cars().CarModels().LoadByCarClassID(
+				carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
 					ctx, int32(carClassID))
 				if err != nil {
 					return err
 				}
-				slices.SortStableFunc(carModels, func(a, b *models.CarModel) int {
+				slices.SortStableFunc(carModelVariants, func(a, b *models.CarModelVariant) int {
 					return strings.Compare(a.Name, b.Name)
 				})
-				for _, cm := range carModels {
-					toSetCarModelIDs = append(toSetCarModelIDs, cm.ID)
+				for _, cmv := range carModelVariants {
+					toSetCarModelVariantIDs = append(toSetCarModelVariantIDs, cmv.ID)
 				}
 			}
 			return nil
@@ -173,26 +173,26 @@ func (s *service) SetSeasonCarClasses(
 			// do nothing
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_REPLACE:
 			// collect new carModels by provided carClasses
-			if err := collectCarModels(); err != nil {
+			if err := collectCarModelVariants(); err != nil {
 				return err
 			}
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_INSERT_WHEN_EMPTY:
-			existingCarModels, err := s.repo.Cars().CarModels().LoadBySeasonID(
+			existingCarModelVariants, err := s.repo.Cars().CarModelVariants().LoadBySeasonID(
 				ctx, int32(req.Msg.GetSeasonId()))
 			if err != nil {
 				return err
 			}
-			if len(existingCarModels) == 0 {
-				if err := collectCarModels(); err != nil {
+			if len(existingCarModelVariants) == 0 {
+				if err := collectCarModelVariants(); err != nil {
 					return err
 				}
 			}
 		}
-		if len(toSetCarModelIDs) > 0 {
-			if err := s.repo.Seasons().SetCarModels(
+		if len(toSetCarModelVariantIDs) > 0 {
+			if err := s.repo.Seasons().SetCarModelVariants(
 				ctx,
 				int32(req.Msg.GetSeasonId()),
-				toSetCarModelIDs,
+				toSetCarModelVariantIDs,
 			); err != nil {
 				return err
 			}
@@ -215,30 +215,30 @@ func (s *service) SetSeasonCarClasses(
 }
 
 //nolint:whitespace // editor/linter issue
-func (s *service) SetSeasonCarModels(
+func (s *service) SetSeasonCarModelVariants(
 	ctx context.Context,
-	req *connect.Request[v1.SetSeasonCarModelsRequest]) (
-	*connect.Response[v1.SetSeasonCarModelsResponse], error,
+	req *connect.Request[v1.SetSeasonCarModelVariantsRequest]) (
+	*connect.Response[v1.SetSeasonCarModelVariantsResponse], error,
 ) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("SetSeasonCarModels")
+	l.Debug("SetSeasonCarModelVariants")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		return s.repo.Seasons().SetCarModels(
+		return s.repo.Seasons().SetCarModelVariants(
 			ctx,
 			int32(req.Msg.GetSeasonId()),
-			lo.Map(lo.Uniq(req.Msg.GetCarModelIds()),
+			lo.Map(lo.Uniq(req.Msg.GetCarModelVariantIds()),
 				func(id uint32, _ int) int32 { return int32(id) }),
 		)
 	}); txErr != nil {
-		l.Error("failed to set car models for season", log.ErrorField(txErr))
+		l.Error("failed to set car model variants for season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to set car models for season")
+			codes.Error, "failed to set car model variants for season")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car models set for season")
-	return connect.NewResponse(&v1.SetSeasonCarModelsResponse{}), nil
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variants set for season")
+	return connect.NewResponse(&v1.SetSeasonCarModelVariantsResponse{}), nil
 }
 
 //nolint:whitespace // editor/linter issue

@@ -388,28 +388,35 @@ func (s *Service) CarManufacturerToCarManufacturer(
 	}
 }
 
-// CarBrandToCarBrand converts a CarBrand model to a CarBrand message.
-func (s *Service) CarBrandToCarBrand(model *models.CarBrand) *commonv1.CarBrand {
-	if model == nil {
-		return nil
-	}
-
-	return &commonv1.CarBrand{
-		Id:             uint32(model.ID),
-		ManufacturerId: uint32(model.ManufacturerID),
-		Name:           model.Name,
-	}
-}
-
 // CarModelToCarModel converts a CarModel model to a CarModel message.
+//
+
 func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel {
 	if model == nil {
 		return nil
 	}
 
 	return &commonv1.CarModel{
+		Id:             uint32(model.ID),
+		ManufacturerId: uint32(model.ManufacturerID),
+		Name:           model.Name,
+	}
+}
+
+// CarModelVariantToCarModelVariant converts a CarModelVariant model
+// to a CarModelVariant message.
+//
+//nolint:whitespace // editor/linter issue
+func (s *Service) CarModelVariantToCarModelVariant(
+	model *models.CarModelVariant,
+) *commonv1.CarModelVariant {
+	if model == nil {
+		return nil
+	}
+
+	return &commonv1.CarModelVariant{
 		Id:      uint32(model.ID),
-		BrandId: uint32(model.BrandID),
+		ModelId: uint32(model.CarModelID),
 		Name:    model.Name,
 	}
 }
@@ -452,12 +459,12 @@ func (s *Service) SeasonDriverToSeasonDriver(
 	}
 
 	seasonDriver := &commonv1.SeasonDriver{
-		Id:         uint32(model.ID),
-		DriverId:   uint32(model.DriverID),
-		SeasonId:   uint32(model.SeasonID),
-		CarModelId: uint32(model.CarModelID),
-		CarNumber:  model.CarNumber,
-		JoinedAt:   timestamppb.New(model.JoinedAt),
+		Id:                uint32(model.ID),
+		DriverId:          uint32(model.DriverID),
+		SeasonId:          uint32(model.SeasonID),
+		CarModelVariantId: uint32(model.CarModelVariantID),
+		CarNumber:         model.CarNumber,
+		JoinedAt:          timestamppb.New(model.JoinedAt),
 	}
 
 	if value := model.LeftAt.Ptr(); value != nil {
@@ -483,8 +490,8 @@ func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
 	if value := model.LeftAt.Ptr(); value != nil {
 		team.LeftAt = timestamppb.New(*value)
 	}
-	if value := model.CarModelID.Ptr(); value != nil {
-		team.CarModelId = uint32(*value)
+	if value := model.CarModelVariantID.Ptr(); value != nil {
+		team.CarModelVariantId = uint32(*value)
 	}
 	if value := model.CarNumber.Ptr(); value != nil {
 		team.CarNumber = *value
@@ -585,7 +592,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 		RaceGridId:        uint32(model.RaceGridID),
 		DriverId:          uint32(model.DriverID.GetOr(0)),
 		TeamId:            uint32(model.TeamID.GetOr(0)),
-		CarModelId:        uint32(model.CarModelID.GetOr(0)),
+		CarModelVariantId: uint32(model.CarModelVariantID.GetOr(0)),
 		CarClassId:        uint32(model.CarClassID.GetOr(0)),
 		CarNumber:         model.CarNumber.GetOr(""),
 		StartingPosition:  model.StartPosition.GetOr(0),
@@ -698,17 +705,22 @@ func (s *Service) MapErrorToRPCCode(err error) connect.Code {
 	if errors.Is(dberrors.CarManufacturerErrors.ErrUniqueCarManufacturersNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
-	if errors.Is(dberrors.CarBrandErrors.ErrUniqueCarBrandsManufacturerIdNameUnique, err) {
+
+	if errors.Is(dberrors.CarModelErrors.ErrUniqueCarModelsManufacturerIdNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
-	if errors.Is(dberrors.CarModelErrors.ErrUniqueCarModelsBrandIdNameUnique, err) {
+	if errors.Is(
+		dberrors.CarModelVariantErrors.ErrUniqueCarModelVariantsCarModelIdNameUnique,
+		err,
+	) {
+
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(dberrors.CarClassErrors.ErrUniqueCarClassesNameUnique, err) {
 		return connect.CodeAlreadyExists
 	}
 	if errors.Is(
-		dberrors.CarClassesToCarModelErrors.ErrUniqueCarClassesToCarModelsCarClassIdCarModelIdUnique,
+		dberrors.CarClassesToCarModelErrors.ErrUniqueCarClassesToCarModelsCarClassIdCarModelVariantIdUni,
 		err,
 	) {
 
