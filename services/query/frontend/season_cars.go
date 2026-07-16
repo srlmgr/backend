@@ -15,28 +15,29 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
-//
 //nolint:whitespace,dupl // editor/linter issue
-func (s *service) ListSeasonCarModels(
+func (s *service) ListSeasonCarModelVariants(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonCarModelsRequest],
-) (*connect.Response[queryv1.ListSeasonCarModelsResponse], error) {
+	req *connect.Request[queryv1.ListSeasonCarModelVariantsRequest],
+) (*connect.Response[queryv1.ListSeasonCarModelVariantsResponse], error) {
 	l := s.logger.WithCtx(ctx)
 	seasonID := int32(req.Msg.GetSeasonId())
-	l.Debug("ListSeasonCarModels", log.Int32("season_id", seasonID))
+	l.Debug("ListSeasonCarModelVariants", log.Int32("season_id", seasonID))
 
-	seasonCarModels, err := s.repo.Cars().CarModels().LoadBySeasonID(ctx, seasonID)
+	seasonCarModelVariants, err := s.repo.Cars().CarModelVariants().LoadBySeasonID(
+		ctx, seasonID)
 	if err != nil {
-		l.Error("failed to load season car models", log.ErrorField(err))
-		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season car models")
+		l.Error("failed to load season car model variants", log.ErrorField(err))
+		trace.SpanFromContext(ctx).
+			SetStatus(codes.Error, "failed to load season car model variants")
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season car models loaded")
-	return connect.NewResponse(&queryv1.ListSeasonCarModelsResponse{
-		Items: lo.Map(seasonCarModels,
-			func(item *models.CarModel, _ int) *commonv1.CarModel {
-				return s.conversion.CarModelToCarModel(item)
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season car model variants loaded")
+	return connect.NewResponse(&queryv1.ListSeasonCarModelVariantsResponse{
+		Items: lo.Map(seasonCarModelVariants,
+			func(item *models.CarModelVariant, _ int) *commonv1.CarModelVariant {
+				return s.conversion.CarModelVariantToCarModelVariant(item)
 			}),
 	}), nil
 }

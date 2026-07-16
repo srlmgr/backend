@@ -21,7 +21,7 @@ import (
 type resultEntryRequest interface {
 	GetRaceGridId() uint32
 	GetDriverId() uint32
-	GetCarModelId() uint32
+	GetCarModelVariantId() uint32
 	GetFinishingPosition() int32
 	GetCompletedLaps() int32
 	GetFastestLapTimeMs() int32
@@ -46,8 +46,8 @@ func (b resultEntrySetterBuilder) Build(msg resultEntryRequest) *resultEntrySett
 		setter.DriverID = omitnull.From(int32(driverID))
 	}
 
-	if carModelID := msg.GetCarModelId(); carModelID != 0 {
-		setter.CarModelID = omitnull.From(int32(carModelID))
+	if carModelVariantID := msg.GetCarModelVariantId(); carModelVariantID != 0 {
+		setter.CarModelVariantID = omitnull.From(int32(carModelVariantID))
 	}
 
 	if pos := msg.GetFinishingPosition(); pos != 0 {

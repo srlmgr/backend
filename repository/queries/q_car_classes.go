@@ -25,14 +25,17 @@ type queryCarClasses struct {
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *queryCarClasses) FindBySeasonAndCarModel(
+func (r *queryCarClasses) FindBySeasonAndCarModelVariant(
 	ctx context.Context,
-	seasonID, carModelID int32,
+	seasonID, carModelVariantID int32,
 ) (*models.CarClass, error) {
 	subQuery := psql.Select(
 		sm.Columns(models.CarClassesToCarModels.Columns.CarClassID),
 		sm.From(models.CarClassesToCarModels.Name()),
-		sm.Where(models.CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(carModelID))),
+		sm.Where(
+			models.CarClassesToCarModels.Columns.CarModelVariantID.EQ(
+				psql.Arg(carModelVariantID)),
+		),
 	)
 	query := models.CarClasses.Query(
 		models.SelectJoins.CarClasses.InnerJoin.SeasonCarClasses,
@@ -44,9 +47,9 @@ func (r *queryCarClasses) FindBySeasonAndCarModel(
 	entity, err := query.One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf(
-			"car class for season %d and car model %d: %w",
+			"car class for season %d and car model variant %d: %w",
 			seasonID,
-			carModelID,
+			carModelVariantID,
 			repoerrors.ErrNotFound,
 		)
 	}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -38,26 +39,44 @@ type CarManufacturersRepository interface {
 	) (*models.CarManufacturer, error)
 }
 
-// CarBrandsRepository defines persistence operations for CarBrand entities.
-type CarBrandsRepository interface {
-	LoadAll(ctx context.Context) ([]*models.CarBrand, error)
-	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarBrand, error)
-	LoadByID(ctx context.Context, id int32) (*models.CarBrand, error)
-	DeleteByID(ctx context.Context, id int32) error
-	Create(ctx context.Context, input *models.CarBrandSetter) (*models.CarBrand, error)
-	Update(ctx context.Context, id int32, input *models.CarBrandSetter) (*models.CarBrand, error)
-}
-
 // CarModelsRepository defines persistence operations for CarModel entities.
 type CarModelsRepository interface {
 	LoadAll(ctx context.Context) ([]*models.CarModel, error)
 	LoadByManufacturerID(ctx context.Context, manufacturerID int32) ([]*models.CarModel, error)
-	LoadByCarClassID(ctx context.Context, classID int32) ([]*models.CarModel, error)
-	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.CarModel, error)
 	LoadByID(ctx context.Context, id int32) (*models.CarModel, error)
 	DeleteByID(ctx context.Context, id int32) error
-	Create(ctx context.Context, input *models.CarModelSetter) (*models.CarModel, error)
-	Update(ctx context.Context, id int32, input *models.CarModelSetter) (*models.CarModel, error)
+	Create(
+		ctx context.Context,
+		input *models.CarModelSetter,
+	) (*models.CarModel, error)
+	Update(
+		ctx context.Context,
+		id int32,
+		input *models.CarModelSetter,
+	) (*models.CarModel, error)
+}
+
+// CarModelVariantsRepository defines persistence operations for CarModelVariant entities.
+type CarModelVariantsRepository interface {
+	LoadAll(ctx context.Context) ([]*models.CarModelVariant, error)
+	LoadByManufacturerID(
+		ctx context.Context,
+		manufacturerID int32,
+	) ([]*models.CarModelVariant, error)
+	LoadByCarClassID(ctx context.Context, classID int32) ([]*models.CarModelVariant, error)
+	LoadBySeasonID(ctx context.Context, seasonID int32) ([]*models.CarModelVariant, error)
+	LoadByModelID(ctx context.Context, modelID int32) ([]*models.CarModelVariant, error)
+	LoadByID(ctx context.Context, id int32) (*models.CarModelVariant, error)
+	DeleteByID(ctx context.Context, id int32) error
+	Create(
+		ctx context.Context,
+		input *models.CarModelVariantSetter,
+	) (*models.CarModelVariant, error)
+	Update(
+		ctx context.Context,
+		id int32,
+		input *models.CarModelVariantSetter,
+	) (*models.CarModelVariant, error)
 }
 
 // CarClassesRepository defines persistence operations for CarClass entities.
@@ -68,27 +87,30 @@ type CarClassesRepository interface {
 	DeleteByID(ctx context.Context, id int32) error
 	Create(ctx context.Context, input *models.CarClassSetter) (*models.CarClass, error)
 	Update(ctx context.Context, id int32, input *models.CarClassSetter) (*models.CarClass, error)
-	AssignCarModel(ctx context.Context, classID, modelID int32) error
-	UnassignCarModel(ctx context.Context, classID, modelID int32) error
+	AssignCarModelVariant(ctx context.Context, classID, modelVariantID int32) error
+	UnassignCarModelVariant(ctx context.Context, classID, modelVariantID int32) error
 }
 
 // SimulationCarAliasesRepository defines persistence operations for SimulationCarAlias entities.
 type SimulationCarAliasesRepository interface {
 	LoadByID(ctx context.Context, id int32) (*models.SimulationCarAlias, error)
-	LoadByModelID(ctx context.Context, modelID int32) ([]*models.SimulationCarAlias, error)
+
+	LoadByVariantID(ctx context.Context, variantID int32) ([]*models.SimulationCarAlias, error)
 	LoadBySimulationID(ctx context.Context, simID int32) ([]*models.SimulationCarAlias, error)
 	FindBySimID(
 		ctx context.Context,
 		simID int32,
 		aliases ...string,
 	) (*models.SimulationCarAlias, error)
-	ReplaceForModelID(
+
+	ReplaceForVariantID(
 		ctx context.Context,
-		modelID int32,
+		variantID int32,
 		aliases []*models.SimulationCarAliasSetter,
 	) ([]*models.SimulationCarAlias, error)
 	DeleteByID(ctx context.Context, id int32) error
-	DeleteByModelID(ctx context.Context, modelID int32) error
+
+	DeleteByVariantID(ctx context.Context, variantID int32) error
 	Create(
 		ctx context.Context,
 		input *models.SimulationCarAliasSetter,
@@ -103,24 +125,24 @@ type SimulationCarAliasesRepository interface {
 // Repository exposes repositories for the cars migration group.
 type Repository interface {
 	CarManufacturers() CarManufacturersRepository
-	CarBrands() CarBrandsRepository
 	CarModels() CarModelsRepository
+	CarModelVariants() CarModelVariantsRepository
 	CarClasses() CarClassesRepository
 	SimulationCarAliases() SimulationCarAliasesRepository
 }
 
 type repository struct {
 	carManufacturers     CarManufacturersRepository
-	carBrands            CarBrandsRepository
 	carModels            CarModelsRepository
+	carModelVariants     CarModelVariantsRepository
 	carClasses           CarClassesRepository
 	simulationCarAliases SimulationCarAliasesRepository
 }
 
 type (
 	carManufacturersRepository     struct{ exec *pgbob.Executor }
-	carBrandsRepository            struct{ exec *pgbob.Executor }
 	carModelsRepository            struct{ exec *pgbob.Executor }
+	carModelVariantsRepository     struct{ exec *pgbob.Executor }
 	carClassesRepository           struct{ exec *pgbob.Executor }
 	simulationCarAliasesRepository struct{ exec *pgbob.Executor }
 )
@@ -129,16 +151,16 @@ type (
 func New(pool *pgxpool.Pool) Repository {
 	return &repository{
 		carManufacturers:     &carManufacturersRepository{exec: pgbob.New(pool)},
-		carBrands:            &carBrandsRepository{exec: pgbob.New(pool)},
 		carModels:            &carModelsRepository{exec: pgbob.New(pool)},
+		carModelVariants:     &carModelVariantsRepository{exec: pgbob.New(pool)},
 		carClasses:           &carClassesRepository{exec: pgbob.New(pool)},
 		simulationCarAliases: &simulationCarAliasesRepository{exec: pgbob.New(pool)},
 	}
 }
 
 func (r *repository) CarManufacturers() CarManufacturersRepository { return r.carManufacturers }
-func (r *repository) CarBrands() CarBrandsRepository               { return r.carBrands }
 func (r *repository) CarModels() CarModelsRepository               { return r.carModels }
+func (r *repository) CarModelVariants() CarModelVariantsRepository { return r.carModelVariants }
 func (r *repository) CarClasses() CarClassesRepository             { return r.carClasses }
 func (r *repository) SimulationCarAliases() SimulationCarAliasesRepository {
 	return r.simulationCarAliases
@@ -190,109 +212,27 @@ func (r *carManufacturersRepository) Update(
 	return entity, err
 }
 
-func (r *carBrandsRepository) LoadAll(ctx context.Context) ([]*models.CarBrand, error) {
-	return models.CarBrands.Query().All(ctx, r.getExecutor(ctx))
-}
-
-func (r *carBrandsRepository) LoadByManufacturerID(
-	ctx context.Context,
-	manufacturerID int32,
-) ([]*models.CarBrand, error) {
-	return models.CarBrands.Query(
-		sm.Where(models.CarBrands.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
-	).All(ctx, r.getExecutor(ctx))
-}
-
-func (r *carBrandsRepository) LoadByID(ctx context.Context, id int32) (*models.CarBrand, error) {
-	entity, err := models.CarBrands.Query(sm.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id)))).
-		One(ctx, r.getExecutor(ctx))
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("car brand %d: %w", id, repoerrors.ErrNotFound)
-	}
-	return entity, err
-}
-
-func (r *carBrandsRepository) DeleteByID(ctx context.Context, id int32) error {
-	_, err := models.CarBrands.Delete(dm.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id)))).
-		Exec(ctx, r.getExecutor(ctx))
-	return err
-}
-
-func (r *carBrandsRepository) Create(
-	ctx context.Context,
-	input *models.CarBrandSetter,
-) (*models.CarBrand, error) {
-	return models.CarBrands.Insert(input).One(ctx, r.getExecutor(ctx))
-}
-
-func (r *carBrandsRepository) Update(
-	ctx context.Context,
-	id int32,
-	input *models.CarBrandSetter,
-) (*models.CarBrand, error) {
-	entity, err := models.CarBrands.Update(
-		input.UpdateMod(),
-		um.Where(models.CarBrands.Columns.ID.EQ(psql.Arg(id))),
-	).One(ctx, r.getExecutor(ctx))
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("car brand %d: %w", id, repoerrors.ErrNotFound)
-	}
-	return entity, err
-}
-
 func (r *carModelsRepository) LoadAll(ctx context.Context) ([]*models.CarModel, error) {
 	return models.CarModels.Query().All(ctx, r.getExecutor(ctx))
 }
 
-// LoadByManufacturerID returns all car models belonging to brands of the given manufacturer.
-// It uses a subquery to filter by brand_id IN (SELECT id FROM car_brands WHERE manufacturer_id = ?).
 func (r *carModelsRepository) LoadByManufacturerID(
 	ctx context.Context,
 	manufacturerID int32,
 ) ([]*models.CarModel, error) {
 	return models.CarModels.Query(
-		sm.Where(models.CarModels.Columns.BrandID.In(
-			psql.Select(
-				sm.Columns(models.CarBrands.Columns.ID),
-				sm.From(models.CarBrands.Name()),
-				sm.Where(models.CarBrands.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
-			),
-		)),
+		sm.Where(models.CarModels.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
 	).All(ctx, r.getExecutor(ctx))
 }
 
-func (r *carModelsRepository) LoadByCarClassID(
+func (r *carModelsRepository) LoadByID(
 	ctx context.Context,
-	classID int32,
-) ([]*models.CarModel, error) {
-	return models.CarModels.Query(
-		sm.Where(models.CarModels.Columns.ID.In(
-			psql.Select(
-				sm.Columns(models.CarClassesToCarModels.Columns.CarModelID),
-				sm.From(models.CarClassesToCarModels.Name()),
-				sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
-			),
-		)),
-	).All(ctx, r.getExecutor(ctx))
-}
-
-func (r *carModelsRepository) LoadBySeasonID(
-	ctx context.Context,
-	seasonID int32,
-) ([]*models.CarModel, error) {
-	return models.CarModels.Query(
-		sm.InnerJoin(models.SeasonCarModels.Name()).
-			On(models.SeasonCarModels.Columns.CarModelID.EQ(models.CarModels.Columns.ID)),
-		sm.Where(models.SeasonCarModels.Columns.SeasonID.EQ(psql.Arg(seasonID))),
-		sm.OrderBy(models.SeasonCarModels.Columns.Pos).Asc(),
-	).All(ctx, r.getExecutor(ctx))
-}
-
-func (r *carModelsRepository) LoadByID(ctx context.Context, id int32) (*models.CarModel, error) {
+	id int32,
+) (*models.CarModel, error) {
 	entity, err := models.CarModels.Query(sm.Where(models.CarModels.Columns.ID.EQ(psql.Arg(id)))).
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("car model %d: %w", id, repoerrors.ErrNotFound)
+		return nil, fmt.Errorf("car model v2 %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
 }
@@ -320,7 +260,106 @@ func (r *carModelsRepository) Update(
 		um.Where(models.CarModels.Columns.ID.EQ(psql.Arg(id))),
 	).One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("car model %d: %w", id, repoerrors.ErrNotFound)
+		return nil, fmt.Errorf("car model  %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *carModelVariantsRepository) LoadAll(
+	ctx context.Context,
+) ([]*models.CarModelVariant, error) {
+	return models.CarModelVariants.Query().All(ctx, r.getExecutor(ctx))
+}
+
+// LoadByManufacturerID returns all car model variants belonging to car models v2 of the given manufacturer.
+func (r *carModelVariantsRepository) LoadByManufacturerID(
+	ctx context.Context,
+	manufacturerID int32,
+) ([]*models.CarModelVariant, error) {
+	return models.CarModelVariants.Query(
+		sm.Where(models.CarModelVariants.Columns.CarModelID.In(
+			psql.Select(
+				sm.Columns(models.CarModels.Columns.ID),
+				sm.From(models.CarModels.Name()),
+				sm.Where(models.CarModels.Columns.ManufacturerID.EQ(psql.Arg(manufacturerID))),
+			),
+		)),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelVariantsRepository) LoadByCarClassID(
+	ctx context.Context,
+	classID int32,
+) ([]*models.CarModelVariant, error) {
+	return models.CarModelVariants.Query(
+		sm.Where(models.CarModelVariants.Columns.ID.In(
+			psql.Select(
+				sm.Columns(models.CarClassesToCarModels.Columns.CarModelVariantID),
+				sm.From(models.CarClassesToCarModels.Name()),
+				sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
+			),
+		)),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelVariantsRepository) LoadBySeasonID(
+	ctx context.Context,
+	seasonID int32,
+) ([]*models.CarModelVariant, error) {
+	return models.CarModelVariants.Query(
+		sm.InnerJoin(models.SeasonCarModelVariants.Name()).
+			On(models.SeasonCarModelVariants.Columns.CarModelVariantID.EQ(models.CarModelVariants.Columns.ID)),
+		sm.Where(models.SeasonCarModelVariants.Columns.SeasonID.EQ(psql.Arg(seasonID))),
+		sm.OrderBy(models.SeasonCarModelVariants.Columns.Pos).Asc(),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelVariantsRepository) LoadByModelID(
+	ctx context.Context,
+	modelID int32,
+) ([]*models.CarModelVariant, error) {
+	return models.CarModelVariants.Query(
+		sm.Where(models.CarModelVariants.Columns.CarModelID.EQ(psql.Arg(modelID))),
+	).All(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelVariantsRepository) LoadByID(
+	ctx context.Context,
+	id int32,
+) (*models.CarModelVariant, error) {
+	entity, err := models.CarModelVariants.Query(sm.Where(models.CarModelVariants.Columns.ID.EQ(psql.Arg(id)))).
+		One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car model variant %d: %w", id, repoerrors.ErrNotFound)
+	}
+	return entity, err
+}
+
+func (r *carModelVariantsRepository) DeleteByID(ctx context.Context, id int32) error {
+	_, err := models.CarModelVariants.Delete(
+		dm.Where(models.CarModelVariants.Columns.ID.EQ(psql.Arg(id))),
+	).Exec(ctx, r.getExecutor(ctx))
+	return err
+}
+
+func (r *carModelVariantsRepository) Create(
+	ctx context.Context,
+	input *models.CarModelVariantSetter,
+) (*models.CarModelVariant, error) {
+	return models.CarModelVariants.Insert(input).One(ctx, r.getExecutor(ctx))
+}
+
+func (r *carModelVariantsRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.CarModelVariantSetter,
+) (*models.CarModelVariant, error) {
+	entity, err := models.CarModelVariants.Update(
+		input.UpdateMod(),
+		um.Where(models.CarModelVariants.Columns.ID.EQ(psql.Arg(id))),
+	).One(ctx, r.getExecutor(ctx))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("car model variant %d: %w", id, repoerrors.ErrNotFound)
 	}
 	return entity, err
 }
@@ -379,31 +418,35 @@ func (r *carClassesRepository) Update(
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *carClassesRepository) AssignCarModel(
+func (r *carClassesRepository) AssignCarModelVariant(
 	ctx context.Context,
-	classID, modelID int32,
+	classID, modelVariantID int32,
 ) error {
 	if _, checkErr := models.CarClassesToCarModels.Query(
 		sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
-		sm.Where(models.CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(modelID))),
+		sm.Where(
+			models.CarClassesToCarModels.Columns.CarModelVariantID.EQ(psql.Arg(modelVariantID)),
+		),
 	).One(ctx, r.getExecutor(ctx)); checkErr == nil {
 		return nil
 	}
 	_, err := models.CarClassesToCarModels.Insert(&models.CarClassesToCarModelSetter{
-		CarClassID: omit.From(classID),
-		CarModelID: omit.From(modelID),
+		CarClassID:        omit.From(classID),
+		CarModelVariantID: omitnull.From(modelVariantID), // TODO: change when mandatory
 	}).One(ctx, r.getExecutor(ctx))
 	return err
 }
 
 //nolint:whitespace // editor/linter issue
-func (r *carClassesRepository) UnassignCarModel(
+func (r *carClassesRepository) UnassignCarModelVariant(
 	ctx context.Context,
-	classID, modelID int32,
+	classID, modelVariantID int32,
 ) error {
 	_, err := models.CarClassesToCarModels.Delete(
 		dm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(classID))),
-		dm.Where(models.CarClassesToCarModels.Columns.CarModelID.EQ(psql.Arg(modelID))),
+		dm.Where(
+			models.CarClassesToCarModels.Columns.CarModelVariantID.EQ(psql.Arg(modelVariantID)),
+		),
 	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -434,14 +477,13 @@ func (r *simulationCarAliasesRepository) LoadBySimulationID(
 	return entity, err
 }
 
-func (r *simulationCarAliasesRepository) LoadByModelID(
+func (r *simulationCarAliasesRepository) LoadByVariantID(
 	ctx context.Context,
-	modelID int32,
+	variantID int32,
 ) ([]*models.SimulationCarAlias, error) {
 	entity, err := models.SimulationCarAliases.
 		Query(
-			sm.Where(
-				models.SimulationCarAliases.Columns.CarModelID.EQ(psql.Arg(modelID))),
+			sm.Where(models.SimulationCarAliases.Columns.CarModelVariantID.EQ(psql.Arg(variantID))),
 		).
 		All(ctx, r.getExecutor(ctx))
 
@@ -470,12 +512,12 @@ func (r *simulationCarAliasesRepository) FindBySimID(
 	return entity, err
 }
 
-func (r *simulationCarAliasesRepository) ReplaceForModelID(
+func (r *simulationCarAliasesRepository) ReplaceForVariantID(
 	ctx context.Context,
-	carModelID int32,
+	variantID int32,
 	aliases []*models.SimulationCarAliasSetter,
 ) ([]*models.SimulationCarAlias, error) {
-	if err := r.DeleteByModelID(ctx, carModelID); err != nil {
+	if err := r.DeleteByVariantID(ctx, variantID); err != nil {
 		return nil, err
 	}
 
@@ -499,9 +541,12 @@ func (r *simulationCarAliasesRepository) DeleteByID(ctx context.Context, id int3
 	return err
 }
 
-func (r *simulationCarAliasesRepository) DeleteByModelID(ctx context.Context, modelID int32) error {
+func (r *simulationCarAliasesRepository) DeleteByVariantID(
+	ctx context.Context,
+	variantID int32,
+) error {
 	_, err := models.SimulationCarAliases.Delete(
-		dm.Where(models.SimulationCarAliases.Columns.CarModelID.EQ(psql.Arg(modelID)))).
+		dm.Where(models.SimulationCarAliases.Columns.CarModelVariantID.EQ(psql.Arg(variantID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -535,14 +580,14 @@ func (r *carManufacturersRepository) getExecutor(ctx context.Context) bob.Execut
 	return r.exec
 }
 
-func (r *carBrandsRepository) getExecutor(ctx context.Context) bob.Executor {
+func (r *carModelsRepository) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor
 	}
 	return r.exec
 }
 
-func (r *carModelsRepository) getExecutor(ctx context.Context) bob.Executor {
+func (r *carModelVariantsRepository) getExecutor(ctx context.Context) bob.Executor {
 	if executor := pgbob.FromContext(ctx); executor != nil {
 		return executor
 	}

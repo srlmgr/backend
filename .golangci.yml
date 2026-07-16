@@ -154,6 +154,7 @@ linters:
     staticcheck:
       checks:
         - all
+        - "-SA1019" # tmp disable deprecation checks
       dot-import-whitelist:
         - fmt
     tagliatelle:

@@ -24,20 +24,20 @@ func TestSetSeasonDriversSuccessReplacesEntries(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "GT3 Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Porsche").ID, "Porsche")
-	carModel := seedCarModel(t, repo, brand.ID, "911 GT3 R")
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Porsche").ID, "Porsche")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "911 GT3 R")
 	oldDriver := seedDriver(t, repo, "driver-old", "Old Driver")
 	newDriver := seedDriver(t, repo, "driver-new", "New Driver")
 
 	_, err := repo.Drivers().
 		SeasonDrivers().
 		Create(context.Background(), &models.SeasonDriverSetter{
-			DriverID:   omit.From(oldDriver.ID),
-			SeasonID:   omit.From(season.ID),
-			CarModelID: omit.From(carModel.ID),
-			CarNumber:  omit.From("9"),
-			CreatedBy:  omit.From(testUserSeed),
-			UpdatedBy:  omit.From(testUserSeed),
+			DriverID:          omit.From(oldDriver.ID),
+			SeasonID:          omit.From(season.ID),
+			CarModelVariantID: omit.From(carModelVariant.ID),
+			CarNumber:         omit.From("9"),
+			CreatedBy:         omit.From(testUserSeed),
+			UpdatedBy:         omit.From(testUserSeed),
 		})
 	if err != nil {
 		t.Fatalf("failed to seed season driver: %v", err)
@@ -48,9 +48,9 @@ func TestSetSeasonDriversSuccessReplacesEntries(t *testing.T) {
 		SeasonId: uint32(season.ID),
 		Drivers: []*v1.SetSeasonDriver{
 			{
-				DriverId:   uint32(newDriver.ID),
-				CarModelId: uint32(carModel.ID),
-				CarNumber:  "27",
+				DriverId:          uint32(newDriver.ID),
+				CarModelVariantId: uint32(carModelVariant.ID),
+				CarNumber:         "27",
 			},
 		},
 	}))
@@ -86,18 +86,18 @@ func TestAddSeasonDriverSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "GT World Challenge")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Ferrari").ID, "Ferrari")
-	carModel := seedCarModel(t, repo, brand.ID, "296 GT3")
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Ferrari").ID, "Ferrari")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "296 GT3")
 	driver := seedDriver(t, repo, "driver-1", "Driver One")
 	joinedAt := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.AddSeasonDriver(ctx, connect.NewRequest(&v1.AddSeasonDriverRequest{
-		DriverId:   uint32(driver.ID),
-		SeasonId:   uint32(season.ID),
-		CarModelId: uint32(carModel.ID),
-		CarNumber:  "12",
-		JoinedAt:   timestamppb.New(joinedAt),
+		DriverId:          uint32(driver.ID),
+		SeasonId:          uint32(season.ID),
+		CarModelVariantId: uint32(carModelVariant.ID),
+		CarNumber:         "12",
+		JoinedAt:          timestamppb.New(joinedAt),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -116,8 +116,12 @@ func TestAddSeasonDriverSuccess(t *testing.T) {
 	if items[0].DriverID != driver.ID {
 		t.Fatalf("unexpected driver id: got %d want %d", items[0].DriverID, driver.ID)
 	}
-	if items[0].CarModelID != carModel.ID {
-		t.Fatalf("unexpected car model id: got %d want %d", items[0].CarModelID, carModel.ID)
+	if items[0].CarModelVariantID != carModelVariant.ID {
+		t.Fatalf(
+			"unexpected car model variant id: got %d want %d",
+			items[0].CarModelVariantID,
+			carModelVariant.ID,
+		)
 	}
 	if items[0].CarNumber != "12" {
 		t.Fatalf("unexpected car number: got %q want %q", items[0].CarNumber, "12")
@@ -138,10 +142,10 @@ func TestAddSeasonDriverFailureInvalidCarModelID(t *testing.T) {
 	_, err := svc.AddSeasonDriver(
 		context.Background(),
 		connect.NewRequest(&v1.AddSeasonDriverRequest{
-			DriverId:   uint32(driver.ID),
-			SeasonId:   uint32(season.ID),
-			CarModelId: uint32(0), // invalid car model ID
-			CarNumber:  "12",
+			DriverId:          uint32(driver.ID),
+			SeasonId:          uint32(season.ID),
+			CarModelVariantId: uint32(0), // invalid car model ID
+			CarNumber:         "12",
 		}),
 	)
 	if err == nil {
@@ -158,19 +162,19 @@ func TestRemoveSeasonDriverSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "Hypercar Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Toyota").ID, "Toyota")
-	carModel := seedCarModel(t, repo, brand.ID, "GR010")
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Toyota").ID, "Toyota")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "GR010")
 	driver := seedDriver(t, repo, "driver-1", "Driver One")
 
 	created, err := repo.Drivers().
 		SeasonDrivers().
 		Create(context.Background(), &models.SeasonDriverSetter{
-			DriverID:   omit.From(driver.ID),
-			SeasonID:   omit.From(season.ID),
-			CarModelID: omit.From(carModel.ID),
-			CarNumber:  omit.From("8"),
-			CreatedBy:  omit.From(testUserSeed),
-			UpdatedBy:  omit.From(testUserSeed),
+			DriverID:          omit.From(driver.ID),
+			SeasonID:          omit.From(season.ID),
+			CarModelVariantID: omit.From(carModelVariant.ID),
+			CarNumber:         omit.From("8"),
+			CreatedBy:         omit.From(testUserSeed),
+			UpdatedBy:         omit.From(testUserSeed),
 		})
 	if err != nil {
 		t.Fatalf("failed to seed season driver: %v", err)
@@ -210,19 +214,19 @@ func TestDeleteSeasonDriverSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "Formula Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Audi").ID, "Audi")
-	carModel := seedCarModel(t, repo, brand.ID, "R8 LMS")
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Audi").ID, "Audi")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "R8 LMS")
 	driver := seedDriver(t, repo, "driver-1", "Driver One")
 
 	created, err := repo.Drivers().
 		SeasonDrivers().
 		Create(context.Background(), &models.SeasonDriverSetter{
-			DriverID:   omit.From(driver.ID),
-			SeasonID:   omit.From(season.ID),
-			CarModelID: omit.From(carModel.ID),
-			CarNumber:  omit.From("44"),
-			CreatedBy:  omit.From(testUserSeed),
-			UpdatedBy:  omit.From(testUserSeed),
+			DriverID:          omit.From(driver.ID),
+			SeasonID:          omit.From(season.ID),
+			CarModelVariantID: omit.From(carModelVariant.ID),
+			CarNumber:         omit.From("44"),
+			CreatedBy:         omit.From(testUserSeed),
+			UpdatedBy:         omit.From(testUserSeed),
 		})
 	if err != nil {
 		t.Fatalf("failed to seed season driver: %v", err)

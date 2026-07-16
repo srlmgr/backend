@@ -106,7 +106,7 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 			entry.State = conversion.ResultStateMappingError
 			unresolved = append(unresolved, um)
 		} else {
-			entry.CarModelID = null.From(int32(carID))
+			entry.CarModelVariantID = null.From(int32(carID))
 		}
 
 		// if multi-class, resolve car class as well
@@ -169,7 +169,7 @@ func (r *Resolver) ResolveNonMapped(
 			entryHasUnresolved = true
 			unresolved = append(unresolved, um)
 		} else {
-			entry.CarModelID = null.From(int32(carID))
+			entry.CarModelVariantID = null.From(int32(carID))
 		}
 
 		if entryHasUnresolved {

@@ -120,14 +120,14 @@ func TestResolveInput(t *testing.T) {
 			},
 			wantTrackID: 88,
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 2,
-				LapsCompleted:  34,
-				RawDriverName:  null.From("Driver One"),
-				RawCarName:     null.From("GT3"),
-				Incidents:      null.From(int32(0)),
-				State:          "normal",
-				DriverID:       null.From(int32(101)),
-				CarModelID:     null.From(int32(202)),
+				FinishPosition:    2,
+				LapsCompleted:     34,
+				RawDriverName:     null.From("Driver One"),
+				RawCarName:        null.From("GT3"),
+				Incidents:         null.From(int32(0)),
+				State:             "normal",
+				DriverID:          null.From(int32(101)),
+				CarModelVariantID: null.From(int32(202)),
 			},
 			wantTrackCalls:  []resolverCall{{id: "Silverstone", name: "Silverstone"}},
 			wantDriverCalls: []resolverCall{{id: "sim-driver-1", name: "Driver One"}},
@@ -159,13 +159,13 @@ func TestResolveInput(t *testing.T) {
 			},
 			wantTrackID: 9,
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 6,
-				LapsCompleted:  20,
-				RawDriverName:  null.From("Unknown Driver"),
-				RawCarName:     null.From("LMP2"),
-				Incidents:      null.From(int32(0)),
-				State:          "mapping_error",
-				CarModelID:     null.From(int32(303)),
+				FinishPosition:    6,
+				LapsCompleted:     20,
+				RawDriverName:     null.From("Unknown Driver"),
+				RawCarName:        null.From("LMP2"),
+				Incidents:         null.From(int32(0)),
+				State:             "mapping_error",
+				CarModelVariantID: null.From(int32(303)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{{
 				SourceValue: "sim-driver-2 (name: Unknown Driver)",
@@ -267,11 +267,11 @@ func TestResolveInput(t *testing.T) {
 					tc.wantEntry.DriverID,
 				)
 			}
-			if got.CarModelID != tc.wantEntry.CarModelID {
+			if got.CarModelVariantID != tc.wantEntry.CarModelVariantID {
 				t.Fatalf(
-					"unexpected car model id: got %v want %v",
-					got.CarModelID,
-					tc.wantEntry.CarModelID,
+					"unexpected car model variant id: got %v want %v",
+					got.CarModelVariantID,
+					tc.wantEntry.CarModelVariantID,
 				)
 			}
 			if got.RawDriverName != tc.wantEntry.RawDriverName {
@@ -386,14 +386,14 @@ func TestResolveInputTeamBased(t *testing.T) {
 			},
 			wantTrackID: 88,
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 1,
-				LapsCompleted:  30,
-				RawTeamName:    null.From("Team Alpha"),
-				RawCarName:     null.From("GT3"),
-				Incidents:      null.From(int32(0)),
-				State:          "normal",
-				TeamID:         null.From(int32(700)),
-				CarModelID:     null.From(int32(202)),
+				FinishPosition:    1,
+				LapsCompleted:     30,
+				RawTeamName:       null.From("Team Alpha"),
+				RawCarName:        null.From("GT3"),
+				Incidents:         null.From(int32(0)),
+				State:             "normal",
+				TeamID:            null.From(int32(700)),
+				CarModelVariantID: null.From(int32(202)),
 			},
 			wantTrackCalls:  []resolverCall{{id: "Silverstone", name: "Silverstone"}},
 			wantDriverCalls: []resolverCall{{id: "sim-drv-1", name: "Driver A"}},
@@ -423,13 +423,13 @@ func TestResolveInputTeamBased(t *testing.T) {
 			},
 			wantTrackID: 9,
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 3,
-				LapsCompleted:  20,
-				RawTeamName:    null.From("Team Beta"),
-				RawCarName:     null.From("LMP2"),
-				Incidents:      null.From(int32(0)),
-				State:          "mapping_error",
-				CarModelID:     null.From(int32(303)),
+				FinishPosition:    3,
+				LapsCompleted:     20,
+				RawTeamName:       null.From("Team Beta"),
+				RawCarName:        null.From("LMP2"),
+				Incidents:         null.From(int32(0)),
+				State:             "mapping_error",
+				CarModelVariantID: null.From(int32(303)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{{
 				SourceValue: "team with driver [501] (name: Team Beta)",
@@ -464,14 +464,14 @@ func TestResolveInputTeamBased(t *testing.T) {
 			},
 			wantTrackID: 77,
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 2,
-				LapsCompleted:  15,
-				RawTeamName:    null.From("Team Gamma"),
-				RawCarName:     null.From("GTE"),
-				Incidents:      null.From(int32(0)),
-				State:          "normal",
-				TeamID:         null.From(int32(800)),
-				CarModelID:     null.From(int32(404)),
+				FinishPosition:    2,
+				LapsCompleted:     15,
+				RawTeamName:       null.From("Team Gamma"),
+				RawCarName:        null.From("GTE"),
+				Incidents:         null.From(int32(0)),
+				State:             "normal",
+				TeamID:            null.From(int32(800)),
+				CarModelVariantID: null.From(int32(404)),
 			},
 			wantTrackCalls: []resolverCall{{id: "Monza", name: "Monza"}},
 			wantDriverCalls: []resolverCall{
@@ -521,11 +521,11 @@ func TestResolveInputTeamBased(t *testing.T) {
 			if got.TeamID != tc.wantEntry.TeamID {
 				t.Fatalf("unexpected team id: got %v want %v", got.TeamID, tc.wantEntry.TeamID)
 			}
-			if got.CarModelID != tc.wantEntry.CarModelID {
+			if got.CarModelVariantID != tc.wantEntry.CarModelVariantID {
 				t.Fatalf(
-					"unexpected car model id: got %v want %v",
-					got.CarModelID,
-					tc.wantEntry.CarModelID,
+					"unexpected car model variant id: got %v want %v",
+					got.CarModelVariantID,
+					tc.wantEntry.CarModelVariantID,
 				)
 			}
 			if got.RawTeamName != tc.wantEntry.RawTeamName {
@@ -616,15 +616,15 @@ func TestResolveInputMulticlass(t *testing.T) {
 				resolveCarClass: func(_ uint32) (uint32, error) { return 55, nil },
 			},
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 1,
-				LapsCompleted:  25,
-				RawDriverName:  null.From("Driver One"),
-				RawCarName:     null.From("GT3"),
-				Incidents:      null.From(int32(0)),
-				State:          "normal",
-				DriverID:       null.From(int32(101)),
-				CarModelID:     null.From(int32(202)),
-				CarClassID:     null.From(int32(55)),
+				FinishPosition:    1,
+				LapsCompleted:     25,
+				RawDriverName:     null.From("Driver One"),
+				RawCarName:        null.From("GT3"),
+				Incidents:         null.From(int32(0)),
+				State:             "normal",
+				DriverID:          null.From(int32(101)),
+				CarModelVariantID: null.From(int32(202)),
+				CarClassID:        null.From(int32(55)),
 			},
 			wantCarCalls:      []resolverCall{{id: "sim-car-1", name: "GT3"}},
 			wantCarClassCalls: []resolverCall{{id: "202", name: ""}},
@@ -649,14 +649,14 @@ func TestResolveInputMulticlass(t *testing.T) {
 				resolveCarClass: func(_ uint32) (uint32, error) { return 0, errors.New("car class not found") },
 			},
 			wantEntry: &models.ResultEntry{
-				FinishPosition: 2,
-				LapsCompleted:  12,
-				RawDriverName:  null.From("Driver Two"),
-				RawCarName:     null.From("LMP2"),
-				Incidents:      null.From(int32(0)),
-				State:          "mapping_error",
-				DriverID:       null.From(int32(102)),
-				CarModelID:     null.From(int32(303)),
+				FinishPosition:    2,
+				LapsCompleted:     12,
+				RawDriverName:     null.From("Driver Two"),
+				RawCarName:        null.From("LMP2"),
+				Incidents:         null.From(int32(0)),
+				State:             "mapping_error",
+				DriverID:          null.From(int32(102)),
+				CarModelVariantID: null.From(int32(303)),
 			},
 			wantUnresolved: []*commonv1.UnresolvedMapping{{
 				SourceValue: "car class for car 303 (name: LMP2)",
@@ -706,11 +706,11 @@ func TestResolveInputMulticlass(t *testing.T) {
 					tc.wantEntry.DriverID,
 				)
 			}
-			if got.CarModelID != tc.wantEntry.CarModelID {
+			if got.CarModelVariantID != tc.wantEntry.CarModelVariantID {
 				t.Fatalf(
-					"unexpected car model id: got %v want %v",
-					got.CarModelID,
-					tc.wantEntry.CarModelID,
+					"unexpected car model variant id: got %v want %v",
+					got.CarModelVariantID,
+					tc.wantEntry.CarModelVariantID,
 				)
 			}
 			if got.CarClassID != tc.wantEntry.CarClassID {

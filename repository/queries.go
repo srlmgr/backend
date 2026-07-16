@@ -41,7 +41,9 @@ type (
 	}
 
 	QueryCarClass interface {
-		FindBySeasonAndCarModel(ctx context.Context, seasonID, carModelID int32) (
+		FindBySeasonAndCarModelVariant(
+			ctx context.Context,
+			seasonID, carModelVariantID int32) (
 			*models.CarClass, error,
 		)
 	}

@@ -5,7 +5,7 @@ CREATE TABLE teams (
     season_id integer NOT NULL,
     name text NOT NULL,
     is_active boolean NOT NULL DEFAULT true,
-	car_model_id integer,
+	car_model_variant_id integer,
 	car_number text,
     joined_at timestamp with time zone NOT NULL DEFAULT now(),
     left_at timestamp with time zone,
@@ -37,8 +37,8 @@ ALTER TABLE teams
     CHECK (left_at IS NULL OR left_at >= joined_at);
 
 ALTER TABLE teams
-    ADD CONSTRAINT teams_car_model_id_fk
-    FOREIGN KEY (car_model_id) REFERENCES car_models (id);
+    ADD CONSTRAINT teams_car_model_variant_id_fk
+    FOREIGN KEY (car_model_variant_id) REFERENCES car_model_variants (id);
 
 
 ALTER TABLE team_drivers

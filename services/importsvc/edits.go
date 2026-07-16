@@ -158,8 +158,8 @@ func buildResultEntrySetterFromProto(
 		setter.DriverID = omitnull.From(int32(driverID))
 	}
 
-	if carModelID := row.GetCarModelId(); carModelID != 0 {
-		setter.CarModelID = omitnull.From(int32(carModelID))
+	if carModelVariantID := row.GetCarModelVariantId(); carModelVariantID != 0 {
+		setter.CarModelVariantID = omitnull.From(int32(carModelVariantID))
 	}
 
 	if pos := row.GetFinishingPosition(); pos != 0 {

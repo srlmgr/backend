@@ -1,4 +1,4 @@
-//nolint:dupl,funlen // test code
+//nolint:dupl,funlen,lll // test code
 package queries
 
 import (
@@ -21,15 +21,18 @@ func Test_querySeasonDrivers_ResolveSeasonDriver(t *testing.T) {
 	season := testhelpers.SeedSeason(t, series.ID, pointSystem.ID, "Season A")
 	driver := testhelpers.SeedDriver(t, "Driver A", "extA")
 	carManufacturer := testhelpers.SeedCarManufacturer(t, "Audi")
-	carBrand := testhelpers.SeedCarBrand(t, "Audi R8", carManufacturer.ID)
-	carModelA := testhelpers.SeedCarModel(t, "Audi R8 LMS", carBrand.ID)
-	carModelB := testhelpers.SeedCarModel(t, "Audi R8 LMS EVO 2", carBrand.ID)
+
+	carModelV2 := testhelpers.SeedCarModelV2(t, "Audi R8", carManufacturer.ID)
+	carModelVariantA := testhelpers.SeedCarModelVariant(t, "Audi R8 LMS", carModelV2.ID)
+	carModelVariantB := testhelpers.SeedCarModelVariant(t, "Audi R8 LMS EVO 2", carModelV2.ID)
+
 	seasonDriverA := testhelpers.SeedSeasonDriver(
 		t,
 		"12",
 		driver.ID,
 		season.ID,
-		carModelA.ID,
+
+		carModelVariantA.ID,
 		time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
 		new(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)),
 	)
@@ -38,11 +41,11 @@ func Test_querySeasonDrivers_ResolveSeasonDriver(t *testing.T) {
 		"24",
 		driver.ID,
 		season.ID,
-		carModelB.ID,
+
+		carModelVariantB.ID,
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
 		nil,
 	)
-	_ = carModelB
 
 	tests := []struct {
 		name     string // description of this test case

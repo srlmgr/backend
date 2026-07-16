@@ -38,11 +38,9 @@ func (s *service) ListSeasonDrivers(
 	})
 
 	driverIDSet := make(map[int32]struct{}, len(seasonDrivers))
-	carModelIDSet := make(map[int32]struct{}, len(seasonDrivers))
 	seasonDriverProto := make([]*commonv1.SeasonDriver, 0, len(seasonDrivers))
 	for _, item := range seasonDrivers {
 		driverIDSet[item.DriverID] = struct{}{}
-		carModelIDSet[item.CarModelID] = struct{}{}
 		if converted := s.conversion.SeasonDriverToSeasonDriver(item); converted != nil {
 			seasonDriverProto = append(seasonDriverProto, converted)
 		}
@@ -58,8 +56,8 @@ func (s *service) ListSeasonDrivers(
 		)
 	}
 
-	carData, loadCarDataErr := s.loadCarDataForSeasonDrivers(
-		ctx, mapKeysSorted(carModelIDSet))
+	carData, loadCarDataErr := s.loadCarDataForSeasonDriversWithVariants(
+		ctx, seasonDrivers)
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")
@@ -100,54 +98,75 @@ func (s *service) loadDriversByIDs(
 }
 
 //nolint:whitespace,funlen // editor/linter issue
-func (s *service) loadCarDataForSeasonDrivers(
+func (s *service) loadCarModelVariantDataByIDs(
 	ctx context.Context,
-	carModelIDs []int32,
+	carModelVariantIDs []int32,
 ) ([]*queryv1.CarModelContainer, error) {
-	if len(carModelIDs) == 0 {
+	if len(carModelVariantIDs) == 0 {
 		return nil, nil
 	}
 
 	carModelsRepo := s.repo.Cars().CarModels()
-	carBrandsRepo := s.repo.Cars().CarBrands()
+	carModelVariantsRepo := s.repo.Cars().CarModelVariants()
 	carManufacturersRepo := s.repo.Cars().CarManufacturers()
 
-	brandCache := make(map[int32]*models.CarBrand)
+	carModelCache := make(map[int32]*models.CarModel)
 	manufacturerCache := make(map[int32]*models.CarManufacturer)
-	containers := make([]*queryv1.CarModelContainer, 0, len(carModelIDs))
+	containers := make([]*queryv1.CarModelContainer, 0, len(carModelVariantIDs))
 
-	for _, carModelID := range carModelIDs {
-		carModel, err := carModelsRepo.LoadByID(ctx, carModelID)
+	for _, carModelVariantID := range carModelVariantIDs {
+		carModelVariant, err := carModelVariantsRepo.LoadByID(ctx, carModelVariantID)
 		if err != nil {
 			return nil, err
 		}
 
-		brand, ok := brandCache[carModel.BrandID]
+		carModel, ok := carModelCache[carModelVariant.CarModelID]
 		if !ok {
-			brand, err = carBrandsRepo.LoadByID(ctx, carModel.BrandID)
+			carModel, err = carModelsRepo.LoadByID(ctx, carModelVariant.CarModelID)
 			if err != nil {
 				return nil, err
 			}
-			brandCache[carModel.BrandID] = brand
+			carModelCache[carModel.ID] = carModel
+
 		}
 
-		manufacturer, ok := manufacturerCache[brand.ManufacturerID]
+		manufacturer, ok := manufacturerCache[carModel.ManufacturerID]
 		if !ok {
-			manufacturer, err = carManufacturersRepo.LoadByID(ctx, brand.ManufacturerID)
+			manufacturer, err = carManufacturersRepo.LoadByID(ctx, carModel.ManufacturerID)
 			if err != nil {
 				return nil, err
 			}
-			manufacturerCache[brand.ManufacturerID] = manufacturer
+			manufacturerCache[carModel.ManufacturerID] = manufacturer
 		}
 
 		containers = append(containers, &queryv1.CarModelContainer{
 			CarModel:        s.conversion.CarModelToCarModel(carModel),
-			CarBrand:        s.conversion.CarBrandToCarBrand(brand),
 			CarManufacturer: s.conversion.CarManufacturerToCarManufacturer(manufacturer),
+			CarModelVariant: s.conversion.CarModelVariantToCarModelVariant(carModelVariant),
 		})
 	}
 
 	return containers, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) loadCarDataForSeasonDriversWithVariants(
+	ctx context.Context,
+	seasonDrivers []*models.SeasonDriver,
+) ([]*queryv1.CarModelContainer, error) {
+	if len(seasonDrivers) == 0 {
+		return nil, nil
+	}
+
+	carModelVariantIDSet := make(map[int32]struct{}, len(seasonDrivers))
+	for _, seasonDriver := range seasonDrivers {
+		_, ok := carModelVariantIDSet[seasonDriver.CarModelVariantID]
+		if !ok {
+			carModelVariantIDSet[seasonDriver.CarModelVariantID] = struct{}{}
+		}
+	}
+
+	return s.loadCarModelVariantDataByIDs(ctx, mapKeysSorted(carModelVariantIDSet))
 }
 
 //nolint:whitespace // editor/linter issue

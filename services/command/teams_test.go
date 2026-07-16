@@ -52,17 +52,21 @@ func assertStoredTeamIdentity(
 
 func assertStoredTeamCarAndTimes(
 	t *testing.T,
-	storedCarModelID int32,
+	storedCarModelVariantID int32,
 	storedCarNumber string,
 	storedJoinedAt time.Time,
-	wantCarModelID int32,
+	wantCarModelVariantID int32,
 	wantCarNumber string,
 	wantJoinedAt time.Time,
 ) {
 	t.Helper()
 
-	if storedCarModelID != wantCarModelID {
-		t.Fatalf("unexpected car_model_id: got %d want %d", storedCarModelID, wantCarModelID)
+	if storedCarModelVariantID != wantCarModelVariantID {
+		t.Fatalf(
+			"unexpected car_model_variant_id: got %d want %d",
+			storedCarModelVariantID,
+			wantCarModelVariantID,
+		)
 	}
 	if storedCarNumber != wantCarNumber {
 		t.Fatalf("unexpected car_number: got %q want %q", storedCarNumber, wantCarNumber)
@@ -118,18 +122,18 @@ func TestCreateTeamSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "GT3 Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Alpine").ID, "Alpine")
-	carModel := seedCarModel(t, repo, brand.ID, "A110 GT4")
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Alpine").ID, "Alpine")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "A110 GT4")
 	joinedAt := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	resp, err := svc.CreateTeam(ctx, connect.NewRequest(&v1.CreateTeamRequest{
-		SeasonId:   uint32(season.ID),
-		Name:       "Alpine Racing",
-		IsActive:   true,
-		CarModelId: uint32(carModel.ID),
-		CarNumber:  "36",
-		JoinedAt:   timestamppb.New(joinedAt),
+		SeasonId:          uint32(season.ID),
+		Name:              "Alpine Racing",
+		IsActive:          true,
+		CarModelVariantId: uint32(carModelVariant.ID),
+		CarNumber:         "36",
+		JoinedAt:          timestamppb.New(joinedAt),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -150,10 +154,10 @@ func TestCreateTeamSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load created team: %v", err)
 	}
-	if stored.CarModelID.IsNull() || stored.CarNumber.IsNull() {
+	if stored.CarModelVariantID.IsNull() || stored.CarNumber.IsNull() {
 		t.Fatalf(
-			"expected car fields to be set: car_model_id=%+v car_number=%+v",
-			stored.CarModelID,
+			"expected car fields to be set: car_model_variant_id=%+v car_number=%+v",
+			stored.CarModelVariantID,
 			stored.CarNumber,
 		)
 	}
@@ -167,10 +171,10 @@ func TestCreateTeamSuccess(t *testing.T) {
 	)
 	assertStoredTeamCarAndTimes(
 		t,
-		stored.CarModelID.MustGet(),
+		stored.CarModelVariantID.MustGet(),
 		stored.CarNumber.MustGet(),
 		stored.JoinedAt,
-		carModel.ID,
+		carModelVariant.ID,
 		"36",
 		joinedAt,
 	)
@@ -241,8 +245,9 @@ func TestUpdateTeamSuccess(t *testing.T) {
 	ps := seedPointSystem(t, repo, "Standard Points")
 	series := seedSeries(t, repo, sim.ID, "Hypercar Series")
 	season := seedSeason(t, repo, series.ID, ps.ID, "Season 2025")
-	brand := seedCarBrand(t, repo, seedCarManufacturer(t, repo, "Toyota").ID, "Toyota")
-	carModel := seedCarModel(t, repo, brand.ID, "GR010 Hybrid")
+
+	carModel := seedCarModel(t, repo, seedCarManufacturer(t, repo, "Toyota").ID, "GR010 Hybrid")
+	carModelVariant := seedCarModelVariant(t, repo, carModel.ID, "GR010 Hybrid")
 	joinedAt := time.Now().Add(-4 * time.Hour).UTC().Truncate(time.Second)
 	leftAt := joinedAt.Add(2 * time.Hour)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
@@ -254,14 +259,14 @@ func TestUpdateTeamSuccess(t *testing.T) {
 	}
 
 	resp, err := svc.UpdateTeam(ctx, connect.NewRequest(&v1.UpdateTeamRequest{
-		TeamId:     uint32(initial.ID),
-		SeasonId:   uint32(season.ID),
-		Name:       "Toyota Gazoo Racing Updated",
-		IsActive:   true,
-		CarModelId: uint32(carModel.ID),
-		CarNumber:  "7",
-		JoinedAt:   timestamppb.New(joinedAt),
-		LeftAt:     timestamppb.New(leftAt),
+		TeamId:            uint32(initial.ID),
+		SeasonId:          uint32(season.ID),
+		Name:              "Toyota Gazoo Racing Updated",
+		IsActive:          true,
+		CarModelVariantId: uint32(carModelVariant.ID),
+		CarNumber:         "7",
+		JoinedAt:          timestamppb.New(joinedAt),
+		LeftAt:            timestamppb.New(leftAt),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -284,15 +289,15 @@ func TestUpdateTeamSuccess(t *testing.T) {
 			after.UpdatedAt,
 		)
 	}
-	if after.CarModelID.IsNull() || after.CarNumber.IsNull() || after.LeftAt.IsNull() {
+	if after.CarModelVariantID.IsNull() || after.CarNumber.IsNull() || after.LeftAt.IsNull() {
 		t.Fatalf("unexpected left_at: %+v", after.LeftAt)
 	}
 	assertStoredTeamCarAndTimes(
 		t,
-		after.CarModelID.MustGet(),
+		after.CarModelVariantID.MustGet(),
 		after.CarNumber.MustGet(),
 		after.JoinedAt,
-		carModel.ID,
+		carModelVariant.ID,
 		"7",
 		joinedAt,
 	)

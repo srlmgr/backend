@@ -36,11 +36,12 @@ func (s *service) ListSeasonTeams(
 		return seasonTeams[i].ID < seasonTeams[j].ID
 	})
 
-	carModelIDSet := make(map[int32]struct{}, len(seasonTeams))
+	carModelVariantIDSet := make(map[int32]struct{}, len(seasonTeams))
 	seasonTeamProto := make([]*commonv1.Team, 0, len(seasonTeams))
 	for _, item := range seasonTeams {
-		if carModelID := item.CarModelID.Ptr(); carModelID != nil {
-			carModelIDSet[*carModelID] = struct{}{}
+
+		if carModelVariantID := item.CarModelVariantID.Ptr(); carModelVariantID != nil {
+			carModelVariantIDSet[*carModelVariantID] = struct{}{}
 		}
 
 		if converted := s.conversion.TeamToTeam(item); converted != nil {
@@ -48,8 +49,8 @@ func (s *service) ListSeasonTeams(
 		}
 	}
 
-	carData, loadCarDataErr := s.loadCarDataForSeasonDrivers(
-		ctx, mapKeysSorted(carModelIDSet))
+	carData, loadCarDataErr := s.loadCarModelVariantDataByIDs(
+		ctx, mapKeysSorted(carModelVariantIDSet))
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")

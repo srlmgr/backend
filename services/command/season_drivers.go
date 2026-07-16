@@ -17,12 +17,12 @@ import (
 )
 
 type seasonDriverInput struct {
-	driverID      int32
-	carModelID    int32
-	carNumber     string
-	isGuestDriver bool
-	joinedAt      *time.Time
-	leftAt        *time.Time
+	driverID          int32
+	carModelVariantID int32
+	carNumber         string
+	isGuestDriver     bool
+	joinedAt          *time.Time
+	leftAt            *time.Time
 }
 
 //nolint:whitespace // editor/linter issue
@@ -32,10 +32,10 @@ func convertSetSeasonDriversInput(
 	inputs := make([]seasonDriverInput, 0, len(msg.GetDrivers()))
 	for _, driver := range msg.GetDrivers() {
 		input := seasonDriverInput{
-			driverID:      int32(driver.GetDriverId()),
-			carModelID:    int32(driver.GetCarModelId()),
-			carNumber:     driver.GetCarNumber(),
-			isGuestDriver: driver.GetIsGuestDriver(),
+			driverID:          int32(driver.GetDriverId()),
+			carModelVariantID: int32(driver.GetCarModelVariantId()),
+			carNumber:         driver.GetCarNumber(),
+			isGuestDriver:     driver.GetIsGuestDriver(),
 		}
 		if driver.HasJoinedAt() {
 			joinedAt := driver.GetJoinedAt().AsTime()
@@ -80,13 +80,13 @@ func (s *service) SetSeasonDrivers(
 		for i := range inputs {
 			input := inputs[i]
 			setter := &models.SeasonDriverSetter{
-				DriverID:       omit.From(input.driverID),
-				SeasonID:       omit.From(seasonID),
-				CarModelID:     omit.From(input.carModelID),
-				CarNumber:      omit.From(input.carNumber),
-				IsGuestStarter: omit.From(input.isGuestDriver),
-				CreatedBy:      omit.From(user),
-				UpdatedBy:      omit.From(user),
+				DriverID:          omit.From(input.driverID),
+				SeasonID:          omit.From(seasonID),
+				CarModelVariantID: omit.From(input.carModelVariantID),
+				CarNumber:         omit.From(input.carNumber),
+				IsGuestStarter:    omit.From(input.isGuestDriver),
+				CreatedBy:         omit.From(user),
+				UpdatedBy:         omit.From(user),
 			}
 			if input.joinedAt != nil {
 				setter.JoinedAt = omit.From(*input.joinedAt)
@@ -120,9 +120,12 @@ func (s *service) AddSeasonDriver(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("AddSeasonDriver")
 
-	carModelID := int32(req.Msg.GetCarModelId())
-	if carModelID <= 0 {
-		err := fmt.Errorf("invalid car_model_id %d: must be greater than 0", carModelID)
+	carModelVariantID := int32(req.Msg.GetCarModelVariantId())
+	if carModelVariantID <= 0 {
+		err := fmt.Errorf(
+			"invalid car_model_variant_id %d: must be greater than 0",
+			carModelVariantID,
+		)
 		l.Error("invalid season driver payload", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid season driver payload")
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -148,13 +151,13 @@ func (s *service) AddSeasonDriver(
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		setter := &models.SeasonDriverSetter{
-			DriverID:       omit.From(driverID),
-			SeasonID:       omit.From(seasonID),
-			CarModelID:     omit.From(carModelID),
-			CarNumber:      omit.From(req.Msg.GetCarNumber()),
-			IsGuestStarter: omit.From(req.Msg.GetIsGuestDriver()),
-			CreatedBy:      omit.From(s.execUser(ctx)),
-			UpdatedBy:      omit.From(s.execUser(ctx)),
+			DriverID:          omit.From(driverID),
+			SeasonID:          omit.From(seasonID),
+			CarModelVariantID: omit.From(carModelVariantID),
+			CarNumber:         omit.From(req.Msg.GetCarNumber()),
+			IsGuestStarter:    omit.From(req.Msg.GetIsGuestDriver()),
+			CreatedBy:         omit.From(s.execUser(ctx)),
+			UpdatedBy:         omit.From(s.execUser(ctx)),
 		}
 		if req.Msg.HasJoinedAt() {
 			setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())

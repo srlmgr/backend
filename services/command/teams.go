@@ -53,8 +53,8 @@ func (s *service) CreateTeam(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateTeam")
 	setter := (teamSetterBuilder{}).Build(req.Msg)
-	if carModelID := int32(req.Msg.GetCarModelId()); carModelID > 0 {
-		setter.CarModelID = omitnull.From(carModelID)
+	if carModelVariantID := int32(req.Msg.GetCarModelVariantId()); carModelVariantID > 0 {
+		setter.CarModelVariantID = omitnull.From(carModelVariantID)
 	}
 	if carNumber := req.Msg.GetCarNumber(); carNumber != "" {
 		setter.CarNumber = omitnull.From(carNumber)
@@ -93,8 +93,8 @@ func (s *service) UpdateTeam(
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateTeam")
 	setter := (teamSetterBuilder{}).Build(req.Msg)
-	if carModelID := int32(req.Msg.GetCarModelId()); carModelID > 0 {
-		setter.CarModelID = omitnull.From(carModelID)
+	if carModelVariantID := int32(req.Msg.GetCarModelVariantId()); carModelVariantID > 0 {
+		setter.CarModelVariantID = omitnull.From(carModelVariantID)
 	}
 	if carNumber := req.Msg.GetCarNumber(); carNumber != "" {
 		setter.CarNumber = omitnull.From(carNumber)
