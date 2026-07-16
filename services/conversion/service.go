@@ -390,7 +390,7 @@ func (s *Service) CarManufacturerToCarManufacturer(
 
 // CarModelToCarModel converts a CarModel model to a CarModel message.
 //
-//nolint:lll // readability
+
 func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel {
 	if model == nil {
 		return nil
