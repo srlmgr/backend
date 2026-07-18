@@ -48,7 +48,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		if config.EnableTelemetry {
+		if config.TelemetryEnabled {
 			var err error
 			if telemetry, err = otel.SetupTelemetry(
 				otel.WithTelemetryOutput(otel.ParseTelemetryOutput(config.OtelOutput)),
@@ -96,8 +96,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file (default is $HOME/.backend.yml)")
 
-	rootCmd.PersistentFlags().BoolVar(&config.EnableTelemetry,
-		"enable-telemetry",
+	rootCmd.PersistentFlags().BoolVar(&config.TelemetryEnabled,
+		"telemetry-enabled",
 		false,
 		"enables telemetry")
 
@@ -139,7 +139,7 @@ func registerAuthnFlags(cmd *cobra.Command) {
 		true,
 		"enable request authentication")
 	cmd.PersistentFlags().BoolVar(&config.IDPEnabled,
-		"enable-idp",
+		"idp-enabled",
 		false,
 		"enable backend-for-frontend OIDC authentication")
 	cmd.PersistentFlags().StringVar(&config.IDPIssuerURL,

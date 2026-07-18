@@ -3,12 +3,15 @@ package config
 import "time"
 
 var (
-	EnableTelemetry bool
-	DBURI           string
-	LogConfig       string
-	LogLevel        string
-	OtelOutput      string // output for otel-logger (stdout, grpc)
-	ServerAddress   string
+	TelemetryEnabled  bool
+	DBURI             string
+	LogConfig         string
+	LogLevel          string
+	OtelOutput        string // output for otel-logger (stdout, grpc)
+	GRPCServerAddress string // serves gRPC API
+	HTTPServerAddress string // serves HTTP API for HTML rendering
+	GRPCEnabled       bool
+	HTMLEnabled       bool
 
 	AuthnEnabled               bool
 	IDPEnabled                 bool
