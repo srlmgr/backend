@@ -24,6 +24,9 @@ Your job is to make safe, minimal, production-ready code changes and verify them
     - `version/` for version metadata
     - `internal/` for core logic and utilities
     - `db/migrate/migrations/` for database migrations
+    - `grpc/` for gRPC related code
+    - `grpc/services/` for gRPC service implementations
+    - `html/` for HTML server and templates
 - For CLI/config, follow the existing Cobra + Viper binding pattern.
 - Prefer the local logging and telemetry wrappers instead of direct external usage in app code.
 - Prefer standard library solutions over adding dependencies.
