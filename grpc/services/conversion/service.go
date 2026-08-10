@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
+	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
 	"connectrpc.com/connect"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -18,16 +19,17 @@ import (
 	mytypes "github.com/srlmgr/backend/db/mytypes"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository/repoerrors"
+	"github.com/srlmgr/backend/service"
 )
 
-// Service converts database models to gRPC messages.
-type Service struct {
+// ConvService converts database models to gRPC messages.
+type ConvService struct {
 	logger *log.Logger
 }
 
 // New creates a new conversion service.
-func New() *Service {
-	return &Service{logger: log.New()}
+func New() *ConvService {
+	return &ConvService{logger: log.New()}
 }
 
 // ImportFormatsToProto converts persisted import format strings to protobuf enums.
@@ -146,8 +148,38 @@ func ImportConfigsFromProto(
 	return out, nil
 }
 
+//nolint:whitespace // editor/linter issue
+func (s *ConvService) ServiceStandingsToProto(
+	standings *service.Standing,
+) *queryv1.Standing {
+	return &queryv1.Standing{
+		StandingsType: queryv1.StandingsType(standings.Type),
+		ReferenceId:   uint32(standings.ReferenceID),
+		CarClassId:    uint32(standings.CarClassID),
+		EventId:       uint32(standings.EventID),
+		Data: &commonv1.StandingData{
+			Position:       standings.Data.Position,
+			PrevPosition:   standings.Data.PrevPosition,
+			TotalPoints:    standings.Data.TotalPoints,
+			BonusPoints:    standings.Data.BonusPoints,
+			PenaltyPoints:  standings.Data.PenaltyPoints,
+			NumEvents:      standings.Data.NumEvents,
+			NumRaces:       standings.Data.NumRaces,
+			NumPenaltyFree: standings.Data.NumPenaltyFree,
+			NumWins:        standings.Data.NumWins,
+			NumPodiums:     standings.Data.NumPodiums,
+			NumTop5:        standings.Data.NumTop5,
+			NumTop10:       standings.Data.NumTop10,
+		},
+	}
+}
+
 // RacingSimToSimulation converts a RacingSim model to a Simulation message.
-func (s *Service) RacingSimToSimulation(model *models.RacingSim) *commonv1.Simulation {
+//
+//nolint:whitespace // editor/linter issue
+func (s *ConvService) RacingSimToSimulation(
+	model *models.RacingSim,
+) *commonv1.Simulation {
 	if model == nil {
 		return nil
 	}
@@ -176,7 +208,7 @@ func racingSimImportFormats(raw json.RawMessage) []mytypes.RaceSimImportFormat {
 // PointSystemToPointSystem converts a PointSystem model to a PointSystem message.
 //
 //nolint:lll // readability
-func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.PointSystem {
+func (s *ConvService) PointSystemToPointSystem(model *models.PointSystem) *commonv1.PointSystem {
 	if model == nil {
 		return nil
 	}
@@ -196,12 +228,12 @@ func (s *Service) PointSystemToPointSystem(model *models.PointSystem) *commonv1.
 // PointRuleToPointRule converts a PointRule model to a PointRule message.
 // The full conversion from MetadataJSON to proto fields is deferred to
 // a follow-up issue.
-func (s *Service) PointRuleToPointRule(_ *models.PointRule) *commonv1.PointRule {
+func (s *ConvService) PointRuleToPointRule(_ *models.PointRule) *commonv1.PointRule {
 	return &commonv1.PointRule{}
 }
 
 // SeriesToSeries converts a Series model to a Series message.
-func (s *Service) SeriesToSeries(model *models.Series) *commonv1.Series {
+func (s *ConvService) SeriesToSeries(model *models.Series) *commonv1.Series {
 	if model == nil {
 		return nil
 	}
@@ -216,7 +248,7 @@ func (s *Service) SeriesToSeries(model *models.Series) *commonv1.Series {
 }
 
 // SeasonToSeason converts a Season model to a Season message.
-func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
+func (s *ConvService) SeasonToSeason(model *models.Season) *commonv1.Season {
 	if model == nil {
 		return nil
 	}
@@ -250,7 +282,7 @@ func (s *Service) SeasonToSeason(model *models.Season) *commonv1.Season {
 // RacingSimsToSimulations converts RacingSim models to Simulation messages.
 //
 //nolint:lll // readability
-func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1.Simulation {
+func (s *ConvService) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1.Simulation {
 	if len(items) == 0 {
 		return []*commonv1.Simulation{}
 	}
@@ -267,7 +299,7 @@ func (s *Service) RacingSimsToSimulations(items []*models.RacingSim) []*commonv1
 }
 
 // TrackToTrack converts a Track model to a Track message.
-func (s *Service) TrackToTrack(model *models.Track) *commonv1.Track {
+func (s *ConvService) TrackToTrack(model *models.Track) *commonv1.Track {
 	if model == nil {
 		return nil
 	}
@@ -285,7 +317,7 @@ func (s *Service) TrackToTrack(model *models.Track) *commonv1.Track {
 // TrackLayoutToTrackLayout converts a TrackLayout model to a TrackLayout message.
 //
 //nolint:lll // readability
-func (s *Service) TrackLayoutToTrackLayout(model *models.TrackLayout) *commonv1.TrackLayout {
+func (s *ConvService) TrackLayoutToTrackLayout(model *models.TrackLayout) *commonv1.TrackLayout {
 	if model == nil {
 		return nil
 	}
@@ -300,7 +332,7 @@ func (s *Service) TrackLayoutToTrackLayout(model *models.TrackLayout) *commonv1.
 }
 
 //nolint:whitespace // editor/linter issue
-func (s *Service) SimulationTrackAliasToProto(
+func (s *ConvService) SimulationTrackAliasToProto(
 	items []*models.SimulationTrackLayoutAlias,
 ) []*commonv1.SimulationAliases {
 	if len(items) == 0 {
@@ -336,7 +368,7 @@ func (s *Service) SimulationTrackAliasToProto(
 }
 
 //nolint:whitespace // editor/linter issue
-func (s *Service) SimulationCarAliasToProto(
+func (s *ConvService) SimulationCarAliasToProto(
 	items []*models.SimulationCarAlias,
 ) []*commonv1.SimulationAliases {
 	if len(items) == 0 {
@@ -375,7 +407,7 @@ func (s *Service) SimulationCarAliasToProto(
 // CarManufacturer message.
 //
 //nolint:whitespace // editor/linter issue
-func (s *Service) CarManufacturerToCarManufacturer(
+func (s *ConvService) CarManufacturerToCarManufacturer(
 	model *models.CarManufacturer,
 ) *commonv1.CarManufacturer {
 	if model == nil {
@@ -391,7 +423,7 @@ func (s *Service) CarManufacturerToCarManufacturer(
 // CarModelToCarModel converts a CarModel model to a CarModel message.
 //
 
-func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel {
+func (s *ConvService) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel {
 	if model == nil {
 		return nil
 	}
@@ -407,7 +439,7 @@ func (s *Service) CarModelToCarModel(model *models.CarModel) *commonv1.CarModel 
 // to a CarModelVariant message.
 //
 //nolint:whitespace // editor/linter issue
-func (s *Service) CarModelVariantToCarModelVariant(
+func (s *ConvService) CarModelVariantToCarModelVariant(
 	model *models.CarModelVariant,
 ) *commonv1.CarModelVariant {
 	if model == nil {
@@ -422,7 +454,7 @@ func (s *Service) CarModelVariantToCarModelVariant(
 }
 
 // CarClassToCarClass converts a CarClass model to a CarClass message.
-func (s *Service) CarClassToCarClass(model *models.CarClass) *commonv1.CarClass {
+func (s *ConvService) CarClassToCarClass(model *models.CarClass) *commonv1.CarClass {
 	if model == nil {
 		return nil
 	}
@@ -434,7 +466,7 @@ func (s *Service) CarClassToCarClass(model *models.CarClass) *commonv1.CarClass 
 }
 
 // DriverToDriver converts a Driver model to a Driver message.
-func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
+func (s *ConvService) DriverToDriver(model *models.Driver) *commonv1.Driver {
 	if model == nil {
 		return nil
 	}
@@ -451,7 +483,7 @@ func (s *Service) DriverToDriver(model *models.Driver) *commonv1.Driver {
 // message.
 //
 //nolint:whitespace // editor/linter issue
-func (s *Service) SeasonDriverToSeasonDriver(
+func (s *ConvService) SeasonDriverToSeasonDriver(
 	model *models.SeasonDriver,
 ) *commonv1.SeasonDriver {
 	if model == nil {
@@ -475,7 +507,7 @@ func (s *Service) SeasonDriverToSeasonDriver(
 }
 
 // TeamToTeam converts a Team model to a Team message.
-func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
+func (s *ConvService) TeamToTeam(model *models.Team) *commonv1.Team {
 	if model == nil {
 		return nil
 	}
@@ -503,7 +535,7 @@ func (s *Service) TeamToTeam(model *models.Team) *commonv1.Team {
 // EventToEvent converts an Event model to an Event message.
 //
 //nolint:funlen // many fields to convert and validate
-func (s *Service) EventToEvent(model *models.Event) *commonv1.Event {
+func (s *ConvService) EventToEvent(model *models.Event) *commonv1.Event {
 	if model == nil {
 		return nil
 	}
@@ -582,7 +614,7 @@ func isKnownEventProcessingState(processingState string) bool {
 // ResultEntryToResultEntry converts a ResultEntry model to a ResultEntry message.
 //
 //nolint:lll // readability
-func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.ResultEntry {
+func (s *ConvService) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.ResultEntry {
 	if model == nil {
 		return nil
 	}
@@ -625,7 +657,7 @@ func (s *Service) ResultEntryToResultEntry(model *models.ResultEntry) *commonv1.
 
 // RaceToRace converts a Race model to a Race message.
 // Unknown session_type strings map to UNSPECIFIED and emit a warning log.
-func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
+func (s *ConvService) RaceToRace(model *models.Race) *commonv1.Race {
 	if model == nil {
 		return nil
 	}
@@ -657,7 +689,7 @@ func (s *Service) RaceToRace(model *models.Race) *commonv1.Race {
 
 // RaceGridToRaceGrid converts a RaceGrid model to a RaceGrid message.
 // Unknown session_type strings map to UNSPECIFIED and emit a warning log.
-func (s *Service) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid {
+func (s *ConvService) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid {
 	if model == nil {
 		return nil
 	}
@@ -688,7 +720,7 @@ func (s *Service) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceGrid 
 }
 
 //nolint:gocyclo,funlen,lll // many different error types to check for
-func (s *Service) MapErrorToRPCCode(err error) connect.Code {
+func (s *ConvService) MapErrorToRPCCode(err error) connect.Code {
 	// Map specific error types to gRPC codes here.
 	if errors.Is(err, repoerrors.ErrNotFound) {
 		return connect.CodeNotFound

@@ -59,7 +59,7 @@ type pointRuleMetadata struct {
 	Policy          json.RawMessage `json:"policy,omitempty"`
 }
 
-func (s *Service) pointPolicyFromString(value string) commonv1.PointPolicy {
+func (s *ConvService) pointPolicyFromString(value string) commonv1.PointPolicy {
 	policy, ok := commonv1.PointPolicy_value[value]
 	if !ok {
 		return commonv1.PointPolicy_POINT_POLICY_UNSPECIFIED
@@ -90,7 +90,7 @@ func (s *Service) pointPolicyFromString(value string) commonv1.PointPolicy {
 //	Error if proto marshaling or JSON encoding fails
 //
 //nolint:whitespace // editor/linter issue
-func (s *Service) MarshalPointRuleMetadata(
+func (s *ConvService) MarshalPointRuleMetadata(
 	raceSettingName string,
 	policy *commonv1.PointPolicySettings,
 ) (bobtypes.JSON[json.RawMessage], error) {
@@ -176,7 +176,7 @@ func decodePointRuleMetadata(raw json.RawMessage) (pointRuleMetadata, error) {
 //	       caller logs warning)
 //
 //nolint:whitespace // editor/linter issue
-func (s *Service) pointPolicySettingsFromRule(
+func (s *ConvService) pointPolicySettingsFromRule(
 	rule *models.PointRule,
 ) (string, *commonv1.PointPolicySettings, error) {
 	if rule == nil {
@@ -232,7 +232,7 @@ func (s *Service) pointPolicySettingsFromRule(
 //	Reconstructed race settings; nil if no rules; logs warnings on decode errors
 //
 //nolint:funlen,whitespace // orchestration requires multiple steps
-func (s *Service) pointSystemRaceSettings(
+func (s *ConvService) pointSystemRaceSettings(
 	model *models.PointSystem,
 ) []*commonv1.PointRaceSettings {
 	if model == nil || len(model.R.PointRules) == 0 {

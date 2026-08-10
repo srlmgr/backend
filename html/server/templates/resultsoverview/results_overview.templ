@@ -1,0 +1,83 @@
+package resultsoverview
+
+import "github.com/srlmgr/backend/html/server/model"
+
+import "strings"
+
+import seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
+import seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
+
+import baseTempl "github.com/srlmgr/backend/html/server/templates"
+
+func abbrev(arg string) string {
+	return strings.ToUpper(arg[:3])
+}
+
+templ PrimaryOverview(c *model.SeasonResultsOverviewContainer) {
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				<th class="border border-gray-300 px-4 py-2">Num</th>
+				if c.ServiceData.Season.IsTeamBased {
+					<th class="border border-gray-300 px-4 py-2">Team</th>
+				} else {
+					<th class="border border-gray-300 px-4 py-2">Fahrer</th>
+				}
+				for _,s:= range c.Events {
+					<th class="border border-gray-300 px-4 py-2">{ abbrev(s.Name) }</th>
+				}
+				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.ServiceData.PrimarySummaries {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2"></td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID) }</td>
+					for _,e:= range c.Events {
+						<td class="border border-gray-300 px-4 py-2">{ c.PrimaryMatrix(s.ReferenceID, e.ID) }</td>
+					}
+					<td class="border border-gray-300 px-4 py-2">{ s.Points.TotalPoints }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+templ SecondaryOverview(c *model.SeasonResultsOverviewContainer) {
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				// note: secondary is vice versa to primary
+				if c.ServiceData.Season.IsTeamBased {
+					<th class="border border-gray-300 px-4 py-2">Fahrer</th>
+				} else {
+					<th class="border border-gray-300 px-4 py-2">Team</th>
+				}
+				for _,s:= range c.Events {
+					<th class="border border-gray-300 px-4 py-2">{ abbrev(s.Name) }</th>
+				}
+				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.ServiceData.SecondarySummaries {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					for _,e:= range c.Events {
+						<td class="border border-gray-300 px-4 py-2">{ c.SecondaryMatrix(s.ReferenceID, e.ID) }</td>
+					}
+					<td class="border border-gray-300 px-4 py-2">{ s.Points.TotalPoints }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+templ OverviewContent(c *model.SeasonResultsOverviewContainer, contents templ.Component) {
+	@seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer)
+	@seasonsTempl.SeasonsNav(c.NavParam())
+	@seasonsTempl.SeasonsMenu(c.NavParam())
+	@baseTempl.CarClassNav(c.NavParam())
+	@contents
+}

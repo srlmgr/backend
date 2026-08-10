@@ -250,7 +250,7 @@ func registerConnectHandlers(
 	logger *log.Logger,
 	opts ...connect.HandlerOption,
 ) {
-	tracer := otel.Tracer("backend.server")
+	tracer := otel.Tracer("backend.grpc")
 	adminPath, adminHandler := adminv1connect.NewAdminServiceHandler(
 		adminservice.New(repo, txManager, logger.Named("services.admin")),
 		opts...,

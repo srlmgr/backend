@@ -386,7 +386,7 @@ func (r *carClassesRepository) LoadBySeasonID(
 			On(models.SeasonCarClasses.Columns.CarClassID.EQ(models.CarClasses.Columns.ID)),
 		sm.Where(models.SeasonCarClasses.Columns.SeasonID.EQ(psql.Arg(seasonID))),
 		sm.OrderBy(models.SeasonCarClasses.Columns.Pos).Asc(),
-	).All(ctx, bob.Debug(r.getExecutor(ctx)))
+	).All(ctx, r.getExecutor(ctx))
 }
 
 func (r *carClassesRepository) DeleteByID(ctx context.Context, id int32) error {

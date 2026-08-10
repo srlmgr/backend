@@ -1,0 +1,57 @@
+package standings
+
+import (
+	model "github.com/srlmgr/backend/html/server/model"
+	baseTempl "github.com/srlmgr/backend/html/server/templates"
+)
+
+templ secondaryNav(c *model.SeasonStandingsContainer) {
+	@eventNav(c)
+	if c.ServiceData.Season.IsMulticlass {
+		@baseTempl.CarClassNav(c.NavParam())
+	}
+}
+
+templ SecondaryDriverStandings(c *model.SeasonStandingsContainer) {
+	@secondaryNav(c)
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				<th class="border border-gray-300 px-4 py-2">Position</th>
+				<th class="border border-gray-300 px-4 py-2">Fahrer</th>
+				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.ServiceData.Secondary {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.Position }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+templ SecondaryTeamStandings(c *model.SeasonStandingsContainer) {
+	@secondaryNav(c)
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				<th class="border border-gray-300 px-4 py-2">Position</th>
+				<th class="border border-gray-300 px-4 py-2">Team</th>
+				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.ServiceData.Secondary {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.Position }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

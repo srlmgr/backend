@@ -20,7 +20,7 @@ type service struct {
 	logger     *log.Logger
 	repo       rootrepo.Repository
 	txMgr      rootrepo.TransactionManager
-	conversion *conversion.Service
+	conversion *conversion.ConvService
 	processor  *importer.Factory
 }
 

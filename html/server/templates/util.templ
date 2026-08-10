@@ -1,0 +1,43 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/srlmgr/backend/html/server/model"
+	"github.com/srlmgr/backend/html/server/util"
+)
+
+func ZebraRow(i int) string {
+	if i%2 == 0 {
+		return "bg-white"
+	}
+	return "bg-gray-100"
+}
+
+templ dummy() {
+}
+
+func classParam(c model.CommonNav, classID int) string {
+	qParam := util.EnsureQueryParam(c.QueryParam(), "classID", fmt.Sprintf("%d", classID))
+	return qParam.Encode()
+}
+func carClassLink(c model.CommonNav, classID int) string {
+	return fmt.Sprintf("%s?%s",
+		c.CurrentPath(),
+		classParam(c, classID))
+}
+
+templ CarClassNav(c model.SeasonNav) {
+	if c.Season().IsMulticlass {
+		<nav class="bg-gray-800 text-white p-4">
+			<div class="container mx-auto flex justify-between items-center">
+				for _, class := range c.CarClasses() {
+					<a
+						href={ carClassLink(c, class.ID) }
+						class="text-lg font-semibold"
+					>{ class.Name }</a>
+				}
+			</div>
+		</nav>
+	}
+}

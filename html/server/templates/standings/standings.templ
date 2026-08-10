@@ -1,0 +1,37 @@
+package standings
+
+import (
+	"fmt"
+	"github.com/srlmgr/backend/html/server/util"
+
+	model "github.com/srlmgr/backend/html/server/model"
+	seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
+	seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
+)
+
+func eventLink(c model.CommonNav, eventID int) string {
+	qParam := util.EnsureQueryParam(c.QueryParam(), "eventID", fmt.Sprintf("%d", eventID))
+	return fmt.Sprintf("%s?%s",
+		c.CurrentPath(),
+		qParam.Encode())
+}
+
+templ eventNav(c *model.SeasonStandingsContainer) {
+	<nav class="bg-gray-800 text-white p-4">
+		<div class="container mx-auto flex justify-between items-center">
+			for _, e := range c.Events {
+				<a
+					href={ eventLink(c.NavParam(), e.ID) }
+					class="text-lg font-semibold"
+				>{ e.Name }</a>
+			}
+		</div>
+	</nav>
+}
+
+templ StandingsContent(c *model.SeasonStandingsContainer, contents templ.Component) {
+	@seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer)
+	@seasonsTempl.SeasonsNav(c.NavParam())
+	@seasonsTempl.SeasonsMenu(c.NavParam())
+	@contents
+}

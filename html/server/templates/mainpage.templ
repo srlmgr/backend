@@ -1,0 +1,46 @@
+package templates
+
+import ()
+
+templ Header() {
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>VRDB</title>
+	</head>
+}
+
+templ nav() {
+	<nav class="bg-gray-800 text-white p-4">
+		<div class="container mx-auto flex justify-between items-center">
+			<a href="/" class="text-lg font-semibold">Home</a>
+			<a href="/vrdb/serieses" class="text-lg font-semibold">Series</a>
+		</div>
+	</nav>
+}
+
+templ footer() {
+	<footer class="bg-gray-800 text-white p-4">
+		<div class="container mx-auto text-center">
+			&copy; 2026 Markus Papenbrock
+		</div>
+	</footer>
+}
+
+templ Layout(contents templ.Component) {
+	@Header()
+	<body class="flex flex-col h-full">
+		@nav()
+		<main class="flex-1 container ">
+			@contents
+		</main>
+		@footer()
+	</body>
+}
+
+templ HTML(contents templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en">
+		@Layout(contents)
+	</html>
+}
