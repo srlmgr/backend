@@ -45,6 +45,10 @@
           "editor.defaultFormatter": "golang.go",
           "editor.formatOnSave": true
         },
+        "[templ]": {
+          "editor.defaultFormatter": "a-h.templ",
+          "editor.formatOnSave": true
+        },
         "terminal.integrated.profiles.linux": {
           "Server": {
             "path": "/bin/bash",
@@ -83,7 +87,8 @@
         "github.vscode-pull-request-github",
         "EditorConfig.EditorConfig",
         "redhat.vscode-yaml",
-        "cschleiden.vscode-github-actions"
+        "cschleiden.vscode-github-actions",
+        "a-h.templ"
       ]
     }
   },

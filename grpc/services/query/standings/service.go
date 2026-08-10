@@ -8,14 +8,17 @@ import (
 	"github.com/srlmgr/backend/grpc/services/conversion"
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/service"
+	gsImpl "github.com/srlmgr/backend/service/impl"
 )
 
-type service struct {
+type standingsService struct {
 	queryv1connect.UnimplementedStandingsServiceHandler
 	logger     *log.Logger
 	repo       rootrepo.Repository
-	conversion *conversion.Service
+	conversion *conversion.ConvService
 	tracer     trace.Tracer
+	svc        service.Service
 }
 
 // New creates the standings query service handler.
@@ -26,10 +29,11 @@ func New(
 	logger *log.Logger,
 	tracer trace.Tracer,
 ) queryv1connect.StandingsServiceHandler {
-	return &service{
+	return &standingsService{
 		logger:     logger,
 		repo:       repo,
 		conversion: conversion.New(),
 		tracer:     tracer,
+		svc:        gsImpl.New(repo, logger, tracer),
 	}
 }

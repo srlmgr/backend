@@ -12,6 +12,8 @@ var (
 	HTTPServerAddress string // serves HTTP API for HTML rendering
 	GRPCEnabled       bool
 	HTMLEnabled       bool
+	HTMLExternalURL   string // external URL for HTML server (used for navigation links)
+	HTMLContextPart   string // context part for endpoints (used for navigation links)
 
 	AuthnEnabled               bool
 	IDPEnabled                 bool

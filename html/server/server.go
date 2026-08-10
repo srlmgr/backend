@@ -12,18 +12,34 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/html/server/service"
+	"github.com/srlmgr/backend/html/server/util"
 	"github.com/srlmgr/backend/log"
+	"github.com/srlmgr/backend/repository/postgres"
 )
 
 const shutdownTimeout = 10 * time.Second
 
 const traceIDHeader = "x-trace-id"
 
+// use for ContextPart is the base path for all HTML server routes.
+// Deprecated:
+// use util.InitPathContext instead
+var contextPart = "/vrdb"
+
+// ExternalURL is the base URL for all HTML server routes.
+// Deprecated:
+// use util.InitPathContext instead
+var externalURL = ""
+
 // Config configures the HTTP server.
 type Config struct {
-	Address string
+	Address     string
+	ExternalURL string
+	ContextPart string
 }
 
 // Run starts the HTTP server and blocks until shutdown completes.
@@ -54,13 +70,22 @@ func newHTTPServer(
 	pool *pgxpool.Pool,
 	logger *log.Logger,
 ) (*http.Server, error) {
-	_ = pool
-
+	r := postgres.New(pool)
+	tracer := otel.Tracer("backend.http")
+	externalURL = cfg.ExternalURL // to be removed
+	contextPart = cfg.ContextPart // to be removed
+	util.InitPathContext(cfg.ContextPart, cfg.ExternalURL)
+	s := service.NewService(r, logger, tracer, cfg.ExternalURL)
 	mux := http.NewServeMux()
-
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+	_ = s
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	registerMainRoutes(mux, s)
+	registerSeriesesRoutes(mux, s)
+	registerParticipantsRoutes(mux, s)
+	registerSeasonResultsOverviewRoutes(mux, s)
+	registerStandingsRoutes(mux, s)
 
 	handler := http.Handler(mux)
 	handler = newTraceIDHeaderMiddleware()(handler)

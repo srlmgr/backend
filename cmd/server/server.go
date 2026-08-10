@@ -52,6 +52,14 @@ func NewServerCmd() *cobra.Command {
 		"html-enabled",
 		true,
 		"enable the HTML server")
+	cmd.Flags().StringVar(&config.HTMLExternalURL,
+		"html-external-url",
+		"",
+		"Use this URL for every navigation link")
+	cmd.Flags().StringVar(&config.HTMLContextPart,
+		"html-context-part",
+		"/vrdb",
+		"Context part for HTML server endpoints (used for navigation links)")
 
 	return cmd
 }
@@ -129,6 +137,8 @@ func (s *server) startGRPC() error {
 
 func (s *server) startHTML() error {
 	return htmlserver.Run(s.ctx, s.pool, &htmlserver.Config{
-		Address: config.HTTPServerAddress,
+		Address:     config.HTTPServerAddress,
+		ExternalURL: config.HTMLExternalURL,
+		ContextPart: config.HTMLContextPart,
 	})
 }

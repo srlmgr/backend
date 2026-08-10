@@ -1,0 +1,84 @@
+package participants
+
+import "github.com/srlmgr/backend/html/server/model"
+import "fmt"
+import seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
+import seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
+import baseTempl "github.com/srlmgr/backend/html/server/templates"
+
+templ seasonMenu(c *model.SeasonParticipantsContainer, contextPath string) {
+	<nav class="bg-gray-800 text-white p-4">
+		<div class="container mx-auto flex justify-between items-center">
+			if c.Season.IsTeamBased {
+				<a href={ fmt.Sprintf("%s/seasons/%d/standings/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teamwertung</a>
+				<a href={ fmt.Sprintf("%s/seasons/%d/standings/secondary", contextPath, c.Season.ID) } class="text-lg font-semibold">Fahrerwertung</a>
+				<a href={ fmt.Sprintf("%s/seasons/%d/participants/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teilnehmer</a>
+			} else {
+				<a href={ fmt.Sprintf("%s/seasons/%d/standings/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Fahrerwertung</a>
+				<a href={ fmt.Sprintf("%s/seasons/%d/standings/secondary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teamwertung</a>
+				<a href={ fmt.Sprintf("%s/seasons/%d/participants/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teilnehmer</a>
+			}
+		</div>
+	</nav>
+}
+
+templ PrimarySeasonDriver(c *model.SeasonParticipantsContainer) {
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				<th class="border border-gray-300 px-4 py-2">Num</th>
+				<th class="border border-gray-300 px-4 py-2">Fahrer</th>
+				if c.Season.IsMulticlass {
+					<th class="border border-gray-300 px-4 py-2">Car Class</th>
+				}
+				<th class="border border-gray-300 px-4 py-2">Car</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.PrimaryParticipants {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2">{ s.CarNumber() }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Name() }</td>
+					if c.Season.IsMulticlass {
+						<td class="border border-gray-300 px-4 py-2">{ s.CarClass() }</td>
+					}
+					<td class="border border-gray-300 px-4 py-2">{ s.CarName() }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+templ PrimarySeasonTeam(c *model.SeasonParticipantsContainer) {
+	<table class="table-auto w-full border-collapse border border-gray-300">
+		<thead>
+			<tr class="bg-gray-200">
+				<th class="border border-gray-300 px-4 py-2">Num</th>
+				<th class="border border-gray-300 px-4 py-2">Team</th>
+				if c.Season.IsMulticlass {
+					<th class="border border-gray-300 px-4 py-2">Car Class</th>
+				}
+				<th class="border border-gray-300 px-4 py-2">Car</th>
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range c.PrimaryParticipants {
+				<tr class={ baseTempl.ZebraRow(i) }>
+					<td class="border border-gray-300 px-4 py-2">{ s.CarNumber() }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Name() }</td>
+					if c.Season.IsMulticlass {
+						<td class="border border-gray-300 px-4 py-2">{ s.CarClass() }</td>
+					}
+					<td class="border border-gray-300 px-4 py-2">{ s.CarName() }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+templ ParticipantsContent(c *model.SeasonParticipantsContainer, contents templ.Component) {
+	@seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer)
+	@seasonsTempl.SeasonsNav(c.NavParam())
+	@seasonsTempl.SeasonsMenu(c.NavParam())
+	@contents
+}

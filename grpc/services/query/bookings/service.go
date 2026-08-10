@@ -14,7 +14,7 @@ type service struct {
 	queryv1connect.UnimplementedBookingsServiceHandler
 	logger     *log.Logger
 	repo       rootrepo.Repository
-	conversion *conversion.Service
+	conversion *conversion.ConvService
 	tracer     trace.Tracer
 }
 
