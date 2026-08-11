@@ -30,107 +30,57 @@ func (s *serviceImpl) GetSeasonParticipants(
 	if err != nil {
 		return nil, err
 	}
-
-	carModelVariants, err := s.r.Cars().CarModelVariants().LoadBySeasonID(ctx, season.ID)
-	if err != nil {
-		return nil, err
-	}
-	cmvLookup := make(map[int32]*dbModels.CarModelVariant)
-	for _, cmv := range carModelVariants {
-		cmvLookup[cmv.ID] = cmv
-	}
 	ret := &model.SeasonParticipantsContainer{
 		SeasonsContainer: seasonContainer,
 		Season:           season,
 	}
-	seasonCarClasses, err := s.r.Cars().CarClasses().LoadBySeasonID(ctx, season.ID)
+
+	ec, err := newSeasonEntryComposer(s.r, ctx, season.ID)
 	if err != nil {
 		return nil, err
 	}
-	ccLookup := make(map[int32]*dbModels.CarClass)
-	cmv2ccLookup := make(map[int32]*dbModels.CarClass)
-	for _, cc := range seasonCarClasses {
-		ccLookup[cc.ID] = cc
-		cmvInClass, err := s.r.Cars().CarModelVariants().LoadByCarClassID(ctx, cc.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, cmv := range cmvInClass {
-			cmv2ccLookup[cmv.ID] = cc
-		}
-	}
 	if season.IsTeamBased {
+		teamLookup := ec.CreateTeamLookup(ctx)
 		ret.PrimaryParticipants = lo.Map(teams,
 			func(d *dbModels.Team, _ int) model.Participant {
-				cmv, _ := lo.Coalesce(
-					cmvLookup[d.CarModelVariantID.GetOrZero()],
-					&dbModels.CarModelVariant{Name: "n.a."})
-
-				cClass, _ := lo.Coalesce(
-					cmv2ccLookup[cmv.ID],
-					&dbModels.CarClass{Name: "n.a."})
-				return &participantImpl{
-					id:        d.ID,
-					carNumber: d.CarNumber.GetOr("n.a."),
-					name:      d.Name,
-					carClass:  cClass.Name,
-					carName:   cmv.Name,
+				return entryBackedParticipant{
+					entry: teamLookup[d.ID],
 				}
 			})
 	} else {
-		ids := lo.Map(seasonDrivers, func(d *dbModels.SeasonDriver, _ int) int32 {
-			return d.DriverID
-		})
-		driverMap, err := s.resolveForDriverIDs(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
+		driverLookup := ec.CreateDriverLookup(ctx)
 		ret.PrimaryParticipants = lo.Map(seasonDrivers,
 			func(d *dbModels.SeasonDriver, _ int) model.Participant {
-				cmv, _ := lo.Coalesce(
-					cmvLookup[d.CarModelVariantID],
-					&dbModels.CarModelVariant{Name: "n.a."})
-				cClass, _ := lo.Coalesce(
-					cmv2ccLookup[cmv.ID],
-					&dbModels.CarClass{Name: "n.a."})
-				return &participantImpl{
-					id:        d.DriverID,
-					carNumber: d.CarNumber,
-					carName:   cmvLookup[d.CarModelVariantID].Name,
-					name:      driverMap[d.DriverID],
-					carClass:  cClass.Name,
+				return entryBackedParticipant{
+					entry: driverLookup[d.DriverID],
 				}
 			})
 	}
 	return ret, nil
 }
 
-type participantImpl struct {
-	id        int32
-	carNumber string
-	name      string
-	carClass  string
-	carName   string
+type entryBackedParticipant struct {
+	entry *model.Entry
 }
 
-func (p *participantImpl) ID() int32 {
-	return p.id
+func (p entryBackedParticipant) ID() int32 {
+	return p.entry.ID
 }
 
-func (p *participantImpl) CarNumber() string {
-	return p.carNumber
+func (p entryBackedParticipant) CarNumber() string {
+	return p.entry.CarNum
 }
 
-func (p *participantImpl) CarClass() string {
-	return p.carClass
+func (p entryBackedParticipant) CarClass() string {
+	return p.entry.CarClass
 }
 
-func (p *participantImpl) CarName() string {
-	return p.carName
+func (p entryBackedParticipant) CarName() string {
+	return p.entry.CarName
 }
 
-func (p *participantImpl) Name() string {
-	return p.name
+func (p entryBackedParticipant) Name() string {
+	return p.entry.Name
 }
 
-var _ model.Participant = (*participantImpl)(nil)
+var _ model.Participant = (*entryBackedParticipant)(nil)

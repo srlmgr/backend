@@ -9,6 +9,15 @@ import (
 )
 
 type (
+	// contains common data for an entry in tables. templates uses these data
+	Entry struct {
+		ID       int32 // driverID or teamID
+		CarNum   string
+		Name     string
+		Rookie   bool
+		CarName  string
+		CarClass string
+	}
 	CarClass struct {
 		ID   int
 		Name string
@@ -43,8 +52,8 @@ type (
 		CurrentEventID   int
 		CurrentSkipMode  string
 		CarClasses       []*CarClass
-		PrimaryLookup    map[int32]string
-		SecondaryLookup  map[int32]string
+		PrimaryLookup    map[int32]*Entry
+		SecondaryLookup  map[int32]*Entry
 		Events           []*Event
 		NavData          SeasonNav
 	}
@@ -61,15 +70,14 @@ type (
 		Teams                 []*dbModels.Team
 		PrimaryParticipants   []Participant
 		SecondaryParticipants []Participant
-		PrimaryLookup         map[int32]string
-		SecondaryLookup       map[int32]string
-		NavData               SeasonNav
+
+		NavData SeasonNav
 	}
 	SeasonResultsOverviewContainer struct {
 		SeasonsContainer      *SeasonsContainer
 		ServiceData           *service.SummaryContainer
-		PrimaryLookup         map[int32]string
-		SecondaryLookup       map[int32]string
+		PrimaryLookup         map[int32]*Entry
+		SecondaryLookup       map[int32]*Entry
 		Events                []*Event
 		CarClasses            []*CarClass
 		PrimaryMatrixLookup   map[IDTuple]int
@@ -132,11 +140,11 @@ func (s *SeasonStandingsContainer) NavParam() SeasonNav {
 	return s.NavData
 }
 
-func (s *SeasonStandingsContainer) ResolvePrimary(id int) string {
+func (s *SeasonStandingsContainer) ResolvePrimary(id int) *Entry {
 	return s.PrimaryLookup[int32(id)]
 }
 
-func (s *SeasonStandingsContainer) ResolveSecondary(id int) string {
+func (s *SeasonStandingsContainer) ResolveSecondary(id int) *Entry {
 	return s.SecondaryLookup[int32(id)]
 }
 
@@ -153,19 +161,11 @@ func (s *SeasonStandingsContainer) FilterByClass(
 	return filtered
 }
 
-func (s *SeasonParticipantsContainer) ResolvePrimary(id int) string {
+func (s *SeasonResultsOverviewContainer) ResolvePrimary(id int) *Entry {
 	return s.PrimaryLookup[int32(id)]
 }
 
-func (s *SeasonParticipantsContainer) ResolveSecondary(id int) string {
-	return s.SecondaryLookup[int32(id)]
-}
-
-func (s *SeasonResultsOverviewContainer) ResolvePrimary(id int) string {
-	return s.PrimaryLookup[int32(id)]
-}
-
-func (s *SeasonResultsOverviewContainer) ResolveSecondary(id int) string {
+func (s *SeasonResultsOverviewContainer) ResolveSecondary(id int) *Entry {
 	return s.SecondaryLookup[int32(id)]
 }
 

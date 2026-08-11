@@ -69,6 +69,15 @@ var SeasonDrivers = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		IsRookie: column{
+			Name:      "is_rookie",
+			DBType:    "boolean",
+			Default:   "false",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		JoinedAt: column{
 			Name:      "joined_at",
 			DBType:    "timestamp with time zone",
@@ -239,6 +248,7 @@ type seasonDriverColumns struct {
 	CarModelVariantID column
 	CarNumber         column
 	IsGuestStarter    column
+	IsRookie          column
 	JoinedAt          column
 	LeftAt            column
 	CreatedAt         column
@@ -249,7 +259,7 @@ type seasonDriverColumns struct {
 
 func (c seasonDriverColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.DriverID, c.SeasonID, c.CarModelVariantID, c.CarNumber, c.IsGuestStarter, c.JoinedAt, c.LeftAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.DriverID, c.SeasonID, c.CarModelVariantID, c.CarNumber, c.IsGuestStarter, c.IsRookie, c.JoinedAt, c.LeftAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 

@@ -46,7 +46,7 @@ CREATE TABLE car_classes_to_car_models (
 	-- ugly workaround. don't need a pk here, but bob runs into errors creating dberrors text without it
 	id serial PRIMARY KEY,
     car_class_id integer NOT NULL,
-    car_model_variant_id integer
+    car_model_variant_id integer NOT NULL
 );
 
 CREATE TABLE simulation_car_aliases (

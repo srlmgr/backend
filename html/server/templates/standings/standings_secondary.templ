@@ -26,7 +26,7 @@ templ SecondaryDriverStandings(c *model.SeasonStandingsContainer) {
 			for i, s := range c.ServiceData.Secondary {
 				<tr class={ baseTempl.ZebraRow(i) }>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.Position }</td>
-					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID).Name }</td>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
 				</tr>
 			}
@@ -48,7 +48,7 @@ templ SecondaryTeamStandings(c *model.SeasonStandingsContainer) {
 			for i, s := range c.ServiceData.Secondary {
 				<tr class={ baseTempl.ZebraRow(i) }>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.Position }</td>
-					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID).Name }</td>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
 				</tr>
 			}

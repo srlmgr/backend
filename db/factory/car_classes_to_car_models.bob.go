@@ -7,9 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
 	"github.com/jaswdr/faker/v2"
 	models "github.com/srlmgr/backend/db/models"
 	"github.com/stephenafamo/bob"
@@ -38,7 +36,7 @@ func (mods CarClassesToCarModelModSlice) Apply(ctx context.Context, n *CarClasse
 type CarClassesToCarModelTemplate struct {
 	ID                func() int32
 	CarClassID        func() int32
-	CarModelVariantID func() null.Val[int32]
+	CarModelVariantID func() int32
 
 	r carClassesToCarModelR
 	f *Factory
@@ -79,7 +77,7 @@ func (t CarClassesToCarModelTemplate) setModelRels(o *models.CarClassesToCarMode
 	if t.r.CarModelVariant != nil {
 		rel := t.r.CarModelVariant.o.Build()
 		rel.R.CarClassesToCarModels = append(rel.R.CarClassesToCarModels, o)
-		o.CarModelVariantID = null.From(rel.ID) // h2
+		o.CarModelVariantID = rel.ID // h2
 		o.R.CarModelVariant = rel
 		o.R.Loaded.CarModelVariant = true
 	}
@@ -100,7 +98,7 @@ func (o CarClassesToCarModelTemplate) BuildSetter() *models.CarClassesToCarModel
 	}
 	if o.CarModelVariantID != nil {
 		val := o.CarModelVariantID()
-		m.CarModelVariantID = omitnull.FromNull(val)
+		m.CarModelVariantID = omit.From(val)
 	}
 
 	return m
@@ -157,6 +155,10 @@ func ensureCreatableCarClassesToCarModel(m *models.CarClassesToCarModelSetter) {
 		val := random_int32(nil)
 		m.CarClassID = omit.From(val)
 	}
+	if m.CarModelVariantID.IsUnset() {
+		val := random_int32(nil)
+		m.CarModelVariantID = omit.From(val)
+	}
 }
 
 // insertOptRels creates and inserts any optional the relationships on *models.CarClassesToCarModel
@@ -164,26 +166,6 @@ func ensureCreatableCarClassesToCarModel(m *models.CarClassesToCarModelSetter) {
 // any required relationship should have already exist on the model
 func (o *CarClassesToCarModelTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.CarClassesToCarModel) error {
 	var err error
-
-	isCarModelVariantDone, _ := carClassesToCarModelRelCarModelVariantCtx.Value(ctx)
-	if !isCarModelVariantDone && o.r.CarModelVariant != nil {
-		ctx = carClassesToCarModelRelCarModelVariantCtx.WithValue(ctx, true)
-		if o.r.CarModelVariant.o.alreadyPersisted {
-			m.R.CarModelVariant = o.r.CarModelVariant.o.Build()
-			m.R.Loaded.CarModelVariant = true
-		} else {
-			var rel1 *models.CarModelVariant
-			rel1, err = o.r.CarModelVariant.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachCarModelVariant(ctx, exec, rel1)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
 
 	return err
 }
@@ -227,6 +209,33 @@ func (o *CarClassesToCarModelTemplate) Create(ctx context.Context, exec bob.Exec
 
 	opt.CarClassID = omit.From(rel0.ID)
 
+	var rel1 *models.CarModelVariant
+
+	if o.r.CarModelVariant == nil {
+		if parentModel, found := mInCreation["car_model_variants:car_classes_to_car_models:car_classes_to_car_models.car_classes_to_car_models_car_model_variant_id_fk"]; found {
+			if pModel, ok := parentModel.(*models.CarModelVariant); ok {
+				rel1 = pModel
+			}
+		}
+	}
+
+	if rel1 == nil {
+		if o.r.CarModelVariant == nil {
+			CarClassesToCarModelMods.WithNewCarModelVariant().Apply(ctx, o)
+		}
+
+		if o.r.CarModelVariant.o.alreadyPersisted {
+			rel1 = o.r.CarModelVariant.o.Build()
+		} else {
+			rel1, err = o.r.CarModelVariant.o.Create(ctx, exec)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	opt.CarModelVariantID = omit.From(rel1.ID)
+
 	m, err := models.CarClassesToCarModels.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
@@ -245,6 +254,8 @@ func (o *CarClassesToCarModelTemplate) Create(ctx context.Context, exec bob.Exec
 
 	m.R.CarClass = rel0
 	m.R.Loaded.CarClass = true
+	m.R.CarModelVariant = rel1
+	m.R.Loaded.CarModelVariant = true
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -392,14 +403,14 @@ func (m carClassesToCarModelMods) RandomCarClassID(f *faker.Faker) CarClassesToC
 }
 
 // Set the model columns to this value
-func (m carClassesToCarModelMods) CarModelVariantID(val null.Val[int32]) CarClassesToCarModelMod {
+func (m carClassesToCarModelMods) CarModelVariantID(val int32) CarClassesToCarModelMod {
 	return CarClassesToCarModelModFunc(func(_ context.Context, o *CarClassesToCarModelTemplate) {
-		o.CarModelVariantID = func() null.Val[int32] { return val }
+		o.CarModelVariantID = func() int32 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m carClassesToCarModelMods) CarModelVariantIDFunc(f func() null.Val[int32]) CarClassesToCarModelMod {
+func (m carClassesToCarModelMods) CarModelVariantIDFunc(f func() int32) CarClassesToCarModelMod {
 	return CarClassesToCarModelModFunc(func(_ context.Context, o *CarClassesToCarModelTemplate) {
 		o.CarModelVariantID = f
 	})
@@ -414,32 +425,10 @@ func (m carClassesToCarModelMods) UnsetCarModelVariantID() CarClassesToCarModelM
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
 func (m carClassesToCarModelMods) RandomCarModelVariantID(f *faker.Faker) CarClassesToCarModelMod {
 	return CarClassesToCarModelModFunc(func(_ context.Context, o *CarClassesToCarModelTemplate) {
-		o.CarModelVariantID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m carClassesToCarModelMods) RandomCarModelVariantIDNotNull(f *faker.Faker) CarClassesToCarModelMod {
-	return CarClassesToCarModelModFunc(func(_ context.Context, o *CarClassesToCarModelTemplate) {
-		o.CarModelVariantID = func() null.Val[int32] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int32(f)
-			return null.From(val)
+		o.CarModelVariantID = func() int32 {
+			return random_int32(f)
 		}
 	})
 }

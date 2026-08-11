@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -26,9 +24,9 @@ import (
 
 // CarClassesToCarModel is an object representing the database table.
 type CarClassesToCarModel struct {
-	ID                int32           `db:"id,pk" `
-	CarClassID        int32           `db:"car_class_id" `
-	CarModelVariantID null.Val[int32] `db:"car_model_variant_id" `
+	ID                int32 `db:"id,pk" `
+	CarClassID        int32 `db:"car_class_id" `
+	CarModelVariantID int32 `db:"car_model_variant_id" `
 
 	R carClassesToCarModelR `db:"-" `
 }
@@ -128,9 +126,9 @@ func (c carClassesToCarModelColumn) ShouldOmitParens() bool {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type CarClassesToCarModelSetter struct {
-	ID                omit.Val[int32]     `db:"id,pk" `
-	CarClassID        omit.Val[int32]     `db:"car_class_id" `
-	CarModelVariantID omitnull.Val[int32] `db:"car_model_variant_id" `
+	ID                omit.Val[int32] `db:"id,pk" `
+	CarClassID        omit.Val[int32] `db:"car_class_id" `
+	CarModelVariantID omit.Val[int32] `db:"car_model_variant_id" `
 }
 
 func (s CarClassesToCarModelSetter) SetColumns() []string {
@@ -141,7 +139,7 @@ func (s CarClassesToCarModelSetter) SetColumns() []string {
 	if s.CarClassID.IsValue() {
 		vals = append(vals, "car_class_id")
 	}
-	if s.CarModelVariantID.IsValue() || s.CarModelVariantID.IsNull() {
+	if s.CarModelVariantID.IsValue() {
 		vals = append(vals, "car_model_variant_id")
 	}
 	return vals
@@ -154,8 +152,8 @@ func (s CarClassesToCarModelSetter) Overwrite(t *CarClassesToCarModel) {
 	if s.CarClassID.IsValue() {
 		t.CarClassID = s.CarClassID.MustGet()
 	}
-	if s.CarModelVariantID.IsValue() || s.CarModelVariantID.IsNull() {
-		t.CarModelVariantID = s.CarModelVariantID.MustGetNull()
+	if s.CarModelVariantID.IsValue() {
+		t.CarModelVariantID = s.CarModelVariantID.MustGet()
 	}
 }
 
@@ -179,7 +177,7 @@ func (s *CarClassesToCarModelSetter) Apply(q *dialect.InsertQuery) {
 			if s.CarModelVariantID.IsUnset() {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
-			return psql.Arg(s.CarModelVariantID.MustGetNull()).WriteSQL(ctx, w, d, start)
+			return psql.Arg(s.CarModelVariantID.MustGet()).WriteSQL(ctx, w, d, start)
 		}))
 }
 
@@ -204,7 +202,7 @@ func (s CarClassesToCarModelSetter) Expressions(prefix ...string) []bob.Expressi
 		}})
 	}
 
-	if s.CarModelVariantID.IsValue() || s.CarModelVariantID.IsNull() {
+	if s.CarModelVariantID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "car_model_variant_id")...),
 			psql.Arg(s.CarModelVariantID),
@@ -536,7 +534,7 @@ func (o *CarClassesToCarModel) CarModelVariant(mods ...bob.Mod[*dialect.SelectQu
 }
 
 func (os CarClassesToCarModelSlice) CarModelVariant(mods ...bob.Mod[*dialect.SelectQuery]) CarModelVariantsQuery {
-	pkCarModelVariantID := make(pgtypes.Array[null.Val[int32]], 0, len(os))
+	pkCarModelVariantID := make(pgtypes.Array[int32], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -603,7 +601,7 @@ func (carClassesToCarModel0 *CarClassesToCarModel) AttachCarClass(ctx context.Co
 
 func attachCarClassesToCarModelCarModelVariant0(ctx context.Context, exec bob.Executor, count int, carClassesToCarModel0 *CarClassesToCarModel, carModelVariant1 *CarModelVariant) (*CarClassesToCarModel, error) {
 	setter := &CarClassesToCarModelSetter{
-		CarModelVariantID: omitnull.From(carModelVariant1.ID),
+		CarModelVariantID: omit.From(carModelVariant1.ID),
 	}
 
 	err := carClassesToCarModel0.Update(ctx, exec, setter)
@@ -655,7 +653,7 @@ type carClassesToCarModelWhere[Q psql.Filterable] struct {
 	cols              carClassesToCarModelColumns
 	ID                psql.WhereMod[Q, int32]
 	CarClassID        psql.WhereMod[Q, int32]
-	CarModelVariantID psql.WhereNullMod[Q, int32]
+	CarModelVariantID psql.WhereMod[Q, int32]
 	R                 carClassesToCarModelWhereR[Q]
 }
 
@@ -668,7 +666,7 @@ func buildCarClassesToCarModelWhere[Q psql.Filterable](cols carClassesToCarModel
 		cols:              cols,
 		ID:                psql.Where[Q, int32](cols.ID.Expression),
 		CarClassID:        psql.Where[Q, int32](cols.CarClassID.Expression),
-		CarModelVariantID: psql.WhereNull[Q, int32](cols.CarModelVariantID.Expression),
+		CarModelVariantID: psql.Where[Q, int32](cols.CarModelVariantID.Expression),
 		R:                 carClassesToCarModelWhereR[Q]{cols: cols},
 	}
 }
@@ -933,12 +931,7 @@ func (os CarClassesToCarModelSlice) LoadCarModelVariant(ctx context.Context, exe
 			continue
 		}
 
-		// NULL never matches any row in SQL, so don't add it to the map
-		if !o.CarModelVariantID.IsValue() {
-			continue
-		}
-
-		carClassesToCarModelByKey[o.CarModelVariantID.MustGet()] = append(carClassesToCarModelByKey[o.CarModelVariantID.MustGet()], o)
+		carClassesToCarModelByKey[o.CarModelVariantID] = append(carClassesToCarModelByKey[o.CarModelVariantID], o)
 	}
 
 	for _, rel := range carModelVariants {

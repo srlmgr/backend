@@ -33,6 +33,7 @@ type SeasonDriver struct {
 	CarModelVariantID int32               `db:"car_model_variant_id" `
 	CarNumber         string              `db:"car_number" `
 	IsGuestStarter    bool                `db:"is_guest_starter" `
+	IsRookie          bool                `db:"is_rookie" `
 	JoinedAt          time.Time           `db:"joined_at" `
 	LeftAt            null.Val[time.Time] `db:"left_at" `
 	CreatedAt         time.Time           `db:"created_at" `
@@ -73,7 +74,7 @@ type seasonDriverRLoaded struct {
 
 func buildSeasonDriverColumns(tableName string) seasonDriverColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "driver_id", "season_id", "car_model_variant_id", "car_number", "is_guest_starter", "joined_at", "left_at", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "driver_id", "season_id", "car_model_variant_id", "car_number", "is_guest_starter", "is_rookie", "joined_at", "left_at", "created_at", "updated_at", "created_by", "updated_by",
 	)
 
 	if tableName != "" {
@@ -89,6 +90,7 @@ func buildSeasonDriverColumns(tableName string) seasonDriverColumns {
 		CarModelVariantID: buildSeasonDriverColumn(tableName, "car_model_variant_id"),
 		CarNumber:         buildSeasonDriverColumn(tableName, "car_number"),
 		IsGuestStarter:    buildSeasonDriverColumn(tableName, "is_guest_starter"),
+		IsRookie:          buildSeasonDriverColumn(tableName, "is_rookie"),
 		JoinedAt:          buildSeasonDriverColumn(tableName, "joined_at"),
 		LeftAt:            buildSeasonDriverColumn(tableName, "left_at"),
 		CreatedAt:         buildSeasonDriverColumn(tableName, "created_at"),
@@ -107,6 +109,7 @@ type seasonDriverColumns struct {
 	CarModelVariantID seasonDriverColumn
 	CarNumber         seasonDriverColumn
 	IsGuestStarter    seasonDriverColumn
+	IsRookie          seasonDriverColumn
 	JoinedAt          seasonDriverColumn
 	LeftAt            seasonDriverColumn
 	CreatedAt         seasonDriverColumn
@@ -164,6 +167,7 @@ type SeasonDriverSetter struct {
 	CarModelVariantID omit.Val[int32]         `db:"car_model_variant_id" `
 	CarNumber         omit.Val[string]        `db:"car_number" `
 	IsGuestStarter    omit.Val[bool]          `db:"is_guest_starter" `
+	IsRookie          omit.Val[bool]          `db:"is_rookie" `
 	JoinedAt          omit.Val[time.Time]     `db:"joined_at" `
 	LeftAt            omitnull.Val[time.Time] `db:"left_at" `
 	CreatedAt         omit.Val[time.Time]     `db:"created_at" `
@@ -173,7 +177,7 @@ type SeasonDriverSetter struct {
 }
 
 func (s SeasonDriverSetter) SetColumns() []string {
-	vals := make([]string, 0, 12)
+	vals := make([]string, 0, 13)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -191,6 +195,9 @@ func (s SeasonDriverSetter) SetColumns() []string {
 	}
 	if s.IsGuestStarter.IsValue() {
 		vals = append(vals, "is_guest_starter")
+	}
+	if s.IsRookie.IsValue() {
+		vals = append(vals, "is_rookie")
 	}
 	if s.JoinedAt.IsValue() {
 		vals = append(vals, "joined_at")
@@ -231,6 +238,9 @@ func (s SeasonDriverSetter) Overwrite(t *SeasonDriver) {
 	}
 	if s.IsGuestStarter.IsValue() {
 		t.IsGuestStarter = s.IsGuestStarter.MustGet()
+	}
+	if s.IsRookie.IsValue() {
+		t.IsRookie = s.IsRookie.MustGet()
 	}
 	if s.JoinedAt.IsValue() {
 		t.JoinedAt = s.JoinedAt.MustGet()
@@ -289,6 +299,11 @@ func (s *SeasonDriverSetter) Apply(q *dialect.InsertQuery) {
 			}
 			return psql.Arg(s.IsGuestStarter.MustGet()).WriteSQL(ctx, w, d, start)
 		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+			if s.IsRookie.IsUnset() {
+				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
+			}
+			return psql.Arg(s.IsRookie.MustGet()).WriteSQL(ctx, w, d, start)
+		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
 			if s.JoinedAt.IsUnset() {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
@@ -326,7 +341,7 @@ func (s SeasonDriverSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeasonDriverSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 12)
+	exprs := make([]bob.Expression, 0, 13)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -367,6 +382,13 @@ func (s SeasonDriverSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "is_guest_starter")...),
 			psql.Arg(s.IsGuestStarter),
+		}})
+	}
+
+	if s.IsRookie.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "is_rookie")...),
+			psql.Arg(s.IsRookie),
 		}})
 	}
 
@@ -422,7 +444,7 @@ func seasonDriverScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc
 		idx int
 		dst func(o *SeasonDriver) any
 	}
-	targets := make([]target, 0, 12)
+	targets := make([]target, 0, 13)
 	for i, col := range cols {
 		switch col {
 		case "id":
@@ -437,6 +459,8 @@ func seasonDriverScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc
 			targets = append(targets, target{i, func(o *SeasonDriver) any { return &o.CarNumber }})
 		case "is_guest_starter":
 			targets = append(targets, target{i, func(o *SeasonDriver) any { return &o.IsGuestStarter }})
+		case "is_rookie":
+			targets = append(targets, target{i, func(o *SeasonDriver) any { return &o.IsRookie }})
 		case "joined_at":
 			targets = append(targets, target{i, func(o *SeasonDriver) any { return &o.JoinedAt }})
 		case "left_at":
@@ -951,6 +975,7 @@ type seasonDriverWhere[Q psql.Filterable] struct {
 	CarModelVariantID psql.WhereMod[Q, int32]
 	CarNumber         psql.WhereMod[Q, string]
 	IsGuestStarter    psql.WhereMod[Q, bool]
+	IsRookie          psql.WhereMod[Q, bool]
 	JoinedAt          psql.WhereMod[Q, time.Time]
 	LeftAt            psql.WhereNullMod[Q, time.Time]
 	CreatedAt         psql.WhereMod[Q, time.Time]
@@ -973,6 +998,7 @@ func buildSeasonDriverWhere[Q psql.Filterable](cols seasonDriverColumns) seasonD
 		CarModelVariantID: psql.Where[Q, int32](cols.CarModelVariantID.Expression),
 		CarNumber:         psql.Where[Q, string](cols.CarNumber.Expression),
 		IsGuestStarter:    psql.Where[Q, bool](cols.IsGuestStarter.Expression),
+		IsRookie:          psql.Where[Q, bool](cols.IsRookie.Expression),
 		JoinedAt:          psql.Where[Q, time.Time](cols.JoinedAt.Expression),
 		LeftAt:            psql.WhereNull[Q, time.Time](cols.LeftAt.Expression),
 		CreatedAt:         psql.Where[Q, time.Time](cols.CreatedAt.Expression),

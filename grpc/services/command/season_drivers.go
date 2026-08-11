@@ -21,6 +21,7 @@ type seasonDriverInput struct {
 	carModelVariantID int32
 	carNumber         string
 	isGuestDriver     bool
+	isRookieDriver    bool
 	joinedAt          *time.Time
 	leftAt            *time.Time
 }
@@ -36,6 +37,7 @@ func convertSetSeasonDriversInput(
 			carModelVariantID: int32(driver.GetCarModelVariantId()),
 			carNumber:         driver.GetCarNumber(),
 			isGuestDriver:     driver.GetIsGuestDriver(),
+			isRookieDriver:    driver.GetIsRookieDriver(),
 		}
 		if driver.HasJoinedAt() {
 			joinedAt := driver.GetJoinedAt().AsTime()
@@ -85,6 +87,7 @@ func (s *service) SetSeasonDrivers(
 				CarModelVariantID: omit.From(input.carModelVariantID),
 				CarNumber:         omit.From(input.carNumber),
 				IsGuestStarter:    omit.From(input.isGuestDriver),
+				IsRookie:          omit.From(input.isRookieDriver),
 				CreatedBy:         omit.From(user),
 				UpdatedBy:         omit.From(user),
 			}

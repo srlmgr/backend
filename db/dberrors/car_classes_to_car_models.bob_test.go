@@ -49,11 +49,6 @@ func TestCarClassesToCarModelUniqueConstraintErrors(t *testing.T) {
 				shouldUpdate := false
 				updateMods := make(factory.CarClassesToCarModelModSlice, 0, 2)
 
-				if !obj.CarModelVariantID.IsValue() {
-					shouldUpdate = true
-					updateMods = append(updateMods, factory.CarClassesToCarModelMods.RandomCarModelVariantIDNotNull(nil))
-				}
-
 				if shouldUpdate {
 					if err := obj.Update(ctx, exec, f.NewCarClassesToCarModelWithContext(ctx, updateMods...).BuildSetter()); err != nil {
 						t.Fatalf("Error updating object: %v", err)

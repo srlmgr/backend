@@ -6,12 +6,14 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
+	"github.com/samber/lo"
 
 	"github.com/srlmgr/backend/html/server/model"
 	"github.com/srlmgr/backend/html/server/service"
 	mainTempl "github.com/srlmgr/backend/html/server/templates"
 	"github.com/srlmgr/backend/html/server/templates/standings"
 	"github.com/srlmgr/backend/html/server/util"
+	gs "github.com/srlmgr/backend/service"
 	svcStandings "github.com/srlmgr/backend/service/standings"
 )
 
@@ -63,8 +65,8 @@ func registerStandingsRoutes(mux *http.ServeMux, s service.Service) {
 	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/secondary"),
 		handleSecondaryStandings(s),
 	)
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/rookies"),
-		handlePrimaryStandings(s, svcStandings.SkipModeNever),
+	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/primary/rookies"),
+		handlePrimaryRookieStandings(s),
 	)
 }
 
@@ -135,6 +137,42 @@ func handleSecondaryStandings(
 			contents = standings.SecondaryTeamStandings(sData)
 		} else {
 			contents = standings.SecondaryDriverStandings(sData)
+		}
+
+		renderInput := standings.StandingsContent(sData, contents)
+		if err := mainTempl.HTML(renderInput).Render(r.Context(), w); err != nil {
+			http.Error(w,
+				fmt.Sprintf("failed to render standings: %v", err),
+				http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+//nolint:whitespace //editor/linter issue
+func handlePrimaryRookieStandings(
+	s service.Service,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := &standingsProcessor{s: s, w: w, r: r, skipMode: svcStandings.SkipModeNever}
+		sData := p.process()
+		if sData == nil {
+			http.Error(w,
+				"could not produce standings",
+				http.StatusBadRequest)
+			return
+		}
+
+		var contents templ.Component
+		if sData.ServiceData.Season.IsTeamBased {
+			sData.ServiceData.Primary = []*gs.Standing{}
+			contents = standings.PrimaryTeamStandings(sData)
+		} else {
+			sData.ServiceData.Primary = lo.Filter(sData.ServiceData.Primary,
+				func(s *gs.Standing, _ int) bool {
+					return sData.PrimaryLookup[int32(s.ReferenceID)].Rookie
+				})
+			contents = standings.PrimaryDriverStandings(sData)
 		}
 
 		renderInput := standings.StandingsContent(sData, contents)
