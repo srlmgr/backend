@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -432,7 +431,7 @@ func (r *carClassesRepository) AssignCarModelVariant(
 	}
 	_, err := models.CarClassesToCarModels.Insert(&models.CarClassesToCarModelSetter{
 		CarClassID:        omit.From(classID),
-		CarModelVariantID: omitnull.From(modelVariantID), // TODO: change when mandatory
+		CarModelVariantID: omit.From(modelVariantID),
 	}).One(ctx, r.getExecutor(ctx))
 	return err
 }

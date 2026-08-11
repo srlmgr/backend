@@ -32,8 +32,8 @@ templ PrimaryOverview(c *model.SeasonResultsOverviewContainer) {
 		<tbody>
 			for i, s := range c.ServiceData.PrimarySummaries {
 				<tr class={ baseTempl.ZebraRow(i) }>
-					<td class="border border-gray-300 px-4 py-2"></td>
-					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).CarNum }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).Name }</td>
 					for _,e:= range c.Events {
 						<td class="border border-gray-300 px-4 py-2">{ c.PrimaryMatrix(s.ReferenceID, e.ID) }</td>
 					}
@@ -63,7 +63,7 @@ templ SecondaryOverview(c *model.SeasonResultsOverviewContainer) {
 		<tbody>
 			for i, s := range c.ServiceData.SecondarySummaries {
 				<tr class={ baseTempl.ZebraRow(i) }>
-					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID) }</td>
+					<td class="border border-gray-300 px-4 py-2">{ c.ResolveSecondary(s.ReferenceID).Name }</td>
 					for _,e:= range c.Events {
 						<td class="border border-gray-300 px-4 py-2">{ c.SecondaryMatrix(s.ReferenceID, e.ID) }</td>
 					}

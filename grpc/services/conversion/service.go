@@ -496,6 +496,8 @@ func (s *ConvService) SeasonDriverToSeasonDriver(
 		SeasonId:          uint32(model.SeasonID),
 		CarModelVariantId: uint32(model.CarModelVariantID),
 		CarNumber:         model.CarNumber,
+		IsGuestDriver:     model.IsGuestStarter,
+		IsRookieDriver:    model.IsRookie,
 		JoinedAt:          timestamppb.New(model.JoinedAt),
 	}
 

@@ -802,7 +802,7 @@ func (os CarModelVariantSlice) Teams(mods ...bob.Mod[*dialect.SelectQuery]) Team
 
 func insertCarModelVariantCarClassesToCarModels0(ctx context.Context, exec bob.Executor, carClassesToCarModels1 []*CarClassesToCarModelSetter, carModelVariant0 *CarModelVariant) (CarClassesToCarModelSlice, error) {
 	for i := range carClassesToCarModels1 {
-		carClassesToCarModels1[i].CarModelVariantID = omitnull.From(carModelVariant0.ID)
+		carClassesToCarModels1[i].CarModelVariantID = omit.From(carModelVariant0.ID)
 	}
 
 	ret, err := CarClassesToCarModels.Insert(bob.ToMods(carClassesToCarModels1...)).All(ctx, exec)
@@ -815,7 +815,7 @@ func insertCarModelVariantCarClassesToCarModels0(ctx context.Context, exec bob.E
 
 func attachCarModelVariantCarClassesToCarModels0(ctx context.Context, exec bob.Executor, count int, carClassesToCarModels1 CarClassesToCarModelSlice, carModelVariant0 *CarModelVariant) (CarClassesToCarModelSlice, error) {
 	setter := &CarClassesToCarModelSetter{
-		CarModelVariantID: omitnull.From(carModelVariant0.ID),
+		CarModelVariantID: omit.From(carModelVariant0.ID),
 	}
 
 	err := carClassesToCarModels1.UpdateAll(ctx, exec, *setter)
@@ -1796,11 +1796,7 @@ func (os CarModelVariantSlice) LoadCarClassesToCarModels(ctx context.Context, ex
 
 	for _, rel := range carClassesToCarModels {
 
-		if !rel.CarModelVariantID.IsValue() {
-			continue
-		}
-
-		owners, ok := carModelVariantByKey[rel.CarModelVariantID.MustGet()]
+		owners, ok := carModelVariantByKey[rel.CarModelVariantID]
 		if !ok {
 			continue
 		}

@@ -36,9 +36,9 @@ var CarClassesToCarModels = Table[
 		CarModelVariantID: column{
 			Name:      "car_model_variant_id",
 			DBType:    "integer",
-			Default:   "NULL",
+			Default:   "",
 			Comment:   "",
-			Nullable:  true,
+			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},

@@ -213,7 +213,7 @@ func (f *Factory) fromExistingCarClassesToCarModel(ctx context.Context, m *model
 
 	o.ID = func() int32 { return m.ID }
 	o.CarClassID = func() int32 { return m.CarClassID }
-	o.CarModelVariantID = func() null.Val[int32] { return m.CarModelVariantID }
+	o.CarModelVariantID = func() int32 { return m.CarModelVariantID }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
@@ -1294,6 +1294,7 @@ func (f *Factory) fromExistingSeasonDriver(ctx context.Context, m *models.Season
 	o.CarModelVariantID = func() int32 { return m.CarModelVariantID }
 	o.CarNumber = func() string { return m.CarNumber }
 	o.IsGuestStarter = func() bool { return m.IsGuestStarter }
+	o.IsRookie = func() bool { return m.IsRookie }
 	o.JoinedAt = func() time.Time { return m.JoinedAt }
 	o.LeftAt = func() null.Val[time.Time] { return m.LeftAt }
 	o.CreatedAt = func() time.Time { return m.CreatedAt }

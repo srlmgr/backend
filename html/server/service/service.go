@@ -178,15 +178,11 @@ func (s *serviceImpl) GetEventStandings(
 	return s.prepareStandingsContainer(ctx, standings)
 }
 
-//nolint:whitespace,funlen //editor/linter issue
+//nolint:whitespace //editor/linter issue
 func (s *serviceImpl) prepareStandingsContainer(
 	ctx context.Context,
 	standings *gs.StandingsContainer,
 ) (*model.SeasonStandingsContainer, error) {
-	teamLookup, err := s.resolveForTeam(ctx, int(standings.Season.ID))
-	if err != nil {
-		return nil, err
-	}
 	season, _ := s.r.Seasons().LoadByID(ctx, standings.Season.ID)
 
 	seasonContainer, err := s.GetSeasonList(ctx, int(season.SeriesID))
@@ -197,28 +193,15 @@ func (s *serviceImpl) prepareStandingsContainer(
 		ServiceData:      *standings,
 		SeasonsContainer: seasonContainer,
 	}
-	if standings.Season.IsTeamBased {
-		ret.PrimaryLookup = teamLookup
-		driverLookup, err := s.resolveTeamDrivers(ctx, int(standings.Season.ID))
-		if err != nil {
-			return nil, err
-		}
-		ret.SecondaryLookup = driverLookup
-	} else {
-		driverLookup, err := s.resolveForDriver(ctx, standings.Primary)
-		if err != nil {
-			return nil, err
-		}
-		ret.PrimaryLookup = driverLookup
-		ret.SecondaryLookup = teamLookup
+
+	entryComposer, err := newSeasonEntryComposer(s.r, ctx, season.ID)
+	if err != nil {
+		return nil, err
 	}
+	teamLookup := entryComposer.CreateTeamLookup(ctx)
+
 	if standings.Season.IsMulticlass {
-		carClasses, err := s.r.Cars().CarClasses().LoadBySeasonID(
-			ctx, standings.Season.ID)
-		if err != nil {
-			return nil, err
-		}
-		ret.CarClasses = lo.Map(carClasses,
+		ret.CarClasses = lo.Map(entryComposer.CarClasses(),
 			func(cc *dbModels.CarClass, _ int) *model.CarClass {
 				return &model.CarClass{
 					ID:   int(cc.ID),
@@ -226,6 +209,17 @@ func (s *serviceImpl) prepareStandingsContainer(
 				}
 			})
 	}
+	if standings.Season.IsTeamBased {
+		ret.PrimaryLookup = teamLookup
+		driverLookup := entryComposer.CreateDriverLookupByTeams(ctx)
+		ret.SecondaryLookup = driverLookup
+	} else {
+
+		driverLookup := entryComposer.CreateDriverLookup(ctx)
+		ret.PrimaryLookup = driverLookup
+		ret.SecondaryLookup = teamLookup
+	}
+
 	if err := s.fillEvents(ctx, ret); err != nil {
 		return nil, err
 	}
@@ -249,76 +243,4 @@ func (s *serviceImpl) fillEvents(
 		}
 	})
 	return nil
-}
-
-//nolint:whitespace //editor/linter issue
-func (s *serviceImpl) resolveForDriver(
-	ctx context.Context,
-	standings []*gs.Standing) (
-	map[int32]string, error,
-) {
-	ids := lo.Map(standings, func(s *gs.Standing, _ int) int32 {
-		return int32(s.ReferenceID)
-	})
-	return s.resolveForDriverIDs(ctx, ids)
-}
-
-//nolint:whitespace //editor/linter issue
-func (s *serviceImpl) resolveForDriverIDs(
-	ctx context.Context,
-	ids []int32) (
-	map[int32]string, error,
-) {
-	drivers, err := s.r.Drivers().Drivers().LoadByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	driverMap := make(map[int32]string)
-	for _, d := range drivers {
-		driverMap[d.ID] = d.Name
-	}
-	return driverMap, nil
-}
-
-//nolint:whitespace //editor/linter issue
-func (s *serviceImpl) resolveForTeam(
-	ctx context.Context,
-	seasonID int) (
-	map[int32]string, error,
-) {
-	teams, err := s.r.Teams().Teams().LoadBySeasonID(ctx, int32(seasonID))
-	if err != nil {
-		return nil, err
-	}
-
-	teamMap := make(map[int32]string)
-	for _, t := range teams {
-		teamMap[t.ID] = t.Name
-	}
-	return teamMap, nil
-}
-
-//nolint:whitespace //editor/linter issue
-func (s *serviceImpl) resolveTeamDrivers(
-	ctx context.Context,
-	seasonID int) (
-	map[int32]string, error,
-) {
-	teamDrivers, err := s.r.Queries().QueryTeamDrivers().FindBySeason(ctx, int32(seasonID))
-	if err != nil {
-		return nil, err
-	}
-	ids := lo.Map(teamDrivers, func(td *dbModels.TeamDriver, _ int) int32 {
-		return td.DriverID
-	})
-	drivers, err := s.r.Drivers().Drivers().LoadByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	driverMap := make(map[int32]string)
-	for _, d := range drivers {
-		driverMap[d.ID] = d.Name
-	}
-	return driverMap, nil
 }

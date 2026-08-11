@@ -67,27 +67,24 @@ func (s *serviceImpl) GetResultsOverview(
 		overview.SecondarySummaries = lo.Filter(overview.SecondarySummaries, filterByClassID)
 
 	}
-	teamLookup, err := s.resolveForTeam(ctx, seasonID)
+
+	entryResolver, err := newSeasonEntryComposer(s.r, ctx, int32(seasonID))
 	if err != nil {
 		return nil, err
 	}
+	teamLookup := entryResolver.CreateTeamLookup(ctx)
+
 	if overview.Season.IsTeamBased {
 		ret.PrimaryLookup = teamLookup
-		driverLookup, err := s.resolveTeamDrivers(ctx, seasonID)
-		if err != nil {
-			return nil, err
-		}
+		driverLookup := entryResolver.CreateDriverLookupByTeams(ctx)
 		ret.SecondaryLookup = driverLookup
 	} else {
-
 		ids := collectPrimaryIDs(overview)
-		driverLookup, err := s.resolveForDriverIDs(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
+		driverLookup := entryResolver.CreateDriverLookupByIDs(ctx, ids)
 		ret.PrimaryLookup = driverLookup
 		ret.SecondaryLookup = teamLookup
 	}
+
 	ret.PrimaryMatrixLookup = createPrimaryMatrixLookup(overview)
 	ret.SecondaryMatrixLookup = createSecondaryMatrixLookup(overview)
 	return ret, nil

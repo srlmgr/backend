@@ -1,26 +1,11 @@
 package participants
 
 import "github.com/srlmgr/backend/html/server/model"
-import "fmt"
+
 import seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
 import seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
 import baseTempl "github.com/srlmgr/backend/html/server/templates"
 
-templ seasonMenu(c *model.SeasonParticipantsContainer, contextPath string) {
-	<nav class="bg-gray-800 text-white p-4">
-		<div class="container mx-auto flex justify-between items-center">
-			if c.Season.IsTeamBased {
-				<a href={ fmt.Sprintf("%s/seasons/%d/standings/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ fmt.Sprintf("%s/seasons/%d/standings/secondary", contextPath, c.Season.ID) } class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ fmt.Sprintf("%s/seasons/%d/participants/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teilnehmer</a>
-			} else {
-				<a href={ fmt.Sprintf("%s/seasons/%d/standings/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ fmt.Sprintf("%s/seasons/%d/standings/secondary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ fmt.Sprintf("%s/seasons/%d/participants/primary", contextPath, c.Season.ID) } class="text-lg font-semibold">Teilnehmer</a>
-			}
-		</div>
-	</nav>
-}
 
 templ PrimarySeasonDriver(c *model.SeasonParticipantsContainer) {
 	<table class="table-auto w-full border-collapse border border-gray-300">

@@ -104,7 +104,7 @@ func (t CarModelVariantTemplate) setModelRels(o *models.CarModelVariant) {
 		for _, r := range t.r.CarClassesToCarModels {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
-				rel.CarModelVariantID = null.From(o.ID) // h2
+				rel.CarModelVariantID = o.ID // h2
 				rel.R.CarModelVariant = o
 				rel.R.Loaded.CarModelVariant = true
 			}

@@ -43,6 +43,7 @@ type SeasonDriverTemplate struct {
 	CarModelVariantID func() int32
 	CarNumber         func() string
 	IsGuestStarter    func() bool
+	IsRookie          func() bool
 	JoinedAt          func() time.Time
 	LeftAt            func() null.Val[time.Time]
 	CreatedAt         func() time.Time
@@ -136,6 +137,10 @@ func (o SeasonDriverTemplate) BuildSetter() *models.SeasonDriverSetter {
 		val := o.IsGuestStarter()
 		m.IsGuestStarter = omit.From(val)
 	}
+	if o.IsRookie != nil {
+		val := o.IsRookie()
+		m.IsRookie = omit.From(val)
+	}
 	if o.JoinedAt != nil {
 		val := o.JoinedAt()
 		m.JoinedAt = omit.From(val)
@@ -199,6 +204,9 @@ func (o SeasonDriverTemplate) Build() *models.SeasonDriver {
 	}
 	if o.IsGuestStarter != nil {
 		m.IsGuestStarter = o.IsGuestStarter()
+	}
+	if o.IsRookie != nil {
+		m.IsRookie = o.IsRookie()
 	}
 	if o.JoinedAt != nil {
 		m.JoinedAt = o.JoinedAt()
@@ -464,6 +472,7 @@ func (m seasonDriverMods) RandomizeAllColumns(f *faker.Faker) SeasonDriverMod {
 		SeasonDriverMods.RandomCarModelVariantID(f),
 		SeasonDriverMods.RandomCarNumber(f),
 		SeasonDriverMods.RandomIsGuestStarter(f),
+		SeasonDriverMods.RandomIsRookie(f),
 		SeasonDriverMods.RandomJoinedAt(f),
 		SeasonDriverMods.RandomLeftAt(f),
 		SeasonDriverMods.RandomCreatedAt(f),
@@ -654,6 +663,37 @@ func (m seasonDriverMods) UnsetIsGuestStarter() SeasonDriverMod {
 func (m seasonDriverMods) RandomIsGuestStarter(f *faker.Faker) SeasonDriverMod {
 	return SeasonDriverModFunc(func(_ context.Context, o *SeasonDriverTemplate) {
 		o.IsGuestStarter = func() bool {
+			return random_bool(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonDriverMods) IsRookie(val bool) SeasonDriverMod {
+	return SeasonDriverModFunc(func(_ context.Context, o *SeasonDriverTemplate) {
+		o.IsRookie = func() bool { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonDriverMods) IsRookieFunc(f func() bool) SeasonDriverMod {
+	return SeasonDriverModFunc(func(_ context.Context, o *SeasonDriverTemplate) {
+		o.IsRookie = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonDriverMods) UnsetIsRookie() SeasonDriverMod {
+	return SeasonDriverModFunc(func(_ context.Context, o *SeasonDriverTemplate) {
+		o.IsRookie = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonDriverMods) RandomIsRookie(f *faker.Faker) SeasonDriverMod {
+	return SeasonDriverModFunc(func(_ context.Context, o *SeasonDriverTemplate) {
+		o.IsRookie = func() bool {
 			return random_bool(f)
 		}
 	})
