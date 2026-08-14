@@ -11,6 +11,12 @@ templ secondaryNav(c *model.SeasonStandingsContainer) {
 		@baseTempl.CarClassNav(c.NavParam())
 	}
 }
+templ secondaryNavSnippet(c *model.SeasonStandingsContainer) {
+	@eventNav(c)
+	if c.ServiceData.Season.IsMulticlass {
+		@baseTempl.CarClassNav(c.NavParam())
+	}
+}
 
 templ SecondaryDriverStandings(c *model.SeasonStandingsContainer) {
 	@secondaryNav(c)

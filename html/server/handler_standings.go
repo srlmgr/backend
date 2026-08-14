@@ -103,9 +103,9 @@ func handlePrimaryStandings(
 
 		var contents templ.Component
 		if sData.ServiceData.Season.IsTeamBased {
-			contents = standings.PrimaryTeamStandings(sData)
+			contents = standings.PrimaryTeamStandings(sData, false)
 		} else {
-			contents = standings.PrimaryDriverStandings(sData)
+			contents = standings.PrimaryDriverStandings(sData, false)
 		}
 		renderInput := standings.StandingsContent(sData, contents)
 		if err := mainTempl.HTML(renderInput).Render(r.Context(), w); err != nil {
@@ -166,13 +166,13 @@ func handlePrimaryRookieStandings(
 		var contents templ.Component
 		if sData.ServiceData.Season.IsTeamBased {
 			sData.ServiceData.Primary = []*gs.Standing{}
-			contents = standings.PrimaryTeamStandings(sData)
+			contents = standings.PrimaryTeamStandings(sData, false)
 		} else {
 			sData.ServiceData.Primary = lo.Filter(sData.ServiceData.Primary,
 				func(s *gs.Standing, _ int) bool {
 					return sData.PrimaryLookup[int32(s.ReferenceID)].Rookie
 				})
-			contents = standings.PrimaryDriverStandings(sData)
+			contents = standings.PrimaryDriverStandings(sData, false)
 		}
 
 		renderInput := standings.StandingsContent(sData, contents)

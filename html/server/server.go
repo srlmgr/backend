@@ -86,6 +86,7 @@ func newHTTPServer(
 	registerParticipantsRoutes(mux, s)
 	registerSeasonResultsOverviewRoutes(mux, s)
 	registerStandingsRoutes(mux, s)
+	registerSnippetRoutes(mux, s)
 
 	handler := http.Handler(mux)
 	handler = newTraceIDHeaderMiddleware()(handler)

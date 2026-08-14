@@ -2,6 +2,8 @@ package standings
 
 import (
 	"fmt"
+	"strings"
+
 	model "github.com/srlmgr/backend/html/server/model"
 	baseTempl "github.com/srlmgr/backend/html/server/templates"
 	util "github.com/srlmgr/backend/html/server/util"
@@ -13,6 +15,25 @@ func navURL(url string) string {
 func subStandingsLink(c model.SeasonNav, mode string) string {
 	return fmt.Sprintf("%s/primary?skipMode=%s",
 		navURL(util.SeasonsStandingsURL(int(c.Season().ID))), mode)
+}
+
+func snippetSubStandingsLink(c *model.SeasonStandingsContainer, mode string) string {
+	params := []string{
+		"view=standings",
+		fmt.Sprintf("seasonID=%d", c.ServiceData.Season.ID),
+		fmt.Sprintf("skipMode=%s", mode),
+	}
+	for _, q := range []string{"eventID", "classID"} {
+		if c.NavParam().QueryParam().Has(q) {
+			params = append(params, fmt.Sprintf("%s=%s", q, c.NavParam().QueryParam().Get(q)))
+		}
+	}
+	return fmt.Sprintf("%s?%s", util.ComposeNavURL(util.HandlerURL("/snippet")), strings.Join(params, "&"))
+}
+
+func snippetRookieLink(c *model.SeasonStandingsContainer) string {
+	return fmt.Sprintf("%s?view=standings&subtype=rookies&seasonID=%d&skipMode=always",
+		util.ComposeNavURL(util.HandlerURL("/snippet")), c.ServiceData.Season.ID)
 }
 
 templ primaryNav(c *model.SeasonStandingsContainer) {
@@ -29,8 +50,26 @@ templ primaryNav(c *model.SeasonStandingsContainer) {
 	}
 }
 
-templ PrimaryDriverStandings(c *model.SeasonStandingsContainer) {
-	@primaryNav(c)
+templ primaryNavSnippet(c *model.SeasonStandingsContainer) {
+	<nav class="bg-gray-800 text-white p-4">
+		<div class="container mx-auto flex justify-between items-center">
+			<a href={ snippetSubStandingsLink(c, "always") } class="text-white font-bold">inkl. Streicher</a>
+			<a href={ snippetSubStandingsLink(c, "never") } class="text-white font-bold">ohne Streicher</a>
+			<a href={ snippetRookieLink(c) } class="text-white font-bold">Rookies</a>
+		</div>
+	</nav>
+	@eventNav(c)
+	if c.ServiceData.Season.IsMulticlass {
+		@baseTempl.CarClassNav(c.NavParam())
+	}
+}
+
+templ PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) {
+	if snippet {
+		@primaryNavSnippet(c)
+	} else {
+		@primaryNav(c)
+	}
 	<table class="table-auto w-full border-collapse border border-gray-300">
 		<thead>
 			<tr class="bg-gray-200">
@@ -53,8 +92,13 @@ templ PrimaryDriverStandings(c *model.SeasonStandingsContainer) {
 	</table>
 }
 
-templ PrimaryTeamStandings(c *model.SeasonStandingsContainer) {
-	@primaryNav(c)
+
+templ PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) {
+	if snippet {
+		@primaryNavSnippet(c)
+	} else {
+		@primaryNav(c)
+	}
 	<table class="table-auto w-full border-collapse border border-gray-300">
 		<thead>
 			<tr class="bg-gray-200">
