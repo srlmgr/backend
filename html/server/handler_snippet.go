@@ -3,17 +3,20 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/samber/lo"
 
+	dbModels "github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/html/server/model"
 	"github.com/srlmgr/backend/html/server/service"
 	mainTempl "github.com/srlmgr/backend/html/server/templates"
 	"github.com/srlmgr/backend/html/server/templates/participants"
 	"github.com/srlmgr/backend/html/server/templates/resultsoverview"
+	"github.com/srlmgr/backend/html/server/templates/seasons"
 	"github.com/srlmgr/backend/html/server/templates/standings"
 	"github.com/srlmgr/backend/html/server/util"
 	gs "github.com/srlmgr/backend/service"
@@ -29,6 +32,7 @@ type snippetRequest struct {
 	ClassID  int
 	SkipMode string
 	CMSPath  string
+	CMSUrl   string
 }
 
 func registerSnippetRoutes(mux *http.ServeMux, s service.Service) {
@@ -76,14 +80,13 @@ func newSnippetRequest(r *http.Request) (snippetRequest, error) {
 	}
 
 	cmsPath := strings.TrimSpace(q.Get("cmsPath"))
-	if cmsPath == "" {
-		cmsPath = strings.TrimSpace(q.Get("baseUrl"))
-	}
+	cmsURL := strings.TrimSpace(q.Get("cmsUrl"))
+
 	if cmsPath == "" {
 		cmsPath = strings.TrimSpace(r.Header.Get("X-CMS-Base-Path"))
 	}
-	if cmsPath == "" {
-		cmsPath = strings.TrimSpace(r.Header.Get("X-CMS-BaseURL"))
+	if cmsURL == "" {
+		cmsURL = strings.TrimSpace(r.Header.Get("X-CMS-BaseURL"))
 	}
 
 	return snippetRequest{
@@ -95,6 +98,7 @@ func newSnippetRequest(r *http.Request) (snippetRequest, error) {
 		ClassID:  classID,
 		SkipMode: strings.TrimSpace(q.Get("skipMode")),
 		CMSPath:  cmsPath,
+		CMSUrl:   cmsURL,
 	}, nil
 }
 
@@ -119,19 +123,19 @@ func renderSnippet(
 	var component templ.Component
 	var err error
 
-	util.WithBaseURLOverride(req.CMSPath, func() {
-		switch strings.ToLower(req.View) {
-		case "participants":
-			component, err = snippetParticipants(r, s, req)
-		case "standings":
-			component, err = snippetStandings(r, s, req)
+	switch strings.ToLower(req.View) {
+	case "dummy":
+		component, err = snippetDummy(r, s, req)
+	case "participants":
+		component, err = snippetParticipants(r, s, req)
+	case "standings":
+		component, err = snippetStandings(r, s, req)
 
-		case "results-overview", "results_overview", "resultsoverview", "overview":
-			component, err = snippetResultsOverview(r, s, req)
-		default:
-			err = fmt.Errorf("unsupported snippet view %q", req.View)
-		}
-	})
+	case "results-overview", "results_overview", "resultsoverview", "overview":
+		component, err = snippetResultsOverview(r, s, req)
+	default:
+		err = fmt.Errorf("unsupported snippet view %q", req.View)
+	}
 
 	if err != nil {
 		return err
@@ -141,6 +145,32 @@ func renderSnippet(
 	}
 
 	return mainTempl.SnippetFrame(component).Render(r.Context(), w)
+}
+
+//nolint:whitespace //editor/linter issue
+func snippetDummy(
+	r *http.Request,
+	s service.Service,
+	req *snippetRequest,
+) (templ.Component, error) {
+	seasonID := req.SeasonID
+	if seasonID == 0 {
+		return nil, fmt.Errorf("missing seasonID")
+	}
+
+	data, err := s.GetSeasonParticipants(r.Context(), seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("get season participants: %w", err)
+	}
+	data.NavData = &snippetNav{
+		sc:      data.SeasonsContainer,
+		season:  data.Season,
+		qParam:  r.URL.Query(),
+		cmsPath: req.CMSPath,
+		cmsURL:  req.CMSUrl,
+	}
+
+	return seasons.SnippetSeasonsMenu(data.NavData), nil
 }
 
 //nolint:whitespace //editor/linter issue
@@ -158,11 +188,12 @@ func snippetParticipants(
 	if err != nil {
 		return nil, fmt.Errorf("get season participants: %w", err)
 	}
-	data.NavData = &myNav{
-		sc:          data.SeasonsContainer,
-		season:      data.Season,
-		qParam:      r.URL.Query(),
-		currentPath: r.URL.Path,
+	data.NavData = &snippetNav{
+		sc:      data.SeasonsContainer,
+		season:  data.Season,
+		qParam:  r.URL.Query(),
+		cmsPath: req.CMSPath,
+		cmsURL:  req.CMSUrl,
 	}
 	var content templ.Component
 
@@ -217,12 +248,14 @@ func snippetStandings(
 	}
 	data.CurrentPath = r.URL.Path
 	data.CurrentSkipMode = req.SkipMode
-	data.NavData = &myNav{
-		sc:          data.SeasonsContainer,
-		season:      data.ServiceData.Season,
-		qParam:      r.URL.Query(),
-		currentPath: r.URL.Path,
-		carClasses:  data.CarClasses,
+	data.NavData = &snippetNav{
+		sc:      data.SeasonsContainer,
+		season:  data.ServiceData.Season,
+		qParam:  r.URL.Query(),
+		cmsPath: req.CMSPath,
+		cmsURL:  req.CMSUrl,
+
+		carClasses: data.CarClasses,
 	}
 	wrapper := func(contents templ.Component) templ.Component {
 		return standings.StandingsSnippet(data, contents)
@@ -267,12 +300,14 @@ func snippetResultsOverview(
 	if err != nil {
 		return nil, fmt.Errorf("load results overview: %w", err)
 	}
-	data.NavData = &myNav{
-		sc:          data.SeasonsContainer,
-		season:      data.ServiceData.Season,
-		qParam:      r.URL.Query(),
-		currentPath: r.URL.Path,
-		carClasses:  data.CarClasses,
+	data.NavData = &snippetNav{
+		sc:      data.SeasonsContainer,
+		season:  data.ServiceData.Season,
+		qParam:  r.URL.Query(),
+		cmsPath: req.CMSPath,
+		cmsURL:  req.CMSUrl,
+
+		carClasses: data.CarClasses,
 	}
 	wrapper := func(contents templ.Component) templ.Component {
 		return resultsoverview.OverviewSnippet(data, contents)
@@ -283,4 +318,47 @@ func snippetResultsOverview(
 		return wrapper(resultsoverview.SecondaryOverview(data)), nil
 	}
 	return wrapper(resultsoverview.PrimaryOverview(data)), nil
+}
+
+type snippetNav struct {
+	sc         *model.SeasonsContainer
+	season     *dbModels.Season
+	carClasses []*model.CarClass
+	qParam     url.Values
+	cmsPath    string
+	cmsURL     string
+}
+
+var _ model.SeasonNav = (*snippetNav)(nil)
+
+func (m *snippetNav) ContextPath() string {
+	return m.cmsPath
+}
+
+func (m *snippetNav) ExternalURL() string {
+	return m.cmsURL
+}
+
+func (m *snippetNav) CurrentPath() string {
+	return ""
+}
+
+func (m *snippetNav) Season() *dbModels.Season {
+	return m.season
+}
+
+func (m *snippetNav) Seasons() []*model.Season {
+	return m.sc.Seasons
+}
+
+func (m *snippetNav) SeriesContainer() *model.SeriesContainer {
+	return m.sc.SeriesContainer
+}
+
+func (m *snippetNav) CarClasses() []*model.CarClass {
+	return m.carClasses
+}
+
+func (m *snippetNav) QueryParam() url.Values {
+	return m.qParam
 }

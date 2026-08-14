@@ -20,11 +20,15 @@ import (
 func navURL(url string) string {
 	return util.ComposeNavURL((url))
 }
+
 func subStandingsLink(c model.SeasonNav, mode string) string {
 	return fmt.Sprintf("%s/primary?skipMode=%s",
 		navURL(util.SeasonsStandingsURL(int(c.Season().ID))), mode)
 }
 
+func snippetBaseURL(c model.SeasonNav) string {
+	return util.AdjustedSnippetURL("/snippet", c)
+}
 func snippetSubStandingsLink(c *model.SeasonStandingsContainer, mode string) string {
 	params := []string{
 		"view=standings",
@@ -36,12 +40,12 @@ func snippetSubStandingsLink(c *model.SeasonStandingsContainer, mode string) str
 			params = append(params, fmt.Sprintf("%s=%s", q, c.NavParam().QueryParam().Get(q)))
 		}
 	}
-	return fmt.Sprintf("%s?%s", util.ComposeNavURL(util.HandlerURL("/snippet")), strings.Join(params, "&"))
+	return fmt.Sprintf("%s?%s", snippetBaseURL(c.NavParam()), strings.Join(params, "&"))
 }
 
 func snippetRookieLink(c *model.SeasonStandingsContainer) string {
 	return fmt.Sprintf("%s?view=standings&subtype=rookies&seasonID=%d&skipMode=always",
-		util.ComposeNavURL(util.HandlerURL("/snippet")), c.ServiceData.Season.ID)
+		snippetBaseURL(c.NavParam()), c.ServiceData.Season.ID)
 }
 
 func primaryNav(c *model.SeasonStandingsContainer) templ.Component {
@@ -72,7 +76,7 @@ func primaryNav(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(subStandingsLink(c.NavParam(), "always"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 42, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 47, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -85,7 +89,7 @@ func primaryNav(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(subStandingsLink(c.NavParam(), "never"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 43, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 48, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +102,7 @@ func primaryNav(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(fmt.Sprintf("%s/primary/rookies", navURL(util.SeasonsStandingsURL(int(c.ServiceData.Season.ID)))))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 44, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 49, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -108,7 +112,7 @@ func primaryNav(c *model.SeasonStandingsContainer) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = eventNav(c).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = eventNav(c, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -150,7 +154,7 @@ func primaryNavSnippet(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var6 templ.SafeURL
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(snippetSubStandingsLink(c, "always"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 56, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 61, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -163,7 +167,7 @@ func primaryNavSnippet(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var7 templ.SafeURL
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(snippetSubStandingsLink(c, "never"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 57, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 62, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -176,7 +180,7 @@ func primaryNavSnippet(c *model.SeasonStandingsContainer) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(snippetRookieLink(c))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 58, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 63, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +190,7 @@ func primaryNavSnippet(c *model.SeasonStandingsContainer) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = eventNav(c).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = eventNav(c, true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -262,7 +266,7 @@ func PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) tem
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.Position)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 85, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 90, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -275,7 +279,7 @@ func PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) tem
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).CarNum)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 86, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 91, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -288,7 +292,7 @@ func PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) tem
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 87, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 92, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -301,7 +305,7 @@ func PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) tem
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 88, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 93, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -382,7 +386,7 @@ func PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) templ
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.Position)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 114, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 119, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -395,7 +399,7 @@ func PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) templ
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).CarNum)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 115, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 120, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -408,7 +412,7 @@ func PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) templ
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 116, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 121, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -421,7 +425,7 @@ func PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) templ
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 117, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_primary.templ`, Line: 122, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {

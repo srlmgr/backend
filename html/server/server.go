@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/srlmgr/backend/html/server/service"
@@ -63,6 +64,23 @@ func getLogger(ctx context.Context) *log.Logger {
 	return log.Default()
 }
 
+// WithQueryParamsToTrace attaches raw query strings to the active OpenTelemetry span
+func WithQueryParamsToTrace(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Extract the active span created by otelhttp
+		span := trace.SpanFromContext(r.Context())
+
+		if span.IsRecording() && r.URL.RawQuery != "" {
+			// standard semantic convention for query parameters
+			span.SetAttributes(
+				semconv.URLQuery(r.URL.RawQuery),
+			)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 //nolint:whitespace,unparam //editor/linter issue
 func newHTTPServer(
 	ctx context.Context,
@@ -91,8 +109,8 @@ func newHTTPServer(
 	handler := http.Handler(mux)
 	handler = newTraceIDHeaderMiddleware()(handler)
 	handler = newRequestDebugLoggingMiddleware(logger.Named("http"))(handler)
+	handler = WithQueryParamsToTrace(handler)
 	handler = otelhttp.NewHandler(handler, "backend-http-server")
-
 	return &http.Server{
 		Addr:              cfg.Address,
 		Handler:           handler,

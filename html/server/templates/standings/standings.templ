@@ -9,19 +9,25 @@ import (
 	seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
 )
 
-func eventLink(c model.CommonNav, eventID int) string {
+func eventLink(c model.CommonNav, eventID int, snippet bool) string {
 	qParam := util.EnsureQueryParam(c.QueryParam(), "eventID", fmt.Sprintf("%d", eventID))
+	baseURL := c.CurrentPath()
+	if snippet {
+		baseURL = util.AdjustedSnippetURL("/snippet", c)
+	}
+
 	return fmt.Sprintf("%s?%s",
-		c.CurrentPath(),
+		baseURL,
 		qParam.Encode())
+
 }
 
-templ eventNav(c *model.SeasonStandingsContainer) {
+templ eventNav(c *model.SeasonStandingsContainer, isSnippet bool) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
 			for _, e := range c.Events {
 				<a
-					href={ eventLink(c.NavParam(), e.ID) }
+					href={ eventLink(c.NavParam(), e.ID, isSnippet) }
 					class="text-lg font-semibold"
 				>{ e.Name }</a>
 			}

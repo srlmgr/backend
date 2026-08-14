@@ -66,13 +66,13 @@ templ SeasonsMenu(c model.SeasonNav) {
 	</nav>
 }
 
-func snippetBaseURL() string {
-	return util.ComposeNavURL(util.HandlerURL("/snippet"))
+func snippetBaseURL(c model.SeasonNav) string {
+	return util.AdjustedSnippetURL("/snippet", c)
 }
 
-func snippetSeasonLink(seasonID int, view string, extra ...string) string {
-	params := append([]string{fmt.Sprintf("view=%s", view), fmt.Sprintf("seasonID=%d", seasonID)}, extra...)
-	return fmt.Sprintf("%s?%s", snippetBaseURL(), strings.Join(params, "&"))
+func snippetSeasonLink(c model.SeasonNav,  view string, extra ...string) string {
+	params := append([]string{fmt.Sprintf("view=%s", view), fmt.Sprintf("seasonID=%d", c.Season().ID)}, extra...)
+	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
 
 func snippetStandingsLink(c model.SeasonNav, subview string) string {
@@ -85,7 +85,7 @@ func snippetStandingsLink(c model.SeasonNav, subview string) string {
 			params = append(params, fmt.Sprintf("%s=%s", q, c.QueryParam().Get(q)))
 		}
 	}
-	return fmt.Sprintf("%s?%s", snippetBaseURL(), strings.Join(params, "&"))
+	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
 
 func snippetResultsLink(c model.SeasonNav, mode string) string {
@@ -95,14 +95,14 @@ func snippetResultsLink(c model.SeasonNav, mode string) string {
 			params = append(params, fmt.Sprintf("%s=%s", q, c.QueryParam().Get(q)))
 		}
 	}
-	return fmt.Sprintf("%s?%s", snippetBaseURL(), strings.Join(params, "&"))
+	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
 
 templ SnippetSeasonsNav(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
 			for _, s := range c.Seasons() {
-				<a href={ snippetSeasonLink(s.ID, "participants") } class="text-lg font-semibold">{ s.Name }</a>
+				<a href={ snippetSeasonLink(c, "participants") } class="text-lg font-semibold">{ s.Name }</a>
 			}
 		</div>
 	</nav>
@@ -122,7 +122,7 @@ templ SnippetSeasonsMenu(c model.SeasonNav) {
 				<a href={ snippetResultsLink(c, "primary") } class="text-lg font-semibold">Fahrerergebnisse</a>
 				<a href={ snippetResultsLink(c, "secondary") } class="text-lg font-semibold">Teamergebnisse</a>
 			}
-			<a href={ snippetSeasonLink(int(c.Season().ID), "participants") } class="text-lg font-semibold">Teilnehmer</a>
+			<a href={ snippetSeasonLink(c, "participants") } class="text-lg font-semibold">Teilnehmer</a>
 		</div>
 	</nav>
 }

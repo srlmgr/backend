@@ -6,13 +6,13 @@ import (
 )
 
 templ secondaryNav(c *model.SeasonStandingsContainer) {
-	@eventNav(c)
+	@eventNav(c,false)
 	if c.ServiceData.Season.IsMulticlass {
 		@baseTempl.CarClassNav(c.NavParam())
 	}
 }
 templ secondaryNavSnippet(c *model.SeasonStandingsContainer) {
-	@eventNav(c)
+	@eventNav(c,true)
 	if c.ServiceData.Season.IsMulticlass {
 		@baseTempl.CarClassNav(c.NavParam())
 	}
