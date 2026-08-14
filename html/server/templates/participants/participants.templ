@@ -67,3 +67,8 @@ templ ParticipantsContent(c *model.SeasonParticipantsContainer, contents templ.C
 	@seasonsTempl.SeasonsMenu(c.NavParam())
 	@contents
 }
+templ ParticipantsSnippet(c *model.SeasonParticipantsContainer, contents templ.Component) {
+	@seasonsTempl.SnippetSeasonsNav(c.NavParam())
+	@seasonsTempl.SnippetSeasonsMenu(c.NavParam())
+	@contents
+}

@@ -35,3 +35,10 @@ templ StandingsContent(c *model.SeasonStandingsContainer, contents templ.Compone
 	@seasonsTempl.SeasonsMenu(c.NavParam())
 	@contents
 }
+
+templ StandingsSnippet(c *model.SeasonStandingsContainer, contents templ.Component) {
+
+	@seasonsTempl.SnippetSeasonsNav(c.NavParam())
+	@seasonsTempl.SnippetSeasonsMenu(c.NavParam())
+	@contents
+}

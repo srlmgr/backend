@@ -81,3 +81,9 @@ templ OverviewContent(c *model.SeasonResultsOverviewContainer, contents templ.Co
 	@baseTempl.CarClassNav(c.NavParam())
 	@contents
 }
+templ OverviewSnippet(c *model.SeasonResultsOverviewContainer, contents templ.Component) {
+	@seasonsTempl.SnippetSeasonsNav(c.NavParam())
+	@seasonsTempl.SnippetSeasonsMenu(c.NavParam())
+	@baseTempl.CarClassNav(c.NavParam())
+	@contents
+}
