@@ -34,7 +34,7 @@ func secondaryNav(c *model.SeasonStandingsContainer) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = eventNav(c).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = eventNav(c, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -69,7 +69,7 @@ func secondaryNavSnippet(c *model.SeasonStandingsContainer) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = eventNav(c).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = eventNav(c, true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

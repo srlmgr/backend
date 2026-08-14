@@ -17,14 +17,20 @@ import (
 	seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
 )
 
-func eventLink(c model.CommonNav, eventID int) string {
+func eventLink(c model.CommonNav, eventID int, snippet bool) string {
 	qParam := util.EnsureQueryParam(c.QueryParam(), "eventID", fmt.Sprintf("%d", eventID))
+	baseURL := c.CurrentPath()
+	if snippet {
+		baseURL = util.AdjustedSnippetURL("/snippet", c)
+	}
+
 	return fmt.Sprintf("%s?%s",
-		c.CurrentPath(),
+		baseURL,
 		qParam.Encode())
+
 }
 
-func eventNav(c *model.SeasonStandingsContainer) templ.Component {
+func eventNav(c *model.SeasonStandingsContainer, isSnippet bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -55,9 +61,9 @@ func eventNav(c *model.SeasonStandingsContainer) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 templ.SafeURL
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(eventLink(c.NavParam(), e.ID))
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(eventLink(c.NavParam(), e.ID, isSnippet))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings.templ`, Line: 24, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings.templ`, Line: 30, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -70,7 +76,7 @@ func eventNav(c *model.SeasonStandingsContainer) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(e.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings.templ`, Line: 26, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings.templ`, Line: 32, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
