@@ -21,6 +21,7 @@ updates:
       - build
     schedule:
       interval: "weekly"
+      day: "saturday"
     groups:
       github-actions:
         dependency-type: "production"
