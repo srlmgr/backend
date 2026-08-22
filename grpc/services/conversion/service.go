@@ -20,6 +20,7 @@ import (
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository/repoerrors"
 	"github.com/srlmgr/backend/service"
+	"github.com/srlmgr/backend/service/standings"
 )
 
 // ConvService converts database models to gRPC messages.
@@ -148,28 +149,42 @@ func ImportConfigsFromProto(
 	return out, nil
 }
 
+func SkipModeFromProto(skipMode commonv1.SkipMode) standings.SkipModeType {
+	//nolint:exhaustive // intentionally skipping Unspecified
+	switch skipMode {
+	case commonv1.SkipMode_SKIP_MODE_NEVER:
+		return standings.SkipModeNever
+	case commonv1.SkipMode_SKIP_MODE_ALWAYS:
+		return standings.SkipModeAlways
+	case commonv1.SkipMode_SKIP_MODE_WHEN_APPLICABLE:
+		return standings.SkipModeWhenApplicable
+	default:
+		return standings.SkipModeWhenApplicable
+	}
+}
+
 //nolint:whitespace // editor/linter issue
 func (s *ConvService) ServiceStandingsToProto(
-	standings *service.Standing,
+	svcStandings *service.Standing,
 ) *queryv1.Standing {
 	return &queryv1.Standing{
-		StandingsType: queryv1.StandingsType(standings.Type),
-		ReferenceId:   uint32(standings.ReferenceID),
-		CarClassId:    uint32(standings.CarClassID),
-		EventId:       uint32(standings.EventID),
+		StandingsType: queryv1.StandingsType(svcStandings.Type),
+		ReferenceId:   uint32(svcStandings.ReferenceID),
+		CarClassId:    uint32(svcStandings.CarClassID),
+		EventId:       uint32(svcStandings.EventID),
 		Data: &commonv1.StandingData{
-			Position:       standings.Data.Position,
-			PrevPosition:   standings.Data.PrevPosition,
-			TotalPoints:    standings.Data.TotalPoints,
-			BonusPoints:    standings.Data.BonusPoints,
-			PenaltyPoints:  standings.Data.PenaltyPoints,
-			NumEvents:      standings.Data.NumEvents,
-			NumRaces:       standings.Data.NumRaces,
-			NumPenaltyFree: standings.Data.NumPenaltyFree,
-			NumWins:        standings.Data.NumWins,
-			NumPodiums:     standings.Data.NumPodiums,
-			NumTop5:        standings.Data.NumTop5,
-			NumTop10:       standings.Data.NumTop10,
+			Position:       svcStandings.Data.Position,
+			PrevPosition:   svcStandings.Data.PrevPosition,
+			TotalPoints:    svcStandings.Data.TotalPoints,
+			BonusPoints:    svcStandings.Data.BonusPoints,
+			PenaltyPoints:  svcStandings.Data.PenaltyPoints,
+			NumEvents:      svcStandings.Data.NumEvents,
+			NumRaces:       svcStandings.Data.NumRaces,
+			NumPenaltyFree: svcStandings.Data.NumPenaltyFree,
+			NumWins:        svcStandings.Data.NumWins,
+			NumPodiums:     svcStandings.Data.NumPodiums,
+			NumTop5:        svcStandings.Data.NumTop5,
+			NumTop10:       svcStandings.Data.NumTop10,
 		},
 	}
 }

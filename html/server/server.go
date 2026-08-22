@@ -10,16 +10,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/cache"
 	"github.com/srlmgr/backend/html/server/service"
 	"github.com/srlmgr/backend/html/server/util"
 	"github.com/srlmgr/backend/log"
-	"github.com/srlmgr/backend/repository/postgres"
+	"github.com/srlmgr/backend/repository"
+	gs "github.com/srlmgr/backend/service"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -41,13 +41,15 @@ type Config struct {
 	Address     string
 	ExternalURL string
 	ContextPart string
+	Repo        repository.Repository // shared repository instance, reused across servers
+	Services    gs.Service            // shared service instance, reused across servers
 }
 
 // Run starts the HTTP server and blocks until shutdown completes.
-func Run(ctx context.Context, pool *pgxpool.Pool, cfg *Config) error {
+func Run(ctx context.Context, cfg *Config) error {
 	logger := getLogger(ctx)
 
-	httpServer, err := newHTTPServer(ctx, cfg, pool, logger)
+	httpServer, err := newHTTPServer(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -85,17 +87,15 @@ func WithQueryParamsToTrace(next http.Handler) http.Handler {
 func newHTTPServer(
 	ctx context.Context,
 	cfg *Config,
-	pool *pgxpool.Pool,
 	logger *log.Logger,
 ) (*http.Server, error) {
-	r := postgres.New(pool)
-	tracer := otel.Tracer("backend.http")
 	externalURL = cfg.ExternalURL // to be removed
 	contextPart = cfg.ContextPart // to be removed
 	util.InitPathContext(cfg.ContextPart, cfg.ExternalURL)
-	s := service.NewService(r, logger, tracer, cfg.ExternalURL)
+	s := setupHTMLService(ctx, cfg, logger)
+
 	mux := http.NewServeMux()
-	_ = s
+
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -119,6 +119,22 @@ func newHTTPServer(
 			return ctx
 		},
 	}, nil
+}
+
+//nolint:whitespace //editor/linter issue
+func setupHTMLService(
+	ctx context.Context,
+	cfg *Config,
+	logger *log.Logger,
+) service.Service {
+	s := service.NewService(cfg.Repo, cfg.Services, logger)
+	if cacheConfig := cache.GetCacheConfigFromContext(ctx); cacheConfig != nil {
+		s = service.NewCachedService(
+			s,
+			service.WithCache(ctx, cacheConfig.Config, cacheConfig.CacheManager),
+		)
+	}
+	return s
 }
 
 type middleware func(http.Handler) http.Handler

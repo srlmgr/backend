@@ -4,14 +4,12 @@ import (
 	"context"
 
 	"github.com/samber/lo"
-	"go.opentelemetry.io/otel/trace"
 
 	dbModels "github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/html/server/model"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository"
 	gs "github.com/srlmgr/backend/service"
-	gsImpl "github.com/srlmgr/backend/service/impl"
 	svcStandings "github.com/srlmgr/backend/service/standings"
 )
 
@@ -51,10 +49,9 @@ type (
 		) (*model.SeasonResultsOverviewContainer, error)
 	}
 	serviceImpl struct {
-		r           repository.Repository
-		svc         gs.Service
-		logger      *log.Logger
-		externalURL string
+		r      repository.Repository
+		svc    gs.Service
+		logger *log.Logger
 	}
 )
 
@@ -63,15 +60,13 @@ var _ Service = (*serviceImpl)(nil)
 //nolint:whitespace //editor/linter issue
 func NewService(
 	r repository.Repository,
+	svc gs.Service,
 	logger *log.Logger,
-	tracer trace.Tracer,
-	externalURL string,
 ) Service {
 	return &serviceImpl{
-		r:           r,
-		logger:      logger,
-		svc:         gsImpl.New(r, logger, tracer),
-		externalURL: externalURL,
+		r:      r,
+		logger: logger,
+		svc:    svc,
 	}
 }
 

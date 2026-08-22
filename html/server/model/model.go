@@ -46,11 +46,6 @@ type (
 	SeasonStandingsContainer struct {
 		SeasonsContainer *SeasonsContainer
 		ServiceData      service.StandingsContainer
-		BaseURL          string
-		CurrentPath      string
-		CurrentClassID   int
-		CurrentEventID   int
-		CurrentSkipMode  string
 		CarClasses       []*CarClass
 		PrimaryLookup    map[int32]*Entry
 		SecondaryLookup  map[int32]*Entry

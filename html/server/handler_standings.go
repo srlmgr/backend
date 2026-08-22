@@ -91,15 +91,8 @@ func handlePrimaryStandings(
 		p := &standingsProcessor{s: s, w: w, r: r, skipMode: skipMode}
 		sData := p.process()
 		if sData == nil {
-			http.Error(w,
-				"could not produce standings",
-				http.StatusBadRequest)
 			return
 		}
-		sData.CurrentSkipMode = argSkipMode
-
-		sData.CurrentPath = r.URL.Path
-		sData.CurrentSkipMode = argSkipMode
 
 		var contents templ.Component
 		if sData.ServiceData.Season.IsTeamBased {
@@ -125,12 +118,8 @@ func handleSecondaryStandings(
 		p := &standingsProcessor{s: s, w: w, r: r, skipMode: svcStandings.SkipModeNever}
 		sData := p.process()
 		if sData == nil {
-			http.Error(w,
-				"could not produce secondary standings",
-				http.StatusBadRequest)
 			return
 		}
-		sData.CurrentPath = r.URL.Path
 
 		var contents templ.Component
 		if sData.ServiceData.Season.IsTeamBased {
@@ -203,7 +192,6 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 			return nil
 		}
 		sData, sErr = p.s.GetEventStandings(p.r.Context(), eventID, p.skipMode)
-		sData.CurrentEventID = eventID
 	} else {
 		sData, sErr = p.s.GetSeasonStandings(p.r.Context(), seasonID, p.skipMode)
 	}
@@ -230,13 +218,13 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 				http.StatusBadRequest)
 			return nil
 		}
+
 		sData.ServiceData.Primary = sData.FilterByClass(
 			sData.ServiceData.Primary, classID)
 		sData.ServiceData.Secondary = sData.FilterByClass(
 			sData.ServiceData.Secondary, classID)
-		sData.CurrentClassID = classID
 	}
-	sData.CurrentPath = p.r.URL.Path
+
 	sData.NavData = &myNav{
 		sc:          sData.SeasonsContainer,
 		season:      sData.ServiceData.Season,

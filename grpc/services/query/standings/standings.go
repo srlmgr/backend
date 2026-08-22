@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/srlmgr/backend/grpc/services/conversion"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/service"
-	"github.com/srlmgr/backend/service/standings"
 )
 
 //nolint:whitespace // editor/linter issue
@@ -21,9 +21,14 @@ func (s *standingsService) GetStandings(
 ) (*connect.Response[queryv1.GetStandingsResponse], error) {
 	l := s.logger.WithCtx(ctx)
 	eventID := int32(req.Msg.GetEventId())
-	l.Debug("GetStandings for event", log.Int32("event_id", eventID))
+	l.Debug("GetStandings for event",
+		log.Int32("event_id", eventID),
+		log.Int("skip_mode", int(req.Msg.GetSkipMode())),
+	)
 	standingsData, err := s.svc.StandingsService().GetEventStandings(
-		ctx, int(eventID), standings.SkipModeNever)
+		ctx, int(eventID),
+		conversion.SkipModeFromProto(req.Msg.GetSkipMode()),
+	)
 	if err != nil {
 		return nil, err
 	}

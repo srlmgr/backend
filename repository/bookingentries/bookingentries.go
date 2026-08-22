@@ -36,8 +36,6 @@ type Repository interface {
 	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
 	DeleteNonManualByEvent(ctx context.Context, eventID int32) error
-	DeleteByEventIDAndTargetType(ctx context.Context, eventID int32, targetType string) error
-	DeleteByEventIDAndSourceType(ctx context.Context, eventID int32, sourceType string) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
 	CreateMany(
 		ctx context.Context,
@@ -167,30 +165,6 @@ func (r *bookingEntriesRepository) DeleteNonManualByEvent(
 	_, err := models.BookingEntries.Delete(
 		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
 		dm.Where(models.BookingEntries.Columns.IsManual.EQ(psql.Arg(false))),
-	).Exec(ctx, r.getExecutor(ctx))
-	return err
-}
-
-func (r *bookingEntriesRepository) DeleteByEventIDAndTargetType(
-	ctx context.Context,
-	eventID int32,
-	targetType string,
-) error {
-	_, err := models.BookingEntries.Delete(
-		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
-		dm.Where(models.BookingEntries.Columns.TargetType.EQ(psql.Arg(targetType))),
-	).Exec(ctx, r.getExecutor(ctx))
-	return err
-}
-
-func (r *bookingEntriesRepository) DeleteByEventIDAndSourceType(
-	ctx context.Context,
-	eventID int32,
-	sourceType string,
-) error {
-	_, err := models.BookingEntries.Delete(
-		dm.Where(models.BookingEntries.Columns.EventID.EQ(psql.Arg(eventID))),
-		dm.Where(models.BookingEntries.Columns.SourceType.EQ(psql.Arg(sourceType))),
 	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }

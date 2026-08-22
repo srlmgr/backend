@@ -2,6 +2,7 @@ package config
 
 import "time"
 
+//nolint:lll // readability
 var (
 	TelemetryEnabled  bool
 	DBURI             string
@@ -29,4 +30,7 @@ var (
 	AuthzEnabled          bool
 	AuthzPolicyPath       string
 	AuthzDecisionCacheTTL time.Duration
+
+	CacheEnabled    bool   // enables in-memory read-through caching for selected repositories
+	CacheConfigFile string // path to a cache config YAML file; empty means no per-cache tuning
 )

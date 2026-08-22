@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"net/url"
+	"slices"
 
 	"github.com/srlmgr/backend/html/server/model"
 )
@@ -55,10 +56,12 @@ func SeasonsStandingsURL(id int) string {
 }
 
 func EnsureQueryParam(qParam url.Values, key, value string) url.Values {
-	work := qParam
-	if qParam == nil {
-		work = url.Values{}
+	work := make(url.Values, len(qParam))
+
+	for k, v := range qParam {
+		work[k] = slices.Clone(v)
 	}
+
 	work.Set(key, value)
 	return work
 }

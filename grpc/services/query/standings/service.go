@@ -9,7 +9,6 @@ import (
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
 	"github.com/srlmgr/backend/service"
-	gsImpl "github.com/srlmgr/backend/service/impl"
 )
 
 type standingsService struct {
@@ -26,6 +25,7 @@ type standingsService struct {
 //nolint:whitespace // editor/linter issue
 func New(
 	repo rootrepo.Repository,
+	svc service.Service,
 	logger *log.Logger,
 	tracer trace.Tracer,
 ) queryv1connect.StandingsServiceHandler {
@@ -34,6 +34,6 @@ func New(
 		repo:       repo,
 		conversion: conversion.New(),
 		tracer:     tracer,
-		svc:        gsImpl.New(repo, logger, tracer),
+		svc:        svc,
 	}
 }

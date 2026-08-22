@@ -244,10 +244,8 @@ func snippetStandings(
 		}
 		data.ServiceData.Primary = data.FilterByClass(data.ServiceData.Primary, classID)
 		data.ServiceData.Secondary = data.FilterByClass(data.ServiceData.Secondary, classID)
-		data.CurrentClassID = classID
 	}
-	data.CurrentPath = r.URL.Path
-	data.CurrentSkipMode = req.SkipMode
+
 	data.NavData = &snippetNav{
 		sc:      data.SeasonsContainer,
 		season:  data.ServiceData.Season,
