@@ -1,0 +1,10 @@
+# Sample cache configuration file for development
+default:
+  ttl: 5m
+  check: 1m
+  maxSize: 1000
+caches:
+  - name: season
+    maxSize: 200
+  - name: event
+    ttl: 30s

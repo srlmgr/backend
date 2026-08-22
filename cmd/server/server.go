@@ -10,13 +10,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/authz"
+	"github.com/srlmgr/backend/cache"
 	"github.com/srlmgr/backend/cmd/config"
 	"github.com/srlmgr/backend/db/postgres"
 	grpcserver "github.com/srlmgr/backend/grpc/server"
 	htmlserver "github.com/srlmgr/backend/html/server"
+	"github.com/srlmgr/backend/log"
+	rootrepo "github.com/srlmgr/backend/repository"
+	pgRepos "github.com/srlmgr/backend/repository/postgres"
+	"github.com/srlmgr/backend/service"
+	serviceImpl "github.com/srlmgr/backend/service/impl"
 )
 
 // NewServerCmd creates the command that runs the Connect-based gRPC server.
@@ -67,14 +74,43 @@ func NewServerCmd() *cobra.Command {
 type server struct {
 	ctx        context.Context
 	pool       *pgxpool.Pool
+	repo       rootrepo.Repository
+	service    service.Service
 	serveErrCh chan error
 }
 
+//nolint:funlen // by design
 func (s *server) startServers() (err error) {
+	var cacheConfig *cache.Config
+	if strings.TrimSpace(config.CacheConfigFile) != "" {
+		cacheConfig, err = cache.LoadConfig(config.CacheConfigFile)
+		if err != nil {
+			return fmt.Errorf("load cache config: %w", err)
+		}
+	}
+
 	s.pool = postgres.InitWithURL(
 		config.DBURI,
 		postgres.WithTracer(postgres.NewOtlpTracer()))
 	defer s.pool.Close()
+
+	repoOpts := []pgRepos.Option{}
+	serviceOpts := []serviceImpl.Option{}
+	meter := otel.Meter("srlmgr.backend")
+	if config.CacheEnabled {
+		cm := cache.NewManager()
+		if cmErr := cache.InitMetrics(meter); cmErr != nil {
+			return fmt.Errorf("init cache metrics: %w", cmErr)
+		}
+		s.ctx = cache.AddCacheConfigToContext(s.ctx, cm, cacheConfig)
+		repoOpts = append(repoOpts, pgRepos.WithCache(s.ctx, cacheConfig, cm))
+		serviceOpts = append(serviceOpts, serviceImpl.WithCache(s.ctx, cacheConfig, cm))
+	}
+	s.repo = pgRepos.New(s.pool, repoOpts...)
+	s.service = serviceImpl.New(
+		s.repo,
+		log.GetFromContext(s.ctx).Named("service"),
+		serviceOpts...)
 	s.serveErrCh = make(chan error, 1)
 	if config.GRPCEnabled {
 		go func() {
@@ -108,7 +144,9 @@ func (s *server) startServers() (err error) {
 
 func (s *server) startGRPC() error {
 	return grpcserver.Run(s.ctx, s.pool, &grpcserver.Config{
-		Address: config.GRPCServerAddress,
+		Address:  config.GRPCServerAddress,
+		Repo:     s.repo,
+		Services: s.service,
 		Authn: authn.Config{
 			Enabled: config.AuthnEnabled,
 			IDP: authn.IDPConfig{
@@ -136,9 +174,11 @@ func (s *server) startGRPC() error {
 }
 
 func (s *server) startHTML() error {
-	return htmlserver.Run(s.ctx, s.pool, &htmlserver.Config{
+	return htmlserver.Run(s.ctx, &htmlserver.Config{
 		Address:     config.HTTPServerAddress,
 		ExternalURL: config.HTMLExternalURL,
 		ContextPart: config.HTMLContextPart,
+		Repo:        s.repo,
+		Services:    s.service,
 	})
 }

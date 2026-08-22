@@ -7,12 +7,14 @@ import (
 	"github.com/srlmgr/backend/grpc/services/conversion"
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
+	gs "github.com/srlmgr/backend/service"
 )
 
 type service struct {
 	queryv1connect.UnimplementedQueryServiceHandler
 	logger     *log.Logger
 	repo       rootrepo.Repository
+	svc        gs.Service
 	txMgr      rootrepo.TransactionManager
 	conversion *conversion.ConvService
 	tracer     trace.Tracer
@@ -23,6 +25,7 @@ type service struct {
 //nolint:whitespace // editor/linter issue
 func New(
 	repo rootrepo.Repository,
+	svc gs.Service,
 	txMgr rootrepo.TransactionManager,
 	logger *log.Logger,
 	tracer trace.Tracer,
@@ -30,6 +33,7 @@ func New(
 	return &service{
 		logger:     logger,
 		repo:       repo,
+		svc:        svc,
 		txMgr:      txMgr,
 		tracer:     tracer,
 		conversion: conversion.New(),

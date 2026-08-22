@@ -32,16 +32,18 @@ import (
 	standingsservice "github.com/srlmgr/backend/grpc/services/query/standings"
 	"github.com/srlmgr/backend/log"
 	"github.com/srlmgr/backend/repository"
-	pgRepos "github.com/srlmgr/backend/repository/postgres"
+	"github.com/srlmgr/backend/service"
 )
 
 const shutdownTimeout = 10 * time.Second
 
 // Config configures the Connect server.
 type Config struct {
-	Address string
-	Authn   authn.Config
-	Authz   authz.Config
+	Address  string
+	Authn    authn.Config
+	Authz    authz.Config
+	Repo     repository.Repository // shared repository instance, reused across servers
+	Services service.Service       // shared service instance, reused across servers
 }
 
 // Run starts the Connect server and blocks until shutdown completes.
@@ -98,7 +100,7 @@ func newHTTPServer(
 	}
 
 	txManager := repository.NewBobTransactionFromPool(pool)
-	repo := pgRepos.New(pool)
+	repo := cfg.Repo
 	importHandler := importservice.New(repo, txManager, logger.Named("services.import"))
 
 	mux := http.NewServeMux()
@@ -111,7 +113,7 @@ func newHTTPServer(
 		repo,
 		importHandler,
 	)
-	registerConnectHandlers(mux, txManager, repo, logger, handlerOptions...)
+	registerConnectHandlers(mux, txManager, repo, cfg.Services, logger, handlerOptions...)
 	registerHealthServer(mux)
 	registerReflectionServer(mux)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -247,6 +249,7 @@ func registerConnectHandlers(
 	mux *http.ServeMux,
 	txManager repository.TransactionManager,
 	repo repository.Repository,
+	svc service.Service,
 	logger *log.Logger,
 	opts ...connect.HandlerOption,
 ) {
@@ -264,7 +267,7 @@ func registerConnectHandlers(
 		opts...,
 	)
 	queryPath, queryHandler := queryv1connect.NewQueryServiceHandler(
-		queryservice.New(repo, txManager, logger.Named("services.query"), tracer),
+		queryservice.New(repo, svc, txManager, logger.Named("services.query"), tracer),
 		opts...,
 	)
 	frontendPath, frontendHandler := queryv1connect.NewFrontendServiceHandler(
@@ -276,7 +279,7 @@ func registerConnectHandlers(
 		opts...,
 	)
 	standingsPath, standingsHandler := queryv1connect.NewStandingsServiceHandler(
-		standingsservice.New(repo, logger.Named("services.standings"), tracer),
+		standingsservice.New(repo, svc, logger.Named("services.standings"), tracer),
 		opts...,
 	)
 

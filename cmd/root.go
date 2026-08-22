@@ -122,6 +122,14 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&removeContextFields, "remove-context-fields",
 		true,
 		"if true, don't log fields that contain a context.Context")
+	rootCmd.PersistentFlags().BoolVar(&config.CacheEnabled,
+		"cache-enabled",
+		false,
+		"enables application wide caching (requires a cache config file)")
+	rootCmd.PersistentFlags().StringVar(&config.CacheConfigFile,
+		"cache-config",
+		"",
+		"path to a cache config YAML file (default: none, caches use no ttl/size bounds)")
 
 	// add commands here
 	rootCmd.AddCommand(migratecmd.NewMigrateCmd())
