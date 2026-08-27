@@ -1,6 +1,6 @@
 module github.com/srlmgr/backend
 
-go 1.26
+go 1.27
 
 require (
 	buf.build/gen/go/srlmgr/api/connectrpc/go v1.20.0-20260820080050-ff8869bcbfb1.1

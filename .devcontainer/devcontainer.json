@@ -110,7 +110,7 @@
   "features": {
     // uncomment the following lines to install Go if you are starting from the base image instead of the Go image.
     // "ghcr.io/devcontainers/features/go:2": {
-    //   "version": "1.26"
+    //   "version": "1.27"
     // },
     "ghcr.io/devcontainers/features/docker-in-docker:3": {
       "moby": false
