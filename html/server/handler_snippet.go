@@ -77,7 +77,11 @@ func newSnippetRequest(r *http.Request, s service.Service) (snippetRequest, erro
 	if seasonID == 0 && seriesID != 0 {
 		sc, sErr := s.GetSeasonList(r.Context(), seriesID)
 		if sErr != nil {
-			return snippetRequest{}, fmt.Errorf("failed to get season list for seriesID %d: %w", seriesID, sErr)
+			return snippetRequest{}, fmt.Errorf(
+				"failed to get season list for seriesID %d: %w",
+				seriesID,
+				sErr,
+			)
 		}
 		if len(sc.Seasons) > 0 {
 			seasonID = sc.Seasons[len(sc.Seasons)-1].ID
