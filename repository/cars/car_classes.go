@@ -67,7 +67,8 @@ func (r *carClassesRepository) LoadBySeasonID(
 func (r *carClassesRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.CarClasses.Delete(
 		dm.Where(
-			models.CarClasses.Columns.ID.EQ(psql.Arg(id))),
+			models.CarClasses.Columns.ID.EQ(psql.Arg(id)),
+		),
 	).Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -110,7 +111,8 @@ func (r *carClassesRepository) AssignCarModelVariant(
 		&models.CarClassesToCarModelSetter{
 			CarClassID:        omit.From(classID),
 			CarModelVariantID: omit.From(variantID),
-		}).One(ctx, r.getExecutor(ctx))
+		},
+	).One(ctx, r.getExecutor(ctx))
 	return err
 }
 

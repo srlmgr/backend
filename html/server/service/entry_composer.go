@@ -167,11 +167,13 @@ func (c *EntryComposer) CreateTeamLookup(
 		if c.season.IsTeamBased {
 			cmv, _ := lo.Coalesce(
 				c.cmvLookup[team.CarModelVariantID.GetOrZero()],
-				&dbModels.CarModelVariant{Name: "n.a."})
+				&dbModels.CarModelVariant{Name: "n.a."},
+			)
 
 			cClass, _ := lo.Coalesce(
 				c.cmv2ccLookup[cmv.ID],
-				&dbModels.CarClass{Name: "n.a."})
+				&dbModels.CarClass{Name: "n.a."},
+			)
 			ret[team.ID].CarNum = team.CarNumber.GetOr("n.a.")
 			ret[team.ID].CarName = cmv.Name
 			ret[team.ID].CarClass = cClass.Name

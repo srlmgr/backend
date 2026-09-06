@@ -9,6 +9,7 @@ CREATE TABLE seasons (
     starts_at timestamp with time zone,
     ends_at timestamp with time zone,
     skip_events integer NOT NULL DEFAULT 0,
+    num_grids integer NOT NULL DEFAULT 1,
     has_teams boolean NOT NULL DEFAULT false,
     team_points_top_n integer,
 	is_team_based boolean NOT NULL DEFAULT false,

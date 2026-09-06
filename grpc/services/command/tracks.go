@@ -197,7 +197,8 @@ func (s *service) CreateTrackLayout(
 		setters := s.createTrackAliasSetters(
 			ctx,
 			newTrackLayout.ID,
-			req.Msg.GetSimulationAliases())
+			req.Msg.GetSimulationAliases(),
+		)
 		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
 			ReplaceForLayoutID(
 				ctx,
@@ -233,7 +234,8 @@ func (s *service) UpdateTrackLayout(
 		setters := s.createTrackAliasSetters(
 			ctx,
 			int32(req.Msg.GetTrackLayoutId()),
-			req.Msg.GetSimulationAliases())
+			req.Msg.GetSimulationAliases(),
+		)
 		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
 			ReplaceForLayoutID(
 				ctx,

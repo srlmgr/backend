@@ -183,7 +183,8 @@ func (s *service) DeleteRace(
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if relErr := helper.DeleteRaceRelated(
-			ctx, int32(req.Msg.GetRaceId())); relErr != nil {
+			ctx, int32(req.Msg.GetRaceId()),
+		); relErr != nil {
 			return relErr
 		}
 

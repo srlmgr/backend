@@ -112,7 +112,8 @@ func (s *service) CleanupProcessingData(
 				PayloadJSON: omit.From(emptyJSON),
 				CreatedBy:   omit.From(execUser),
 				UpdatedBy:   omit.From(execUser),
-			})
+			},
+		)
 		return updateErr
 	}); txErr != nil {
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "cleanup processing data failed")
@@ -193,7 +194,8 @@ func (s *service) cleanupByRace(raceID int32, includeManuals bool) cleanupFunc {
 func (s *service) cleanupByGrid(gridID int32, includeManuals bool) cleanupFunc {
 	return func(ctx context.Context) error {
 		err := s.repo.BookingEntries().CleanupByGridIDs(
-			ctx, []int32{gridID}, includeManuals)
+			ctx, []int32{gridID}, includeManuals,
+		)
 		if err != nil {
 			return err
 		}

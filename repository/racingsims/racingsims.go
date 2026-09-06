@@ -44,7 +44,8 @@ func New(pool *pgxpool.Pool) Repository {
 
 func (r *racingSimsRepository) LoadByID(ctx context.Context, id int32) (*models.RacingSim, error) {
 	entity, err := models.RacingSims.Query(
-		sm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+		sm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id))),
+	).
 		One(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("racing sim %d: %w", id, repoerrors.ErrNotFound)
@@ -74,7 +75,8 @@ func (r *racingSimsRepository) LoadAll(ctx context.Context) ([]*models.RacingSim
 
 func (r *racingSimsRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.RacingSims.Delete(
-		dm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id)))).
+		dm.Where(models.RacingSims.Columns.ID.EQ(psql.Arg(id))),
+	).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

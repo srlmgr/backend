@@ -44,7 +44,8 @@ func (s *serviceImpl) GetResultsOverview(
 
 	if overview.Season.IsMulticlass {
 		carClasses, ccErr := s.r.Cars().CarClasses().LoadBySeasonID(
-			ctx, overview.Season.ID)
+			ctx, overview.Season.ID,
+		)
 		if ccErr != nil {
 			return nil, ccErr
 		}

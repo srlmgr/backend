@@ -205,7 +205,8 @@ func (sp *standingProc) computePrimaryFromDriverBookings() (
 		func(re *models.ResultEntry) int32 {
 			return re.DriverID.GetOrZero()
 		},
-		service.StandingsTypeDriver)
+		service.StandingsTypeDriver,
+	)
 	return ret
 }
 
@@ -245,7 +246,8 @@ func (sp *standingProc) computePrimaryByParam(
 		tmp := sp.convertToStandings(
 			standingsType,
 			classID,
-			computedStandings)
+			computedStandings,
+		)
 		ret = append(ret, tmp...)
 	}
 	return ret
@@ -282,7 +284,7 @@ func (sp *standingProc) recomputeFinishPosByClassAndGrid() map[int32][]*models.R
 	return ret
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (sp *standingProc) computeSecondaryFromTeamContribution() (
 	ret []*service.Standing,
 ) {
@@ -293,7 +295,8 @@ func (sp *standingProc) computeSecondaryFromTeamContribution() (
 		}
 		bookingsByEventID[booking.EventID] = append(
 			bookingsByEventID[booking.EventID],
-			booking)
+			booking,
+		)
 	}
 	// contains standing data per team.
 	// gets updated per event
@@ -347,7 +350,8 @@ func (sp *standingProc) aggregateTeamBookings(
 			func(item *models.BookingEntry, _ int) bool {
 				return item.TargetType == "team" && item.SourceType == "team_contribution"
 			})
-		teamMap := lo.Reduce(classBookings,
+		teamMap := lo.Reduce(
+			classBookings,
 			func(
 				acc map[int32]*models.BookingEntry,
 				e *models.BookingEntry,

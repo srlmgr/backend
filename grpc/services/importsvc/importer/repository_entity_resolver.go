@@ -81,7 +81,8 @@ func (r *RepositoryEntityResolver) ResolveDriver(
 	}
 
 	driverID, err := r.repos.Drivers().Drivers().FindByName(
-		r.ctx, simDriverName)
+		r.ctx, simDriverName,
+	)
 	if err == nil {
 		return uint32(driverID.ID), nil
 	}

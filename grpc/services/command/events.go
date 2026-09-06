@@ -23,6 +23,7 @@ type eventRequest interface {
 	proto.Message
 	GetSeasonId() uint32
 	GetTrackLayoutId() uint32
+	GetPointSystemId() uint32
 	GetName() string
 	GetEventDate() *timestamppb.Timestamp
 	GetSequenceNo() uint32
@@ -41,6 +42,9 @@ func (b eventSetterBuilder) Build(msg eventRequest) (*eventSetter, error) {
 
 	if trackLayoutID := msg.GetTrackLayoutId(); trackLayoutID != 0 {
 		setter.TrackLayoutID = omit.From(int32(trackLayoutID))
+	}
+	if pointSystemID := msg.GetPointSystemId(); pointSystemID != 0 {
+		setter.PointSystemID = omit.From(int32(pointSystemID))
 	}
 
 	if name := msg.GetName(); name != "" {
@@ -92,6 +96,14 @@ func (s *service) CreateEvent(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// convenience: if point system ID is not set, use season's default point system ID
+	if setter.PointSystemID.IsZero() {
+		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.Msg.GetSeasonId()))
+		if sErr == nil {
+			setter.PointSystemID = omit.From(season.PointSystemID)
+		}
+	}
+
 	var newEvent *models.Event
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		setter.CreatedBy = omit.From(s.execUser(ctx))
@@ -125,6 +137,13 @@ func (s *service) UpdateEvent(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// convenience: if point system ID is not set, use season's default point system ID
+	if setter.PointSystemID.IsZero() {
+		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.Msg.GetSeasonId()))
+		if sErr == nil {
+			setter.PointSystemID = omit.From(season.PointSystemID)
+		}
+	}
 	var newEvent *models.Event
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		setter.UpdatedAt = omit.From(time.Now())
@@ -158,7 +177,8 @@ func (s *service) DeleteEvent(
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if relErr := helper.DeleteEventRelated(
-			ctx, int32(req.Msg.GetEventId())); relErr != nil {
+			ctx, int32(req.Msg.GetEventId()),
+		); relErr != nil {
 			return relErr
 		}
 

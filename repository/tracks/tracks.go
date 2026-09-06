@@ -252,7 +252,8 @@ func (r *simulationTrackLayoutAliasesRepository) LoadBySimulationID(
 	entities, err := models.SimulationTrackLayoutAliases.
 		Query(
 			sm.Where(
-				models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID))),
+				models.SimulationTrackLayoutAliases.Columns.SimulationID.EQ(psql.Arg(simID)),
+			),
 		).
 		All(ctx, r.getExecutor(ctx))
 
@@ -266,7 +267,8 @@ func (r *simulationTrackLayoutAliasesRepository) LoadByLayoutID(
 	entities, err := models.SimulationTrackLayoutAliases.
 		Query(
 			sm.Where(
-				models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID))),
+				models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID)),
+			),
 		).
 		All(ctx, r.getExecutor(ctx))
 
@@ -299,7 +301,8 @@ func (r *simulationTrackLayoutAliasesRepository) FindBySimID(
 
 func (r *simulationTrackLayoutAliasesRepository) DeleteByID(ctx context.Context, id int32) error {
 	_, err := models.SimulationTrackLayoutAliases.Delete(
-		dm.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id)))).
+		dm.Where(models.SimulationTrackLayoutAliases.Columns.ID.EQ(psql.Arg(id))),
+	).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }
@@ -309,7 +312,8 @@ func (r *simulationTrackLayoutAliasesRepository) DeleteByLayoutID(
 	layoutID int32,
 ) error {
 	_, err := models.SimulationTrackLayoutAliases.Delete(
-		dm.Where(models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID)))).
+		dm.Where(models.SimulationTrackLayoutAliases.Columns.TrackLayoutID.EQ(psql.Arg(layoutID))),
+	).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
 }

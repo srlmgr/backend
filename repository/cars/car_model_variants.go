@@ -52,7 +52,8 @@ func (r *carModelVariantsRepository) LoadByManufacturerID(
 				sm.Columns(models.CarModels.Columns.ID),
 				sm.From(models.CarModels.Name()),
 				sm.Where(models.CarModels.Columns.ManufacturerID.EQ(psql.Arg(id))),
-			))),
+			),
+		)),
 	).All(ctx, r.getExecutor(ctx))
 }
 
@@ -67,7 +68,8 @@ func (r *carModelVariantsRepository) LoadByCarClassID(
 				sm.Columns(models.CarClassesToCarModels.Columns.CarModelVariantID),
 				sm.From(models.CarClassesToCarModels.Name()),
 				sm.Where(models.CarClassesToCarModels.Columns.CarClassID.EQ(psql.Arg(id))),
-			))),
+			),
+		)),
 	).All(ctx, r.getExecutor(ctx))
 }
 
@@ -78,9 +80,11 @@ func (r *carModelVariantsRepository) LoadBySeasonID(
 ) ([]*models.CarModelVariant, error) {
 	return models.CarModelVariants.Query(
 		sm.InnerJoin(
-			models.SeasonCarModelVariants.Name()).On(
+			models.SeasonCarModelVariants.Name(),
+		).On(
 			models.SeasonCarModelVariants.Columns.CarModelVariantID.
-				EQ(models.CarModelVariants.Columns.ID)),
+				EQ(models.CarModelVariants.Columns.ID),
+		),
 		sm.Where(models.SeasonCarModelVariants.Columns.SeasonID.EQ(psql.Arg(id))),
 		sm.OrderBy(models.SeasonCarModelVariants.Columns.Pos).Asc(),
 	).All(ctx, r.getExecutor(ctx))

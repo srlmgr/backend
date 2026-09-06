@@ -232,7 +232,8 @@ func setupDriversRepo(pool *pgxpool.Pool, o options) drivers.Repository {
 		sdOpts := cache.OptionsFromSettings[int32, []*models.SeasonDriver](sdSettings)
 		sdOpts = append(sdOpts,
 			cache.WithCacheManager[int32, []*models.SeasonDriver](
-				o.cacheManager, CacheSeasonDrivers))
+				o.cacheManager, CacheSeasonDrivers,
+			))
 		sdCache, _ := cache.New(o.cacheCtx, CacheSeasonDrivers, sdOpts...)
 		o.cacheManager.Subscribe(cache.BroadcastChannel, flushOnChanges(sdCache, o.l))
 
@@ -254,7 +255,8 @@ func setupCarsRepo(pool *pgxpool.Pool, o options) cars.Repository {
 	)
 	manufacturerOpts = append(manufacturerOpts,
 		cache.WithCacheManager[int32, *models.CarManufacturer](
-			o.cacheManager, CacheCarManufacturers))
+			o.cacheManager, CacheCarManufacturers,
+		))
 	manufacturersCache, err := cache.New(o.cacheCtx, CacheCarManufacturers, manufacturerOpts...)
 	if err != nil {
 		return ret
@@ -273,7 +275,8 @@ func setupCarsRepo(pool *pgxpool.Pool, o options) cars.Repository {
 	variantOpts := cache.OptionsFromSettings[int32, *models.CarModelVariant](variantSettings)
 	variantOpts = append(variantOpts,
 		cache.WithCacheManager[int32, *models.CarModelVariant](
-			o.cacheManager, CacheCarModelVariants))
+			o.cacheManager, CacheCarModelVariants,
+		))
 	variantsCache, err := cache.New(o.cacheCtx, CacheCarModelVariants, variantOpts...)
 	if err != nil {
 		return ret
@@ -292,7 +295,8 @@ func setupCarsRepo(pool *pgxpool.Pool, o options) cars.Repository {
 	aliasOpts := cache.OptionsFromSettings[int32, *models.SimulationCarAlias](aliasSettings)
 	aliasOpts = append(aliasOpts,
 		cache.WithCacheManager[int32, *models.SimulationCarAlias](
-			o.cacheManager, CacheSimulationCarAliases))
+			o.cacheManager, CacheSimulationCarAliases,
+		))
 	aliasesCache, err := cache.New(o.cacheCtx, CacheSimulationCarAliases, aliasOpts...)
 	if err != nil {
 		return ret

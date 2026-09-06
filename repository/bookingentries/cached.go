@@ -87,7 +87,8 @@ func (r *cachedRepository) CreateMany(
 		invalidated[entity.EventID] = struct{}{}
 		r.byIDType.DeleteAndPublish(
 			ctx,
-			cache.NewCompositeKey(cache.IDEvent, entity.EventID))
+			cache.NewCompositeKey(cache.IDEvent, entity.EventID),
+		)
 	}
 	return entities, nil
 }

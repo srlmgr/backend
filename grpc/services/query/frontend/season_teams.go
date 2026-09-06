@@ -50,7 +50,8 @@ func (s *service) ListSeasonTeams(
 	}
 
 	carData, loadCarDataErr := s.loadCarModelVariantDataByIDs(
-		ctx, mapKeysSorted(carModelVariantIDSet))
+		ctx, mapKeysSorted(carModelVariantIDSet),
+	)
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")

@@ -39,14 +39,16 @@ func (s *service) AddPenalty(
 	if err != nil {
 		l.Error("failed to build penalty booking entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to build penalty booking entry")
+			codes.Error, "failed to build penalty booking entry",
+		)
 		return nil, s.toRPCError(err)
 	}
 
 	if _, err := s.repo.BookingEntries().Create(ctx, setter); err != nil {
 		l.Error("failed to create penalty booking entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to create penalty booking entry")
+			codes.Error, "failed to create penalty booking entry",
+		)
 		return nil, s.toRPCError(err)
 	}
 
@@ -88,7 +90,8 @@ func (s *service) DeletePenalty(
 	}); err != nil {
 		l.Error("failed to delete penalty booking entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to delete penalty booking entry")
+			codes.Error, "failed to delete penalty booking entry",
+		)
 		return nil, s.toRPCError(err)
 	}
 
@@ -266,7 +269,8 @@ func (s *service) resolveCarClassID(
 	// resolve by driver
 	if req.Target.HasDriverId() {
 		sDrivers, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(
-			ctx, epi.Event.SeasonID)
+			ctx, epi.Event.SeasonID,
+		)
 		if err != nil {
 			return omitnull.Val[int32]{}, err
 		}
@@ -297,7 +301,8 @@ func (s *service) resolveCarClassID(
 	// resolve by team
 	if req.Target.HasTeamId() {
 		sTeams, err := s.repo.Teams().Teams().LoadBySeasonID(
-			ctx, epi.Event.SeasonID)
+			ctx, epi.Event.SeasonID,
+		)
 		if err != nil {
 			return omitnull.Val[int32]{}, err
 		}

@@ -122,7 +122,8 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 		}
 		bookingsByEventID[booking.EventID] = append(
 			bookingsByEventID[booking.EventID],
-			booking)
+			booking,
+		)
 	}
 
 	workByReferenceID := make(map[int32]*referenceStandingWork)

@@ -93,7 +93,8 @@ func (s *service) ListCarModels(
 	if err != nil {
 		l.Error("failed to load car model v2 records", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load car model v2 records")
+			codes.Error, "failed to load car model v2 records",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
@@ -158,7 +159,8 @@ func (s *service) ListCarModelVariants(
 	if err != nil {
 		l.Error("failed to load car model variants", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load car model variants")
+			codes.Error, "failed to load car model variants",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
@@ -197,7 +199,8 @@ func (s *service) GetCarModelVariant(
 	if aliasErr != nil {
 		l.Error("failed to load simulation car aliases", log.ErrorField(aliasErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load simulation car aliases")
+			codes.Error, "failed to load simulation car aliases",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
 	}
 
@@ -271,16 +274,19 @@ func (s *service) ListCarClassModelVariants(
 	l.Debug("ListCarClassModelVariants", log.Uint32("classID", req.Msg.GetClassId()))
 
 	carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
-		ctx, int32(req.Msg.GetClassId()))
+		ctx, int32(req.Msg.GetClassId()),
+	)
 	if err != nil {
 		l.Error("failed to load car model variants for car class", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load car model variants for car class")
+			codes.Error, "failed to load car model variants for car class",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(
-		codes.Ok, "car model variants loaded for car class")
+		codes.Ok, "car model variants loaded for car class",
+	)
 	return connect.NewResponse(&queryv1.ListCarClassModelVariantsResponse{
 		Items: lo.Map(
 			carModelVariants,

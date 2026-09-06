@@ -501,19 +501,21 @@ func SeedTrackLayoutContext(
 func SeedEvent(
 	t *testing.T,
 	seasonID int32,
+	pointSystemID int32,
 	trackLayoutID int32,
 	name string,
 	sequenceNo int32,
 ) *models.Event {
 	t.Helper()
 	return SeedEventContext(t, context.Background(),
-		seasonID, trackLayoutID, name, sequenceNo)
+		seasonID, pointSystemID, trackLayoutID, name, sequenceNo)
 }
 
 func SeedEventContext(
 	t *testing.T,
 	ctx context.Context,
 	seasonID int32,
+	pointSystemID int32,
 	trackLayoutID int32,
 	name string,
 	sequenceNo int32,
@@ -522,6 +524,7 @@ func SeedEventContext(
 
 	event, err := models.Events.Insert(&models.EventSetter{
 		SeasonID:      omit.From(seasonID),
+		PointSystemID: omit.From(pointSystemID),
 		TrackLayoutID: omit.From(trackLayoutID),
 		Name:          omit.From(name),
 		SequenceNo:    omit.From(sequenceNo),
@@ -586,7 +589,8 @@ func SeedRaceGrid(
 		raceID,
 		name,
 		sessionType,
-		sequenceNo)
+		sequenceNo,
+	)
 }
 
 func SeedRaceGridContext(

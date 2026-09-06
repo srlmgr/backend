@@ -70,7 +70,8 @@ func (s *service) CreateSimulation(
 	if err != nil {
 		l.Error("invalid simulation supported formats", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "invalid simulation supported formats")
+			codes.Error, "invalid simulation supported formats",
+		)
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
@@ -106,7 +107,8 @@ func (s *service) UpdateSimulation(
 	if err != nil {
 		l.Error("invalid simulation supported formats", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "invalid simulation supported formats")
+			codes.Error, "invalid simulation supported formats",
+		)
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 

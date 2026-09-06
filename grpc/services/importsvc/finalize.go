@@ -87,7 +87,8 @@ func (s *service) FinalizeEventProcessing(
 					ProcessingState: omit.From(toState),
 					UpdatedAt:       omit.From(time.Now()),
 					UpdatedBy:       omit.From(execUser),
-				})
+				},
+			)
 			if updateErr != nil {
 				return updateErr
 			}
@@ -115,12 +116,14 @@ func (s *service) FinalizeEventProcessing(
 				PayloadJSON: omit.From(emptyJSON),
 				CreatedBy:   omit.From(execUser),
 				UpdatedBy:   omit.From(execUser),
-			})
+			},
+		)
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to finalize event processing", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to finalize event processing")
+			codes.Error, "failed to finalize event processing",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

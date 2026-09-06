@@ -57,7 +57,8 @@ func (s *service) ListSeasonDrivers(
 	}
 
 	carData, loadCarDataErr := s.loadCarDataForSeasonDriversWithVariants(
-		ctx, seasonDrivers)
+		ctx, seasonDrivers,
+	)
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")

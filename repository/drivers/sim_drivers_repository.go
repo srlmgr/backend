@@ -60,7 +60,9 @@ func (r *simulationDriverAliasesRepository) LoadBySimulationID(
 	entity, err := models.SimulationDriverAliases.
 		Query(
 			sm.Where(
-				models.SimulationDriverAliases.Columns.SimulationID.EQ(psql.Arg(simID)))).
+				models.SimulationDriverAliases.Columns.SimulationID.EQ(psql.Arg(simID)),
+			),
+		).
 		All(ctx, r.getExecutor(ctx))
 
 	return entity, err

@@ -130,7 +130,8 @@ func (s *service) GetTrackLayout(
 	if aliasErr != nil {
 		l.Error("failed to load track layout aliases", log.ErrorField(aliasErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load track layout aliases")
+			codes.Error, "failed to load track layout aliases",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
 	}
 

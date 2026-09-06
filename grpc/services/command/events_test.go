@@ -26,6 +26,7 @@ func seedEvent(
 	t *testing.T,
 	repo rootrepo.Repository,
 	seasonID int32,
+	psID int32,
 	trackLayoutID int32,
 	name string,
 	sequenceNo int32,
@@ -37,6 +38,7 @@ func seedEvent(
 	var err error
 	event, err = repo.Events().Create(context.Background(), &models.EventSetter{
 		SeasonID:        omit.From(seasonID),
+		PointSystemID:   omit.From(psID),
 		TrackLayoutID:   omit.From(trackLayoutID),
 		Name:            omit.From(name),
 		SequenceNo:      omit.From(sequenceNo),
@@ -187,7 +189,7 @@ func TestCreateEventFailureDuplicateNameSameSeason(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025")
 	track := seedTrack(t, repo, "Interlagos")
 	layout := seedTrackLayout(t, repo, track.ID, "Full")
-	seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
+	seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Round 1", 1)
 
 	_, err := svc.CreateEvent(
 		context.Background(),
@@ -218,7 +220,7 @@ func TestCreateEventSuccessDuplicateNameDifferentSeason(t *testing.T) {
 	season2 := seedSeason(t, repo, series.ID, ps.ID, "2025")
 	track := seedTrack(t, repo, "Le Mans")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	seedEvent(t, repo, season1.ID, layout.ID, "Round 1", 1)
+	seedEvent(t, repo, season1.ID, ps.ID, layout.ID, "Round 1", 1)
 
 	resp, err := svc.CreateEvent(
 		context.Background(),
@@ -280,7 +282,7 @@ func TestUpdateEventSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
 	track := seedTrack(t, repo, "Daytona")
 	layout := seedTrackLayout(t, repo, track.ID, "Oval")
-	initial := seedEvent(t, repo, season.ID, layout.ID, "Daytona 500", 1)
+	initial := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Daytona 500", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
 
 	before, err := repo.Events().LoadByID(context.Background(), initial.ID)
@@ -352,8 +354,8 @@ func TestUpdateEventFailureDuplicateNameSameSeason(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025")
 	track := seedTrack(t, repo, "Nurburgring")
 	layout := seedTrackLayout(t, repo, track.ID, "GP")
-	first := seedEvent(t, repo, season.ID, layout.ID, "Round 1", 1)
-	second := seedEvent(t, repo, season.ID, layout.ID, "Round 2", 2)
+	first := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Round 1", 1)
+	second := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Round 2", 2)
 
 	_, err := svc.UpdateEvent(
 		context.Background(),
@@ -390,7 +392,7 @@ func TestDeleteEventSuccess(t *testing.T) {
 	season := seedSeason(t, repo, series.ID, ps.ID, "2025")
 	track := seedTrack(t, repo, "Le Mans Circuit")
 	layout := seedTrackLayout(t, repo, track.ID, "Full Circuit")
-	initial := seedEvent(t, repo, season.ID, layout.ID, "Delete Me", 1)
+	initial := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Delete Me", 1)
 
 	resp, err := svc.DeleteEvent(
 		context.Background(),

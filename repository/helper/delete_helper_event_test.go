@@ -314,6 +314,7 @@ func seedEventBase(t *testing.T, ctx context.Context, suffix string) eventFixtur
 			t,
 			ctx,
 			season.ID,
+			pointSystem.ID,
 			trackLayout.ID,
 			"Event "+suffix,
 			1,

@@ -39,6 +39,7 @@ func seedEvent(
 	t *testing.T,
 	repo Repository,
 	seasonID int32,
+	pointSystemID int32,
 	trackLayoutID int32,
 	name string,
 	sequenceNo int32,
@@ -50,6 +51,7 @@ func seedEvent(
 	var err error
 	event, err = repo.Create(context.Background(), &models.EventSetter{
 		SeasonID:      omit.From(seasonID),
+		PointSystemID: omit.From(pointSystemID),
 		TrackLayoutID: omit.From(trackLayoutID),
 		Name:          omit.From(name),
 		SequenceNo:    omit.From(sequenceNo),

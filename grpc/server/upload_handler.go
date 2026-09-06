@@ -75,7 +75,8 @@ func registerMultipartUploadHandler(
 //nolint:govet,funlen // error handling by design
 func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	principal, found, err := h.principalResolver.CurrentPrincipalFromRequest(
-		r.Context(), r)
+		r.Context(), r,
+	)
 	if err != nil {
 		h.logger.WithCtx(r.Context()).Warn("resolve principal from request",
 			log.ErrorField(err))
@@ -107,7 +108,8 @@ func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Req
 	if err := h.authorizer.Authorize(
 		r.Context(), &principal, uploadCapability, authz.ResourceScope{
 			SeriesID: strconv.FormatInt(int64(seriesID), 10),
-		}); err != nil {
+		},
+	); err != nil {
 		h.logger.WithCtx(r.Context()).Warn("upload authorization denied",
 			log.ErrorField(err))
 		http.Error(w, "access denied", http.StatusForbidden)

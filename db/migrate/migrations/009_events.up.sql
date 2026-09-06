@@ -5,6 +5,7 @@ CREATE TABLE events (
     frontend_id uuid NOT NULL DEFAULT uuid_generate_v4(),
     season_id integer NOT NULL,
     track_layout_id integer NOT NULL,
+	point_system_id integer NOT NULL,
     name text NOT NULL,
 	sequence_no integer NOT NULL,
     event_date timestamp with time zone NOT NULL,
@@ -27,6 +28,10 @@ ALTER TABLE events
 ALTER TABLE events
     ADD CONSTRAINT events_track_layout_id_fk
     FOREIGN KEY (track_layout_id) REFERENCES track_layouts (id);
+
+ALTER TABLE events
+    ADD CONSTRAINT events_point_system_id_fk
+    FOREIGN KEY (point_system_id) REFERENCES point_systems (id);
 
 ALTER TABLE events
     ADD CONSTRAINT events_season_id_name_unique

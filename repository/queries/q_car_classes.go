@@ -34,7 +34,8 @@ func (r *queryCarClasses) FindBySeasonAndCarModelVariant(
 		sm.From(models.CarClassesToCarModels.Name()),
 		sm.Where(
 			models.CarClassesToCarModels.Columns.CarModelVariantID.EQ(
-				psql.Arg(carModelVariantID)),
+				psql.Arg(carModelVariantID),
+			),
 		),
 	)
 	query := models.CarClasses.Query(

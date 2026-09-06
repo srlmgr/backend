@@ -25,7 +25,8 @@ func (s *service) ListSeasonCarModelVariants(
 	l.Debug("ListSeasonCarModelVariants", log.Int32("season_id", seasonID))
 
 	seasonCarModelVariants, err := s.repo.Cars().CarModelVariants().LoadBySeasonID(
-		ctx, seasonID)
+		ctx, seasonID,
+	)
 	if err != nil {
 		l.Error("failed to load season car model variants", log.ErrorField(err))
 		trace.SpanFromContext(ctx).

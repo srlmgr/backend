@@ -61,7 +61,8 @@ func (e *EventProcInfoCollector) ForEvent(ctx context.Context, eventID int32) (
 	}
 
 	pointSystem, err := e.repos.PointSystems().PointSystems().LoadByID(
-		ctx, season.PointSystemID)
+		ctx, event.PointSystemID,
+	)
 	if err != nil {
 		return nil, err
 	}

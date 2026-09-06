@@ -208,7 +208,8 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 				p.w,
 				p.r,
 				fmt.Sprintf("%s?classID=%d", p.r.URL.Path, sData.CarClasses[0].ID),
-				http.StatusFound)
+				http.StatusFound,
+			)
 			return nil
 		}
 		classID, err := strconv.Atoi(p.r.URL.Query().Get("classID"))
@@ -220,9 +221,11 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 		}
 
 		sData.ServiceData.Primary = sData.FilterByClass(
-			sData.ServiceData.Primary, classID)
+			sData.ServiceData.Primary, classID,
+		)
 		sData.ServiceData.Secondary = sData.FilterByClass(
-			sData.ServiceData.Secondary, classID)
+			sData.ServiceData.Secondary, classID,
+		)
 	}
 
 	sData.NavData = &myNav{

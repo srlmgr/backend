@@ -104,7 +104,8 @@ func (p *resultsOverviewProcessor) process() *model.SeasonResultsOverviewContain
 				p.w,
 				p.r,
 				fmt.Sprintf("%s?classID=%d", p.r.URL.Path, carClasses[0].ID),
-				http.StatusFound)
+				http.StatusFound,
+			)
 			return nil
 		}
 		classID, err = strconv.Atoi(p.r.URL.Query().Get("classID"))

@@ -89,7 +89,8 @@ func (s *service) UploadResultsFile(
 		l.Error("failed to resolve import processor", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error,
-			"failed to resolve import processor")
+			"failed to resolve import processor",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 	//nolint:lll // readability
@@ -185,7 +186,8 @@ func (s *service) UploadResultsFile(
 		}
 
 		resolver := importer.NewResolver(
-			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation), epi)
+			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation), epi,
+		)
 
 		finalInput := input
 		if selectedFormat.AllowMultipleUploads {
@@ -246,7 +248,8 @@ func (s *service) UploadResultsFile(
 				PayloadJSON:   omit.From(emptyJSON),
 				CreatedBy:     omit.From(execUser),
 				UpdatedBy:     omit.From(execUser),
-			})
+			},
+		)
 		return writeErr
 	}); txErr != nil {
 		l.Error("failed to upload results file", log.ErrorField(txErr))
@@ -269,7 +272,8 @@ func (s *service) replaceResultEntriesForBatch(
 	execUser string,
 ) error {
 	if err := s.repo.ResultEntries().DeleteByRaceGridID(
-		ctx, batch.RaceGridID); err != nil {
+		ctx, batch.RaceGridID,
+	); err != nil {
 		return fmt.Errorf("delete result entries for race grid %d: %w",
 			batch.RaceGridID, err)
 	}
