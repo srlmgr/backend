@@ -33,13 +33,15 @@ func (s *service) GetBookingEntries(
 		if errors.Is(err, errInvalidBookingSelector) {
 			l.Error("invalid booking selector")
 			trace.SpanFromContext(ctx).SetStatus(
-				codes.Error, "invalid booking selector")
+				codes.Error, "invalid booking selector",
+			)
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 
 		l.Error("failed to load booking entries", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load booking entries")
+			codes.Error, "failed to load booking entries",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
@@ -47,7 +49,8 @@ func (s *service) GetBookingEntries(
 	if err != nil {
 		l.Error("failed to build booking entries response", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to build booking entries response")
+			codes.Error, "failed to build booking entries response",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 

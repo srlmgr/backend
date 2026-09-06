@@ -91,7 +91,8 @@ func (s *server) startServers() (err error) {
 
 	s.pool = postgres.InitWithURL(
 		config.DBURI,
-		postgres.WithTracer(postgres.NewOtlpTracer()))
+		postgres.WithTracer(postgres.NewOtlpTracer()),
+	)
 	defer s.pool.Close()
 
 	repoOpts := []pgRepos.Option{}
@@ -110,7 +111,8 @@ func (s *server) startServers() (err error) {
 	s.service = serviceImpl.New(
 		s.repo,
 		log.GetFromContext(s.ctx).Named("service"),
-		serviceOpts...)
+		serviceOpts...,
+	)
 	s.serveErrCh = make(chan error, 1)
 	if config.GRPCEnabled {
 		go func() {

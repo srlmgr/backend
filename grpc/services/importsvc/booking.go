@@ -74,7 +74,8 @@ func (s *service) ComputeBookingEntries(
 	}
 
 	teamDrivers, err := s.repo.Queries().QueryTeamDrivers().FindBySeason(
-		ctx, epi.Season.ID)
+		ctx, epi.Season.ID,
+	)
 	if err != nil {
 		teamDrivers = nil // not critical, we can proceed without team driver info
 	}
@@ -85,7 +86,8 @@ func (s *service) ComputeBookingEntries(
 		raceGrids,
 		teamDrivers,
 		penalties,
-		execUser)
+		execUser,
+	)
 
 	var createdEntries int32
 
@@ -157,7 +159,8 @@ func (s *service) ComputeBookingEntries(
 
 				CreatedBy: omit.From(execUser),
 				UpdatedBy: omit.From(execUser),
-			})
+			},
+		)
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to compute booking entries", log.ErrorField(txErr))

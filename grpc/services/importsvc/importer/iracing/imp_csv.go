@@ -46,7 +46,8 @@ func ParseCSV(payload any) (*processor.ParsedImportPayload, error) {
 
 	results, err := parseResultsCSV(
 		records[secondHeaderIndex],
-		records[secondHeaderIndex+1:])
+		records[secondHeaderIndex+1:],
+	)
 	if err != nil {
 		return nil, err
 	}

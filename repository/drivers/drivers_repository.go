@@ -44,7 +44,8 @@ func (r *driversRepository) LoadByID(ctx context.Context, id int32) (*models.Dri
 
 func (r *driversRepository) LoadByIDs(ctx context.Context, ids []int32) ([]*models.Driver, error) {
 	entity, err := models.Drivers.Query(
-		sm.Where(models.Drivers.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids))))).
+		sm.Where(models.Drivers.Columns.ID.EQ(psql.F("ANY", psql.Arg(ids)))),
+	).
 		All(ctx, r.getExecutor(ctx))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("drivers %v: %w", ids, repoerrors.ErrNotFound)

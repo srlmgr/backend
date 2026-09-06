@@ -319,6 +319,15 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 			msg:     fmt.Sprintf("for pos %d", 1),
 			origin:  PointsPolicyQualificationPos,
 		},
+		// raceDistPct is only relevant for finish position points,
+		// not qualification points, so points are granted
+		workOutput{
+			refID:   203,
+			classID: 1,
+			points:  3,
+			msg:     fmt.Sprintf("for pos %d", 2),
+			origin:  PointsPolicyQualificationPos,
+		},
 	}
 
 	assertOutputSlicesEqual(t, outputs, expected)

@@ -24,6 +24,7 @@ type seasonRequest interface {
 	GetName() string
 	GetPointSystemId() uint32
 	GetHasTeams() bool
+	GetNumGrids() int32
 	GetIsTeamBased() bool
 	GetIsMulticlass() bool
 	GetSkipEvents() int32
@@ -54,6 +55,9 @@ func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 
 	if skipEvents := msg.GetSkipEvents(); skipEvents != 0 {
 		setter.SkipEvents = omit.From(skipEvents)
+	}
+	if numGrids := msg.GetNumGrids(); numGrids != 0 {
+		setter.NumGrids = omit.From(numGrids)
 	}
 
 	if teamPointsTopN := msg.GetTeamPointsTopN(); teamPointsTopN != 0 {
@@ -149,13 +153,15 @@ func (s *service) SetSeasonCarClasses(
 		toSetCarModelVariantIDs := make([]int32, 0)
 		collectCarModelVariants := func() error {
 			if err := s.repo.Seasons().SetCarModelVariants(
-				ctx, int32(req.Msg.GetSeasonId()), []int32{}); err != nil {
+				ctx, int32(req.Msg.GetSeasonId()), []int32{},
+			); err != nil {
 				return err
 			}
 
 			for _, carClassID := range lo.Uniq(req.Msg.GetCarClassIds()) {
 				carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
-					ctx, int32(carClassID))
+					ctx, int32(carClassID),
+				)
 				if err != nil {
 					return err
 				}
@@ -178,7 +184,8 @@ func (s *service) SetSeasonCarClasses(
 			}
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_INSERT_WHEN_EMPTY:
 			existingCarModelVariants, err := s.repo.Cars().CarModelVariants().LoadBySeasonID(
-				ctx, int32(req.Msg.GetSeasonId()))
+				ctx, int32(req.Msg.GetSeasonId()),
+			)
 			if err != nil {
 				return err
 			}
@@ -206,7 +213,8 @@ func (s *service) SetSeasonCarClasses(
 	}); txErr != nil {
 		l.Error("failed to set car classes for season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to set car classes for season")
+			codes.Error, "failed to set car classes for season",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -233,7 +241,8 @@ func (s *service) SetSeasonCarModelVariants(
 	}); txErr != nil {
 		l.Error("failed to set car model variants for season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to set car model variants for season")
+			codes.Error, "failed to set car model variants for season",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

@@ -52,7 +52,8 @@ func (p *EventProcessor) ProcessAll(
 		gridNo = int32(math.Min(float64(gridNo), float64(len(raceSettings.AwardSettings)-1)))
 		pointProc := NewPointSystemProcessor(
 			ctx,
-			p.settings)
+			p.settings,
+		)
 		gridOutputs, err := pointProc.ProcessPoints(
 			grid.Inputs,
 			raceSettings.Policies,

@@ -104,11 +104,13 @@ func (s *serviceImpl) setupStandingsService() service.StandingsService {
 		)
 		opts = append(opts,
 			cache.WithCacheManager[cached.CacheStandingsKey, *service.StandingsContainer](
-				s.opts.cacheManager, CacheStandings))
+				s.opts.cacheManager, CacheStandings,
+			))
 		if c, err := cache.New(
 			s.opts.cacheCtx,
 			CacheStandings,
-			opts...); err == nil {
+			opts...,
+		); err == nil {
 			s.opts.cacheManager.Subscribe(cache.BroadcastChannel, flushOnChanges(c, s.opts.l))
 			s.standingsService = cached.NewCachedStandings(s.standingsService, c)
 		}

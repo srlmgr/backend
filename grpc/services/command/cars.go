@@ -281,7 +281,8 @@ func (s *service) CreateCarModelVariant(
 	}); txErr != nil {
 		l.Error("failed to create car model variant", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to create car model variant")
+			codes.Error, "failed to create car model variant",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -316,7 +317,8 @@ func (s *service) UpdateCarModelVariant(
 		setters := s.createCarAliasSetters(
 			ctx,
 			newCarModelVariant.ID,
-			req.Msg.GetSimulationAliases())
+			req.Msg.GetSimulationAliases(),
+		)
 		aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
 			ReplaceForVariantID(
 				ctx,
@@ -328,7 +330,8 @@ func (s *service) UpdateCarModelVariant(
 	}); txErr != nil {
 		l.Error("failed to update car model variant", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to update car model variant")
+			codes.Error, "failed to update car model variant",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -356,7 +359,8 @@ func (s *service) DeleteCarModelVariant(
 	}); txErr != nil {
 		l.Error("failed to delete car model variant", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to delete car model variant")
+			codes.Error, "failed to delete car model variant",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -401,7 +405,8 @@ func (s *service) SetSimulationCarAliases(
 		simulationID := int32(req.Msg.GetSimulationId())
 
 		existing, err := s.repo.Cars().SimulationCarAliases().LoadBySimulationID(
-			ctx, simulationID)
+			ctx, simulationID,
+		)
 		if err != nil {
 			return err
 		}
@@ -411,7 +416,8 @@ func (s *service) SetSimulationCarAliases(
 				continue
 			}
 			if err := s.repo.Cars().SimulationCarAliases().DeleteByID(
-				ctx, alias.ID); err != nil {
+				ctx, alias.ID,
+			); err != nil {
 				return err
 			}
 		}
@@ -437,7 +443,8 @@ func (s *service) SetSimulationCarAliases(
 		l.Error("failed to set simulation car aliases", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error,
-			"failed to set simulation car aliases")
+			"failed to set simulation car aliases",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
@@ -571,12 +578,14 @@ func (s *service) AssignCarModelVariantToCarClass(
 	}); txErr != nil {
 		l.Error("failed to assign car model variant to car class", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to assign car model variant to car class")
+			codes.Error, "failed to assign car model variant to car class",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(
-		codes.Ok, "car model variant assigned to car class")
+		codes.Ok, "car model variant assigned to car class",
+	)
 	return connect.NewResponse(&v1.AssignCarModelVariantToCarClassResponse{}), nil
 }
 
@@ -599,7 +608,8 @@ func (s *service) UnassignCarModelVariantFromCarClass(
 		l.Error("failed to unassign car model variant from car class",
 			log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to unassign car model variant from car class")
+			codes.Error, "failed to unassign car model variant from car class",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

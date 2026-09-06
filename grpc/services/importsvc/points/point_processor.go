@@ -94,7 +94,8 @@ func (p *PointSystemProcessor) ProcessPoints(
 	slices.SortFunc(
 		sortedByFinishPos, func(a, b Input) int {
 			return int(a.FinishPosition() - b.FinishPosition())
-		})
+		},
+	)
 	byClass := lo.GroupBy(sortedByFinishPos,
 		func(item Input) int32 { return item.ClassID() })
 	for _, classInputs := range byClass {
@@ -104,11 +105,12 @@ func (p *PointSystemProcessor) ProcessPoints(
 			switch policyType {
 			case PointsPolicyFinishPos, PointsPolicyTopNFinishers:
 				worker := &standardPosBasedProcessor{policyType: policyType}
-				pInput := lo.Clone(eligibleInputs)
+				pInput := p.eligibleForPositionPoints(lo.Clone(eligibleInputs))
 				slices.SortFunc(
 					pInput, func(a, b Input) int {
 						return int(a.FinishPosition() - b.FinishPosition())
-					})
+					},
+				)
 
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
@@ -118,23 +120,28 @@ func (p *PointSystemProcessor) ProcessPoints(
 				slices.SortFunc(
 					pInput, func(a, b Input) int {
 						return int(a.QualiPosition() - b.QualiPosition())
-					})
+					},
+				)
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
 
 			case PointsPolicyFastestLap:
 				worker := &standardPosBasedProcessor{policyType: policyType}
-				pInput := lo.Clone(eligibleInputs)
+				pInput := lo.Filter(lo.Clone(eligibleInputs),
+					func(inp Input, _ int) bool {
+						return inp.FastestLap() > 0
+					})
 				slices.SortFunc(
 					pInput, func(a, b Input) int {
 						return int(a.FastestLap() - b.FastestLap())
-					})
+					},
+				)
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
 
 			case PointsPolicyLeastIncidents:
 				worker := &standardPosBasedProcessor{policyType: policyType}
-				pInput := lo.Clone(eligibleInputs)
+				pInput := p.eligibleForPositionPoints(lo.Clone(eligibleInputs))
 				slices.SortFunc(
 					pInput, func(a, b Input) int {
 						ret := a.Incidents() - b.Incidents()
@@ -143,7 +150,8 @@ func (p *PointSystemProcessor) ProcessPoints(
 							return int(a.FinishPosition() - b.FinishPosition())
 						}
 						return int(ret)
-					})
+					},
+				)
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
 			}
@@ -160,7 +168,8 @@ func (p *PointSystemProcessor) ProcessPoints(
 				}
 				ret = append(
 					ret,
-					p.handleIncidentsExceededPolicy(ret, polSettings, eligibleInputs)...)
+					p.handleIncidentsExceededPolicy(ret, polSettings, eligibleInputs)...,
+				)
 			}
 		}
 	}
@@ -214,6 +223,20 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 }
 
 func (p *PointSystemProcessor) collectEligibleInputs(inputs []Input) []Input {
+	if len(inputs) == 0 {
+		return inputs
+	}
+
+	ret := lo.Filter(inputs, func(inp Input, _ int) bool {
+		if !p.settings.Eligibility.Guests && inp.IsGuest() {
+			return false
+		}
+		return true
+	})
+	return ret
+}
+
+func (p *PointSystemProcessor) eligibleForPositionPoints(inputs []Input) []Input {
 	if len(inputs) == 0 {
 		return inputs
 	}

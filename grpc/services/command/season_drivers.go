@@ -207,7 +207,8 @@ func (s *service) RemoveSeasonDriver(
 	if toClose == nil {
 		l.Debug("driver is not active in season, skipping")
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Ok, "driver is not active in season, skipping")
+			codes.Ok, "driver is not active in season, skipping",
+		)
 		return connect.NewResponse(&v1.RemoveSeasonDriverResponse{}), nil
 	}
 
@@ -230,7 +231,8 @@ func (s *service) RemoveSeasonDriver(
 	}); txErr != nil {
 		l.Error("failed to remove season driver", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to remove season driver")
+			codes.Error, "failed to remove season driver",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

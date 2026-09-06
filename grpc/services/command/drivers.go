@@ -180,7 +180,8 @@ func (s *service) SetSimulationDriverAliases(
 	}); txErr != nil {
 		l.Error("failed to set simulation driver aliases", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to set simulation driver aliases")
+			codes.Error, "failed to set simulation driver aliases",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
 	}
 

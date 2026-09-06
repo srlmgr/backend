@@ -43,7 +43,8 @@ func (s *service) GetSummary(
 		l.Error("invalid summary selector")
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid summary selector")
 		return nil, connect.NewError(
-			connect.CodeInvalidArgument, errInvalidSummarySelector)
+			connect.CodeInvalidArgument, errInvalidSummarySelector,
+		)
 	}
 	if err != nil {
 		l.Error("failed to get summary", log.ErrorField(err))
@@ -63,7 +64,8 @@ func (s *service) GetSummary(
 	if err != nil {
 		l.Error("failed to enrich summary response", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to enrich summary response")
+			codes.Error, "failed to enrich summary response",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 
@@ -80,7 +82,8 @@ func (s *service) getSummaryByEventID(
 	bookings, err := s.repo.BookingEntries().LoadByEventID(ctx, int32(eventID))
 	if err != nil {
 		s.logger.WithCtx(ctx).Error(
-			"failed to load booking entries", log.ErrorField(err))
+			"failed to load booking entries", log.ErrorField(err),
+		)
 		return nil, err
 	}
 	return s.createSummaryBy(ctx, req.Msg.Selector, bookings), nil
@@ -135,7 +138,8 @@ func (s *service) createSummaryBy(
 			filteredBy(mytypes.TargetType("driver")),
 			func(item *models.BookingEntry) int32 {
 				return item.DriverID.GetOrZero()
-			})
+			},
+		)
 		if !season.IsTeamBased {
 			summaries = s.summaryByPrimary(work)
 		} else {
@@ -148,7 +152,8 @@ func (s *service) createSummaryBy(
 			filteredBy(mytypes.TargetType("team")),
 			func(item *models.BookingEntry) int32 {
 				return item.TeamID.GetOrZero()
-			})
+			},
+		)
 		if season.IsTeamBased {
 			summaries = s.summaryByPrimary(work)
 		} else {

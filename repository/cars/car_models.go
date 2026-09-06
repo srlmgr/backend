@@ -37,7 +37,8 @@ func (r *carModelsRepository) LoadByManufacturerID(
 	id int32,
 ) ([]*models.CarModel, error) {
 	return models.CarModels.Query(
-		sm.Where(models.CarModels.Columns.ManufacturerID.EQ(psql.Arg(id)))).
+		sm.Where(models.CarModels.Columns.ManufacturerID.EQ(psql.Arg(id))),
+	).
 		All(ctx, r.getExecutor(ctx))
 }
 

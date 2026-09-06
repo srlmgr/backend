@@ -284,6 +284,7 @@ func (s *ConvService) SeasonToSeason(model *models.Season) *commonv1.Season {
 		Name:           model.Name,
 		PointSystemId:  uint32(model.PointSystemID),
 		HasTeams:       model.HasTeams,
+		NumGrids:       model.NumGrids,
 		IsTeamBased:    model.IsTeamBased,
 		IsMulticlass:   model.IsMulticlass,
 		TeamPointsTopN: model.TeamPointsTopN.GetOrZero(),
@@ -563,19 +564,23 @@ func (s *ConvService) EventToEvent(model *models.Event) *commonv1.Event {
 		TrackLayoutId: uint32(model.TrackLayoutID),
 		Name:          model.Name,
 		EventDate:     timestamppb.New(model.EventDate),
+		PointSystemId: uint32(model.PointSystemID),
 	}
 
 	status := model.Status
 	if !isKnownEventStatus(status) {
-		s.logger.Warn("unknown event status, mapping to UNSPECIFIED",
+		s.logger.Warn(
+			"unknown event status, mapping to UNSPECIFIED",
 			log.String("status", model.Status),
 			log.Int32("event_id", model.ID),
 		)
 		status = ""
 	}
 	if err := SetProtoFieldStringOrEnum(
-		event.ProtoReflect(), "status", status); err != nil {
-		s.logger.Warn("unknown event status, mapping to UNSPECIFIED",
+		event.ProtoReflect(), "status", status,
+	); err != nil {
+		s.logger.Warn(
+			"unknown event status, mapping to UNSPECIFIED",
 			log.String("status", status),
 			log.Int32("event_id", model.ID),
 			log.ErrorField(err),
@@ -584,7 +589,8 @@ func (s *ConvService) EventToEvent(model *models.Event) *commonv1.Event {
 
 	processingState := model.ProcessingState
 	if !isKnownEventProcessingState(processingState) {
-		s.logger.Warn("unknown event processing_state, mapping to UNSPECIFIED",
+		s.logger.Warn(
+			"unknown event processing_state, mapping to UNSPECIFIED",
 			log.String("processing_state", model.ProcessingState),
 			log.Int32("event_id", model.ID),
 		)
@@ -595,7 +601,8 @@ func (s *ConvService) EventToEvent(model *models.Event) *commonv1.Event {
 		"processing_state",
 		processingState,
 	); err != nil {
-		s.logger.Warn("unknown event processing_state, mapping to UNSPECIFIED",
+		s.logger.Warn(
+			"unknown event processing_state, mapping to UNSPECIFIED",
 			log.String("processing_state", processingState),
 			log.Int32("event_id", model.ID),
 			log.ErrorField(err),
@@ -688,7 +695,8 @@ func (s *ConvService) RaceToRace(model *models.Race) *commonv1.Race {
 	case RaceSessionTypeRace:
 		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
 	default:
-		s.logger.Warn("unknown race session_type, mapping to UNSPECIFIED",
+		s.logger.Warn(
+			"unknown race session_type, mapping to UNSPECIFIED",
 			log.String("session_type", model.SessionType),
 			log.Int32("race_id", model.ID),
 		)
@@ -720,7 +728,8 @@ func (s *ConvService) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceG
 	case RaceSessionTypeRace:
 		sessionType = commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE
 	default:
-		s.logger.Warn("unknown race grid session_type, mapping to UNSPECIFIED",
+		s.logger.Warn(
+			"unknown race grid session_type, mapping to UNSPECIFIED",
 			log.String("session_type", model.SessionType),
 			log.Int32("race_grid_id", model.ID),
 		)

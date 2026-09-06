@@ -30,7 +30,8 @@ func SetupTestDB() (*pgxpool.Pool, error) {
 		WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(5*time.Second)),
+				WithStartupTimeout(5*time.Second),
+		),
 		WithName("srlmgr-test"),
 	)
 	if err != nil {
@@ -67,7 +68,8 @@ func clearTables(pool *pgxpool.Pool, tables []string) error {
 		if _, err := tx.Exec(
 			context.Background(),
 			fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY ",
-				strings.Join(tables, ", "))); err != nil {
+				strings.Join(tables, ", ")),
+		); err != nil {
 			return err
 		}
 		return nil

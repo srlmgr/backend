@@ -205,7 +205,8 @@ func (sp *standingProc) computePrimaryFromDriverBookings() (
 		func(re *models.ResultEntry) int32 {
 			return re.DriverID.GetOrZero()
 		},
-		service.StandingsTypeDriver)
+		service.StandingsTypeDriver,
+	)
 	return ret
 }
 
@@ -245,7 +246,8 @@ func (sp *standingProc) computePrimaryByParam(
 		tmp := sp.convertToStandings(
 			standingsType,
 			classID,
-			computedStandings)
+			computedStandings,
+		)
 		ret = append(ret, tmp...)
 	}
 	return ret
@@ -293,7 +295,8 @@ func (sp *standingProc) computeSecondaryFromTeamContribution() (
 		}
 		bookingsByEventID[booking.EventID] = append(
 			bookingsByEventID[booking.EventID],
-			booking)
+			booking,
+		)
 	}
 	// contains standing data per team.
 	// gets updated per event

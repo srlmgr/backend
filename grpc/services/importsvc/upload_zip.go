@@ -69,7 +69,8 @@ func mergeImportBatchZipPayload(
 	entries := map[string][]byte{}
 	if len(existingZip) > 0 {
 		existingReader, err := zip.NewReader(
-			bytes.NewReader(existingZip), int64(len(existingZip)))
+			bytes.NewReader(existingZip), int64(len(existingZip)),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("read existing import batch zip payload: %w", err)
 		}

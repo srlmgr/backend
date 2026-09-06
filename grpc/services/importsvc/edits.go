@@ -100,7 +100,8 @@ func (s *service) ApplyResultEdits(
 				ProcessedAt:     omitnull.From(time.Now()),
 				UpdatedAt:       omit.From(time.Now()),
 				UpdatedBy:       omit.From(execUser),
-			})
+			},
+		)
 		if updateErr != nil {
 			return updateErr
 		}
@@ -113,7 +114,8 @@ func (s *service) ApplyResultEdits(
 				ProcessingState: omit.From(toState),
 				UpdatedAt:       omit.From(time.Now()),
 				UpdatedBy:       omit.From(execUser),
-			})
+			},
+		)
 		if updateErr != nil {
 			return updateErr
 		}
@@ -130,7 +132,8 @@ func (s *service) ApplyResultEdits(
 				PayloadJSON:   omit.From(emptyJSON),
 				CreatedBy:     omit.From(execUser),
 				UpdatedBy:     omit.From(execUser),
-			})
+			},
+		)
 		return updateErr
 	}); txErr != nil {
 		l.Error("failed to apply result edits", log.ErrorField(txErr))

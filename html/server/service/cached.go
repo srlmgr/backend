@@ -158,13 +158,15 @@ func (s *cachedService) setupStandingsCaches() {
 		CacheStandingsKey, *model.SeasonStandingsContainer](settings)
 	opts = append(opts,
 		cache.WithCacheManager[CacheStandingsKey, *model.SeasonStandingsContainer](
-			s.opts.cacheManager, CacheStandings),
+			s.opts.cacheManager, CacheStandings,
+		),
 		cache.WithClone[CacheStandingsKey, *model.SeasonStandingsContainer](),
 	)
 	if c, err := cache.New(
 		s.opts.cacheCtx,
 		CacheStandings,
-		opts...); err == nil {
+		opts...,
+	); err == nil {
 		s.opts.cacheManager.Subscribe(cache.BroadcastChannel, flushOnChanges(c, s.opts.l))
 		s.standingsCache = c
 	}
@@ -176,13 +178,15 @@ func (s *cachedService) setupResultsCaches() {
 		CacheResultsKey, *model.SeasonResultsOverviewContainer](settings)
 	opts = append(opts,
 		cache.WithCacheManager[CacheResultsKey, *model.SeasonResultsOverviewContainer](
-			s.opts.cacheManager, CacheResultsOverview),
+			s.opts.cacheManager, CacheResultsOverview,
+		),
 		// cache.WithClone[CacheResultsKey, *model.SeasonResultsOverviewContainer](),
 	)
 	if c, err := cache.New(
 		s.opts.cacheCtx,
 		CacheResultsOverview,
-		opts...); err == nil {
+		opts...,
+	); err == nil {
 		s.opts.cacheManager.Subscribe(cache.BroadcastChannel, flushOnChanges(c, s.opts.l))
 		s.resultsOverviewCache = c
 	}
@@ -195,12 +199,14 @@ func (s *cachedService) setupSeasonParticipantsCaches() {
 	opts = append(opts,
 		cache.WithCacheManager[
 			CacheSeasonParticipantsKey, *model.SeasonParticipantsContainer](
-			s.opts.cacheManager, CacheSeasonParticipants),
+			s.opts.cacheManager, CacheSeasonParticipants,
+		),
 	)
 	if c, err := cache.New(
 		s.opts.cacheCtx,
 		CacheSeasonParticipants,
-		opts...); err == nil {
+		opts...,
+	); err == nil {
 		s.opts.cacheManager.Subscribe(cache.BroadcastChannel, flushOnChanges(c, s.opts.l))
 		s.seasonParticipantsCache = c
 	}

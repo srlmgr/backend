@@ -225,7 +225,8 @@ func (s *service) AddTeamMember(
 	if err != nil {
 		l.Error("failed to load current team members", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load current team members")
+			codes.Error, "failed to load current team members",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 	_ = currentMembers // TODO: maybe check if data for overlap existing member
@@ -278,7 +279,8 @@ func (s *service) RemoveTeamMember(
 	if err != nil {
 		l.Error("failed to load current team member entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to load current team member entry")
+			codes.Error, "failed to load current team member entry",
+		)
 		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
 	}
 

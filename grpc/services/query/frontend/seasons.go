@@ -92,7 +92,8 @@ func (s *service) ListSeasonsOverview(
 	racingSimsRepo := s.repo.RacingSims()
 	simulations := make([]*commonv1.Simulation, 0, len(simulationIDSet))
 	racingSimsDBItems, racingSimsErr := racingSimsRepo.LoadByIDs(
-		ctx, lo.Keys(simulationIDSet))
+		ctx, lo.Keys(simulationIDSet),
+	)
 	if racingSimsErr != nil {
 		l.Error(
 			"failed to load simulations",
@@ -100,7 +101,8 @@ func (s *service) ListSeasonsOverview(
 		)
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load simulations")
 		return nil, connect.NewError(
-			s.conversion.MapErrorToRPCCode(racingSimsErr), racingSimsErr)
+			s.conversion.MapErrorToRPCCode(racingSimsErr), racingSimsErr,
+		)
 	}
 	for _, item := range racingSimsDBItems {
 		if converted := s.conversion.RacingSimToSimulation(item); converted != nil {
