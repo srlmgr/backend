@@ -70,7 +70,7 @@ func snippetBaseURL(c model.SeasonNav) string {
 	return util.AdjustedSnippetURL("/snippet", c)
 }
 
-func snippetSeasonLink(c model.SeasonNav,  view string, extra ...string) string {
+func snippetSeasonLink(c model.SeasonNav, view string, extra ...string) string {
 	params := append([]string{fmt.Sprintf("view=%s", view), fmt.Sprintf("seasonID=%d", c.Season().ID)}, extra...)
 	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
@@ -80,7 +80,7 @@ func snippetStandingsLink(c model.SeasonNav, subview string) string {
 	if subview != "" {
 		params = append(params, fmt.Sprintf("subview=%s", subview))
 	}
-	for _, q := range []string{ "classID", "skipMode"} {
+	for _, q := range []string{"classID", "skipMode"} {
 		if c.QueryParam().Has(q) {
 			params = append(params, fmt.Sprintf("%s=%s", q, c.QueryParam().Get(q)))
 		}
@@ -101,8 +101,14 @@ func snippetResultsLink(c model.SeasonNav, mode string) string {
 templ SnippetSeasonsNav(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
-			for _, s := range c.Seasons() {
-				<a href={ snippetSeasonLink(c, "participants") } class="text-lg font-semibold">{ s.Name }</a>
+			for i := len(c.Seasons()) - 1; i >= 0; i-- {
+				{{
+					x := c.Seasons()[i]
+					params := []string{"view=participants",
+						fmt.Sprintf("seriesID=%s", c.QueryParam().Get("seriesID")),
+						fmt.Sprintf("seasonID=%d", x.ID)}
+				}}
+				<a href={ fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&")) } class="text-lg font-semibold">{ x.Name }</a>
 			}
 		</div>
 	</nav>
