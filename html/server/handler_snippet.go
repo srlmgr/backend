@@ -27,6 +27,7 @@ type snippetRequest struct {
 	View     string
 	Subview  string // example: primary, secondary for standings, results
 	Subtype  string // example: rookies in standings
+	SeriesID int
 	SeasonID int
 	EventID  int
 	ClassID  int
@@ -41,7 +42,7 @@ func registerSnippetRoutes(mux *http.ServeMux, s service.Service) {
 
 func handleSnippet(s service.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		req, err := newSnippetRequest(r)
+		req, err := newSnippetRequest(r, s)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -54,7 +55,8 @@ func handleSnippet(s service.Service) http.HandlerFunc {
 	}
 }
 
-func newSnippetRequest(r *http.Request) (snippetRequest, error) {
+//nolint:funlen // lots of decision branches based on query parameters
+func newSnippetRequest(r *http.Request, s service.Service) (snippetRequest, error) {
 	q := r.URL.Query()
 	view := strings.TrimSpace(q.Get("view"))
 
@@ -62,14 +64,29 @@ func newSnippetRequest(r *http.Request) (snippetRequest, error) {
 		view = "standings"
 	}
 
+	seriesID, err := parseOptionalInt(q.Get("seriesID"))
+	if err != nil {
+		return snippetRequest{}, fmt.Errorf("invalid seriesID: %w", err)
+	}
+
 	seasonID, err := parseOptionalInt(q.Get("seasonID"))
 	if err != nil {
 		return snippetRequest{}, fmt.Errorf("invalid seasonID: %w", err)
 	}
-	if view != "series" && seasonID == 0 {
-		return snippetRequest{}, fmt.Errorf("missing seasonID")
-	}
 
+	if seasonID == 0 && seriesID != 0 {
+		sc, sErr := s.GetSeasonList(r.Context(), seriesID)
+		if sErr != nil {
+			return snippetRequest{}, fmt.Errorf(
+				"failed to get season list for seriesID %d: %w",
+				seriesID,
+				sErr,
+			)
+		}
+		if len(sc.Seasons) > 0 {
+			seasonID = sc.Seasons[len(sc.Seasons)-1].ID
+		}
+	}
 	eventID, err := parseOptionalInt(q.Get("eventID"))
 	if err != nil {
 		return snippetRequest{}, fmt.Errorf("invalid eventID: %w", err)
@@ -93,6 +110,7 @@ func newSnippetRequest(r *http.Request) (snippetRequest, error) {
 		View:     view,
 		Subview:  strings.TrimSpace(q.Get("subview")),
 		Subtype:  strings.TrimSpace(q.Get("subtype")),
+		SeriesID: seriesID,
 		SeasonID: seasonID,
 		EventID:  eventID,
 		ClassID:  classID,
