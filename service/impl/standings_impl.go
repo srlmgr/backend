@@ -284,7 +284,7 @@ func (sp *standingProc) recomputeFinishPosByClassAndGrid() map[int32][]*models.R
 	return ret
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (sp *standingProc) computeSecondaryFromTeamContribution() (
 	ret []*service.Standing,
 ) {
@@ -350,7 +350,8 @@ func (sp *standingProc) aggregateTeamBookings(
 			func(item *models.BookingEntry, _ int) bool {
 				return item.TargetType == "team" && item.SourceType == "team_contribution"
 			})
-		teamMap := lo.Reduce(classBookings,
+		teamMap := lo.Reduce(
+			classBookings,
 			func(
 				acc map[int32]*models.BookingEntry,
 				e *models.BookingEntry,
