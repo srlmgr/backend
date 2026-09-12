@@ -284,6 +284,7 @@ func (s *ConvService) SeasonToSeason(model *models.Season) *commonv1.Season {
 		Name:           model.Name,
 		PointSystemId:  uint32(model.PointSystemID),
 		HasTeams:       model.HasTeams,
+		NumRaces:       model.NumRaces,
 		NumGrids:       model.NumGrids,
 		IsTeamBased:    model.IsTeamBased,
 		IsMulticlass:   model.IsMulticlass,

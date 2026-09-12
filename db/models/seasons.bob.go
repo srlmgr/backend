@@ -37,7 +37,10 @@ type Season struct {
 	StartsAt      null.Val[time.Time] `db:"starts_at" `
 	EndsAt        null.Val[time.Time] `db:"ends_at" `
 	SkipEvents    int32               `db:"skip_events" `
-	NumGrids      int32               `db:"num_grids" `
+	// Number of races per event
+	NumRaces int32 `db:"num_races" `
+	// Number of grids per race
+	NumGrids int32 `db:"num_grids" `
 	// Indicates team standings are supported
 	HasTeams bool `db:"has_teams" `
 	// Top N team members considered for points
@@ -103,7 +106,7 @@ type seasonRLoaded struct {
 
 func buildSeasonColumns(tableName string) seasonColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "frontend_id", "series_id", "point_system_id", "name", "starts_at", "ends_at", "skip_events", "num_grids", "has_teams", "team_points_top_n", "is_team_based", "is_multiclass", "status", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "frontend_id", "series_id", "point_system_id", "name", "starts_at", "ends_at", "skip_events", "num_races", "num_grids", "has_teams", "team_points_top_n", "is_team_based", "is_multiclass", "status", "created_at", "updated_at", "created_by", "updated_by",
 	)
 
 	if tableName != "" {
@@ -121,6 +124,7 @@ func buildSeasonColumns(tableName string) seasonColumns {
 		StartsAt:       buildSeasonColumn(tableName, "starts_at"),
 		EndsAt:         buildSeasonColumn(tableName, "ends_at"),
 		SkipEvents:     buildSeasonColumn(tableName, "skip_events"),
+		NumRaces:       buildSeasonColumn(tableName, "num_races"),
 		NumGrids:       buildSeasonColumn(tableName, "num_grids"),
 		HasTeams:       buildSeasonColumn(tableName, "has_teams"),
 		TeamPointsTopN: buildSeasonColumn(tableName, "team_points_top_n"),
@@ -145,6 +149,7 @@ type seasonColumns struct {
 	StartsAt       seasonColumn
 	EndsAt         seasonColumn
 	SkipEvents     seasonColumn
+	NumRaces       seasonColumn
 	NumGrids       seasonColumn
 	HasTeams       seasonColumn
 	TeamPointsTopN seasonColumn
@@ -208,6 +213,7 @@ type SeasonSetter struct {
 	StartsAt       omitnull.Val[time.Time] `db:"starts_at" `
 	EndsAt         omitnull.Val[time.Time] `db:"ends_at" `
 	SkipEvents     omit.Val[int32]         `db:"skip_events" `
+	NumRaces       omit.Val[int32]         `db:"num_races" `
 	NumGrids       omit.Val[int32]         `db:"num_grids" `
 	HasTeams       omit.Val[bool]          `db:"has_teams" `
 	TeamPointsTopN omitnull.Val[int32]     `db:"team_points_top_n" `
@@ -221,7 +227,7 @@ type SeasonSetter struct {
 }
 
 func (s SeasonSetter) SetColumns() []string {
-	vals := make([]string, 0, 18)
+	vals := make([]string, 0, 19)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -245,6 +251,9 @@ func (s SeasonSetter) SetColumns() []string {
 	}
 	if s.SkipEvents.IsValue() {
 		vals = append(vals, "skip_events")
+	}
+	if s.NumRaces.IsValue() {
+		vals = append(vals, "num_races")
 	}
 	if s.NumGrids.IsValue() {
 		vals = append(vals, "num_grids")
@@ -303,6 +312,9 @@ func (s SeasonSetter) Overwrite(t *Season) {
 	}
 	if s.SkipEvents.IsValue() {
 		t.SkipEvents = s.SkipEvents.MustGet()
+	}
+	if s.NumRaces.IsValue() {
+		t.NumRaces = s.NumRaces.MustGet()
 	}
 	if s.NumGrids.IsValue() {
 		t.NumGrids = s.NumGrids.MustGet()
@@ -383,6 +395,11 @@ func (s *SeasonSetter) Apply(q *dialect.InsertQuery) {
 			}
 			return psql.Arg(s.SkipEvents.MustGet()).WriteSQL(ctx, w, d, start)
 		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+			if s.NumRaces.IsUnset() {
+				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
+			}
+			return psql.Arg(s.NumRaces.MustGet()).WriteSQL(ctx, w, d, start)
+		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
 			if s.NumGrids.IsUnset() {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
@@ -440,7 +457,7 @@ func (s SeasonSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 18)
+	exprs := make([]bob.Expression, 0, 19)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -495,6 +512,13 @@ func (s SeasonSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "skip_events")...),
 			psql.Arg(s.SkipEvents),
+		}})
+	}
+
+	if s.NumRaces.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "num_races")...),
+			psql.Arg(s.NumRaces),
 		}})
 	}
 
@@ -578,7 +602,7 @@ func seasonScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc, func
 		idx int
 		dst func(o *Season) any
 	}
-	targets := make([]target, 0, 18)
+	targets := make([]target, 0, 19)
 	for i, col := range cols {
 		switch col {
 		case "id":
@@ -597,6 +621,8 @@ func seasonScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc, func
 			targets = append(targets, target{i, func(o *Season) any { return &o.EndsAt }})
 		case "skip_events":
 			targets = append(targets, target{i, func(o *Season) any { return &o.SkipEvents }})
+		case "num_races":
+			targets = append(targets, target{i, func(o *Season) any { return &o.NumRaces }})
 		case "num_grids":
 			targets = append(targets, target{i, func(o *Season) any { return &o.NumGrids }})
 		case "has_teams":
@@ -1899,6 +1925,7 @@ type seasonWhere[Q psql.Filterable] struct {
 	StartsAt       psql.WhereNullMod[Q, time.Time]
 	EndsAt         psql.WhereNullMod[Q, time.Time]
 	SkipEvents     psql.WhereMod[Q, int32]
+	NumRaces       psql.WhereMod[Q, int32]
 	NumGrids       psql.WhereMod[Q, int32]
 	HasTeams       psql.WhereMod[Q, bool]
 	TeamPointsTopN psql.WhereNullMod[Q, int32]
@@ -1927,6 +1954,7 @@ func buildSeasonWhere[Q psql.Filterable](cols seasonColumns) seasonWhere[Q] {
 		StartsAt:       psql.WhereNull[Q, time.Time](cols.StartsAt.Expression),
 		EndsAt:         psql.WhereNull[Q, time.Time](cols.EndsAt.Expression),
 		SkipEvents:     psql.Where[Q, int32](cols.SkipEvents.Expression),
+		NumRaces:       psql.Where[Q, int32](cols.NumRaces.Expression),
 		NumGrids:       psql.Where[Q, int32](cols.NumGrids.Expression),
 		HasTeams:       psql.Where[Q, bool](cols.HasTeams.Expression),
 		TeamPointsTopN: psql.WhereNull[Q, int32](cols.TeamPointsTopN.Expression),
@@ -2114,6 +2142,7 @@ type seasonPreloadBuf struct {
 	StartsAt       null.Val[time.Time]
 	EndsAt         null.Val[time.Time]
 	SkipEvents     null.Val[int32]
+	NumRaces       null.Val[int32]
 	NumGrids       null.Val[int32]
 	HasTeams       null.Val[bool]
 	TeamPointsTopN null.Val[int32]
@@ -2138,7 +2167,7 @@ func seasonScanMapperNullable(prefix string) scan.Mapper[*Season] {
 			idx int
 			dst func(b *seasonPreloadBuf) any
 		}
-		targets := make([]target, 0, 18)
+		targets := make([]target, 0, 19)
 		for i, col := range cols {
 			name, ok := strings.CutPrefix(col, prefix)
 			if !ok {
@@ -2161,6 +2190,8 @@ func seasonScanMapperNullable(prefix string) scan.Mapper[*Season] {
 				targets = append(targets, target{i, func(b *seasonPreloadBuf) any { return &b.EndsAt }})
 			case "skip_events":
 				targets = append(targets, target{i, func(b *seasonPreloadBuf) any { return &b.SkipEvents }})
+			case "num_races":
+				targets = append(targets, target{i, func(b *seasonPreloadBuf) any { return &b.NumRaces }})
 			case "num_grids":
 				targets = append(targets, target{i, func(b *seasonPreloadBuf) any { return &b.NumGrids }})
 			case "has_teams":
@@ -2211,6 +2242,7 @@ func seasonScanMapperNullable(prefix string) scan.Mapper[*Season] {
 					!(buf.StartsAt.IsValue()) &&
 					!(buf.EndsAt.IsValue()) &&
 					!(buf.SkipEvents.IsValue()) &&
+					!(buf.NumRaces.IsValue()) &&
 					!(buf.NumGrids.IsValue()) &&
 					!(buf.HasTeams.IsValue()) &&
 					!(buf.TeamPointsTopN.IsValue()) &&
@@ -2244,6 +2276,9 @@ func seasonScanMapperNullable(prefix string) scan.Mapper[*Season] {
 				o.EndsAt = buf.EndsAt
 				if buf.SkipEvents.IsValue() {
 					o.SkipEvents = buf.SkipEvents.MustGet()
+				}
+				if buf.NumRaces.IsValue() {
+					o.NumRaces = buf.NumRaces.MustGet()
 				}
 				if buf.NumGrids.IsValue() {
 					o.NumGrids = buf.NumGrids.MustGet()

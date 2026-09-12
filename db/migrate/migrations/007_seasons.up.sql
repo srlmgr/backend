@@ -9,6 +9,7 @@ CREATE TABLE seasons (
     starts_at timestamp with time zone,
     ends_at timestamp with time zone,
     skip_events integer NOT NULL DEFAULT 0,
+    num_races integer NOT NULL DEFAULT 1,
     num_grids integer NOT NULL DEFAULT 1,
     has_teams boolean NOT NULL DEFAULT false,
     team_points_top_n integer,
@@ -24,6 +25,8 @@ COMMENT ON COLUMN seasons.team_points_top_n IS 'Top N team members considered fo
 COMMENT ON COLUMN seasons.has_teams IS 'Indicates team standings are supported';
 COMMENT ON COLUMN seasons.is_team_based IS 'Primary entity for processing is a team';
 COMMENT ON COLUMN seasons.is_multiclass IS 'Indicates if multiple classes are supported';
+COMMENT ON COLUMN seasons.num_races IS 'Number of races per event';
+COMMENT ON COLUMN seasons.num_grids IS 'Number of grids per race';
 
 ALTER TABLE seasons
     ADD CONSTRAINT seasons_frontend_id_unique UNIQUE (frontend_id);

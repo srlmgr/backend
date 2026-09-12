@@ -1417,6 +1417,7 @@ func (f *Factory) fromExistingSeason(ctx context.Context, m *models.Season) *Sea
 	o.StartsAt = func() null.Val[time.Time] { return m.StartsAt }
 	o.EndsAt = func() null.Val[time.Time] { return m.EndsAt }
 	o.SkipEvents = func() int32 { return m.SkipEvents }
+	o.NumRaces = func() int32 { return m.NumRaces }
 	o.NumGrids = func() int32 { return m.NumGrids }
 	o.HasTeams = func() bool { return m.HasTeams }
 	o.TeamPointsTopN = func() null.Val[int32] { return m.TeamPointsTopN }

@@ -46,6 +46,7 @@ type SeasonTemplate struct {
 	StartsAt       func() null.Val[time.Time]
 	EndsAt         func() null.Val[time.Time]
 	SkipEvents     func() int32
+	NumRaces       func() int32
 	NumGrids       func() int32
 	HasTeams       func() bool
 	TeamPointsTopN func() null.Val[int32]
@@ -319,6 +320,10 @@ func (o SeasonTemplate) BuildSetter() *models.SeasonSetter {
 		val := o.SkipEvents()
 		m.SkipEvents = omit.From(val)
 	}
+	if o.NumRaces != nil {
+		val := o.NumRaces()
+		m.NumRaces = omit.From(val)
+	}
 	if o.NumGrids != nil {
 		val := o.NumGrids()
 		m.NumGrids = omit.From(val)
@@ -404,6 +409,9 @@ func (o SeasonTemplate) Build() *models.Season {
 	}
 	if o.SkipEvents != nil {
 		m.SkipEvents = o.SkipEvents()
+	}
+	if o.NumRaces != nil {
+		m.NumRaces = o.NumRaces()
 	}
 	if o.NumGrids != nil {
 		m.NumGrids = o.NumGrids()
@@ -839,6 +847,7 @@ func (m seasonMods) RandomizeAllColumns(f *faker.Faker) SeasonMod {
 		SeasonMods.RandomStartsAt(f),
 		SeasonMods.RandomEndsAt(f),
 		SeasonMods.RandomSkipEvents(f),
+		SeasonMods.RandomNumRaces(f),
 		SeasonMods.RandomNumGrids(f),
 		SeasonMods.RandomHasTeams(f),
 		SeasonMods.RandomTeamPointsTopN(f),
@@ -1139,6 +1148,37 @@ func (m seasonMods) UnsetSkipEvents() SeasonMod {
 func (m seasonMods) RandomSkipEvents(f *faker.Faker) SeasonMod {
 	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
 		o.SkipEvents = func() int32 {
+			return random_int32(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m seasonMods) NumRaces(val int32) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.NumRaces = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m seasonMods) NumRacesFunc(f func() int32) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.NumRaces = f
+	})
+}
+
+// Clear any values for the column
+func (m seasonMods) UnsetNumRaces() SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.NumRaces = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m seasonMods) RandomNumRaces(f *faker.Faker) SeasonMod {
+	return SeasonModFunc(func(_ context.Context, o *SeasonTemplate) {
+		o.NumRaces = func() int32 {
 			return random_int32(f)
 		}
 	})

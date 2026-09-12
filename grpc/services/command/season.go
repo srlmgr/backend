@@ -24,6 +24,7 @@ type seasonRequest interface {
 	GetName() string
 	GetPointSystemId() uint32
 	GetHasTeams() bool
+	GetNumRaces() int32
 	GetNumGrids() int32
 	GetIsTeamBased() bool
 	GetIsMulticlass() bool
@@ -56,6 +57,10 @@ func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 	if skipEvents := msg.GetSkipEvents(); skipEvents != 0 {
 		setter.SkipEvents = omit.From(skipEvents)
 	}
+	if numRaces := msg.GetNumRaces(); numRaces != 0 {
+		setter.NumRaces = omit.From(numRaces)
+	}
+
 	if numGrids := msg.GetNumGrids(); numGrids != 0 {
 		setter.NumGrids = omit.From(numGrids)
 	}

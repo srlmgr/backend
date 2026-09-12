@@ -87,11 +87,20 @@ var Seasons = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		NumRaces: column{
+			Name:      "num_races",
+			DBType:    "integer",
+			Default:   "1",
+			Comment:   "Number of races per event",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 		NumGrids: column{
 			Name:      "num_grids",
 			DBType:    "integer",
 			Default:   "1",
-			Comment:   "",
+			Comment:   "Number of grids per race",
 			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
@@ -387,6 +396,7 @@ type seasonColumns struct {
 	StartsAt       column
 	EndsAt         column
 	SkipEvents     column
+	NumRaces       column
 	NumGrids       column
 	HasTeams       column
 	TeamPointsTopN column
@@ -401,7 +411,7 @@ type seasonColumns struct {
 
 func (c seasonColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.SeriesID, c.PointSystemID, c.Name, c.StartsAt, c.EndsAt, c.SkipEvents, c.NumGrids, c.HasTeams, c.TeamPointsTopN, c.IsTeamBased, c.IsMulticlass, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.SeriesID, c.PointSystemID, c.Name, c.StartsAt, c.EndsAt, c.SkipEvents, c.NumRaces, c.NumGrids, c.HasTeams, c.TeamPointsTopN, c.IsTeamBased, c.IsMulticlass, c.Status, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
 	}
 }
 
