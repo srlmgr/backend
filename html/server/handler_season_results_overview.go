@@ -14,17 +14,20 @@ import (
 
 type (
 	resultsOverviewProcessor struct {
-		s service.Service
-		r *http.Request
-		w http.ResponseWriter
+		s    service.Service
+		r    *http.Request
+		w    http.ResponseWriter
+		view model.ViewType
 	}
 )
 
 func registerSeasonResultsOverviewRoutes(mux *http.ServeMux, s service.Service) {
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/results/overview/primary"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/results/overview/primary"),
 		handleSeasonResultsOverview(s),
 	)
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/results/overview/secondary"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/results/overview/secondary"),
 		handleSeasonResultsOverviewSecondary(s),
 	)
 }
@@ -34,7 +37,7 @@ func handleSeasonResultsOverview(
 	s service.Service,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := &resultsOverviewProcessor{s: s, w: w, r: r}
+		p := &resultsOverviewProcessor{s: s, w: w, r: r, view: model.ViewPrimaryOverview}
 		sData := p.process()
 		if sData == nil {
 			http.Error(w,
@@ -60,7 +63,7 @@ func handleSeasonResultsOverviewSecondary(
 	s service.Service,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := &resultsOverviewProcessor{s: s, w: w, r: r}
+		p := &resultsOverviewProcessor{s: s, w: w, r: r, view: model.ViewSecondaryOverview}
 		sData := p.process()
 		if sData == nil {
 			http.Error(w,
@@ -125,12 +128,20 @@ func (p *resultsOverviewProcessor) process() *model.SeasonResultsOverviewContain
 			http.StatusInternalServerError)
 		return nil
 	}
+	navComps := &myNavComponent{
+		view:       p.view,
+		subView:    "",
+		seasonID:   seasonID,
+		seriesID:   int(season.SeriesID),
+		carClassID: classID,
+	}
 	sData.NavData = &myNav{
 		sc:          sData.SeasonsContainer,
 		season:      sData.ServiceData.Season,
 		qParam:      p.r.URL.Query(),
 		currentPath: p.r.URL.Path,
 		carClasses:  sData.CarClasses,
+		navValues:   navComps,
 	}
 	return sData
 }

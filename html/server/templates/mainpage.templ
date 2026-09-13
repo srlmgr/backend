@@ -1,12 +1,14 @@
 package templates
 
-import ()
+import "github.com/srlmgr/backend/html/server/util"
 
 templ Header() {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>VRDB</title>
+		<link rel="stylesheet" href={ util.ComposeNavURL(util.HandlerURL("/static/navigation.css")) }/>
+		<link rel="stylesheet" href={ util.ComposeNavURL(util.HandlerURL("/static/tables.css")) }/>
 	</head>
 }
 
@@ -14,7 +16,7 @@ templ nav() {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
 			<a href="/" class="text-lg font-semibold">Home</a>
-			<a href="/vrdb/serieses" class="text-lg font-semibold">Series</a>
+			<a href="/vrdb/serieses" class="text-lg font-semibold active">Series</a>
 		</div>
 	</nav>
 }

@@ -65,7 +65,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(abbrev(s.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 27, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 27, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -93,7 +93,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var3).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +106,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).CarNum)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 35, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 35, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -119,7 +119,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolvePrimary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 36, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 36, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -137,7 +137,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.PrimaryMatrix(s.ReferenceID, e.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 38, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 38, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -155,7 +155,7 @@ func PrimaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Points.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 40, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 40, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -218,7 +218,7 @@ func SecondaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component 
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(abbrev(s.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 58, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 58, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -246,7 +246,7 @@ func SecondaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component 
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var11).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -259,7 +259,7 @@ func SecondaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component 
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolveSecondary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 66, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 66, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -277,7 +277,7 @@ func SecondaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component 
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(c.SecondaryMatrix(s.ReferenceID, e.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 68, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 68, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func SecondaryOverview(c *model.SeasonResultsOverviewContainer) templ.Component 
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s.Points.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/resultsoverview/results_overview.templ`, Line: 70, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/resultsoverview/results_overview.templ`, Line: 70, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -335,7 +335,7 @@ func OverviewContent(c *model.SeasonResultsOverviewContainer, contents templ.Com
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = seriesTempl.SeriesNav(c.NavParam()).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

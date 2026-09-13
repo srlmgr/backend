@@ -34,7 +34,7 @@ templ CarClassNav(c model.SeasonNav) {
 				for _, class := range c.CarClasses() {
 					<a
 						href={ carClassLink(c, class.ID) }
-						class="text-lg font-semibold"
+						class={ "text-lg", "font-semibold", templ.KV("active", c.NavValues().CarClassID() == class.ID) }
 					>{ class.Name }</a>
 				}
 			</div>

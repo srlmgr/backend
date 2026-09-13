@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/srlmgr/backend/html/server/model"
 	"github.com/srlmgr/backend/html/server/service"
 	mainTempl "github.com/srlmgr/backend/html/server/templates"
 	seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
@@ -14,10 +15,12 @@ import (
 
 func registerSeriesesRoutes(mux *http.ServeMux, s service.Service) {
 	// TODO: think about redirect to first season of series
-	mux.HandleFunc(util.GetHandlerURL("/serieses"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/serieses"),
 		handleSerieses(s),
 	)
-	mux.HandleFunc(util.GetHandlerURL("/serieses/{seriesID}"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/serieses/{seriesID}"),
 		handleSeries(s),
 	)
 }
@@ -44,8 +47,12 @@ func handleSerieses(
 			)
 			return
 		}
+		data := &myNav{
+			sc:        &model.SeasonsContainer{SeriesContainer: seriesContainer},
+			navValues: &myNavComponent{},
+		}
 
-		sContents := seriesTempl.SeriesNav(seriesContainer)
+		sContents := seriesTempl.SeriesNav(data)
 		if err := mainTempl.HTML(sContents).Render(r.Context(), w); err != nil {
 			http.Error(w,
 				fmt.Sprintf("failed to render standings: %v", err),
@@ -73,7 +80,12 @@ func handleSeries(
 				http.StatusInternalServerError)
 			return
 		}
-		data := &myNav{sc: seasonContainer}
+		data := &myNav{
+			sc: seasonContainer,
+			navValues: &myNavComponent{
+				seriesID: seriesID,
+			},
+		}
 
 		sContents := seasonsTempl.SeasonsContents(data)
 		if err := mainTempl.HTML(sContents).Render(r.Context(), w); err != nil {

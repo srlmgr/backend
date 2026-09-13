@@ -2,6 +2,7 @@ package model
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
 	dbModels "github.com/srlmgr/backend/db/models"
@@ -92,6 +93,8 @@ type (
 
 // Definitions used for navigation
 type (
+	ViewType    string
+	SubViewType string
 	PathContext struct {
 		ContextPath string
 		ExternalURL string
@@ -104,6 +107,18 @@ type (
 		// may be used in templ when endpoint stays the same and query param changes
 		// (for example: switch between car classes)
 		CurrentPath() string
+		NavValues() CurrentNavValues
+	}
+
+	// contains the current navigation values for a specific request
+	// is used by templates to decide the active navigation elements
+	CurrentNavValues interface {
+		SeriesID() int
+		SeasonID() int
+		CarClassID() int
+		EventID() int
+		View() ViewType
+		SubView() SubViewType
 	}
 	SeasonNav interface {
 		CommonNav
@@ -116,6 +131,48 @@ type (
 		NavParam() SeasonNav
 	}
 )
+
+const (
+	ViewPrimary           ViewType    = "prim"
+	ViewSecondary         ViewType    = "sec"
+	ViewParticipants      ViewType    = "participants"
+	ViewPrimaryOverview   ViewType    = "primOverview"
+	ViewSecondaryOverview ViewType    = "secOverview"
+	ViewDummy             ViewType    = "dummy"
+	SubViewPrimRookies    SubViewType = "primRookies"
+	SubViewPrimNoSkip     SubViewType = "primNoSkip"
+	SubViewPrimSkip       SubViewType = "primSkip"
+)
+
+func ParseViewType(raw string) ViewType {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "prim":
+		return ViewPrimary
+	case "sec":
+		return ViewSecondary
+	case "participants":
+		return ViewParticipants
+	case "primoverview":
+		return ViewPrimaryOverview
+	case "secoverview":
+		return ViewSecondaryOverview
+	default:
+		return ViewType(raw)
+	}
+}
+
+func ParseSubViewType(raw string) SubViewType {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "primrookies":
+		return SubViewPrimRookies
+	case "primnoskip":
+		return SubViewPrimNoSkip
+	case "primskip":
+		return SubViewPrimSkip
+	default:
+		return SubViewType(raw)
+	}
+}
 
 var (
 	_ SeasonNavParam = (*SeasonParticipantsContainer)(nil)

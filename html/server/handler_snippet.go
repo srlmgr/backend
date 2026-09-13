@@ -24,9 +24,9 @@ import (
 )
 
 type snippetRequest struct {
-	View     string
-	Subview  string // example: primary, secondary for standings, results
-	Subtype  string // example: rookies in standings
+	View     model.ViewType
+	Subview  model.SubViewType // example: primary, secondary for standings, results
+	Subtype  string            // example: rookies in standings
 	SeriesID int
 	SeasonID int
 	EventID  int
@@ -58,10 +58,10 @@ func handleSnippet(s service.Service) http.HandlerFunc {
 //nolint:funlen // lots of decision branches based on query parameters
 func newSnippetRequest(r *http.Request, s service.Service) (snippetRequest, error) {
 	q := r.URL.Query()
-	view := strings.TrimSpace(q.Get("view"))
+	view := model.ParseViewType(strings.TrimSpace(q.Get("view")))
 
 	if view == "" {
-		view = "standings"
+		view = model.ViewPrimary
 	}
 
 	seriesID, err := parseOptionalInt(q.Get("seriesID"))
@@ -107,9 +107,9 @@ func newSnippetRequest(r *http.Request, s service.Service) (snippetRequest, erro
 	}
 
 	return snippetRequest{
-		View:     view,
-		Subview:  strings.TrimSpace(q.Get("subview")),
-		Subtype:  strings.TrimSpace(q.Get("subtype")),
+		View:    view,
+		Subview: model.ParseSubViewType(q.Get("subview")),
+
 		SeriesID: seriesID,
 		SeasonID: seasonID,
 		EventID:  eventID,
@@ -141,15 +141,15 @@ func renderSnippet(
 	var component templ.Component
 	var err error
 
-	switch strings.ToLower(req.View) {
-	case "dummy":
+	switch req.View {
+	case model.ViewDummy:
 		component, err = snippetDummy(r, s, req)
-	case "participants":
+	case model.ViewParticipants:
 		component, err = snippetParticipants(r, s, req)
-	case "standings":
+	case model.ViewPrimary, model.ViewSecondary:
 		component, err = snippetStandings(r, s, req)
 
-	case "results-overview", "results_overview", "resultsoverview", "overview":
+	case model.ViewPrimaryOverview, model.ViewSecondaryOverview:
 		component, err = snippetResultsOverview(r, s, req)
 	default:
 		err = fmt.Errorf("unsupported snippet view %q", req.View)
@@ -186,6 +186,9 @@ func snippetDummy(
 		qParam:  r.URL.Query(),
 		cmsPath: req.CMSPath,
 		cmsURL:  req.CMSUrl,
+		navValues: &snippetNavComponent{
+			r: req,
+		},
 	}
 
 	return seasons.SnippetSeasonsMenu(data.NavData), nil
@@ -212,6 +215,9 @@ func snippetParticipants(
 		qParam:  r.URL.Query(),
 		cmsPath: req.CMSPath,
 		cmsURL:  req.CMSUrl,
+		navValues: &snippetNavComponent{
+			r: req,
+		},
 	}
 	var content templ.Component
 
@@ -233,23 +239,27 @@ func snippetStandings(
 	var err error
 
 	skipMode := svcStandings.SkipModeAlways
-	if req.SkipMode != "" {
-		skipMode, err = svcStandings.ParseSkipMode(req.SkipMode)
-		if err != nil {
-			return nil, fmt.Errorf("invalid skip mode: %w", err)
-		}
+	switch req.Subview {
+	case model.SubViewPrimSkip:
+		skipMode = svcStandings.SkipModeAlways
+	case model.SubViewPrimNoSkip:
+		skipMode = svcStandings.SkipModeNever
+	case model.SubViewPrimRookies:
+		skipMode = svcStandings.SkipModeNever
 	}
 
 	if req.EventID != 0 {
 		data, err = s.GetEventStandings(r.Context(), req.EventID, skipMode)
 	} else {
 		data, err = s.GetSeasonStandings(r.Context(), req.SeasonID, skipMode)
-		if req.Subtype == "rookies" {
+		if req.Subview == model.SubViewPrimRookies {
 			data.ServiceData.Primary = lo.Filter(data.ServiceData.Primary,
 				func(s *gs.Standing, _ int) bool {
-					return data.PrimaryLookup[int32(s.ReferenceID)].Rookie
+					x, ok := data.PrimaryLookup[int32(s.ReferenceID)]
+					return ok && x.Rookie
 				})
 		}
+		req.EventID = data.Events[len(data.Events)-1].ID
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load standings: %w", err)
@@ -272,24 +282,30 @@ func snippetStandings(
 		cmsURL:  req.CMSUrl,
 
 		carClasses: data.CarClasses,
+		navValues: &snippetNavComponent{
+			r: req,
+		},
 	}
 	wrapper := func(contents templ.Component) templ.Component {
 		return standings.StandingsSnippet(data, contents)
 	}
-	if strings.EqualFold(req.Subview, "secondary") {
+	//nolint:exhaustive // we handle all known views, default covers the rest
+	switch req.View {
+	case model.ViewSecondary:
 		if data.ServiceData.Season.IsTeamBased {
 			return wrapper(standings.SecondaryTeamStandings(data)), nil
 		}
 		return wrapper(standings.SecondaryDriverStandings(data)), nil
-	}
+	default:
+		if data.ServiceData.Season.IsTeamBased {
+			return wrapper(standings.PrimaryTeamStandings(data, true)), nil
+		}
+		return wrapper(standings.PrimaryDriverStandings(data, true)), nil
 
-	if data.ServiceData.Season.IsTeamBased {
-		return wrapper(standings.PrimaryTeamStandings(data, true)), nil
 	}
-	return wrapper(standings.PrimaryDriverStandings(data, true)), nil
 }
 
-//nolint:whitespace //editor/linter issue
+//nolint:whitespace,funlen //editor/linter issue
 func snippetResultsOverview(
 	r *http.Request,
 	s service.Service,
@@ -324,16 +340,22 @@ func snippetResultsOverview(
 		cmsURL:  req.CMSUrl,
 
 		carClasses: data.CarClasses,
+		navValues: &snippetNavComponent{
+			r: req,
+		},
 	}
 	wrapper := func(contents templ.Component) templ.Component {
 		return resultsoverview.OverviewSnippet(data, contents)
 	}
-	if strings.Contains(strings.ToLower(r.URL.Query().Get("mode")), "secondary") ||
-		strings.Contains(strings.ToLower(req.View), "secondary") {
-
+	//nolint:exhaustive // we handle all known views, default covers the rest
+	switch req.View {
+	case model.ViewSecondaryOverview:
 		return wrapper(resultsoverview.SecondaryOverview(data)), nil
+	case model.ViewPrimaryOverview:
+		return wrapper(resultsoverview.PrimaryOverview(data)), nil
+	default:
+		return wrapper(resultsoverview.PrimaryOverview(data)), nil
 	}
-	return wrapper(resultsoverview.PrimaryOverview(data)), nil
 }
 
 type snippetNav struct {
@@ -343,10 +365,18 @@ type snippetNav struct {
 	qParam     url.Values
 	cmsPath    string
 	cmsURL     string
+	navValues  *snippetNavComponent
+}
+type snippetNavComponent struct {
+	r *snippetRequest
 }
 
-var _ model.SeasonNav = (*snippetNav)(nil)
+var (
+	_ model.SeasonNav        = (*snippetNav)(nil)
+	_ model.CurrentNavValues = (*snippetNavComponent)(nil)
+)
 
+// snippetNav starts here
 func (m *snippetNav) ContextPath() string {
 	return m.cmsPath
 }
@@ -377,4 +407,33 @@ func (m *snippetNav) CarClasses() []*model.CarClass {
 
 func (m *snippetNav) QueryParam() url.Values {
 	return m.qParam
+}
+
+func (m *snippetNav) NavValues() model.CurrentNavValues {
+	return m.navValues
+}
+
+// snippetNavComponent starts here
+func (m *snippetNavComponent) SeriesID() int {
+	return m.r.SeriesID
+}
+
+func (m *snippetNavComponent) SeasonID() int {
+	return m.r.SeasonID
+}
+
+func (m *snippetNavComponent) CarClassID() int {
+	return m.r.ClassID
+}
+
+func (m *snippetNavComponent) EventID() int {
+	return m.r.EventID
+}
+
+func (m *snippetNavComponent) View() model.ViewType {
+	return m.r.View
+}
+
+func (m *snippetNavComponent) SubView() model.SubViewType {
+	return m.r.Subview
 }

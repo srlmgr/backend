@@ -23,7 +23,8 @@ type (
 )
 
 func registerParticipantsRoutes(mux *http.ServeMux, s service.Service) {
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/participants"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/participants"),
 		func(w http.ResponseWriter, r *http.Request) {
 			seasonID, err := strconv.Atoi(r.PathValue("seasonID"))
 			if err != nil {
@@ -36,7 +37,8 @@ func registerParticipantsRoutes(mux *http.ServeMux, s service.Service) {
 			http.Redirect(w, r, target, http.StatusFound)
 		},
 	)
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/participants/primary"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/participants/primary"),
 		handlePrimaryParticipants(s),
 	)
 }
@@ -86,11 +88,18 @@ func (p *particiantsProcessor) process() *model.SeasonParticipantsContainer {
 			http.StatusInternalServerError)
 		return nil
 	}
+	navComps := &myNavComponent{
+		view:     "participants",
+		subView:  "",
+		seasonID: seasonID,
+		seriesID: int(sData.Season.SeriesID),
+	}
 	sData.NavData = &myNav{
 		sc:          sData.SeasonsContainer,
 		season:      sData.Season,
 		qParam:      p.r.URL.Query(),
 		currentPath: p.r.URL.Path,
+		navValues:   navComps,
 	}
 	return sData
 }

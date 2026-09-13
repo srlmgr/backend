@@ -99,6 +99,10 @@ func newHTTPServer(
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	mux.Handle("GET "+util.HandlerURL("/static/"), http.StripPrefix(
+		util.HandlerURL("/"),
+		http.FileServer(http.FS(staticFiles)),
+	))
 	registerMainRoutes(mux, s)
 	registerSeriesesRoutes(mux, s)
 	registerParticipantsRoutes(mux, s)
@@ -179,7 +183,8 @@ func newRequestDebugLoggingMiddleware(logger *log.Logger) middleware {
 				traceID = traceIDFromContext(r.Context())
 			}
 
-			logger.Debug("http request",
+			logger.Debug(
+				"http request",
 				log.String("method", r.Method),
 				log.String("path", r.URL.Path),
 				log.Int("status", capturingWriter.statusCode),

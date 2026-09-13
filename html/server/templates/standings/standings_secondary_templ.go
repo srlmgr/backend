@@ -125,7 +125,7 @@ func SecondaryDriverStandings(c *model.SeasonStandingsContainer) templ.Component
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var4).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 			if templ_7745c5c3_Err != nil {
@@ -138,7 +138,7 @@ func SecondaryDriverStandings(c *model.SeasonStandingsContainer) templ.Component
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.Position)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 34, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 34, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -151,7 +151,7 @@ func SecondaryDriverStandings(c *model.SeasonStandingsContainer) templ.Component
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolveSecondary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 35, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 35, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -164,7 +164,7 @@ func SecondaryDriverStandings(c *model.SeasonStandingsContainer) templ.Component
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 36, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 36, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -225,7 +225,7 @@ func SecondaryTeamStandings(c *model.SeasonStandingsContainer) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var10).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -238,7 +238,7 @@ func SecondaryTeamStandings(c *model.SeasonStandingsContainer) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.Position)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 56, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 56, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -251,7 +251,7 @@ func SecondaryTeamStandings(c *model.SeasonStandingsContainer) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(c.ResolveSecondary(s.ReferenceID).Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 57, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 57, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func SecondaryTeamStandings(c *model.SeasonStandingsContainer) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.Data.TotalPoints)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/standings/standings_secondary.templ`, Line: 58, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/standings/standings_secondary.templ`, Line: 58, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {

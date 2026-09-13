@@ -62,7 +62,7 @@ func PrimarySeasonDriver(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var2).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -75,7 +75,7 @@ func PrimarySeasonDriver(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarNumber())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 25, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 24, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -88,7 +88,7 @@ func PrimarySeasonDriver(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(s.Name())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 26, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 25, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +106,7 @@ func PrimarySeasonDriver(c *model.SeasonParticipantsContainer) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarClass())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 28, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 27, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -124,7 +124,7 @@ func PrimarySeasonDriver(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarName())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 30, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 29, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func PrimarySeasonTeam(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var9).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -204,7 +204,7 @@ func PrimarySeasonTeam(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarNumber())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 52, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 51, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -217,7 +217,7 @@ func PrimarySeasonTeam(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(s.Name())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 53, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 52, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -235,7 +235,7 @@ func PrimarySeasonTeam(c *model.SeasonParticipantsContainer) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarClass())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 55, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 54, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -253,7 +253,7 @@ func PrimarySeasonTeam(c *model.SeasonParticipantsContainer) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.CarName())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `html/server/templates/participants/participants.templ`, Line: 57, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/participants/participants.templ`, Line: 56, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -293,7 +293,7 @@ func ParticipantsContent(c *model.SeasonParticipantsContainer, contents templ.Co
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = seriesTempl.SeriesNav(c.NavParam()).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

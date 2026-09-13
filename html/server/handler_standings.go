@@ -23,6 +23,8 @@ type (
 		r        *http.Request
 		w        http.ResponseWriter
 		skipMode svcStandings.SkipModeType
+		view     model.ViewType    // prim,sec,primOverview,secOverview,participants
+		subView  model.SubViewType // primSkip,primNoSkip,primRookies
 	}
 )
 
@@ -55,28 +57,34 @@ func registerStandingsRoutes(mux *http.ServeMux, s service.Service) {
 				http.StatusFound,
 			)
 		})
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/primary"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/standings/primary"),
 		handlePrimaryStandings(s, svcStandings.SkipModeAlways),
 	)
 
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/primary/noskip"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/standings/primary/noskip"),
 		handlePrimaryStandings(s, svcStandings.SkipModeNever),
 	)
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/secondary"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/standings/secondary"),
 		handleSecondaryStandings(s),
 	)
-	mux.HandleFunc(util.GetHandlerURL("/seasons/{seasonID}/standings/primary/rookies"),
+	mux.HandleFunc(
+		util.GetHandlerURL("/seasons/{seasonID}/standings/primary/rookies"),
 		handlePrimaryRookieStandings(s),
 	)
 }
 
-//nolint:whitespace //editor/linter issue
+//nolint:whitespace,funlen //editor/linter issue
 func handlePrimaryStandings(
 	s service.Service,
 	skipMode svcStandings.SkipModeType,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
+		var subView model.SubViewType
+
 		argSkipMode := r.URL.Query().Get("skipMode")
 		if argSkipMode != "" {
 			skipMode, err = svcStandings.ParseSkipMode(argSkipMode)
@@ -87,13 +95,24 @@ func handlePrimaryStandings(
 				return
 			}
 		}
-
-		p := &standingsProcessor{s: s, w: w, r: r, skipMode: skipMode}
+		switch skipMode {
+		case svcStandings.SkipModeAlways, svcStandings.SkipModeWhenApplicable:
+			subView = model.SubViewPrimSkip
+		case svcStandings.SkipModeNever:
+			subView = model.SubViewPrimNoSkip
+		default:
+			subView = ""
+		}
+		p := &standingsProcessor{
+			s: s, w: w, r: r,
+			skipMode: skipMode,
+			view:     model.ViewPrimary,
+			subView:  subView,
+		}
 		sData := p.process()
 		if sData == nil {
 			return
 		}
-
 		var contents templ.Component
 		if sData.ServiceData.Season.IsTeamBased {
 			contents = standings.PrimaryTeamStandings(sData, false)
@@ -115,7 +134,12 @@ func handleSecondaryStandings(
 	s service.Service,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := &standingsProcessor{s: s, w: w, r: r, skipMode: svcStandings.SkipModeNever}
+		p := &standingsProcessor{
+			s: s, w: w, r: r,
+			view:     model.ViewSecondary,
+			subView:  "",
+			skipMode: svcStandings.SkipModeNever,
+		}
 		sData := p.process()
 		if sData == nil {
 			return
@@ -143,7 +167,12 @@ func handlePrimaryRookieStandings(
 	s service.Service,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := &standingsProcessor{s: s, w: w, r: r, skipMode: svcStandings.SkipModeNever}
+		p := &standingsProcessor{
+			s: s, w: w, r: r,
+			view:     model.ViewPrimary,
+			subView:  model.SubViewPrimRookies,
+			skipMode: svcStandings.SkipModeNever,
+		}
 		sData := p.process()
 		if sData == nil {
 			http.Error(w,
@@ -183,6 +212,11 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 	}
 	var sData *model.SeasonStandingsContainer
 	var sErr error
+	navComps := &myNavComponent{
+		seasonID: seasonID,
+		view:     p.view,
+		subView:  p.subView,
+	}
 	if p.r.URL.Query().Get("eventID") != "" {
 		eventID, err := strconv.Atoi(p.r.URL.Query().Get("eventID"))
 		if err != nil {
@@ -192,8 +226,12 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 			return nil
 		}
 		sData, sErr = p.s.GetEventStandings(p.r.Context(), eventID, p.skipMode)
+		navComps.eventID = eventID
 	} else {
 		sData, sErr = p.s.GetSeasonStandings(p.r.Context(), seasonID, p.skipMode)
+		if sErr == nil {
+			navComps.eventID = sData.Events[len(sData.Events)-1].ID
+		}
 	}
 	if sErr != nil {
 		http.Error(p.w,
@@ -226,14 +264,16 @@ func (p *standingsProcessor) process() *model.SeasonStandingsContainer {
 		sData.ServiceData.Secondary = sData.FilterByClass(
 			sData.ServiceData.Secondary, classID,
 		)
+		navComps.carClassID = classID
 	}
-
+	navComps.seriesID = int(sData.ServiceData.Season.SeriesID)
 	sData.NavData = &myNav{
 		sc:          sData.SeasonsContainer,
 		season:      sData.ServiceData.Season,
 		qParam:      p.r.URL.Query(),
 		currentPath: p.r.URL.Path,
 		carClasses:  sData.CarClasses,
+		navValues:   navComps,
 	}
 	return sData
 }

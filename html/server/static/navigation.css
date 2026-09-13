@@ -1,0 +1,103 @@
+:root {
+	--canvas: #f4f7f5;
+	--surface: #ffffff;
+	--ink: #17231f;
+	--muted: #5b6d65;
+	--line: #d8e2dc;
+	--nav: #173f35;
+	--nav-deep: #12332b;
+	--accent: #e76544;
+	--accent-soft: #ffe3da;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	min-height: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family: "Avenir Next", "Segoe UI", sans-serif;
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+nav {
+	background: var(--nav);
+	border-bottom: 1px solid rgb(255 255 255 / 14%);
+	padding: 0.65rem max(1rem, calc((100% - 76rem) / 2));
+}
+
+nav + nav {
+	background: var(--nav-deep);
+}
+
+nav > div {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin: 0 auto;
+	max-width: 76rem;
+}
+
+nav a {
+	border-bottom: 2px solid transparent;
+	color: rgb(255 255 255 / 78%);
+	font-size: 0.9rem;
+	font-weight: 650;
+	padding: 0.45rem 0.65rem;
+	text-decoration: none;
+	transition:
+		background-color 160ms ease,
+		border-color 160ms ease,
+		color 160ms ease;
+}
+
+nav a:hover {
+	background: rgb(255 255 255 / 9%);
+	color: #ffffff;
+}
+
+nav a:focus-visible {
+	outline: 3px solid #ffbe75;
+	outline-offset: -3px;
+}
+
+nav a.active {
+	border-bottom-color: var(--accent);
+	color: #ffffff;
+}
+
+main.container {
+	margin: 0 auto;
+	max-width: 76rem;
+	padding: 1.5rem 1rem 2.25rem;
+	width: 100%;
+}
+
+footer {
+	background: #102c25;
+	color: rgb(255 255 255 / 70%);
+	font-size: 0.82rem;
+	margin-top: auto;
+	padding: 1rem;
+}
+
+@media (max-width: 44rem) {
+	nav > div {
+		align-items: stretch;
+		flex-wrap: wrap;
+		gap: 0.2rem;
+	}
+
+	nav a {
+		font-size: 0.82rem;
+		padding: 0.4rem 0.5rem;
+	}
+}

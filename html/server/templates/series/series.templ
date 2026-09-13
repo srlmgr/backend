@@ -8,11 +8,14 @@ import (
 	"github.com/srlmgr/backend/html/server/util"
 )
 
-templ SeriesNav(c *model.SeriesContainer) {
+templ SeriesNav(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
-			for _, s := range c.Serieses {
-				<a href={ util.ComposeNavURL(util.HandlerURL(fmt.Sprintf("/serieses/%d", s.ID))) } class="text-lg font-semibold">{ s.Name }</a>
+			for _, s := range c.SeriesContainer().Serieses {
+				<a
+					href={ util.ComposeNavURL(util.HandlerURL(fmt.Sprintf("/serieses/%d", s.ID))) }
+					class={ "text-lg","font-semibold", templ.KV("active", c.NavValues().SeriesID() == s.ID) }
+				>{ s.Name }</a>
 			}
 		</div>
 	</nav>
