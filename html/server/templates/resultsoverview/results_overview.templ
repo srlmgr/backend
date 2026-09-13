@@ -75,12 +75,13 @@ templ SecondaryOverview(c *model.SeasonResultsOverviewContainer) {
 }
 
 templ OverviewContent(c *model.SeasonResultsOverviewContainer, contents templ.Component) {
-	@seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer)
+	@seriesTempl.SeriesNav(c.NavParam())
 	@seasonsTempl.SeasonsNav(c.NavParam())
 	@seasonsTempl.SeasonsMenu(c.NavParam())
 	@baseTempl.CarClassNav(c.NavParam())
 	@contents
 }
+
 templ OverviewSnippet(c *model.SeasonResultsOverviewContainer, contents templ.Component) {
 	@seasonsTempl.SnippetSeasonsNav(c.NavParam())
 	@seasonsTempl.SnippetSeasonsMenu(c.NavParam())

@@ -13,7 +13,6 @@ func navURL(url string) string {
 	return util.ComposeNavURL((url))
 }
 
-
 func subStandingsLink(c model.SeasonNav, mode string) string {
 	return fmt.Sprintf("%s/primary?skipMode=%s",
 		navURL(util.SeasonsStandingsURL(int(c.Season().ID))), mode)
@@ -22,11 +21,12 @@ func subStandingsLink(c model.SeasonNav, mode string) string {
 func snippetBaseURL(c model.SeasonNav) string {
 	return util.AdjustedSnippetURL("/snippet", c)
 }
-func snippetSubStandingsLink(c *model.SeasonStandingsContainer, mode string) string {
+func snippetSubStandingsLink(c *model.SeasonStandingsContainer, subview model.SubViewType) string {
 	params := []string{
-		"view=standings",
+		fmt.Sprintf("view=%s", model.ViewPrimary),
+		fmt.Sprintf("subview=%s", subview),
 		fmt.Sprintf("seasonID=%d", c.ServiceData.Season.ID),
-		fmt.Sprintf("skipMode=%s", mode),
+		// fmt.Sprintf("skipMode=%s", mode),
 	}
 	for _, q := range []string{"eventID", "classID"} {
 		if c.NavParam().QueryParam().Has(q) {
@@ -36,20 +36,39 @@ func snippetSubStandingsLink(c *model.SeasonStandingsContainer, mode string) str
 	return fmt.Sprintf("%s?%s", snippetBaseURL(c.NavParam()), strings.Join(params, "&"))
 }
 
-func snippetRookieLink(c *model.SeasonStandingsContainer) string {
-	return fmt.Sprintf("%s?view=standings&subtype=rookies&seasonID=%d&skipMode=always",
-		snippetBaseURL(c.NavParam()), c.ServiceData.Season.ID)
+func xsnippetRookieLink(c *model.SeasonStandingsContainer) string {
+	return fmt.Sprintf("%s?view=%s&subview=%s&seasonID=%d",
+		snippetBaseURL(c.NavParam()),
+		model.ViewPrimary, model.SubViewPrimRookies,
+		c.ServiceData.Season.ID)
+}
+
+func primSubNavClasses(c model.CurrentNavValues, current model.SubViewType) []string {
+	ret := []string{"text-white", "font-bold"}
+	if c.SubView() == current {
+		ret = append(ret, "active")
+	}
+	return ret
 }
 
 templ primaryNav(c *model.SeasonStandingsContainer) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
-			<a href={ subStandingsLink(c.NavParam(), "always") } class="text-white font-bold">inkl. Streicher</a>
-			<a href={ subStandingsLink(c.NavParam(), "never") } class="text-white font-bold">ohne Streicher</a>
-			<a href={ fmt.Sprintf("%s/primary/rookies", navURL(util.SeasonsStandingsURL(int(c.ServiceData.Season.ID)))) } class="text-white font-bold">Rookies</a>
+			<a
+				href={ subStandingsLink(c.NavParam(), "always") }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimSkip) }
+			>inkl. Streicher</a>
+			<a
+				href={ subStandingsLink(c.NavParam(), "never") }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimNoSkip) }
+			>ohne Streicher</a>
+			<a
+				href={ fmt.Sprintf("%s/primary/rookies", navURL(util.SeasonsStandingsURL(int(c.ServiceData.Season.ID)))) }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimRookies) }
+			>Rookies</a>
 		</div>
 	</nav>
-	@eventNav(c,false)
+	@eventNav(c, false)
 	if c.ServiceData.Season.IsMulticlass {
 		@baseTempl.CarClassNav(c.NavParam())
 	}
@@ -58,12 +77,21 @@ templ primaryNav(c *model.SeasonStandingsContainer) {
 templ primaryNavSnippet(c *model.SeasonStandingsContainer) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
-			<a href={ snippetSubStandingsLink(c, "always") } class="text-white font-bold">inkl. Streicher</a>
-			<a href={ snippetSubStandingsLink(c, "never") } class="text-white font-bold">ohne Streicher</a>
-			<a href={ snippetRookieLink(c) } class="text-white font-bold">Rookies</a>
+			<a
+				href={ snippetSubStandingsLink(c, model.SubViewPrimSkip) }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimSkip) }
+			>inkl. Streicher</a>
+			<a
+				href={ snippetSubStandingsLink(c, model.SubViewPrimNoSkip) }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimNoSkip) }
+			>ohne Streicher</a>
+			<a
+				href={ snippetSubStandingsLink(c, model.SubViewPrimRookies) }
+				class={ primSubNavClasses(c.NavData.NavValues(), model.SubViewPrimRookies) }
+			>Rookies</a>
 		</div>
 	</nav>
-	@eventNav(c,true)
+	@eventNav(c, true)
 	if c.ServiceData.Season.IsMulticlass {
 		@baseTempl.CarClassNav(c.NavParam())
 	}
@@ -96,7 +124,6 @@ templ PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) {
 		</tbody>
 	</table>
 }
-
 
 templ PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) {
 	if snippet {

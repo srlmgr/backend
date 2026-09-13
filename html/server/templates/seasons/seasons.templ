@@ -19,8 +19,12 @@ func navURL(url string) string {
 templ SeasonsNav(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
-			for _, s := range c.Seasons() {
-				<a href={ fmt.Sprintf("%s/participants", navURL(util.SeasonsURL(s.ID))) } class="text-lg font-semibold">{ s.Name }</a>
+			for i := len(c.Seasons()) - 1; i >= 0; i-- {
+				{{ s := c.Seasons()[i] }}
+				<a
+					href={ fmt.Sprintf("%s/participants", navURL(util.SeasonsURL(s.ID))) }
+					class={ "text-lg","font-semibold", templ.KV("active", c.NavValues().SeasonID() == s.ID) }
+				>{ s.Name }</a>
 				// <a href={fmt.Sprintf("%s/standings", seasonBasePath(c, s.ID))} class="text-lg font-semibold">{s.Name}</a>
 			}
 		</div>
@@ -43,25 +47,57 @@ func standingsSecondaryQueryParam(c model.SeasonNav) string {
 	// TODO
 	return ""
 }
+func seasonsMenuClass(c model.CurrentNavValues, current model.ViewType) []string {
+	ret := []string{"text-lg", "font-semibold"}
+	if c.View() == current {
+		ret = append(ret, "active")
+	}
+	return ret
+}
 
 templ SeasonsMenu(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
 			if c.Season().IsTeamBased {
-				<a href={ fmt.Sprintf("%s/primary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsPrimaryQueryParam(c)) } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ fmt.Sprintf("%s/secondary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsSecondaryQueryParam(c)) } class="text-lg font-semibold">Fahrerwertung</a>
+				<a
+					href={ fmt.Sprintf("%s/primary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsPrimaryQueryParam(c)) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimary) }
+				>Teamwertung</a>
+				<a
+					href={ fmt.Sprintf("%s/secondary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsSecondaryQueryParam(c)) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondary) }
+				>Fahrerwertung</a>
 				// <a href={fmt.Sprintf("%s/secondary%s", c.StandingsLink(), c.ClearParams("eventID", "skipMode"))} class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ fmt.Sprintf("%s/results/overview/primary", navURL(util.SeasonsURL(int(c.Season().ID)))) } class="text-lg font-semibold">Teamergebnisse</a>
-				<a href={ fmt.Sprintf("%s/results/overview/secondary", navURL(util.SeasonsURL(int(c.Season().ID)))) } class="text-lg font-semibold">Fahrerergebnisse</a>
-				// TODO: add link to participants
+				<a
+					href={ fmt.Sprintf("%s/results/overview/primary", navURL(util.SeasonsURL(int(c.Season().ID)))) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimaryOverview) }
+				>Teamergebnisse</a>
+				<a
+					href={ fmt.Sprintf("%s/results/overview/secondary", navURL(util.SeasonsURL(int(c.Season().ID)))) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondaryOverview) }
+				>Fahrerergebnisse</a>
 			} else {
-				<a href={ fmt.Sprintf("%s/primary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsPrimaryQueryParam(c)) } class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ fmt.Sprintf("%s/secondary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsSecondaryQueryParam(c)) } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ fmt.Sprintf("%s/results/overview/primary", navURL(util.SeasonsURL(int(c.Season().ID)))) } class="text-lg font-semibold">Fahrerergebnisse</a>
-				<a href={ fmt.Sprintf("%s/results/overview/secondary", navURL(util.SeasonsURL(int(c.Season().ID)))) } class="text-lg font-semibold">Teamergebnisse</a>
-				// TODO: add link to participants
+				<a
+					href={ fmt.Sprintf("%s/primary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsPrimaryQueryParam(c)) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimary) }
+				>Fahrerwertung</a>
+				<a
+					href={ fmt.Sprintf("%s/secondary%s", navURL(util.SeasonsStandingsURL(int(c.Season().ID))), standingsSecondaryQueryParam(c)) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondary) }
+				>Teamwertung</a>
+				<a
+					href={ fmt.Sprintf("%s/results/overview/primary", navURL(util.SeasonsURL(int(c.Season().ID)))) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimaryOverview) }
+				>Fahrerergebnisse</a>
+				<a
+					href={ fmt.Sprintf("%s/results/overview/secondary", navURL(util.SeasonsURL(int(c.Season().ID)))) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondaryOverview) }
+				>Teamergebnisse</a>
 			}
-			<a href={ fmt.Sprintf("%s/participants", navURL(util.SeasonsURL(int(c.Season().ID)))) } class="text-lg font-semibold">Teilnehmer</a>
+			<a
+				href={ fmt.Sprintf("%s/participants", navURL(util.SeasonsURL(int(c.Season().ID)))) }
+				class={ seasonsMenuClass(c.NavValues(), model.ViewParticipants) }
+			>Teilnehmer</a>
 		</div>
 	</nav>
 }
@@ -75,11 +111,13 @@ func snippetSeasonLink(c model.SeasonNav, view string, extra ...string) string {
 	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
 
-func snippetStandingsLink(c model.SeasonNav, subview string) string {
-	params := []string{fmt.Sprintf("view=standings"), fmt.Sprintf("seasonID=%d", c.Season().ID)}
-	if subview != "" {
-		params = append(params, fmt.Sprintf("subview=%s", subview))
-	}
+func snippetStandingsLink(c model.SeasonNav, view model.ViewType) string {
+	params := []string{
+		fmt.Sprintf("view=%s", view),
+		fmt.Sprintf("seasonID=%d", c.Season().ID)}
+	// if subview != "" {
+	// 	params = append(params, fmt.Sprintf("subview=%s", subview))
+	// }
 	for _, q := range []string{"classID", "skipMode"} {
 		if c.QueryParam().Has(q) {
 			params = append(params, fmt.Sprintf("%s=%s", q, c.QueryParam().Get(q)))
@@ -88,7 +126,7 @@ func snippetStandingsLink(c model.SeasonNav, subview string) string {
 	return fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&"))
 }
 
-func snippetResultsLink(c model.SeasonNav, mode string) string {
+func xxsnippetResultsLink(c model.SeasonNav, mode string) string {
 	params := []string{fmt.Sprintf("view=results-overview"), fmt.Sprintf("seasonID=%d", c.Season().ID), fmt.Sprintf("mode=%s", mode)}
 	for _, q := range []string{"classID"} {
 		if c.QueryParam().Has(q) {
@@ -104,11 +142,15 @@ templ SnippetSeasonsNav(c model.SeasonNav) {
 			for i := len(c.Seasons()) - 1; i >= 0; i-- {
 				{{
 					x := c.Seasons()[i]
-					params := []string{"view=participants",
+					params := []string{
+						fmt.Sprintf("view=%s", model.ViewParticipants),
 						fmt.Sprintf("seriesID=%s", c.QueryParam().Get("seriesID")),
 						fmt.Sprintf("seasonID=%d", x.ID)}
 				}}
-				<a href={ fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&")) } class="text-lg font-semibold">{ x.Name }</a>
+				<a
+					href={ fmt.Sprintf("%s?%s", snippetBaseURL(c), strings.Join(params, "&")) }
+					class={ "text-lg","font-semibold", templ.KV("active", c.NavValues().SeasonID() == x.ID) }
+				>{ x.Name }</a>
 			}
 		</div>
 	</nav>
@@ -118,22 +160,49 @@ templ SnippetSeasonsMenu(c model.SeasonNav) {
 	<nav class="bg-gray-800 text-white p-4">
 		<div class="container mx-auto flex justify-between items-center">
 			if c.Season().IsTeamBased {
-				<a href={ snippetStandingsLink(c, "primary") } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ snippetStandingsLink(c, "secondary") } class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ snippetResultsLink(c, "primary") } class="text-lg font-semibold">Teamergebnisse</a>
-				<a href={ snippetResultsLink(c, "secondary") } class="text-lg font-semibold">Fahrerergebnisse</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewPrimary) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimary) }
+				>Teamwertung</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewSecondary) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondary) }
+				>Fahrerwertung</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewPrimaryOverview) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimaryOverview) }
+				>Teamergebnisse</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewSecondaryOverview) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondaryOverview) }
+				>Fahrerergebnisse</a>
 			} else {
-				<a href={ snippetStandingsLink(c, "primary") } class="text-lg font-semibold">Fahrerwertung</a>
-				<a href={ snippetStandingsLink(c, "secondary") } class="text-lg font-semibold">Teamwertung</a>
-				<a href={ snippetResultsLink(c, "primary") } class="text-lg font-semibold">Fahrerergebnisse</a>
-				<a href={ snippetResultsLink(c, "secondary") } class="text-lg font-semibold">Teamergebnisse</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewPrimary) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimary) }
+				>Fahrerwertung</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewSecondary) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondary) }
+				>Teamwertung</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewPrimaryOverview) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewPrimaryOverview) }
+				>Fahrerergebnisse</a>
+				<a
+					href={ snippetStandingsLink(c, model.ViewSecondaryOverview) }
+					class={ seasonsMenuClass(c.NavValues(), model.ViewSecondaryOverview) }
+				>Teamergebnisse</a>
 			}
-			<a href={ snippetSeasonLink(c, "participants") } class="text-lg font-semibold">Teilnehmer</a>
+			<a
+				href={ snippetSeasonLink(c, "participants") }
+				class={ seasonsMenuClass(c.NavValues(), model.ViewParticipants) }
+			>Teilnehmer</a>
 		</div>
 	</nav>
 }
 
 templ SeasonsContents(c model.SeasonNav) {
-	@seriesTempl.SeriesNav(c.SeriesContainer())
+	@seriesTempl.SeriesNav(c)
 	@SeasonsNav(c)
 }

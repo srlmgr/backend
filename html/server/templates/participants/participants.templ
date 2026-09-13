@@ -6,7 +6,6 @@ import seriesTempl "github.com/srlmgr/backend/html/server/templates/series"
 import seasonsTempl "github.com/srlmgr/backend/html/server/templates/seasons"
 import baseTempl "github.com/srlmgr/backend/html/server/templates"
 
-
 templ PrimarySeasonDriver(c *model.SeasonParticipantsContainer) {
 	<table class="table-auto w-full border-collapse border border-gray-300">
 		<thead>
@@ -62,11 +61,12 @@ templ PrimarySeasonTeam(c *model.SeasonParticipantsContainer) {
 }
 
 templ ParticipantsContent(c *model.SeasonParticipantsContainer, contents templ.Component) {
-	@seriesTempl.SeriesNav(c.SeasonsContainer.SeriesContainer)
+	@seriesTempl.SeriesNav(c.NavParam())
 	@seasonsTempl.SeasonsNav(c.NavParam())
 	@seasonsTempl.SeasonsMenu(c.NavParam())
 	@contents
 }
+
 templ ParticipantsSnippet(c *model.SeasonParticipantsContainer, contents templ.Component) {
 	@seasonsTempl.SnippetSeasonsNav(c.NavParam())
 	@seasonsTempl.SnippetSeasonsMenu(c.NavParam())

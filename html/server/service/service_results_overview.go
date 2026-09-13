@@ -22,11 +22,11 @@ func (s *serviceImpl) GetResultsOverview(
 	if err != nil {
 		return nil, err
 	}
-	seasonContainer, err := s.GetSeasonList(ctx, seasonID)
+	events, err := s.r.Events().LoadBySeasonID(ctx, int32(seasonID))
 	if err != nil {
 		return nil, err
 	}
-	events, err := s.r.Events().LoadBySeasonID(ctx, int32(seasonID))
+	seasonContainer, err := s.GetSeasonList(ctx, int(overview.Season.SeriesID))
 	if err != nil {
 		return nil, err
 	}

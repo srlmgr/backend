@@ -27,15 +27,51 @@ func registerMainRoutes(mux *http.ServeMux, s service.Service) {
 		})
 }
 
+type myNavComponent struct {
+	seriesID   int
+	seasonID   int
+	carClassID int
+	eventID    int
+	view       model.ViewType
+	subView    model.SubViewType
+}
 type myNav struct {
 	sc          *model.SeasonsContainer
 	season      *dbModels.Season
 	carClasses  []*model.CarClass
 	qParam      url.Values
 	currentPath string
+	navValues   model.CurrentNavValues
 }
 
-var _ model.SeasonNav = (*myNav)(nil)
+var (
+	_ model.SeasonNav        = (*myNav)(nil)
+	_ model.CurrentNavValues = (*myNavComponent)(nil)
+)
+
+func (m *myNavComponent) SeriesID() int {
+	return m.seriesID
+}
+
+func (m *myNavComponent) SeasonID() int {
+	return m.seasonID
+}
+
+func (m *myNavComponent) CarClassID() int {
+	return m.carClassID
+}
+
+func (m *myNavComponent) EventID() int {
+	return m.eventID
+}
+
+func (m *myNavComponent) View() model.ViewType {
+	return m.view
+}
+
+func (m *myNavComponent) SubView() model.SubViewType {
+	return m.subView
+}
 
 func (m *myNav) ContextPath() string {
 	return contextPart
@@ -67,4 +103,8 @@ func (m *myNav) CarClasses() []*model.CarClass {
 
 func (m *myNav) QueryParam() url.Values {
 	return m.qParam
+}
+
+func (m *myNav) NavValues() model.CurrentNavValues {
+	return m.navValues
 }
