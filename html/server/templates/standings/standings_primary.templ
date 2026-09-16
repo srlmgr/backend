@@ -109,7 +109,13 @@ templ PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) {
 				<th class="border border-gray-300 px-4 py-2">Position</th>
 				<th class="border border-gray-300 px-4 py-2">CarNum</th>
 				<th class="border border-gray-300 px-4 py-2">Fahrer</th>
-				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+				<th class="border border-gray-300 px-4 py-2">Gesamt</th>
+				<th class="border border-gray-300 px-4 py-2">Bonus</th>
+				<th class="border border-gray-300 px-4 py-2">Strafen</th>
+				<th class="border border-gray-300 px-4 py-2">Rennen</th>
+				<th class="border border-gray-300 px-4 py-2">Wins</th>
+				<th class="border border-gray-300 px-4 py-2">T5</th>
+				<th class="border border-gray-300 px-4 py-2">T10</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -119,6 +125,12 @@ templ PrimaryDriverStandings(c *model.SeasonStandingsContainer, snippet bool) {
 					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).CarNum }</td>
 					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).Name }</td>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.BonusPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.PenaltyPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumRaces }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumWins }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumTop5 }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumTop10 }</td>
 				</tr>
 			}
 		</tbody>
@@ -138,6 +150,12 @@ templ PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) {
 				<th class="border border-gray-300 px-4 py-2">CarNum</th>
 				<th class="border border-gray-300 px-4 py-2">Team</th>
 				<th class="border border-gray-300 px-4 py-2">Punkte</th>
+				<th class="border border-gray-300 px-4 py-2">Bonus</th>
+				<th class="border border-gray-300 px-4 py-2">Strafen</th>
+				<th class="border border-gray-300 px-4 py-2">Rennen</th>
+				<th class="border border-gray-300 px-4 py-2">Wins</th>
+				<th class="border border-gray-300 px-4 py-2">T5</th>
+				<th class="border border-gray-300 px-4 py-2">T10</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -147,6 +165,12 @@ templ PrimaryTeamStandings(c *model.SeasonStandingsContainer, snippet bool) {
 					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).CarNum }</td>
 					<td class="border border-gray-300 px-4 py-2">{ c.ResolvePrimary(s.ReferenceID).Name }</td>
 					<td class="border border-gray-300 px-4 py-2">{ s.Data.TotalPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.BonusPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.PenaltyPoints }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumRaces }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumWins }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumTop5 }</td>
+					<td class="border border-gray-300 px-4 py-2">{ s.Data.NumTop10 }</td>
 				</tr>
 			}
 		</tbody>

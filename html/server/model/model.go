@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -193,11 +194,31 @@ func (s *SeasonStandingsContainer) NavParam() SeasonNav {
 }
 
 func (s *SeasonStandingsContainer) ResolvePrimary(id int) *Entry {
-	return s.PrimaryLookup[int32(id)]
+	ret, ok := s.PrimaryLookup[int32(id)]
+	if !ok {
+		return &Entry{
+			ID:       int32(id),
+			Name:     fmt.Sprintf("Unknown referenceId %d", id),
+			CarNum:   "n.a.",
+			CarName:  "n.a.",
+			CarClass: "n.a.",
+		}
+	}
+	return ret
 }
 
 func (s *SeasonStandingsContainer) ResolveSecondary(id int) *Entry {
-	return s.SecondaryLookup[int32(id)]
+	ret, ok := s.SecondaryLookup[int32(id)]
+	if !ok {
+		return &Entry{
+			ID:       int32(id),
+			Name:     fmt.Sprintf("Unknown referenceid %d", id),
+			CarNum:   "n.a.",
+			CarName:  "n.a.",
+			CarClass: "n.a.",
+		}
+	}
+	return ret
 }
 
 //nolint:whitespace //editor/linter issue
@@ -214,11 +235,31 @@ func (s *SeasonStandingsContainer) FilterByClass(
 }
 
 func (s *SeasonResultsOverviewContainer) ResolvePrimary(id int) *Entry {
-	return s.PrimaryLookup[int32(id)]
+	ret, ok := s.PrimaryLookup[int32(id)]
+	if !ok {
+		return &Entry{
+			ID:       int32(id),
+			Name:     fmt.Sprintf("Unknown referenceId %d", id),
+			CarNum:   "n.a.",
+			CarName:  "n.a.",
+			CarClass: "n.a.",
+		}
+	}
+	return ret
 }
 
 func (s *SeasonResultsOverviewContainer) ResolveSecondary(id int) *Entry {
-	return s.SecondaryLookup[int32(id)]
+	ret, ok := s.SecondaryLookup[int32(id)]
+	if !ok {
+		return &Entry{
+			ID:       int32(id),
+			Name:     fmt.Sprintf("Unknown referenceId %d", id),
+			CarNum:   "n.a.",
+			CarName:  "n.a.",
+			CarClass: "n.a.",
+		}
+	}
+	return ret
 }
 
 func (s *SeasonResultsOverviewContainer) PrimaryMatrix(referenceID, eventID int) int {
