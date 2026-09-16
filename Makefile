@@ -143,8 +143,8 @@ bob:
 	echo "  >  Generating bob files from database"
 	go run github.com/stephenafamo/bob/gen/bobgen-psql@latest -c ./bobgen.yml
 
-.PHONY: watch and generate go templ files
-## `watch-and-generate-go-templ-files`: Watch and generate Go templ files
+.PHONY: templ
+## `templ`: Watch and generate Go templ files
 templ:
 	echo "  >  Watching and generating Go templ files"
 	templ generate -watch -path html/server
