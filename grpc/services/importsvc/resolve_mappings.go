@@ -77,9 +77,14 @@ func (s *service) ResolveMappings(
 			return fmt.Errorf("select import payload: %w", err)
 		}
 
-		input, err := importProcessor.Process(ctx, importFormat, payload)
+		inputs, err := processImportPayload(ctx, importProcessor, importFormat, payload)
 		if err != nil {
 			return fmt.Errorf("process import payload: %w", err)
+		}
+
+		input, err := selectInputForGrid(epi, inputs, gridID)
+		if err != nil {
+			return fmt.Errorf("select input for race grid %d: %w", gridID, err)
 		}
 
 		existing, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, gridID)

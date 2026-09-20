@@ -134,100 +134,119 @@ func (s *service) UploadResultsFile(
 		// - resolve
 		// - remove data from previous steps
 		// - store resultEntries
-		input, inpErr := importProcessor.Process(ctx, importFormat, req.Msg.GetPayload())
+		inputs, inpErr := processImportPayload(
+			ctx, importProcessor, importFormat, req.Msg.GetPayload(),
+		)
 		if inpErr != nil {
 			return fmt.Errorf("process import payload: %w", inpErr)
 		}
 
-		entryName := importDataZipEntry(
-			input.DataType,
-			selectedFormat.AllowMultipleUploads,
-		)
-
-		existingBatch, loadErr := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
-		if loadErr != nil && !errors.Is(loadErr, rootrepo.ErrNotFound) {
-			return fmt.Errorf("load import batch for race grid %d: %w", gridID, loadErr)
-		}
-
-		existingPayload := []byte(nil)
-		existingMeta := mytypes.ImportBatchMeta{}
-		if existingBatch != nil {
-			existingPayload = existingBatch.Payload
-			existingMeta = existingBatch.MetadataJSON
-		}
-
-		zipPayload, zipErr := mergeImportBatchZipPayload(
-			existingPayload,
-			entryName,
-			req.Msg.GetPayload(),
-		)
-		if zipErr != nil {
-			return fmt.Errorf("build import batch zip payload: %w", zipErr)
-		}
-		meta := mergeImportBatchMetadata(existingMeta, entryName)
-
-		set := &models.ImportBatchSetter{
-			RaceGridID:      omit.From(gridID),
-			ImportFormat:    omit.From(mytypes.ImportFormat(importFormat)),
-			Payload:         omit.From(zipPayload),
-			ProcessingState: omit.From(toState),
-			MetadataJSON:    omit.From(meta),
-			UpdatedBy:       omit.From(execUser),
-		}
-		var writeErr error
-		if existingBatch == nil {
-			set.CreatedBy = omit.From(execUser)
-			batch, writeErr = s.repo.ImportBatches().Create(ctx, set)
-		} else {
-			batch, writeErr = s.repo.ImportBatches().Update(ctx, existingBatch.ID, set)
-		}
-		if writeErr != nil {
-			return writeErr
+		targetGridIDs, targetErr := resolveTargetGridIDs(epi, inputs, gridID)
+		if targetErr != nil {
+			return fmt.Errorf("resolve target grids: %w", targetErr)
 		}
 
 		resolver := importer.NewResolver(
 			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation), epi,
 		)
 
-		finalInput := input
-		if selectedFormat.AllowMultipleUploads {
-			merged, mergeErr := buildMergedInputFromZip(
-				ctx,
-				importProcessor,
-				importFormat,
-				zipPayload,
-				meta,
-				epi.Season.IsTeamBased,
+		var unmappedTotal int
+		for i, input := range inputs {
+			targetGridID := targetGridIDs[i]
+
+			entryName := importDataZipEntry(
+				input.DataType,
+				selectedFormat.AllowMultipleUploads && len(inputs) == 1,
 			)
-			if mergeErr != nil {
-				return fmt.Errorf("build merged import input: %w", mergeErr)
+
+			existingBatch, loadErr := s.repo.ImportBatches().LoadByRaceGridID(ctx, targetGridID)
+			if loadErr != nil && !errors.Is(loadErr, rootrepo.ErrNotFound) {
+				return fmt.Errorf("load import batch for race grid %d: %w", targetGridID, loadErr)
 			}
-			if merged != nil {
-				finalInput = merged
+
+			existingPayload := []byte(nil)
+			existingMeta := mytypes.ImportBatchMeta{}
+			if existingBatch != nil && len(inputs) == 1 {
+				existingPayload = existingBatch.Payload
+				existingMeta = existingBatch.MetadataJSON
+			}
+
+			zipPayload, zipErr := mergeImportBatchZipPayload(
+				existingPayload,
+				entryName,
+				req.Msg.GetPayload(),
+			)
+			if zipErr != nil {
+				return fmt.Errorf("build import batch zip payload: %w", zipErr)
+			}
+			meta := mergeImportBatchMetadata(existingMeta, entryName)
+
+			set := &models.ImportBatchSetter{
+				RaceGridID:      omit.From(targetGridID),
+				ImportFormat:    omit.From(mytypes.ImportFormat(importFormat)),
+				Payload:         omit.From(zipPayload),
+				ProcessingState: omit.From(toState),
+				MetadataJSON:    omit.From(meta),
+				UpdatedBy:       omit.From(execUser),
+			}
+			var gridBatch *models.ImportBatch
+			var writeErr error
+			if existingBatch == nil {
+				set.CreatedBy = omit.From(execUser)
+				gridBatch, writeErr = s.repo.ImportBatches().Create(ctx, set)
+			} else {
+				gridBatch, writeErr = s.repo.ImportBatches().Update(ctx, existingBatch.ID, set)
+			}
+			if writeErr != nil {
+				return writeErr
+			}
+
+			finalInput := input
+			if selectedFormat.AllowMultipleUploads && len(inputs) == 1 {
+				merged, mergeErr := buildMergedInputFromZip(
+					ctx,
+					importProcessor,
+					importFormat,
+					zipPayload,
+					meta,
+					epi.Season.IsTeamBased,
+				)
+				if mergeErr != nil {
+					return fmt.Errorf("build merged import input: %w", mergeErr)
+				}
+				if merged != nil {
+					finalInput = merged
+				}
+			}
+
+			resolved, resolveErr := resolver.ResolveInput(finalInput)
+			if resolveErr != nil {
+				return fmt.Errorf("resolve import payload: %w", resolveErr)
+			}
+
+			if persistErr := s.replaceResultEntriesForBatch(
+				ctx,
+				gridBatch,
+				resolved.Entries,
+				execUser,
+			); persistErr != nil {
+				return persistErr
+			}
+			unmappedTotal += len(resolved.Unmapped)
+
+			if targetGridID == gridID || batch == nil {
+				batch = gridBatch
 			}
 		}
 
-		resolved, resolveErr := resolver.ResolveInput(finalInput)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve import payload: %w", resolveErr)
-		}
-
-		if persistErr := s.replaceResultEntriesForBatch(
-			ctx,
-			batch,
-			resolved.Entries,
-			execUser,
-		); persistErr != nil {
-			return persistErr
-		}
-		if len(resolved.Unmapped) > 0 {
+		if unmappedTotal > 0 {
 			toState = conversion.EventProcessingStateMappingError
 		} else {
 			toState = conversion.EventProcessingStatePreprocessed
 		}
 
 		// Advance event processing state.
-		_, writeErr = s.repo.Events().Update(ctx, event.ID, &models.EventSetter{
+		_, writeErr := s.repo.Events().Update(ctx, event.ID, &models.EventSetter{
 			ProcessingState: omit.From(toState),
 			UpdatedAt:       omit.From(time.Now()),
 			UpdatedBy:       omit.From(execUser),
