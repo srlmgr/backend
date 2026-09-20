@@ -10,8 +10,25 @@ import (
 	processor "github.com/srlmgr/backend/grpc/services/importsvc/importer"
 )
 
-//nolint:funlen // parser flow combines payload/session/result normalization
+// ParseJSON parses a single-race iRacing JSON payload, returning the first
+// detected race (or the qualifying-only session, if no race is present).
 func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
+	payloads, err := ParseJSONMultiRace(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return payloads[0], nil
+}
+
+// ParseJSONMultiRace parses an iRacing JSON payload that may contain multiple races
+// (heats). It returns one ParsedImportPayload per detected race, in the order the race
+// sessions appear in session_results, with RaceSequenceNo set (1-based) when more than
+// one race is present. If no race session exists, a single qualifying-only payload with
+// RaceSequenceNo left at zero is returned.
+//
+//nolint:funlen // parser flow combines payload/session/result normalization
+func ParseJSONMultiRace(payload any) ([]*processor.ParsedImportPayload, error) {
 	envelope, err := payloadToEventResult(payload)
 	if err != nil {
 		return nil, err
@@ -19,15 +36,71 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 
 	data := &envelope.Data
 	isTeamRace := data.MaxTeamDrivers > 1
-	raceSession, hasRace := findFirstRaceSession(data.SessionResults)
+	raceSessions := findRaceSessions(data.SessionResults)
 	qualiSession, hasQuali := findFirstQualifySession(data.SessionResults)
-	if !hasRace && !hasQuali {
+	if len(raceSessions) == 0 && !hasQuali {
 		return nil, fmt.Errorf("json payload contains neither race nor qualifying sessions")
 	}
 
-	dataType := detectJSONDataType(hasRace, hasQuali)
 	qualiBestLapByResultKey := buildQualiBestLapMap(&qualiSession, hasQuali)
 	teamDriverIDs := collectTeamDriverIDs(data.SessionResults)
+
+	if len(raceSessions) == 0 {
+		payload := buildRacePayload(
+			data,
+			nil,
+			&qualiSession,
+			hasQuali,
+			qualiBestLapByResultKey,
+			teamDriverIDs,
+			isTeamRace,
+		)
+		return []*processor.ParsedImportPayload{payload}, nil
+	}
+
+	payloads := make([]*processor.ParsedImportPayload, len(raceSessions))
+	for i := range raceSessions {
+		// Qualifying only sets the grid for the first race of a heat; later heats/the
+		// feature race start from their own standings, so quali data must not carry over.
+		raceHasQuali := hasQuali && i == 0
+		raceQualiBestLapByResultKey := qualiBestLapByResultKey
+		if i > 0 {
+			raceQualiBestLapByResultKey = nil
+		}
+
+		built := buildRacePayload(
+			data,
+			&raceSessions[i],
+			&qualiSession,
+			raceHasQuali,
+			raceQualiBestLapByResultKey,
+			teamDriverIDs,
+			isTeamRace,
+		)
+		if len(raceSessions) > 1 {
+			built.RaceSequenceNo = i + 1
+		}
+		payloads[i] = built
+	}
+
+	return payloads, nil
+}
+
+// buildRacePayload builds a ParsedImportPayload for a single race session (or, when
+// raceSession is nil, for the qualifying-only fallback case using qualiSession).
+//
+//nolint:whitespace // editor/linter issue
+func buildRacePayload(
+	data *EventResult,
+	raceSession *SimSession,
+	qualiSession *SimSession,
+	hasQuali bool,
+	qualiBestLapByResultKey map[string]int,
+	teamDriverIDs TeamDriverIDs,
+	isTeamRace bool,
+) *processor.ParsedImportPayload {
+	hasRace := raceSession != nil
+	dataType := detectJSONDataType(hasRace, hasQuali)
 
 	var sourceResults []Result
 	if hasRace {
@@ -57,7 +130,7 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 		},
 		Results:  results,
 		DataType: dataType,
-	}, nil
+	}
 }
 
 func detectJSONDataType(hasRace, hasQuali bool) processor.ImportData {
@@ -73,20 +146,22 @@ func detectJSONDataType(hasRace, hasQuali bool) processor.ImportData {
 	}
 }
 
-// findFirstRaceSession returns the first simsession whose type is
-// SimsessionTypeRace and whose type name indicates a race.
+// findRaceSessions returns all simsessions whose type is SimsessionTypeRace and whose
+// type name indicates a race, in the order they appear in session_results. This order
+// (rather than the unreliable simsession_number) is used to identify heat races.
 //
 //nolint:whitespace // editor/linter issue
-func findFirstRaceSession(sessions []SimSession) (SimSession, bool) {
+func findRaceSessions(sessions []SimSession) []SimSession {
+	races := make([]SimSession, 0, 1)
 	for i := range sessions {
 		s := &sessions[i]
 		if s.SimsessionType == SimsessionTypeRace &&
 			strings.EqualFold(s.SimsessionTypeName, "race") {
-			return *s, true
+			races = append(races, *s)
 		}
 	}
 
-	return SimSession{}, false
+	return races
 }
 
 // findFirstQualifySession returns the first qualifying simsession.

@@ -35,6 +35,17 @@ type FormatSupporter interface {
 	SupportedFormats() []ImportFormat
 }
 
+// MultiRaceProcessor can be implemented by processors that can detect multiple races
+// (e.g. heat races) within a single payload and return one ParsedImportPayload per
+// race.
+type MultiRaceProcessor interface {
+	ProcessMultiRace(
+		ctx context.Context,
+		format ImportFormat,
+		payload any,
+	) ([]*ParsedImportPayload, error)
+}
+
 // SupportsFormat reports whether the processor supports the given import format.
 func SupportsFormat(processor ProcessImport, format ImportFormat) bool {
 	supporter, ok := processor.(FormatSupporter)
@@ -43,4 +54,10 @@ func SupportsFormat(processor ProcessImport, format ImportFormat) bool {
 	}
 
 	return slices.Contains(supporter.SupportedFormats(), format)
+}
+
+// SupportsMultiRace returns the MultiRaceProcessor implementation of processor, if any.
+func SupportsMultiRace(processor ProcessImport) (MultiRaceProcessor, bool) {
+	multiRace, ok := processor.(MultiRaceProcessor)
+	return multiRace, ok
 }

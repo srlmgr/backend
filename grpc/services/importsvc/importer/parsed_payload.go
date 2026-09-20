@@ -9,6 +9,10 @@ type ParsedImportPayload struct {
 	Session  SessionInfo
 	Results  []*ResultRow
 	DataType ImportData
+	// RaceSequenceNo is the 1-based position of this payload among multiple races
+	// detected in a single upload (e.g. iRacing heat races). Zero means "not
+	// applicable" (single race).
+	RaceSequenceNo int
 }
 
 // SessionInfo contains event-level data from an import payload.
