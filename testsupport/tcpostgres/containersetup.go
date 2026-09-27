@@ -57,14 +57,19 @@ func SetupPostgres(ctx context.Context, opts ...PostgresContainerOption) (
 		opt(&req)
 	}
 
-	container, err := testcontainers.GenericContainer(
-		ctx,
-		testcontainers.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-			Reuse:            true,
-		},
-	)
+	var container testcontainers.Container
+	err := withContainerLock(func() error {
+		var startErr error
+		container, startErr = testcontainers.GenericContainer(
+			ctx,
+			testcontainers.GenericContainerRequest{
+				ContainerRequest: req,
+				Started:          true,
+				Reuse:            true,
+			},
+		)
+		return startErr
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -247,7 +247,7 @@ func TestCreateRaceSuccessDuplicateNameDifferentEvent(t *testing.T) {
 }
 
 func TestCreateRaceFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -458,7 +458,7 @@ func TestDeleteRaceSuccess(t *testing.T) {
 }
 
 func TestDeleteRaceFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -688,7 +688,7 @@ func TestDeleteRaceGridSuccess(t *testing.T) {
 }
 
 func TestDeleteRaceGridFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

@@ -24,28 +24,26 @@ const (
 	testUserSeed = "seed"
 )
 
-var testPool *pgxpool.Pool
+var packagePool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
-	pool, err := testdb.InitTestDB()
+	pool, cleanup, err := testdb.InitTestDB()
 	if err != nil {
 		panic("failed to connect to test database: " + err.Error())
 	}
-	testPool = pool
+	packagePool = pool
 	code := m.Run()
-	testPool.Close()
+	packagePool.Close()
+	cleanup()
 	os.Exit(code)
 }
 
 func newDBBackedQueryService(t *testing.T) (*service, rootrepo.Repository) {
 	t.Helper()
-	resetTestTables(t)
-	t.Cleanup(func() {
-		resetTestTables(t)
-	})
 
-	repo := postgresrepo.New(testPool)
-	txMgr := rootrepo.NewBobTransactionFromPool(testPool)
+	pool := testdb.NewTestDatabase(t, packagePool)
+	repo := postgresrepo.New(pool)
+	txMgr := rootrepo.NewBobTransactionFromPool(pool)
 
 	svc := &service{
 		logger:     log.New(),
@@ -54,17 +52,6 @@ func newDBBackedQueryService(t *testing.T) (*service, rootrepo.Repository) {
 		conversion: conversion.New(),
 	}
 	return svc, repo
-}
-
-func resetTestTables(t *testing.T) {
-	t.Helper()
-
-	if _, err := testPool.Exec(
-		context.Background(),
-		"TRUNCATE TABLE racing_sims, series, point_systems, seasons, tracks, track_layouts, events, car_manufacturers, car_models, car_model_variants, drivers, teams RESTART IDENTITY CASCADE",
-	); err != nil {
-		t.Fatalf("failed to reset test tables: %v", err)
-	}
 }
 
 //nolint:unparam // caller may use with different parameters in the future

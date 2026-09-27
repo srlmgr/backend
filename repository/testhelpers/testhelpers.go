@@ -6,6 +6,7 @@ package testhelpers
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,31 +24,38 @@ import (
 
 const TestUserSeed = "seed"
 
-var TestPool *pgxpool.Pool
+// testPools maps each running test to its own isolated pool, since tests may run in
+// parallel and a single package-level pool var can't be shared safely across them.
+var testPools sync.Map // map[*testing.T]*pgxpool.Pool
 
-// InitTestPool initializes the test database pool.
-// It must be called from TestMain in each test package.
-func InitTestPool() (*pgxpool.Pool, error) {
-	return testdb.InitTestDB()
-}
-
-// ResetTestTables clears all tables in the test database. Call in test setup/cleanup.
-func ResetTestTables(t *testing.T) {
+// NewTestPool provisions a fresh, isolated database pool for t (cloned from the
+// shared template) and registers it so seed helpers below can find it via t.
+// packagePool is the pool returned by testdb.InitTestDB in the package's TestMain,
+// used as a fallback when running against an external TESTDB_URL.
+func NewTestPool(t *testing.T, packagePool *pgxpool.Pool) *pgxpool.Pool {
 	t.Helper()
 
-	if err := testdb.ClearAllTables(TestPool); err != nil {
-		t.Fatalf("failed to reset test tables: %v", err)
-	}
+	pool := testdb.NewTestDatabase(t, packagePool)
+	testPools.Store(t, pool)
+	t.Cleanup(func() { testPools.Delete(t) })
+
+	return pool
 }
 
 func getExecutor(t *testing.T) *pgbob.Executor {
 	t.Helper()
 
-	if TestPool == nil {
-		t.Fatal("test pool is not initialized")
+	val, ok := testPools.Load(t)
+	if !ok {
+		t.Fatal("test pool is not initialized; call testhelpers.NewTestPool(t, ...) first")
 	}
 
-	return pgbob.New(TestPool)
+	pool, ok := val.(*pgxpool.Pool)
+	if !ok {
+		t.Fatalf("unexpected test pool type: %T", val)
+	}
+
+	return pgbob.New(pool)
 }
 
 func getExecutorFromContext(t *testing.T, ctx context.Context) bob.Executor {

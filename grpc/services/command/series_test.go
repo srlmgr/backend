@@ -49,7 +49,7 @@ func countSeriesRows(t *testing.T) int {
 	t.Helper()
 
 	var count int
-	if err := testPool.QueryRow(context.Background(), "SELECT COUNT(*) FROM series").
+	if err := currentPool(t).QueryRow(context.Background(), "SELECT COUNT(*) FROM series").
 		Scan(&count); err != nil {
 		t.Fatalf("failed to count series rows: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestCreateSeriesFailureDuplicateNameSameSimulation(t *testing.T) {
 }
 
 func TestCreateSeriesFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -334,7 +334,7 @@ func TestDeleteSeriesSuccess(t *testing.T) {
 }
 
 func TestDeleteSeriesFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

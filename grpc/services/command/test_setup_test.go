@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/aarondl/opt/omit"
@@ -29,17 +30,36 @@ const (
 	txFailedErrMsg = "transaction failed"
 )
 
-var testPool *pgxpool.Pool
+var (
+	packagePool *pgxpool.Pool
+	testPools   sync.Map // map[*testing.T]*pgxpool.Pool
+)
 
 func TestMain(m *testing.M) {
-	pool, err := testdb.InitTestDB()
+	pool, cleanup, err := testdb.InitTestDB()
 	if err != nil {
 		panic("failed to connect to test database: " + err.Error())
 	}
-	testPool = pool
+	packagePool = pool
 	code := m.Run()
-	testPool.Close()
+	packagePool.Close()
+	cleanup()
 	os.Exit(code)
+}
+
+// currentPool returns t's isolated database pool, cloning one on first use.
+func currentPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
+	if pool, ok := testPools.Load(t); ok {
+		return pool.(*pgxpool.Pool) //nolint:errcheck,forcetypeassert // stored by this file only
+	}
+
+	pool := testdb.NewTestDatabase(t, packagePool)
+	testPools.Store(t, pool)
+	t.Cleanup(func() { testPools.Delete(t) })
+
+	return pool
 }
 
 type txManagerStub struct {
@@ -81,24 +101,12 @@ func newTestService(
 
 func newDBBackedTestService(t *testing.T) (*service, rootrepo.Repository) {
 	t.Helper()
-	resetTestTables(t)
-	t.Cleanup(func() {
-		resetTestTables(t)
-	})
 
-	repo := postgresrepo.New(testPool)
-	txMgr := rootrepo.NewBobTransactionFromPool(testPool)
+	pool := currentPool(t)
+	repo := postgresrepo.New(pool)
+	txMgr := rootrepo.NewBobTransactionFromPool(pool)
 
 	return newTestService(repo, txMgr), repo
-}
-
-func resetTestTables(t *testing.T) {
-	t.Helper()
-
-	err := testdb.ClearAllTables(testPool)
-	if err != nil {
-		t.Fatalf("failed to reset test tables: %v", err)
-	}
 }
 
 //nolint:whitespace // multiline signature style

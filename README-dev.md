@@ -164,6 +164,23 @@ go, use the command
 make test
 ```
 
+### Database-backed tests and parallel execution
+
+Database-backed tests provision Postgres via [testcontainers][testcontainers-go]. Each
+test package clones its own database from a shared, pre-migrated template (and,
+within packages that used table-truncation for isolation, every test function clones
+its own database), so `make test`/CI run packages in parallel (`-p 4`) instead of the
+old `-p 1`.
+
+If `TESTDB_URL` is set (e.g. via `.env.test` in the devcontainer, pointing at the
+docker-compose Postgres on `localhost:5532`), tests use that external database instead
+and fall back to the previous shared-database/truncate behavior — this path does not
+benefit from the template/clone parallelism and should still be run with `-p 1` if you
+override the Makefile/CI invocation. To exercise the parallel testcontainers flow
+locally, unset `TESTDB_URL` before running tests.
+
+[testcontainers-go]: https://golang.testcontainers.org/
+
 ### Running the Test-Suite
 
 The _`test-suite`_ is simply a wrapper to run linters, stylecheckers and **all** tests

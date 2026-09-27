@@ -95,7 +95,7 @@ func TestCreateCarModelFailureDuplicateName(t *testing.T) {
 }
 
 func TestCreateCarModelFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

@@ -15,12 +15,14 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	pool, err := testdb.InitTestDB()
+	pool, cleanup, err := testdb.InitTestDB()
 	if err != nil {
 		panic("Failed to connect to test database: " + err.Error())
 	}
 	testDB = bob.NewDB(stdlib.OpenDBFromPool(pool))
 	code := m.Run()
 
+	pool.Close()
+	cleanup()
 	os.Exit(code)
 }
