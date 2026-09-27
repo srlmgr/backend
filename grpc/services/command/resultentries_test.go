@@ -182,7 +182,7 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 // TestCreateResultEntryFailureDuplicateRaceDriver verifies that a duplicate
 // (race_id, driver_id) results in CodeAlreadyExists.
 func TestCreateResultEntryFailureDuplicateRaceDriver(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	duplicateErr := &pgconn.PgError{
 		Code:           "23505",
 		ConstraintName: "idx_result_entries_race_id_driver_id_unique",
@@ -252,7 +252,7 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 }
 
 func TestCreateResultEntryFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -433,7 +433,7 @@ func TestDeleteResultEntrySuccess(t *testing.T) {
 }
 
 func TestDeleteResultEntryFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

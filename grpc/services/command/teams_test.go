@@ -20,7 +20,7 @@ func countTeamRows(t *testing.T) int {
 	t.Helper()
 
 	var count int
-	if err := testPool.QueryRow(context.Background(), "SELECT COUNT(*) FROM teams").
+	if err := currentPool(t).QueryRow(context.Background(), "SELECT COUNT(*) FROM teams").
 		Scan(&count); err != nil {
 		t.Fatalf("failed to count team rows: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestCreateTeamSuccessDuplicateNameDifferentSeason(t *testing.T) {
 }
 
 func TestCreateTeamFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -352,7 +352,7 @@ func TestDeleteTeamSuccess(t *testing.T) {
 }
 
 func TestDeleteTeamFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

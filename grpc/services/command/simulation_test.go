@@ -162,7 +162,7 @@ func TestCreateSimulationFailureDuplicateName(t *testing.T) {
 }
 
 func TestCreateSimulationFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -328,7 +328,7 @@ func TestDeleteSimulationSuccess(t *testing.T) {
 }
 
 func TestDeleteSimulationFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

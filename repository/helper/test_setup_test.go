@@ -9,23 +9,22 @@ import (
 	"github.com/stephenafamo/bob"
 
 	"github.com/srlmgr/backend/repository/pgbob"
-	"github.com/srlmgr/backend/repository/testhelpers"
 	"github.com/srlmgr/backend/testsupport/testdb"
 )
 
 var testDB bob.Transactor[bob.Tx]
 
 func TestMain(m *testing.M) {
-	pool, err := testdb.InitTestDB()
+	pool, cleanup, err := testdb.InitTestDB()
 	if err != nil {
 		panic("failed to connect to test database: " + err.Error())
 	}
 
-	testhelpers.TestPool = pool
 	testDB = bob.NewDB(stdlib.OpenDBFromPool(pool))
 
 	code := m.Run()
 	pool.Close()
+	cleanup()
 	os.Exit(code)
 }
 

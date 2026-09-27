@@ -229,7 +229,7 @@ func TestCreateSeasonSuccessDuplicateNameDifferentSeries(t *testing.T) {
 }
 
 func TestCreateSeasonFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -400,7 +400,7 @@ func TestDeleteSeasonSuccess(t *testing.T) {
 }
 
 func TestDeleteSeasonFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {
@@ -450,7 +450,7 @@ func TestSetSeasonCarClassesSuccess(t *testing.T) {
 }
 
 func TestSetSeasonCarClassesFailureTransactionError(t *testing.T) {
-	repo := postgresrepo.New(testPool)
+	repo := postgresrepo.New(currentPool(t))
 	txErr := errors.New(txFailedErrMsg)
 	svc := newTestService(repo, txManagerStub{
 		runInTx: func(_ context.Context, _ func(ctx context.Context) error) error {

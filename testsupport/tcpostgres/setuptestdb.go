@@ -14,17 +14,20 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/srlmgr/backend/db/migrate"
-	database "github.com/srlmgr/backend/db/postgres"
 )
 
-// create a pg connection pool for the srlmgr testdatabase
-func SetupTestDB() (*pgxpool.Pool, error) {
+// SetupTestDB starts (or reuses) the shared testcontainers postgres instance and
+// makes sure the template database used for per-test/per-package cloning exists.
+// It returns the admin connection URL (targeting the container's "postgres"
+// maintenance database), not a ready-to-use working pool.
+func SetupTestDB() (string, error) {
 	ctx := context.Background()
 	port, err := nat.NewPort("tcp", "5432")
 	if err != nil {
 		log.Fatal(err)
 	}
-	container, err := SetupPostgres(ctx,
+	container, err := SetupPostgres(
+		ctx,
 		WithPort(port.Port()),
 		WithInitialDatabase("postgres", "password", "postgres"),
 		WithWaitStrategy(
@@ -35,31 +38,36 @@ func SetupTestDB() (*pgxpool.Pool, error) {
 		WithName("srlmgr-test"),
 	)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	containerPort, _ := container.MappedPort(ctx, port.Port())
 	host, _ := container.Host(ctx)
-	dbURL := fmt.Sprintf("postgresql://postgres:password@%s:%s/postgres",
+	adminURL := fmt.Sprintf("postgresql://postgres:password@%s:%s/postgres",
 		host, containerPort.Port())
 
-	err = migrate.MigrateDB(dbURL)
-	if err != nil {
-		return nil, err
+	if err := EnsureTemplateDB(ctx, adminURL); err != nil {
+		return "", err
 	}
 
-	pool := database.InitWithURL(dbURL)
-	return pool, nil
+	return adminURL, nil
 }
 
-// create a pg connection pool for the local iracelog testdatabase
+// SetupExternalTestDB migrates and returns the externally provided TESTDB_URL,
+// used as-is (no template/clone support for this flow).
 func SetupExternalTestDB() (*pgxpool.Pool, error) {
 	dbURL := os.Getenv("TESTDB_URL")
 	if err := migrate.MigrateDB(dbURL); err != nil {
 		return nil, err
 	}
 
-	pool := database.InitWithURL(dbURL)
+	pool, err := pgxpool.New(context.Background(), dbURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		return nil, err
+	}
 	return pool, nil
 }
 
