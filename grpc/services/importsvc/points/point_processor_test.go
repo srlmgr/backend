@@ -489,3 +489,72 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 
 	assertOutputSlicesEqual(t, outputs, expected)
 }
+
+func TestPointSystemProcessorProcessPoints_AppliesOfftrackExceededPenalties(t *testing.T) {
+	t.Parallel()
+
+	processor := &PointSystemProcessor{
+		settings: &PointSystemSettings{
+			Eligibility: EligibilitySettings{},
+		},
+	}
+	inputs := []Input{
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(601),
+			WithOfftracks(2),
+		),
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(602),
+			WithOfftracks(3),
+		),
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(603),
+			WithOfftracks(5),
+		),
+	}
+	penalties := map[PointPolicyType]any{
+		PointsPolicyOfftracksExceeded: OfftracksExceededSettings{
+			Threshold:            3,
+			PerExceedancePenalty: 2,
+			GlobalPenalty:        3,
+		},
+	}
+
+	outputs, err := processor.ProcessPoints(
+		inputs,
+		[]PointPolicyType{PointsPolicyOfftracksExceeded},
+		nil,
+		penalties,
+	)
+	if err != nil {
+		t.Fatalf("ProcessPoints returned unexpected error: %v", err)
+	}
+
+	expected := []Output{
+		workOutput{
+			refID:   603,
+			classID: 1,
+			points:  -7,
+			msg:     "7 points penalty for 5 offtracks (limit: 3)",
+			origin:  PointsPolicyOfftracksExceeded,
+		},
+	}
+	assertOutputSlicesEqual(t, outputs, expected)
+
+	meta, ok := outputs[0].Meta().Data.(OfftrackExceededMeta)
+	if !ok {
+		t.Fatalf("unexpected metadata type: %T", outputs[0].Meta().Data)
+	}
+	expectedMeta := OfftrackExceededMeta{
+		Offtracks:            5,
+		Limit:                3,
+		PerExceedancePenalty: 2,
+		GlobalPenalty:        3,
+	}
+	if meta != expectedMeta {
+		t.Fatalf("unexpected metadata: %+v", meta)
+	}
+}

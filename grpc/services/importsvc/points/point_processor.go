@@ -159,7 +159,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 		// next: apply policies on awarded position points
 		// e.g. stuff like "10% reduction for more than 3 incidents"
 		for _, policyType := range policies {
-			//nolint:exhaustive,gocritic // may be extended with addition policies
+			//nolint:exhaustive // may be extended with addition policies
 			switch policyType {
 			case PointsPolicyIncidentsExceeded:
 				polSettings, ok := penaltySettings[policyType].(ThresholdPenaltySettings)
@@ -169,6 +169,15 @@ func (p *PointSystemProcessor) ProcessPoints(
 				ret = append(
 					ret,
 					p.handleIncidentsExceededPolicy(ret, polSettings, eligibleInputs)...,
+				)
+			case PointsPolicyOfftracksExceeded:
+				polSettings, ok := penaltySettings[policyType].(OfftracksExceededSettings)
+				if !ok {
+					continue
+				}
+				ret = append(
+					ret,
+					p.handleOfftrackExceededPolicy(polSettings, eligibleInputs)...,
 				)
 			}
 		}
@@ -218,6 +227,51 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 				ret = append(ret, out)
 			}
 		}
+	}
+	return ret
+}
+
+//nolint:whitespace // editor/linter issue
+func (p *PointSystemProcessor) handleOfftrackExceededPolicy(
+	settings OfftracksExceededSettings, inputs []Input,
+) []Output {
+	ret := make([]Output, 0)
+	for _, inp := range inputs {
+		offtracks := inp.Offtracks()
+		if offtracks <= settings.Threshold {
+			continue
+		}
+
+		exceeded := offtracks - settings.Threshold
+		penalty := PointType(0)
+		if settings.PerExceedancePenalty > 0 {
+			penalty += PointType(exceeded) * settings.PerExceedancePenalty
+		}
+		if settings.GlobalPenalty > 0 {
+			penalty += settings.GlobalPenalty
+		}
+		if penalty == 0 {
+			continue
+		}
+		penalty = -penalty
+
+		ret = append(ret, workOutput{
+			refID:   inp.ReferenceID(),
+			classID: inp.ClassID(),
+			points:  penalty,
+			msg: fmt.Sprintf("%g points penalty for %d offtracks (limit: %d)",
+				-penalty, offtracks, settings.Threshold),
+			origin: PointsPolicyOfftracksExceeded,
+			meta: MetaType{
+				Version: 1,
+				Data: OfftrackExceededMeta{
+					Offtracks:            int(offtracks),
+					Limit:                int(settings.Threshold),
+					PerExceedancePenalty: settings.PerExceedancePenalty,
+					GlobalPenalty:        settings.GlobalPenalty,
+				},
+			},
+		})
 	}
 	return ret
 }

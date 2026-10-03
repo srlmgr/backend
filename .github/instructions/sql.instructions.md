@@ -10,6 +10,10 @@ applyTo: "**/*.sql"
 - Store migrations in db/migrate/migrations
 - Use 3-digit index based filenames
 - Keep one concern per migration
+- Do not modify existing migrations
+- Write new migrations for any schema changes
+- Include a comment at the top of each migration indicating the related issue number
+- New migrations start at prefix 100
 
 ## Tool policy
 

@@ -22,6 +22,7 @@ func (c *Converter) ResultEntryToInput(re *models.ResultEntry, opts ...InputOpt)
 		WithQualiPosition(re.StartPosition.GetOrZero()),
 		WithIsGuest(re.IsGuestStarter),
 		WithIncidents(re.Incidents.GetOrZero()),
+		WithOfftracks(re.Offtracks),
 		WithLapsCompleted(re.LapsCompleted),
 		WithFastestLap(re.FastestLapTimeMS.GetOrZero()),
 	}

@@ -41,6 +41,17 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 			},
 		},
 	}
+	offtracksPolicy := &commonv1.PointPolicySettings{
+		Name: commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED,
+		Config: &commonv1.PointPolicySettings_OfftracksExceeded{
+			OfftracksExceeded: &commonv1.OfftrackExceededRuleConfig{
+				Rules: []*commonv1.OfftrackExceededRule{
+					{Threshold: 3, PerExceedancePenalty: 2, GlobalPenalty: 4},
+					{Threshold: 5, PerExceedancePenalty: 1, GlobalPenalty: 0},
+				},
+			},
+		},
+	}
 	fastestLapPolicy := &commonv1.PointPolicySettings{
 		Name: commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP,
 		Config: &commonv1.PointPolicySettings_FastestLap{
@@ -54,6 +65,7 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 	ps.R.PointRules = models.PointRuleSlice{
 		newRule(t, 1, 0, "Race 1", finishPolicy),
 		newRule(t, 2, 0, "Race 1", incidentPolicy),
+		newRule(t, 4, 0, "Race 1", offtracksPolicy),
 		newRule(t, 3, 1, "Race 2", fastestLapPolicy),
 	}
 
@@ -93,6 +105,27 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 	}
 	if pen.Threshold != 1 || pen.PenaltyPct != 0.5 {
 		t.Fatalf("unexpected incidents penalty config: %+v", pen)
+	}
+	offtracksPenalty, ok := race1.PenaltySettings[0].Arguments[points.PointsPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
+	if !ok {
+		t.Fatal("expected offtracks exceeded penalty settings in race 1 grid 0")
+	}
+	if offtracksPenalty != (points.OfftracksExceededSettings{
+		Threshold:            3,
+		PerExceedancePenalty: 2,
+		GlobalPenalty:        4,
+	}) {
+		t.Fatalf("unexpected offtracks penalty config: %+v", offtracksPenalty)
+	}
+	offtracksPenalty, ok = race1.PenaltySettings[1].Arguments[points.PointsPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
+	if !ok {
+		t.Fatal("expected offtracks exceeded penalty settings in race 1 grid 1")
+	}
+	if offtracksPenalty != (points.OfftracksExceededSettings{
+		Threshold:            5,
+		PerExceedancePenalty: 1,
+	}) {
+		t.Fatalf("unexpected offtracks penalty config: %+v", offtracksPenalty)
 	}
 
 	race2 := settings.Races[1]

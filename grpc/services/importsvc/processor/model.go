@@ -154,7 +154,7 @@ func (e *EventProcInfoCollector) pointSystemSettingsFromDB(
 	return settings, nil
 }
 
-//nolint:whitespace,funlen // editor/linter issue
+//nolint:whitespace // editor/linter issue
 func (e *EventProcInfoCollector) applyPointRuleToRaceSettings(
 	rule *models.PointRule,
 	raceSettings *points.RaceSettings,
@@ -185,6 +185,17 @@ func (e *EventProcInfoCollector) applyPointRuleToRaceSettings(
 		raceSettings.Policies = append(raceSettings.Policies, policyType)
 	}
 
+	applyPointPolicyConfig(policy, raceSettings, policyType)
+
+	return nil
+}
+
+//nolint:whitespace // editor/linter issue
+func applyPointPolicyConfig(
+	policy *commonv1.PointPolicySettings,
+	raceSettings *points.RaceSettings,
+	policyType points.PointPolicyType,
+) {
 	switch cfg := policy.GetConfig().(type) {
 	case *commonv1.PointPolicySettings_FinishPos:
 		upsertAwardTables(raceSettings, policyType, cfg.FinishPos.GetTables())
@@ -198,11 +209,15 @@ func (e *EventProcInfoCollector) applyPointRuleToRaceSettings(
 		upsertAwardTables(raceSettings, policyType, cfg.TopNFinisher.GetTables())
 	case *commonv1.PointPolicySettings_IncidentsExceeded:
 		upsertThresholdPenalties(raceSettings, policyType, cfg.IncidentsExceeded.GetRules())
+	case *commonv1.PointPolicySettings_OfftracksExceeded:
+		upsertOfftracksExceededPenalties(
+			raceSettings,
+			policyType,
+			cfg.OfftracksExceeded.GetRules(),
+		)
 	default:
 		// Keep policy in the policy list even if it has no config payload.
 	}
-
-	return nil
 }
 
 func decodePointRuleMetadata(raw json.RawMessage) (pointRuleMetadata, error) {
@@ -253,6 +268,8 @@ func mapPolicyType(policy commonv1.PointPolicy) (points.PointPolicyType, error) 
 		return points.PointsPolicyLeastIncidents, nil
 	case commonv1.PointPolicy_POINT_POLICY_INCIDENTS_EXCEEDED:
 		return points.PointsPolicyIncidentsExceeded, nil
+	case commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED:
+		return points.PointsPolicyOfftracksExceeded, nil
 	case commonv1.PointPolicy_POINT_POLICY_QUALIFICATION_POS:
 		return points.PointsPolicyQualificationPos, nil
 	case commonv1.PointPolicy_POINT_POLICY_TOP_N_FINISHER:
@@ -291,6 +308,23 @@ func upsertThresholdPenalties(
 			Threshold:  int32(rule.GetThreshold()),
 			PenaltyPct: rule.GetPenaltyPercent(),
 		}
+	}
+}
+
+//nolint:whitespace // editor/linter issue
+func upsertOfftracksExceededPenalties(
+	raceSettings *points.RaceSettings,
+	policyType points.PointPolicyType,
+	rules []*commonv1.OfftrackExceededRule,
+) {
+	ensurePenaltySettingsLen(raceSettings, len(rules))
+	for idx, rule := range rules {
+		settings := points.OfftracksExceededSettings{
+			Threshold:            int32(rule.GetThreshold()),
+			PerExceedancePenalty: points.PointType(rule.GetPerExceedancePenalty()),
+			GlobalPenalty:        points.PointType(rule.GetGlobalPenalty()),
+		}
+		raceSettings.PenaltySettings[idx].Arguments[policyType] = settings
 	}
 }
 

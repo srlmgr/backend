@@ -1094,6 +1094,7 @@ func (f *Factory) fromExistingResultEntry(ctx context.Context, m *models.ResultE
 	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
 	o.CreatedBy = func() string { return m.CreatedBy }
 	o.UpdatedBy = func() string { return m.UpdatedBy }
+	o.Offtracks = func() int32 { return m.Offtracks }
 
 	if visited, ok := factoryVisitedCtx.Value(ctx); ok {
 		ptr := uintptr(unsafe.Pointer(m))
