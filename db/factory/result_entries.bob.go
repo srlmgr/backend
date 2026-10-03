@@ -66,6 +66,7 @@ type ResultEntryTemplate struct {
 	UpdatedAt         func() time.Time
 	CreatedBy         func() string
 	UpdatedBy         func() string
+	Offtracks         func() int32
 
 	r resultEntryR
 	f *Factory
@@ -261,6 +262,10 @@ func (o ResultEntryTemplate) BuildSetter() *models.ResultEntrySetter {
 		val := o.UpdatedBy()
 		m.UpdatedBy = omit.From(val)
 	}
+	if o.Offtracks != nil {
+		val := o.Offtracks()
+		m.Offtracks = omit.From(val)
+	}
 
 	return m
 }
@@ -363,6 +368,9 @@ func (o ResultEntryTemplate) Build() *models.ResultEntry {
 	}
 	if o.UpdatedBy != nil {
 		m.UpdatedBy = o.UpdatedBy()
+	}
+	if o.Offtracks != nil {
+		m.Offtracks = o.Offtracks()
 	}
 
 	o.setModelRels(m)
@@ -645,6 +653,7 @@ func (m resultEntryMods) RandomizeAllColumns(f *faker.Faker) ResultEntryMod {
 		ResultEntryMods.RandomUpdatedAt(f),
 		ResultEntryMods.RandomCreatedBy(f),
 		ResultEntryMods.RandomUpdatedBy(f),
+		ResultEntryMods.RandomOfftracks(f),
 	}
 }
 
@@ -1833,6 +1842,37 @@ func (m resultEntryMods) RandomUpdatedBy(f *faker.Faker) ResultEntryMod {
 	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
 		o.UpdatedBy = func() string {
 			return random_string(f)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m resultEntryMods) Offtracks(val int32) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.Offtracks = func() int32 { return val }
+	})
+}
+
+// Set the Column from the function
+func (m resultEntryMods) OfftracksFunc(f func() int32) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.Offtracks = f
+	})
+}
+
+// Clear any values for the column
+func (m resultEntryMods) UnsetOfftracks() ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.Offtracks = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+func (m resultEntryMods) RandomOfftracks(f *faker.Faker) ResultEntryMod {
+	return ResultEntryModFunc(func(_ context.Context, o *ResultEntryTemplate) {
+		o.Offtracks = func() int32 {
+			return random_int32(f)
 		}
 	})
 }

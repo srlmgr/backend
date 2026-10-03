@@ -135,7 +135,6 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 			resp.Msg.GetPointSystem().GetRaceSettings()[0].GetName(),
 		)
 	}
-
 	id := int32(resp.Msg.GetPointSystem().GetId())
 	stored, err := repo.PointSystems().PointSystems().LoadByID(context.Background(), id)
 	if err != nil {
@@ -157,6 +156,77 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 	}
 	if len(stored.R.PointRules) != 3 {
 		t.Fatalf("unexpected stored point rule count: %d", len(stored.R.PointRules))
+	}
+}
+
+func TestCreatePointSystemWithOfftracksExceededPolicyPersists(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+	resp, err := svc.CreatePointSystem(
+		context.Background(),
+		connect.NewRequest(&v1.CreatePointSystemRequest{
+			Name: "Offtracks Points",
+			RaceSettings: []*commonv1.PointRaceSettings{
+				{
+					Name: "Race 1",
+					Policies: []*commonv1.PointPolicySettings{
+						{
+							Name: commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED,
+							Config: &commonv1.PointPolicySettings_OfftracksExceeded{
+								OfftracksExceeded: &commonv1.OfftrackExceededRuleConfig{
+									Rules: []*commonv1.OfftrackExceededRule{
+										{
+											Threshold:            3,
+											PerExceedancePenalty: 2,
+											GlobalPenalty:        4,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error creating point system: %v", err)
+	}
+
+	policies := resp.Msg.GetPointSystem().GetRaceSettings()[0].GetPolicies()
+	if len(policies) != 1 {
+		t.Fatalf("unexpected persisted policy count: %d", len(policies))
+	}
+	if policies[0].GetName() != commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED {
+		t.Fatalf("unexpected persisted policies: %+v", policies)
+	}
+	rules := policies[0].GetOfftracksExceeded().GetRules()
+	if len(rules) != 1 {
+		t.Fatalf("unexpected persisted offtracks rules: %+v", rules)
+	}
+	rule := rules[0]
+	if rule.GetThreshold() != 3 {
+		t.Fatalf("unexpected persisted threshold: %d", rule.GetThreshold())
+	}
+	if rule.GetPerExceedancePenalty() != 2 {
+		t.Fatalf("unexpected per-exceedance penalty: %d", rule.GetPerExceedancePenalty())
+	}
+	if rule.GetGlobalPenalty() != 4 {
+		t.Fatalf("unexpected global penalty: %d", rule.GetGlobalPenalty())
+	}
+
+	stored, err := repo.PointSystems().PointSystems().LoadByID(
+		context.Background(),
+		int32(resp.Msg.GetPointSystem().GetId()),
+	)
+	if err != nil {
+		t.Fatalf("failed to reload point system: %v", err)
+	}
+	if len(stored.R.PointRules) != 1 {
+		t.Fatalf("unexpected stored point rules: %+v", stored.R.PointRules)
+	}
+	wantPolicyName := commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED.String()
+	if stored.R.PointRules[0].PointPolicy != wantPolicyName {
+		t.Fatalf("unexpected stored policy name: %s", stored.R.PointRules[0].PointPolicy)
 	}
 }
 

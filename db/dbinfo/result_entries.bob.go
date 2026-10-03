@@ -258,6 +258,15 @@ var ResultEntries = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		Offtracks: column{
+			Name:      "offtracks",
+			DBType:    "integer",
+			Default:   "0",
+			Comment:   "",
+			Nullable:  false,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: resultEntryIndexes{
 		ResultEntriesPkey: index{
@@ -581,11 +590,12 @@ type resultEntryColumns struct {
 	UpdatedAt         column
 	CreatedBy         column
 	UpdatedBy         column
+	Offtracks         column
 }
 
 func (c resultEntryColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.FrontendID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelVariantID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestStarter, c.TeamDrivers, c.StartPosition, c.FinishPosition, c.LapsCompleted, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy,
+		c.ID, c.FrontendID, c.RaceGridID, c.DriverID, c.TeamID, c.CarModelVariantID, c.CarClassID, c.RawCarName, c.RawDriverName, c.RawTeamName, c.CarNumber, c.IsGuestStarter, c.TeamDrivers, c.StartPosition, c.FinishPosition, c.LapsCompleted, c.QualiLapTimeMS, c.FastestLapTimeMS, c.TotalTimeMS, c.Incidents, c.State, c.AdminNotes, c.LockedAt, c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy, c.Offtracks,
 	}
 }
 

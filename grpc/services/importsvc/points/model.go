@@ -36,6 +36,11 @@ type (
 		Threshold  int32
 		PenaltyPct float64
 	}
+	OfftracksExceededSettings struct {
+		Threshold            int32
+		PerExceedancePenalty PointType
+		GlobalPenalty        PointType
+	}
 	RaceSettings struct {
 		Name            string
 		Policies        []PointPolicyType
@@ -56,6 +61,7 @@ type (
 		TeamDriverIDs() []int32
 		IsGuest() bool
 		Incidents() int32
+		Offtracks() int32
 		LapsCompleted() int32
 		FastestLap() int32
 		ReferenceID() int32
@@ -84,6 +90,12 @@ type (
 		Limit      int
 		PenaltyPct float64
 	}
+	OfftrackExceededMeta struct {
+		Offtracks            int
+		Limit                int
+		PerExceedancePenalty PointType
+		GlobalPenalty        PointType
+	}
 	defaultInputImpl struct {
 		finishPosition int32
 		qualiPosition  int32
@@ -92,6 +104,7 @@ type (
 		teamID         int32
 		isGuest        bool
 		incidents      int32
+		offtracks      int32
 		lapsCompleted  int32
 		fastestLap     int32
 		referenceID    int32
@@ -108,6 +121,7 @@ const (
 	PointsPolicyTopNFinishers
 	PointsPolicyPenalty
 	PointsPolicyCustom
+	PointsPolicyOfftracksExceeded
 )
 
 var (
@@ -121,6 +135,7 @@ var (
 		"top_n_finishers":    PointsPolicyTopNFinishers,
 		"penalty_points":     PointsPolicyPenalty,
 		"custom":             PointsPolicyCustom,
+		"offtracks_exceeded": PointsPolicyOfftracksExceeded,
 	}
 	pointPolicyTypeToString = func() map[PointPolicyType]string {
 		m := make(map[PointPolicyType]string)
@@ -221,6 +236,13 @@ func WithIncidents(incidents int32) InputOpt {
 	}
 }
 
+func WithOfftracks(offtracks int32) InputOpt {
+	return func(i *defaultInputImpl) *defaultInputImpl {
+		i.offtracks = offtracks
+		return i
+	}
+}
+
 func WithLapsCompleted(laps int32) InputOpt {
 	return func(i *defaultInputImpl) *defaultInputImpl {
 		i.lapsCompleted = laps
@@ -250,6 +272,7 @@ func (i defaultInputImpl) DriverID() int32        { return i.driverID }
 func (i defaultInputImpl) TeamID() int32          { return i.teamID }
 func (i defaultInputImpl) IsGuest() bool          { return i.isGuest }
 func (i defaultInputImpl) Incidents() int32       { return i.incidents }
+func (i defaultInputImpl) Offtracks() int32       { return i.offtracks }
 func (i defaultInputImpl) LapsCompleted() int32   { return i.lapsCompleted }
 func (i defaultInputImpl) FastestLap() int32      { return i.fastestLap }
 func (i defaultInputImpl) TeamDriverIDs() []int32 { return i.teamDriverIDs }

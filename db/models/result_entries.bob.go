@@ -56,6 +56,7 @@ type ResultEntry struct {
 	UpdatedAt         time.Time                     `db:"updated_at" `
 	CreatedBy         string                        `db:"created_by" `
 	UpdatedBy         string                        `db:"updated_by" `
+	Offtracks         int32                         `db:"offtracks" `
 
 	R resultEntryR `db:"-" `
 }
@@ -94,7 +95,7 @@ type resultEntryRLoaded struct {
 
 func buildResultEntryColumns(tableName string) resultEntryColumns {
 	columnsExpr := expr.NewColumnsExpr(
-		"id", "frontend_id", "race_grid_id", "driver_id", "team_id", "car_model_variant_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_starter", "team_drivers", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by",
+		"id", "frontend_id", "race_grid_id", "driver_id", "team_id", "car_model_variant_id", "car_class_id", "raw_car_name", "raw_driver_name", "raw_team_name", "car_number", "is_guest_starter", "team_drivers", "start_position", "finish_position", "laps_completed", "quali_lap_time_ms", "fastest_lap_time_ms", "total_time_ms", "incidents", "state", "admin_notes", "locked_at", "created_at", "updated_at", "created_by", "updated_by", "offtracks",
 	)
 
 	if tableName != "" {
@@ -131,6 +132,7 @@ func buildResultEntryColumns(tableName string) resultEntryColumns {
 		UpdatedAt:         buildResultEntryColumn(tableName, "updated_at"),
 		CreatedBy:         buildResultEntryColumn(tableName, "created_by"),
 		UpdatedBy:         buildResultEntryColumn(tableName, "updated_by"),
+		Offtracks:         buildResultEntryColumn(tableName, "offtracks"),
 	}
 }
 
@@ -164,6 +166,7 @@ type resultEntryColumns struct {
 	UpdatedAt         resultEntryColumn
 	CreatedBy         resultEntryColumn
 	UpdatedBy         resultEntryColumn
+	Offtracks         resultEntryColumn
 }
 
 // Alias returns the current table alias for the columns set.
@@ -236,10 +239,11 @@ type ResultEntrySetter struct {
 	UpdatedAt         omit.Val[time.Time]               `db:"updated_at" `
 	CreatedBy         omit.Val[string]                  `db:"created_by" `
 	UpdatedBy         omit.Val[string]                  `db:"updated_by" `
+	Offtracks         omit.Val[int32]                   `db:"offtracks" `
 }
 
 func (s ResultEntrySetter) SetColumns() []string {
-	vals := make([]string, 0, 27)
+	vals := make([]string, 0, 28)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -320,6 +324,9 @@ func (s ResultEntrySetter) SetColumns() []string {
 	}
 	if s.UpdatedBy.IsValue() {
 		vals = append(vals, "updated_by")
+	}
+	if s.Offtracks.IsValue() {
+		vals = append(vals, "offtracks")
 	}
 	return vals
 }
@@ -405,6 +412,9 @@ func (s ResultEntrySetter) Overwrite(t *ResultEntry) {
 	}
 	if s.UpdatedBy.IsValue() {
 		t.UpdatedBy = s.UpdatedBy.MustGet()
+	}
+	if s.Offtracks.IsValue() {
+		t.Offtracks = s.Offtracks.MustGet()
 	}
 }
 
@@ -549,6 +559,11 @@ func (s *ResultEntrySetter) Apply(q *dialect.InsertQuery) {
 				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
 			}
 			return psql.Arg(s.UpdatedBy.MustGet()).WriteSQL(ctx, w, d, start)
+		}), bob.ExpressionFunc(func(ctx context.Context, w io.StringWriter, d bob.Dialect, start int) ([]any, error) {
+			if s.Offtracks.IsUnset() {
+				return psql.Raw("DEFAULT").WriteSQL(ctx, w, d, start)
+			}
+			return psql.Arg(s.Offtracks.MustGet()).WriteSQL(ctx, w, d, start)
 		}))
 }
 
@@ -557,7 +572,7 @@ func (s ResultEntrySetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 27)
+	exprs := make([]bob.Expression, 0, 28)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -748,6 +763,13 @@ func (s ResultEntrySetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
+	if s.Offtracks.IsValue() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "offtracks")...),
+			psql.Arg(s.Offtracks),
+		}})
+	}
+
 	return exprs
 }
 
@@ -758,7 +780,7 @@ func resultEntryScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc,
 		idx int
 		dst func(o *ResultEntry) any
 	}
-	targets := make([]target, 0, 27)
+	targets := make([]target, 0, 28)
 	for i, col := range cols {
 		switch col {
 		case "id":
@@ -815,6 +837,8 @@ func resultEntryScanMapper(ctx context.Context, cols []string) (scan.BeforeFunc,
 			targets = append(targets, target{i, func(o *ResultEntry) any { return &o.CreatedBy }})
 		case "updated_by":
 			targets = append(targets, target{i, func(o *ResultEntry) any { return &o.UpdatedBy }})
+		case "offtracks":
+			targets = append(targets, target{i, func(o *ResultEntry) any { return &o.Offtracks }})
 		}
 	}
 
@@ -1519,6 +1543,7 @@ type resultEntryWhere[Q psql.Filterable] struct {
 	UpdatedAt         psql.WhereMod[Q, time.Time]
 	CreatedBy         psql.WhereMod[Q, string]
 	UpdatedBy         psql.WhereMod[Q, string]
+	Offtracks         psql.WhereMod[Q, int32]
 	R                 resultEntryWhereR[Q]
 }
 
@@ -1556,6 +1581,7 @@ func buildResultEntryWhere[Q psql.Filterable](cols resultEntryColumns) resultEnt
 		UpdatedAt:         psql.Where[Q, time.Time](cols.UpdatedAt.Expression),
 		CreatedBy:         psql.Where[Q, string](cols.CreatedBy.Expression),
 		UpdatedBy:         psql.Where[Q, string](cols.UpdatedBy.Expression),
+		Offtracks:         psql.Where[Q, int32](cols.Offtracks.Expression),
 		R:                 resultEntryWhereR[Q]{cols: cols},
 	}
 }
