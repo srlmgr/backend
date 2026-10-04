@@ -317,6 +317,7 @@ func buildResultEntryCreateSetter(
 		RaceGridID:     omit.From(batch.RaceGridID),
 		FinishPosition: omit.From(entry.FinishPosition),
 		LapsCompleted:  omit.From(entry.LapsCompleted),
+		Offtracks:      omit.From(entry.Offtracks),
 		State:          omit.From(entry.State),
 		CreatedBy:      omit.From(execUser),
 		UpdatedBy:      omit.From(execUser),
@@ -364,6 +365,7 @@ func buildResultEntryCreateSetter(
 	if !entry.Incidents.IsNull() {
 		setter.Incidents = omitnull.From(entry.Incidents.GetOr(0))
 	}
+
 	if !entry.AdminNotes.IsNull() {
 		setter.AdminNotes = omitnull.From(entry.AdminNotes.GetOr(""))
 	}

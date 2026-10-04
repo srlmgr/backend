@@ -40,6 +40,7 @@ type (
 		FastestLapTime int // in ms
 		Laps           int
 		Incidents      int
+		Offtracks      int
 		TeamDrivers    []*TeamDriver // filled in team-based events
 	}
 	TeamDriver struct {

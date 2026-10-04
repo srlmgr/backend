@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	irAuth "github.com/srlmgr/backend/support/iracing/irdata/auth"
+)
 
 //nolint:lll // readability
 var (
@@ -33,4 +37,11 @@ var (
 
 	CacheEnabled    bool   // enables in-memory read-through caching for selected repositories
 	CacheConfigFile string // path to a cache config YAML file; empty means no per-cache tuning
+	IRacingCfg      IRacingConfig
 )
+
+type IRacingConfig struct {
+	Enabled    bool // enables support for iRacing data API
+	AuthConfig irAuth.AuthConfig
+	CacheDir   string
+}

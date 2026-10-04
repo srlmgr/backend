@@ -31,7 +31,7 @@ func (p *Processor) Process(
 ) (*processor.ParsedImportPayload, error) {
 	switch format {
 	case conversion.ImportFormatJSON:
-		parsed, err := ParseJSON(payload)
+		parsed, err := ParseJSON(ctx, payload)
 		if err != nil {
 			return nil, fmt.Errorf("parse json: %w", err)
 		}
@@ -61,7 +61,7 @@ func (p *Processor) ProcessMultiRace(
 ) ([]*processor.ParsedImportPayload, error) {
 	switch format {
 	case conversion.ImportFormatJSON:
-		parsed, err := ParseJSONMultiRace(payload)
+		parsed, err := ParseJSONMultiRace(ctx, payload)
 		if err != nil {
 			return nil, fmt.Errorf("parse json: %w", err)
 		}

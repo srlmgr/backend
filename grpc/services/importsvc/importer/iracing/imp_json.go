@@ -1,6 +1,7 @@
 package iracing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -8,12 +9,18 @@ import (
 	"strings"
 
 	processor "github.com/srlmgr/backend/grpc/services/importsvc/importer"
+	"github.com/srlmgr/backend/support/iracing/irdata"
 )
 
 // ParseJSON parses a single-race iRacing JSON payload, returning the first
 // detected race (or the qualifying-only session, if no race is present).
-func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
-	payloads, err := ParseJSONMultiRace(payload)
+//
+//nolint:whitespace // editor/linter issue
+func ParseJSON(
+	ctx context.Context,
+	payload any,
+) (*processor.ParsedImportPayload, error) {
+	payloads, err := ParseJSONMultiRace(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -27,97 +34,130 @@ func ParseJSON(payload any) (*processor.ParsedImportPayload, error) {
 // one race is present. If no race session exists, a single qualifying-only payload with
 // RaceSequenceNo left at zero is returned.
 //
-//nolint:funlen // parser flow combines payload/session/result normalization
-func ParseJSONMultiRace(payload any) ([]*processor.ParsedImportPayload, error) {
+//nolint:whitespace // editor/linter issue
+func ParseJSONMultiRace(
+	ctx context.Context, payload any,
+) ([]*processor.ParsedImportPayload, error) {
+	p, err := newJSONProcessor(ctx, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.process(), nil
+}
+
+// jsonProcessor holds the state derived from an iRacing event result that is shared
+// by all steps of building the parsed payloads.
+type jsonProcessor struct {
+	ctx                     context.Context
+	data                    *EventResult
+	isTeamRace              bool
+	raceSessions            []SimSession
+	qualiSession            SimSession
+	hasQuali                bool
+	qualiBestLapByResultKey map[string]int
+	teamDriverIDs           TeamDriverIDs
+	lapIncidents            incsBySession
+}
+
+func newJSONProcessor(ctx context.Context, payload any) (*jsonProcessor, error) {
 	envelope, err := payloadToEventResult(payload)
 	if err != nil {
 		return nil, err
 	}
 
 	data := &envelope.Data
-	isTeamRace := data.MaxTeamDrivers > 1
-	raceSessions := findRaceSessions(data.SessionResults)
-	qualiSession, hasQuali := findFirstQualifySession(data.SessionResults)
-	if len(raceSessions) == 0 && !hasQuali {
+	p := &jsonProcessor{
+		ctx:          ctx,
+		data:         data,
+		isTeamRace:   data.MaxTeamDrivers > 1,
+		raceSessions: findRaceSessions(data.SessionResults),
+		lapIncidents: make(incsBySession),
+	}
+	p.qualiSession, p.hasQuali = findFirstQualifySession(data.SessionResults)
+	if len(p.raceSessions) == 0 && !p.hasQuali {
 		return nil, fmt.Errorf("json payload contains neither race nor qualifying sessions")
 	}
 
-	qualiBestLapByResultKey := buildQualiBestLapMap(&qualiSession, hasQuali)
-	teamDriverIDs := collectTeamDriverIDs(data.SessionResults)
+	p.qualiBestLapByResultKey = buildQualiBestLapMap(&p.qualiSession, p.hasQuali)
+	p.teamDriverIDs = collectTeamDriverIDs(data.SessionResults)
 
-	if len(raceSessions) == 0 {
-		payload := buildRacePayload(
-			data,
-			nil,
-			&qualiSession,
-			hasQuali,
-			qualiBestLapByResultKey,
-			teamDriverIDs,
-			isTeamRace,
-		)
-		return []*processor.ParsedImportPayload{payload}, nil
+	return p, nil
+}
+
+// process builds one payload per race session, or a single qualifying-only payload
+// when no race session exists.
+func (p *jsonProcessor) process() []*processor.ParsedImportPayload {
+	if len(p.raceSessions) == 0 {
+		return []*processor.ParsedImportPayload{p.buildRacePayload(nil, true)}
 	}
+	p.collectIncidents()
 
-	payloads := make([]*processor.ParsedImportPayload, len(raceSessions))
-	for i := range raceSessions {
+	payloads := make([]*processor.ParsedImportPayload, len(p.raceSessions))
+	for i := range p.raceSessions {
 		// Qualifying only sets the grid for the first race of a heat; later heats/the
 		// feature race start from their own standings, so quali data must not carry over.
-		raceHasQuali := hasQuali && i == 0
-		raceQualiBestLapByResultKey := qualiBestLapByResultKey
-		if i > 0 {
-			raceQualiBestLapByResultKey = nil
-		}
-
-		built := buildRacePayload(
-			data,
-			&raceSessions[i],
-			&qualiSession,
-			raceHasQuali,
-			raceQualiBestLapByResultKey,
-			teamDriverIDs,
-			isTeamRace,
-		)
-		if len(raceSessions) > 1 {
+		built := p.buildRacePayload(&p.raceSessions[i], i == 0)
+		if len(p.raceSessions) > 1 {
 			built.RaceSequenceNo = i + 1
 		}
 		payloads[i] = built
 	}
 
-	return payloads, nil
+	return payloads
+}
+
+func (p *jsonProcessor) collectIncidents() {
+	if api, ok := irdata.FromContext(p.ctx); ok {
+		// Implementation for computing offtracks goes here.
+		collector := newLapDataCollector(api)
+		incs := collector.run(p.data)
+		p.lapIncidents = incs
+	}
 }
 
 // buildRacePayload builds a ParsedImportPayload for a single race session (or, when
-// raceSession is nil, for the qualifying-only fallback case using qualiSession).
+// raceSession is nil, for the qualifying-only fallback case). includeQuali controls
+// whether qualifying data is applied to this payload.
 //
-//nolint:whitespace // editor/linter issue
-func buildRacePayload(
-	data *EventResult,
+//nolint:whitespace,funlen // editor/linter issue
+func (p *jsonProcessor) buildRacePayload(
 	raceSession *SimSession,
-	qualiSession *SimSession,
-	hasQuali bool,
-	qualiBestLapByResultKey map[string]int,
-	teamDriverIDs TeamDriverIDs,
-	isTeamRace bool,
+	includeQuali bool,
 ) *processor.ParsedImportPayload {
 	hasRace := raceSession != nil
+	hasQuali := p.hasQuali && includeQuali
 	dataType := detectJSONDataType(hasRace, hasQuali)
+
+	var qualiBestLaps map[string]int
+	if includeQuali {
+		qualiBestLaps = p.qualiBestLapByResultKey
+	}
 
 	var sourceResults []Result
 	if hasRace {
 		sourceResults = raceSession.Results
 	} else {
-		sourceResults = qualiSession.Results
+		sourceResults = p.qualiSession.Results
+	}
+	offtracks := make(map[int]int)
+	if raceSession != nil {
+		sessionIncs, ok := p.lapIncidents[raceSession.SimsessionNumber]
+		if !ok {
+			sessionIncs = []*sessionIncidents{}
+		}
+		offtracks = p.offtracksByEntry(sessionIncs)
 	}
 
 	results := make([]*processor.ResultRow, 0, len(sourceResults))
 	for i := range sourceResults {
 		source := &sourceResults[i]
-		row := mapResultRow(source, hasRace, isTeamRace)
-		if ql, ok := qualiBestLapByResultKey[resultKey(source)]; ok {
+		row := p.mapResultRow(source, hasRace, offtracks)
+		if ql, ok := qualiBestLaps[resultKey(source)]; ok {
 			row.QualiLapTime = ql
 		}
-		if isTeamRace {
-			row.TeamDrivers = teamDriverIDs.ForResult(source)
+		if p.isTeamRace {
+			row.TeamDrivers = p.teamDriverIDs.ForResult(source)
 		}
 
 		results = append(results, row)
@@ -125,12 +165,67 @@ func buildRacePayload(
 
 	return &processor.ParsedImportPayload{
 		Session: processor.SessionInfo{
-			StartTime: data.StartTime,
-			Track:     formatTrackName(data.Track),
+			StartTime: p.data.StartTime,
+			Track:     formatTrackName(p.data.Track),
 		},
 		Results:  results,
 		DataType: dataType,
 	}
+}
+
+func (p *jsonProcessor) offtracksByEntry(sessionIncs []*sessionIncidents) map[int]int {
+	ret := make(map[int]int)
+	for _, si := range sessionIncs {
+		for _, inc := range si.Incidents {
+			for _, event := range inc.Events {
+				if strings.EqualFold(event, "off track") {
+					ret[si.RefID]++
+				}
+			}
+		}
+	}
+	return ret
+}
+
+//nolint:whitespace // editor/linter issue
+func (p *jsonProcessor) mapResultRow(
+	r *Result, hasRace bool, offtracks map[int]int,
+) *processor.ResultRow {
+	row := &processor.ResultRow{
+		CarID:     strconv.Itoa(r.CarID),
+		Car:       r.CarName,
+		CarNumber: r.Livery.CarNumber,
+	}
+	if p.isTeamRace {
+		// Team races are keyed by team identifiers in result rows.
+
+		row.TeamID = strconv.Itoa(r.TeamID)
+		row.Name = r.DisplayName
+		row.Offtracks = offtracks[r.TeamID]
+	} else {
+		row.DriverID = strconv.Itoa(r.CustID)
+		row.Name = r.DisplayName
+		row.Offtracks = offtracks[r.CustID]
+	}
+
+	if hasRace {
+		row.FinPos = r.FinishPosition + 1
+		row.StartPos = r.StartingPosition + 1
+		row.Laps = r.LapsComplete
+		row.LapsLed = r.LapsLead
+		row.Incidents = r.Incidents
+		row.TotalTime = iRacingTimeToMillis(r.AverageLap) * r.LapsComplete
+		if r.BestLapTime > 0 {
+			row.FastestLapTime = iRacingTimeToMillis(r.BestLapTime)
+		}
+	} else {
+		row.FinPos = r.FinishPosition + 1
+		if r.BestLapTime > 0 {
+			row.QualiLapTime = iRacingTimeToMillis(r.BestLapTime)
+		}
+	}
+
+	return row
 }
 
 func detectJSONDataType(hasRace, hasQuali bool) processor.ImportData {
@@ -205,42 +300,6 @@ func buildQualiBestLapMap(qualiSession *SimSession, hasQuali bool) map[string]in
 	}
 
 	return m
-}
-
-func mapResultRow(r *Result, hasRace, isTeamRace bool) *processor.ResultRow {
-	row := &processor.ResultRow{
-		CarID:     strconv.Itoa(r.CarID),
-		Car:       r.CarName,
-		CarNumber: r.Livery.CarNumber,
-	}
-	if isTeamRace {
-		// Team races are keyed by team identifiers in result rows.
-
-		row.TeamID = strconv.Itoa(r.TeamID)
-		row.Name = r.DisplayName
-	} else {
-		row.DriverID = strconv.Itoa(r.CustID)
-		row.Name = r.DisplayName
-	}
-
-	if hasRace {
-		row.FinPos = r.FinishPosition + 1
-		row.StartPos = r.StartingPosition + 1
-		row.Laps = r.LapsComplete
-		row.LapsLed = r.LapsLead
-		row.Incidents = r.Incidents
-		row.TotalTime = iRacingTimeToMillis(r.AverageLap) * r.LapsComplete
-		if r.BestLapTime > 0 {
-			row.FastestLapTime = iRacingTimeToMillis(r.BestLapTime)
-		}
-	} else {
-		row.FinPos = r.FinishPosition + 1
-		if r.BestLapTime > 0 {
-			row.QualiLapTime = iRacingTimeToMillis(r.BestLapTime)
-		}
-	}
-
-	return row
 }
 
 type TeamDriverIDs struct {

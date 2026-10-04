@@ -2,6 +2,7 @@
 package iracing
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -59,8 +60,8 @@ func TestParseJSONRaceAndQualifying(t *testing.T) {
 			]
 		}
 	}`
-
-	parsed, err := ParseJSON([]byte(payload))
+	ctx := context.Background()
+	parsed, err := ParseJSON(ctx, []byte(payload))
 	if err != nil {
 		t.Fatalf("ParseJSON returned unexpected error: %v", err)
 	}
@@ -108,6 +109,7 @@ func TestParseJSONQualifyingOnlyType6(t *testing.T) {
 			"session_results": [
 				{
 					"simsession_type": 6,
+					"simsession_number": 1,
 					"simsession_type_name": "Lone Qualifying",
 					"results": [
 						{
@@ -129,7 +131,8 @@ func TestParseJSONQualifyingOnlyType6(t *testing.T) {
 		}
 	}`
 
-	parsed, err := ParseJSON(payload)
+	ctx := context.Background()
+	parsed, err := ParseJSON(ctx, []byte(payload))
 	if err != nil {
 		t.Fatalf("ParseJSON returned unexpected error: %v", err)
 	}
@@ -231,7 +234,8 @@ func TestParseJSONTeamDriversFromAllSessions(t *testing.T) {
 		}
 	}`
 
-	parsed, err := ParseJSON([]byte(payload))
+	ctx := context.Background()
+	parsed, err := ParseJSON(ctx, []byte(payload))
 	if err != nil {
 		t.Fatalf("ParseJSON returned unexpected error: %v", err)
 	}
@@ -339,8 +343,8 @@ func TestParseJSONMultiRaceHeatAndFeature(t *testing.T) {
 			]
 		}
 	}`
-
-	payloads, err := ParseJSONMultiRace([]byte(payload))
+	ctx := context.Background()
+	payloads, err := ParseJSONMultiRace(ctx, []byte(payload))
 	if err != nil {
 		t.Fatalf("ParseJSONMultiRace returned unexpected error: %v", err)
 	}
@@ -383,7 +387,7 @@ func TestParseJSONMultiRaceHeatAndFeature(t *testing.T) {
 
 	// ParseJSON (single-race entrypoint) must still return only the first detected race,
 	// preserving behavior for callers unaware of heat races.
-	single, err := ParseJSON([]byte(payload))
+	single, err := ParseJSON(ctx, []byte(payload))
 	if err != nil {
 		t.Fatalf("ParseJSON returned unexpected error: %v", err)
 	}

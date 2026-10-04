@@ -65,6 +65,7 @@ func (r *Resolver) ResolveInput(inp *ParsedImportPayload) (*Result, error) {
 			RawCarName:     null.From(row.Car),
 			CarNumber:      null.From(row.CarNumber),
 			Incidents:      null.From(int32(row.Incidents)),
+			Offtracks:      int32(row.Offtracks),
 			State:          conversion.ResultStateNormal,
 		}
 		if r.epi.Season.IsTeamBased {
@@ -221,7 +222,8 @@ func (r *Resolver) resolveTeam(
 		driverID, dErr = r.entityResolver.ResolveDriver(td.DriverID, td.Name)
 		if dErr == nil {
 			teamDriverIDs = append(teamDriverIDs, int32(driverID))
-			log.Debug("resolved team driver",
+			log.Debug(
+				"resolved team driver",
 				log.Uint32("driverID", driverID),
 				log.String("inputName", td.Name),
 			)
@@ -245,7 +247,8 @@ func (r *Resolver) resolveTeam(
 			MappingType: "team",
 		}
 	}
-	log.Debug("resolved team",
+	log.Debug(
+		"resolved team",
 		log.Uint32("teamID", teamID),
 		log.Any("driverIDs", teamDriverIDs),
 		log.String("inputName", rowName),

@@ -220,7 +220,7 @@ func (m *manager) toConnectError(err error) error {
 	return connectErr
 }
 
-//nolint:whitespace // auth flow intentionally explicit; editor/linter issue
+//nolint:whitespace,funlen // auth flow intentionally explicit; editor/linter issue
 func (m *manager) authenticate(
 	ctx context.Context,
 	req connect.AnyRequest,
@@ -255,9 +255,18 @@ func (m *manager) authenticate(
 
 	session, found, err := m.sessionFromID(ctx, sessionID)
 	if err != nil {
+		m.logger.Warn(
+			"error getting session from ID",
+			log.String("sessionID", sessionID),
+			log.ErrorField(err),
+		)
 		return nil, err
 	}
 	if !found {
+		m.logger.Warn(
+			"sessionID not found",
+			log.String("sessionID", sessionID),
+		)
 		return nil, &authError{err: errors.New("session not found"), clearCookie: true}
 	}
 
@@ -274,13 +283,23 @@ func (m *manager) sessionFromID(
 		if errors.Is(err, errSessionNotFound) {
 			return Session{}, false, nil
 		}
+		m.logger.Warn(
+			"other error getting session from ID",
+			log.String("sessionID", sessionID),
+			log.ErrorField(err),
+		)
 		return Session{}, false, err
 	}
 
 	if m.cfg.IDP.Enabled && shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
 		if refreshErr := m.refreshSession(ctx, &session); refreshErr != nil {
+			m.logger.Warn(
+				"error refreshing session",
+				log.String("sessionID", session.ID),
+				log.ErrorField(refreshErr),
+			)
 			_ = m.sessions.Delete(ctx, session.ID)
-			//nolint:nilerr // session could not be refreshed. nil return ok
+
 			return Session{}, false, nil
 		}
 
