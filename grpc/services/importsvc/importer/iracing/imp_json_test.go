@@ -109,6 +109,7 @@ func TestParseJSONQualifyingOnlyType6(t *testing.T) {
 			"session_results": [
 				{
 					"simsession_type": 6,
+					"simsession_number": 1,
 					"simsession_type_name": "Lone Qualifying",
 					"results": [
 						{

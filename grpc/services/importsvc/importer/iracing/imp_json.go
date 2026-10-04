@@ -120,7 +120,7 @@ func (p *jsonProcessor) collectIncidents() {
 // raceSession is nil, for the qualifying-only fallback case). includeQuali controls
 // whether qualifying data is applied to this payload.
 //
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue
 func (p *jsonProcessor) buildRacePayload(
 	raceSession *SimSession,
 	includeQuali bool,
@@ -140,11 +140,15 @@ func (p *jsonProcessor) buildRacePayload(
 	} else {
 		sourceResults = p.qualiSession.Results
 	}
-	sessionIncs, ok := p.lapIncidents[raceSession.SimsessionNumber]
-	if !ok {
-		sessionIncs = []*sessionIncidents{}
+	offtracks := make(map[int]int)
+	if raceSession != nil {
+		sessionIncs, ok := p.lapIncidents[raceSession.SimsessionNumber]
+		if !ok {
+			sessionIncs = []*sessionIncidents{}
+		}
+		offtracks = p.offtracksByEntry(sessionIncs)
 	}
-	offtracks := p.offtracksByEntry(sessionIncs)
+
 	results := make([]*processor.ResultRow, 0, len(sourceResults))
 	for i := range sourceResults {
 		source := &sourceResults[i]
