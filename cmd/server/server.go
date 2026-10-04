@@ -24,6 +24,7 @@ import (
 	pgRepos "github.com/srlmgr/backend/repository/postgres"
 	"github.com/srlmgr/backend/service"
 	serviceImpl "github.com/srlmgr/backend/service/impl"
+	"github.com/srlmgr/backend/support/iracing/irdata"
 )
 
 // NewServerCmd creates the command that runs the Connect-based gRPC server.
@@ -72,10 +73,12 @@ func NewServerCmd() *cobra.Command {
 }
 
 type server struct {
-	ctx        context.Context
-	pool       *pgxpool.Pool
-	repo       rootrepo.Repository
-	service    service.Service
+	ctx      context.Context
+	pool     *pgxpool.Pool
+	repo     rootrepo.Repository
+	service  service.Service
+	irClient *iRacingClient
+
 	serveErrCh chan error
 }
 
@@ -113,6 +116,12 @@ func (s *server) startServers() (err error) {
 		log.GetFromContext(s.ctx).Named("service"),
 		serviceOpts...,
 	)
+	if config.IRacingCfg.Enabled {
+		var iracingErr error
+		if iracingErr = s.initIRacingClient(); iracingErr != nil {
+			log.Warn("failed to initialize iRacing client", log.ErrorField(iracingErr))
+		}
+	}
 	s.serveErrCh = make(chan error, 1)
 	if config.GRPCEnabled {
 		go func() {
@@ -141,7 +150,26 @@ func (s *server) startServers() (err error) {
 	case <-s.ctx.Done():
 		fmt.Fprintf(os.Stderr, "context was closed\n")
 	}
+	s.closeIRacingClient()
 	return nil
+}
+
+// initialize the iRacing client and add it to the server context
+func (s *server) initIRacingClient() error {
+	irClient, initErr := InitIRacingClient()
+	if initErr != nil {
+		return initErr
+	}
+	s.irClient = irClient
+	s.ctx = irdata.AddToContext(s.ctx, s.irClient.API)
+	return nil
+}
+
+func (s *server) closeIRacingClient() {
+	if s.irClient != nil {
+		s.irClient.Close()
+		s.irClient = nil
+	}
 }
 
 func (s *server) startGRPC() error {

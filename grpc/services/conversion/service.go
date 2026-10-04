@@ -659,6 +659,7 @@ func (s *ConvService) ResultEntryToResultEntry(model *models.ResultEntry) *commo
 		FastestLapTimeMs:  model.FastestLapTimeMS.GetOr(0),
 		TotalTimeMs:       model.TotalTimeMS.GetOr(0),
 		Incidents:         model.Incidents.GetOr(0),
+		Offtracks:         model.Offtracks,
 		AdminNotes:        model.AdminNotes.GetOr(""),
 		RawDriverName:     model.RawDriverName.GetOr(""),
 		RawTeamName:       model.RawTeamName.GetOr(""),

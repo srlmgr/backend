@@ -15,3 +15,6 @@ zap:
     durationEncoder: "string"
 loggers:
   demoLogger: debug
+  iracing.s3: info
+  iracing.api: info
+  importer.iracing.lap_data: info

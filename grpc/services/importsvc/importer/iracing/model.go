@@ -327,3 +327,23 @@ type Weather struct {
 	WindUnits                     int     `json:"wind_units"`
 	WindValue                     int     `json:"wind_value"`
 }
+
+// LapData holds information about a single lap in a session.
+type LapData struct {
+	AI          bool     `json:"ai,omitempty"`
+	CarNumber   string   `json:"car_number,omitempty"`
+	CustID      int      `json:"cust_id,omitempty"`
+	DisplayName string   `json:"display_name,omitempty"`
+	Flags       int      `json:"flags,omitempty"`
+	GroupID     int      `json:"group_id,omitempty"`
+	Incident    bool     `json:"incident,omitempty"`
+	LapEvents   []string `json:"lap_events,omitempty"`
+
+	LapNumber       int    `json:"lap_number,omitempty"`
+	LapTime         int    `json:"lap_time,omitempty"`
+	LicenseLevel    int    `json:"license_level,omitempty"`
+	Name            string `json:"name,omitempty"`
+	PersonalBestLap bool   `json:"personal_best_lap,omitempty"`
+	SessionTime     int    `json:"session_time,omitempty"`
+	TeamFastestLap  bool   `json:"team_fastest_lap,omitempty"`
+}

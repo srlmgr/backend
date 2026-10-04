@@ -116,6 +116,7 @@ func init() {
 		"",
 		"configures the logger")
 	registerSecurityFlags(rootCmd)
+	registerIRacingFlags(rootCmd)
 	rootCmd.PersistentFlags().BoolVar(&useZap, "use-zap",
 		true,
 		"if true, use output from configured zap logger")
@@ -197,6 +198,45 @@ func registerAuthzFlags(cmd *cobra.Command) {
 		"authz-decision-cache-ttl",
 		30*time.Second,
 		"TTL for in-memory authorization decision cache")
+}
+
+func registerIRacingFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVar(&config.IRacingCfg.Enabled,
+		"iracing-api-enabled",
+		false,
+		"enable support for iRacing data API")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.AuthConfig.Username,
+		"iracing-username",
+		"",
+		"iRacing account username")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.AuthConfig.Password,
+		"iracing-password",
+		"",
+		"iRacing account password")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.AuthConfig.ClientID,
+		"iracing-client-id",
+		"",
+		"iRacing client ID")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.AuthConfig.ClientSecret,
+		"iracing-client-secret",
+		"",
+		"iRacing client secret")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.AuthConfig.AuthFile,
+		"iracing-auth-file",
+		"",
+		"filesystem path to the iRacing auth file")
+	cmd.PersistentFlags().DurationVar(&config.IRacingCfg.AuthConfig.RefreshGuard,
+		"iracing-refresh-guard",
+		1*time.Minute,
+		"duration before token expiration to attempt refresh")
+	cmd.PersistentFlags().DurationVar(&config.IRacingCfg.AuthConfig.TokenCheckInterval,
+		"iracing-token-check-interval",
+		1*time.Minute,
+		"interval to check token expiration")
+	cmd.PersistentFlags().StringVar(&config.IRacingCfg.CacheDir,
+		"iracing-cache-dir",
+		"",
+		"filesystem path to the iRacing cache directory")
 }
 
 // initConfig reads in config file and ENV variables if set.
