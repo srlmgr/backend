@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	connect "connectrpc.com/connect"
@@ -26,6 +27,7 @@ type manager struct {
 	logger     *log.Logger
 	callback   string
 	cookieName string
+	refreshMu  sync.Map // sessionID -> *sync.Mutex
 }
 
 type authError struct {
@@ -273,7 +275,7 @@ func (m *manager) authenticate(
 	return AddPrincipal(ctx, &session.Principal), nil
 }
 
-//nolint:nestif,whitespace // false positive
+//nolint:whitespace // false positive
 func (m *manager) sessionFromID(
 	ctx context.Context,
 	sessionID string,
@@ -292,24 +294,48 @@ func (m *manager) sessionFromID(
 	}
 
 	if m.cfg.IDP.Enabled && shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
-		if refreshErr := m.refreshSession(ctx, &session); refreshErr != nil {
-			m.logger.Warn(
-				"error refreshing session",
-				log.String("sessionID", session.ID),
-				log.ErrorField(refreshErr),
-			)
-			_ = m.sessions.Delete(ctx, session.ID)
+		return m.refreshOnce(ctx, sessionID)
+	}
 
+	return session, true, nil
+}
+
+// refreshOnce serializes refreshes per session. Concurrent callers wait for the
+// running refresh and then reuse its result instead of refreshing again.
+//
+//nolint:whitespace // editor/linter issue
+func (m *manager) refreshOnce(
+	ctx context.Context, sessionID string,
+) (Session, bool, error) {
+	mu, _ := m.refreshMu.LoadOrStore(sessionID, &sync.Mutex{})
+	//nolint:forcetypeassert,errcheck // only *sync.Mutex is stored
+	lock := mu.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
+	session, err := m.sessions.Get(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, errSessionNotFound) {
+			m.refreshMu.Delete(sessionID)
 			return Session{}, false, nil
 		}
+		return Session{}, false, err
+	}
 
-		session, err = m.sessions.Get(ctx, sessionID)
-		if err != nil {
-			if errors.Is(err, errSessionNotFound) {
-				return Session{}, false, nil
-			}
-			return Session{}, false, err
-		}
+	if !shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
+		return session, true, nil
+	}
+
+	if refreshErr := m.refreshSession(ctx, &session); refreshErr != nil {
+		m.logger.Warn(
+			"error refreshing session",
+			log.String("sessionID", session.ID),
+			log.ErrorField(refreshErr),
+		)
+		_ = m.sessions.Delete(ctx, session.ID)
+		m.refreshMu.Delete(sessionID)
+
+		return Session{}, false, nil
 	}
 
 	return session, true, nil
