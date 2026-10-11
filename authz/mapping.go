@@ -82,6 +82,7 @@ func addQueryPolicies(policies map[string]ProcedurePolicy) {
 		"ListPointSystems",
 		"ListTracks",
 		"ListTrackLayouts",
+		"ResolveSeasonTarget",
 	} {
 		policies[procedure(queryService, method)] = ProcedurePolicy{
 			Capability:     "query.read",
