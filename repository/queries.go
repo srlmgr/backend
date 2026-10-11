@@ -14,9 +14,29 @@ type (
 		TrackLayout *models.TrackLayout `json:"trackLayout"`
 		Track       *models.Track       `json:"track"`
 	}
+
+	SeasonTarget struct {
+		EventID    int32
+		RaceID     int32
+		RaceGridID int32
+	}
 )
 
 type (
+	Resolver interface {
+		ResolveEvent(
+			ctx context.Context,
+			seasonID, eventNo int32,
+		) (*SeasonTarget, error)
+		ResolveRace(
+			ctx context.Context,
+			seasonID, eventNo, raceNo int32,
+		) (*SeasonTarget, error)
+		ResolveRaceGrid(
+			ctx context.Context,
+			seasonID, eventNo, raceNo, raceGridNo int32,
+		) (*SeasonTarget, error)
+	}
 	QuerySeasonDriver interface {
 		ResolveSeasonDriver(
 			ctx context.Context,
@@ -54,6 +74,7 @@ type (
 		)
 	}
 	Queries interface {
+		QueryResolver() Resolver
 		QuerySeasonDrivers() QuerySeasonDriver
 		QueryTeamDrivers() QueryTeamDriver
 		QueryCarClasses() QueryCarClass
