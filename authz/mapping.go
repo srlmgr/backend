@@ -265,6 +265,7 @@ func addImportPolicies(policies map[string]ProcedurePolicy) {
 		"ComputeBookingEntries",
 		"CleanupProcessingData",
 		"AddPenalty",
+		"UpdatePenalty",
 		"DeletePenalty",
 	} {
 		policies[procedure(importService, method)] = ProcedurePolicy{
