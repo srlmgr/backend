@@ -22,6 +22,19 @@ import (
 	"github.com/srlmgr/backend/log"
 )
 
+type (
+	penatlyRequest interface {
+		GetTarget() *importv1.PenaltyTarget
+		GetReason() string
+		GetPenaltyPoints() int32
+	}
+)
+
+var (
+	_ penatlyRequest = (*importv1.AddPenaltyRequest)(nil)
+	_ penatlyRequest = (*importv1.UpdatePenaltyRequest)(nil)
+)
+
 //nolint:whitespace // editor/linter issue
 func (s *service) AddPenalty(
 	ctx context.Context,
@@ -54,6 +67,42 @@ func (s *service) AddPenalty(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "penalty added")
 	return connect.NewResponse(&importv1.AddPenaltyResponse{}), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) UpdatePenalty(
+	ctx context.Context,
+	req *connect.Request[importv1.UpdatePenaltyRequest],
+) (*connect.Response[importv1.UpdatePenaltyResponse], error) {
+	l := s.logger.WithCtx(ctx)
+	l.Debug("UpdatePenalty")
+
+	var msg *importv1.UpdatePenaltyRequest
+	if req != nil {
+		msg = req.Msg
+	}
+
+	setter, err := s.buildPenaltyBookingEntry(ctx, msg)
+	if err != nil {
+		l.Error("failed to build penalty booking entry", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to build penalty booking entry",
+		)
+		return nil, s.toRPCError(err)
+	}
+
+	if _, err := s.repo.BookingEntries().Update(
+		ctx, int32(req.Msg.PenaltyId), setter,
+	); err != nil {
+		l.Error("failed to update penalty booking entry", log.ErrorField(err))
+		trace.SpanFromContext(ctx).SetStatus(
+			codes.Error, "failed to update penalty booking entry",
+		)
+		return nil, s.toRPCError(err)
+	}
+
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "penalty updated")
+	return connect.NewResponse(&importv1.UpdatePenaltyResponse{}), nil
 }
 
 //nolint:whitespace // editor/linter issue
@@ -102,7 +151,7 @@ func (s *service) DeletePenalty(
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) buildPenaltyBookingEntry(
 	ctx context.Context,
-	req *importv1.AddPenaltyRequest,
+	req penatlyRequest,
 ) (*models.BookingEntrySetter, error) {
 	if req == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
@@ -255,7 +304,7 @@ func (s *service) resolvePenaltyTarget(
 func (s *service) resolveCarClassID(
 	ctx context.Context,
 	eventID int32,
-	req *importv1.AddPenaltyRequest,
+	req penatlyRequest,
 ) (omitnull.Val[int32], error) {
 	epi, err := processor.NewEventProcInfoCollector(s.repo).ForEvent(ctx, eventID)
 	if err != nil {
@@ -267,7 +316,7 @@ func (s *service) resolveCarClassID(
 	}
 
 	// resolve by driver
-	if req.Target.HasDriverId() {
+	if req.GetTarget().HasDriverId() {
 		sDrivers, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(
 			ctx, epi.Event.SeasonID,
 		)
@@ -282,7 +331,7 @@ func (s *service) resolveCarClassID(
 			}
 			return epi.Event.EventDate.After(lower) &&
 				epi.Event.EventDate.Before(upper) &&
-				item.ID == int32(req.Target.GetDriverId())
+				item.ID == int32(req.GetTarget().GetDriverId())
 		}); ok {
 			_ = sd
 			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModelVariant(
@@ -299,7 +348,7 @@ func (s *service) resolveCarClassID(
 	}
 
 	// resolve by team
-	if req.Target.HasTeamId() {
+	if req.GetTarget().HasTeamId() {
 		sTeams, err := s.repo.Teams().Teams().LoadBySeasonID(
 			ctx, epi.Event.SeasonID,
 		)
@@ -314,7 +363,7 @@ func (s *service) resolveCarClassID(
 			}
 			return epi.Event.EventDate.After(lower) &&
 				epi.Event.EventDate.Before(upper) &&
-				item.ID == int32(req.Target.GetTeamId())
+				item.ID == int32(req.GetTarget().GetTeamId())
 		}); ok {
 			_ = t
 			carClass, err := s.repo.Queries().QueryCarClasses().FindBySeasonAndCarModelVariant(
