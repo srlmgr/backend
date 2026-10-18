@@ -282,7 +282,6 @@ func (s *service) resolvePenaltyTarget(
 			return nil, err
 		}
 		data.eventID = race.EventID
-		data.raceID = omitnull.From(grid.RaceID)
 		data.raceGridID = omitnull.From(raceGridID)
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument,
