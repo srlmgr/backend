@@ -434,6 +434,11 @@ func payloadToEventResult(payload any) (*EventResultEnvelope, error) {
 		return unmarshalEventResult(p)
 	case string:
 		return unmarshalEventResult([]byte(p))
+	case *EventResult:
+		if p == nil {
+			return nil, fmt.Errorf("invalid json payload: nil EventResult")
+		}
+		return &EventResultEnvelope{Data: *p}, nil
 	default:
 		return nil, fmt.Errorf("unsupported json payload type: %T", payload)
 	}

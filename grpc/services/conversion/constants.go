@@ -5,6 +5,7 @@ const (
 	ImportFormatJSON = "json"
 	ImportFormatCSV  = "csv"
 	ImportFormatXML  = "xml"
+	ImportFormatAPI  = "api"
 )
 
 // Race session type strings as persisted in the database.

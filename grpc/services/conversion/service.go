@@ -70,6 +70,8 @@ func ImportFormatsFromProto(formats []commonv1.ImportFormat) ([]string, error) {
 			out = append(out, ImportFormatCSV)
 		case commonv1.ImportFormat_IMPORT_FORMAT_XML:
 			out = append(out, ImportFormatXML)
+		case commonv1.ImportFormat_IMPORT_FORMAT_API:
+			out = append(out, ImportFormatAPI)
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			// Skip unspecified formats.
 		default:
@@ -102,6 +104,8 @@ func ImportConfigsToProto(formats []mytypes.RaceSimImportFormat) []*commonv1.Imp
 			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_CSV
 		case ImportFormatXML:
 			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_XML
+		case ImportFormatAPI:
+			item.Format = commonv1.ImportFormat_IMPORT_FORMAT_API
 		}
 		out = append(out, item)
 	}
@@ -136,6 +140,8 @@ func ImportConfigsFromProto(
 			item.Format = mytypes.ImportFormat(ImportFormatCSV)
 		case commonv1.ImportFormat_IMPORT_FORMAT_XML:
 			item.Format = mytypes.ImportFormat(ImportFormatXML)
+		case commonv1.ImportFormat_IMPORT_FORMAT_API:
+			item.Format = mytypes.ImportFormat(ImportFormatAPI)
 		case commonv1.ImportFormat_IMPORT_FORMAT_UNSPECIFIED:
 			continue
 		default:
