@@ -5,7 +5,7 @@ go 1.27
 require (
 	buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261017103809-5e2b6ac19e2f.1
 	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261017103809-5e2b6ac19e2f.2
-	connectrpc.com/connect v1.21.0
+	connectrpc.com/connect v1.21.1
 	connectrpc.com/grpchealth v1.5.0
 	connectrpc.com/grpcreflect v1.3.1
 	connectrpc.com/otelconnect v0.12.0
@@ -22,10 +22,10 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jaswdr/faker/v2 v2.10.0
 	github.com/lib/pq v1.12.3
-	github.com/open-policy-agent/opa v1.21.2
+	github.com/open-policy-agent/opa v1.21.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.53.0
-	github.com/shopspring/decimal v1.5.0
+	github.com/shopspring/decimal v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0

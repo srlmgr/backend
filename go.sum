@@ -1,13 +1,9 @@
-buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261011075228-a9740520af52.1 h1:BpCFqyG/oF0y92+ycSrCDaIMXb2H/m+j8MXKaxj3MbY=
-buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261011075228-a9740520af52.1/go.mod h1:xq9y0ttdnUtf7fWqkKa9mQtnLK1VUjAJgJMo2qcTZCw=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261017103809-5e2b6ac19e2f.1 h1:CHnW2fMayo5Bag4oWDTEl5Rl6233VCEJ/RM+gy6aLgw=
 buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261017103809-5e2b6ac19e2f.1/go.mod h1:PRB1pAKW/oeC4UBzIZyyCkBSnu90PVNfI+LLK/Fe/Ds=
-buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261011075228-a9740520af52.2 h1:UlWjZ145oe6IiRVvkv4qjHSJMoBUxU4gMlZF0Gdt3JE=
-buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261011075228-a9740520af52.2/go.mod h1:I2Nrzxwj50dqRKYa2pgz9nCoEj55+j8w8/SJgl+7PUE=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261017103809-5e2b6ac19e2f.2 h1:Vh71vNcI4CCOI0pniBcypJ7AadtjqGW24ChxKeREIn8=
 buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261017103809-5e2b6ac19e2f.2/go.mod h1:I2Nrzxwj50dqRKYa2pgz9nCoEj55+j8w8/SJgl+7PUE=
-connectrpc.com/connect v1.21.0 h1:LhqSJt7jHf5NJBo9Jq/t/9FjcYAideif0mg+qe2jCUs=
-connectrpc.com/connect v1.21.0/go.mod h1:A2ygJrukXwWy32vkCAAHNVguZrqZ+jeZ9rGRnGR4dN4=
+connectrpc.com/connect v1.21.1 h1:h2kacdlzXpZU2OQFSv98xkjYXNUSr/ptxmGVbS/+CRM=
+connectrpc.com/connect v1.21.1/go.mod h1:fhMcVJ5w6r/yTYhnkEbW6+sIF7OZ5Ay7KYgmfebh2ek=
 connectrpc.com/connect/v2 v2.0.0 h1:PVVpWl2Xv9dIWN2gijs4HK40NSnPFzLqCEEmZ8fCUQ8=
 connectrpc.com/connect/v2 v2.0.0/go.mod h1:N32OLrstcPUzkykFynnefFro3+xzSdOrZlK2jHmS/xo=
 connectrpc.com/grpchealth v1.5.0 h1:nHEVTwz9WYKxW2JTYUFD337q76oAZMvot9jX0WjVCQo=
@@ -213,8 +209,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/natefinch/atomic v1.0.1 h1:ZPYKxkqQOx3KZ+RsbnP/YsgvxWQPGxjC0oBt2AhwV0A=
 github.com/natefinch/atomic v1.0.1/go.mod h1:N/D/ELrljoqDyT3rZrsUmtsuzvHkeB/wWjHV22AZRbM=
-github.com/open-policy-agent/opa v1.21.2 h1:9hXcLNZ5Z4/K2icDsoQwjCuCg6XelMxKOLjR404XDus=
-github.com/open-policy-agent/opa v1.21.2/go.mod h1:mHDS61rXyiZ+9bLINSK634BcbPZcsZChPvSwFVMj88g=
+github.com/open-policy-agent/opa v1.21.3 h1:dLKnsisFIuICZAWDvG3Us2k/TjGkxOCJ7fWINcnwKHM=
+github.com/open-policy-agent/opa v1.21.3/go.mod h1:mHDS61rXyiZ+9bLINSK634BcbPZcsZChPvSwFVMj88g=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
@@ -256,8 +252,8 @@ github.com/segmentio/asm v1.2.1/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/shirou/gopsutil/v4 v4.26.6 h1:Mzr/npDtQC/xpeEuQKHZt8Zo9CmPvhTj8nkR8w5TLDs=
 github.com/shirou/gopsutil/v4 v4.26.6/go.mod h1:LZ6ewCSkBqUpvSOf+LsTGnRinC6iaNUNMGBtDkJBaLQ=
-github.com/shopspring/decimal v1.5.0 h1:HxSWk31RmJv0EyY4oLiGQB9u7WPludUwPBdvQZnYFPc=
-github.com/shopspring/decimal v1.5.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
+github.com/shopspring/decimal v1.6.0 h1:DcTwjCj4tJPLuGZYsR9W0hyX9pQwMIkdo26Ig1T9xX4=
+github.com/shopspring/decimal v1.6.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
 github.com/sirupsen/logrus v1.10.2 h1:G2SED73/qrAu6YwbdxOD6peLkCBI3z7L+ykJFTXJBBo=
 github.com/sirupsen/logrus v1.10.2/go.mod h1:SLEg8TqYulVKKfIGHldVp2K2aYz2DKSVBq4g/H5bR7Q=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
