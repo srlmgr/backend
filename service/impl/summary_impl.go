@@ -204,6 +204,7 @@ func (s *summaryImpl) summaryByPrimary(
 			return slices.Contains([]points.PointPolicyType{
 				points.PointsPolicyPenalty,
 				points.PointsPolicyIncidentsExceeded,
+				points.PointsPolicyOfftracksExceeded,
 			}, p)
 		}))
 		localSums := &summary.SummaryEntry{
