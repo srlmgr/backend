@@ -4,7 +4,9 @@ import (
 	"cmp"
 	"fmt"
 	"maps"
+	"os"
 	"slices"
+	"text/tabwriter"
 
 	"github.com/srlmgr/backend/db/models"
 )
@@ -146,6 +148,12 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 			referenceID := input.ReferenceID(booking)
 			eventData := getOrCreateReferenceEventData(eventDataByReferenceID, referenceID)
 			eventData.rawPoints += booking.Points
+			// at this point rawPoints includes all points from the bookings,
+			// including all penalties.
+			// penalties are divided into
+			// - race related penalties (e.g., incidents, offtracks during the race)
+			// - steward penalties (e.g., penalties imposed by race officials)
+			// steward penalties should not affect the skip results calculation
 
 			switch string(booking.SourceType) {
 			case "qualification_pos", "least_incidents", "fastest_lap", "top_n_finishers":
@@ -154,7 +162,7 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 				// booking points are negative, for standings we want positives
 				eventData.penaltyPoints += -booking.Points
 				// raw point will be used to compute skip results,
-				// we don't want to penalty points to be towards that.
+				// we don't want to count penalty points to be towards that.
 				// they are subtracted after the skip result from the total
 				eventData.rawPoints -= booking.Points
 			}
@@ -223,9 +231,52 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 		}
 
 		applyPositions(workByReferenceID)
+		wantDebug := false
+		if wantDebug {
+			debug(eventID, workByReferenceID, eventDataByReferenceID)
+		}
 	}
 
 	return computedStandingsSlice(workByReferenceID)
+}
+
+//nolint:whitespace // editor/linter issue
+func debug(
+	eventID int32,
+	workByReferenceID map[int32]*referenceStandingWork,
+	eventDataByReferenceID map[int32]*referenceEventData,
+) {
+	fmt.Printf("EventID: %d\n", eventID)
+	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(
+		tw,
+		"Pos\tReferenceId\tPoints\tRawPoints\tBonusPoints\tPenaltyPoints\tParticipations",
+	)
+
+	orderedReferenceIDs := slices.Collect(maps.Keys(workByReferenceID))
+	slices.SortFunc(orderedReferenceIDs, func(a, b int32) int {
+		return cmp.Compare(
+			workByReferenceID[a].standingData.Position,
+			workByReferenceID[b].standingData.Position,
+		)
+	})
+
+	for _, referenceID := range orderedReferenceIDs {
+		work := workByReferenceID[referenceID]
+		eventData := eventDataByReferenceID[referenceID]
+		fmt.Fprintf(
+			tw,
+			"%d\t%d\t%d\t%d\t%d\t%d\t%v\n",
+			work.standingData.Position,
+			work.referenceID,
+			work.standingData.TotalPoints,
+			eventData.rawPoints,
+			eventData.bonusPoints,
+			eventData.penaltyPoints,
+			eventData.participations,
+		)
+	}
+	tw.Flush()
 }
 
 //nolint:whitespace // editor/linter issue
