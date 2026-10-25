@@ -68,16 +68,15 @@ func (s *summaryImpl) GetSeasonSummary(
 			func(item *models.BookingEntry, _ int) bool {
 				return item.EventID == event.ID
 			})
-		prim, sec := s.createSummaryBy(ctx, eventBookings)
+		eventPart := s.createSummaryBy(ctx, eventBookings)
 		eventSummary := &summary.EventSummary{
-			EventID:   int(event.ID),
-			Primary:   prim,
-			Secondary: sec,
+			EventID: int(event.ID),
+			Summary: eventPart,
 		}
 		ret.Events = append(ret.Events, eventSummary)
 
-		s.updateSums(primSumLookup, prim)
-		s.updateSums(secondSumLookup, sec)
+		s.updateSums(primSumLookup, eventPart.Primary)
+		s.updateSums(secondSumLookup, eventPart.Secondary)
 	}
 	sorter := func(a, b *summary.SummaryEntry) int {
 		return b.Points.TotalPoints - a.Points.TotalPoints
@@ -116,25 +115,63 @@ func (s *summaryImpl) GetEventSummary(
 	ctx context.Context,
 	eventID int,
 ) (*summary.EventSummary, error) {
-	return nil, nil
+	bookings, err := s.r.BookingEntries().LoadByEventID(ctx, int32(eventID))
+	if err != nil {
+		s.logger.WithCtx(ctx).Error(
+			"failed to load booking entries",
+			log.Int32("eventID", int32(eventID)),
+			log.ErrorField(err),
+		)
+		return nil, err
+	}
+	summaryResult := s.createSummaryBy(ctx, bookings)
+	return &summary.EventSummary{
+		EventID: eventID,
+		Summary: summaryResult,
+	}, nil
+}
+
+//nolint:whitespace //editor/linter issue
+func (s *summaryImpl) GetRaceSummary(
+	ctx context.Context,
+	raceID int,
+) (*summary.RaceSummary, error) {
+	bookings, err := s.r.BookingEntries().LoadByRaceID(ctx, int32(raceID))
+	if err != nil {
+		s.logger.WithCtx(ctx).Error(
+			"failed to load booking entries",
+			log.Int32("raceID", int32(raceID)),
+			log.ErrorField(err),
+		)
+		return nil, err
+	}
+	summaryResult := s.createSummaryBy(ctx, bookings)
+	return &summary.RaceSummary{
+		RaceID:  raceID,
+		Summary: summaryResult,
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *summaryImpl) createSummaryBy(
 	ctx context.Context,
 	bookings []*models.BookingEntry,
-) (primary, secondary []*summary.SummaryEntry) {
+	// ) (primary, secondary []*summary.SummaryEntry) {
+) *summary.BaseSummary {
 	if len(bookings) == 0 {
-		return nil, nil
+		return nil
 	}
 	event, err := s.r.Events().LoadByID(ctx, bookings[0].EventID)
 	if err != nil {
-		return nil, nil
+		return nil
 	}
 
 	season, err := s.r.Seasons().LoadByID(ctx, event.SeasonID)
 	if err != nil {
-		return nil, nil
+		return nil
+	}
+	ret := &summary.BaseSummary{
+		Season: season,
 	}
 
 	// s.repo.Seasons().
@@ -155,14 +192,15 @@ func (s *summaryImpl) createSummaryBy(
 			return item.TeamID.GetOrZero()
 		},
 	)
+
 	if season.IsTeamBased {
-		primary = s.summaryByPrimary(teamBookings)
-		secondary = s.summaryBySecondary(driverBookings)
+		ret.Primary = s.summaryByPrimary(teamBookings)
+		ret.Secondary = s.summaryBySecondary(driverBookings)
 	} else {
-		primary = s.summaryByPrimary(driverBookings)
-		secondary = s.summaryBySecondary(teamBookings)
+		ret.Primary = s.summaryByPrimary(driverBookings)
+		ret.Secondary = s.summaryBySecondary(teamBookings)
 	}
-	return primary, secondary
+	return ret
 }
 
 //nolint:whitespace // editor/linter issue

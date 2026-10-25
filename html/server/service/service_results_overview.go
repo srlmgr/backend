@@ -59,10 +59,16 @@ func (s *serviceImpl) GetResultsOverview(
 		filterByClassID := func(se *summary.SummaryEntry, _ int) bool {
 			return se.CarClassID == classID
 		}
-		//nolint:lll // readability
+
 		for i := range overview.Events {
-			overview.Events[i].Primary = lo.Filter(overview.Events[i].Primary, filterByClassID)
-			overview.Events[i].Secondary = lo.Filter(overview.Events[i].Secondary, filterByClassID)
+			overview.Events[i].Summary.Primary = lo.Filter(
+				overview.Events[i].Summary.Primary,
+				filterByClassID,
+			)
+			overview.Events[i].Summary.Secondary = lo.Filter(
+				overview.Events[i].Summary.Secondary,
+				filterByClassID,
+			)
 		}
 		overview.PrimarySummaries = lo.Filter(overview.PrimarySummaries, filterByClassID)
 		overview.SecondarySummaries = lo.Filter(overview.SecondarySummaries, filterByClassID)
@@ -97,7 +103,7 @@ func createPrimaryMatrixLookup(
 ) map[model.IDTuple]int {
 	lookup := make(map[model.IDTuple]int)
 	for _, s := range o.Events {
-		for _, e := range s.Primary {
+		for _, e := range s.Summary.Primary {
 			lookup[model.IDTuple{
 				ReferenceID: e.ReferenceID, SubID: s.EventID,
 			}] = e.Points.TotalPoints
@@ -112,7 +118,7 @@ func createSecondaryMatrixLookup(
 ) map[model.IDTuple]int {
 	lookup := make(map[model.IDTuple]int)
 	for _, s := range o.Events {
-		for _, e := range s.Secondary {
+		for _, e := range s.Summary.Secondary {
 			lookup[model.IDTuple{
 				ReferenceID: e.ReferenceID, SubID: s.EventID,
 			}] = e.Points.TotalPoints
@@ -124,7 +130,7 @@ func createSecondaryMatrixLookup(
 func collectPrimaryIDs(o *gs.SummaryContainer) []int32 {
 	work := make(map[int32]struct{})
 	for _, s := range o.Events {
-		for _, e := range s.Primary {
+		for _, e := range s.Summary.Primary {
 			work[int32(e.ReferenceID)] = struct{}{}
 		}
 	}
