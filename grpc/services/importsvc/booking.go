@@ -137,6 +137,7 @@ func (s *service) ComputeBookingEntries(
 			if err != nil {
 				return err
 			}
+			createdEntries = int32(len(pBookings))
 		}
 
 		// Advance event processing state.

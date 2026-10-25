@@ -56,6 +56,9 @@ type (
 		GetEventSummary(
 			ctx context.Context,
 			eventID int) (*summary.EventSummary, error)
+		GetRaceSummary(
+			ctx context.Context,
+			raceID int) (*summary.RaceSummary, error)
 	}
 	ParticipantsService interface {
 		GetDrivers(ctx context.Context, seasonID int) ([]*models.SeasonDriver, error)

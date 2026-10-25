@@ -1,10 +1,20 @@
 package summary
 
+import "github.com/srlmgr/backend/db/models"
+
 type (
-	EventSummary struct {
-		EventID   int
+	BaseSummary struct {
+		Season    *models.Season
 		Primary   []*SummaryEntry
 		Secondary []*SummaryEntry
+	}
+	RaceSummary struct {
+		RaceID  int
+		Summary *BaseSummary
+	}
+	EventSummary struct {
+		EventID int
+		Summary *BaseSummary
 	}
 	PointSummary struct {
 		TotalPoints   int // TotalPoints = RawPoints + BonusPoints - PenaltyPoints
