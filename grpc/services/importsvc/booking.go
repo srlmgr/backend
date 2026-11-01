@@ -182,7 +182,7 @@ func (s *service) loadPenalties(
 	eventID int32,
 ) []*models.BookingEntry {
 	entries, err := s.repo.BookingEntries().LoadByEventIDAndSourceType(
-		ctx, eventID, points.PointsPolicyPenalty.String(),
+		ctx, eventID, points.PointPolicyStewardPenalty.String(),
 	)
 	if err != nil {
 		return nil

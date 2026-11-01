@@ -96,7 +96,7 @@ func assertOutputSlicesEqualUnordered(t *testing.T, got, want []Output) {
 func TestStandardPosBasedProcessorProcess_MapsByInputOrder(t *testing.T) {
 	t.Parallel()
 
-	processor := &standardPosBasedProcessor{policyType: PointsPolicyFinishPos}
+	processor := &standardPosBasedProcessor{policyType: PointPolicyFinishPos}
 	inputs := []Input{
 		NewInput(WithReferenceID(101)),
 		NewInput(WithReferenceID(202)),
@@ -115,11 +115,11 @@ func TestStandardPosBasedProcessorProcess_MapsByInputOrder(t *testing.T) {
 	if outputs[0].Points() != 25 {
 		t.Fatalf("unexpected points at index 0: got %v want 25", outputs[0].Points())
 	}
-	if outputs[0].Origin() != PointsPolicyFinishPos {
+	if outputs[0].Origin() != PointPolicyFinishPos {
 		t.Fatalf(
 			"unexpected origin at index 0: got %v want %v",
 			outputs[0].Origin(),
-			PointsPolicyFinishPos,
+			PointPolicyFinishPos,
 		)
 	}
 	if !strings.HasSuffix(outputs[0].Msg(), "for pos 1") {
@@ -132,11 +132,11 @@ func TestStandardPosBasedProcessorProcess_MapsByInputOrder(t *testing.T) {
 	if outputs[1].Points() != 18 {
 		t.Fatalf("unexpected points at index 1: got %v want 18", outputs[1].Points())
 	}
-	if outputs[1].Origin() != PointsPolicyFinishPos {
+	if outputs[1].Origin() != PointPolicyFinishPos {
 		t.Fatalf(
 			"unexpected origin at index 1: got %v want %v",
 			outputs[1].Origin(),
-			PointsPolicyFinishPos,
+			PointPolicyFinishPos,
 		)
 	}
 	if !strings.HasSuffix(outputs[1].Msg(), "for pos 2") {
@@ -147,7 +147,7 @@ func TestStandardPosBasedProcessorProcess_MapsByInputOrder(t *testing.T) {
 func TestStandardPosBasedProcessorProcess_TruncatesWhenPointsAreShorter(t *testing.T) {
 	t.Parallel()
 
-	processor := &standardPosBasedProcessor{policyType: PointsPolicyTopNFinishers}
+	processor := &standardPosBasedProcessor{policyType: PointPolicyTopNFinishers}
 	inputs := []Input{
 		NewInput(WithReferenceID(1)),
 		NewInput(WithReferenceID(2)),
@@ -173,7 +173,7 @@ func TestStandardPosBasedProcessorProcess_TruncatesWhenPointsAreShorter(t *testi
 func TestStandardPosBasedProcessorProcess_EmptyInputs(t *testing.T) {
 	t.Parallel()
 
-	processor := &standardPosBasedProcessor{policyType: PointsPolicyFastestLap}
+	processor := &standardPosBasedProcessor{policyType: PointPolicyFastestLap}
 	outputs := processor.Process(nil, []PointType{1})
 
 	if len(outputs) != 0 {
@@ -212,12 +212,12 @@ func TestPointSystemProcessorProcessPoints_FinishPolicySortsByFinishPosition(t *
 	}
 
 	awards := map[PointPolicyType][]PointType{
-		PointsPolicyFinishPos: {25, 18, 15},
+		PointPolicyFinishPos: {25, 18, 15},
 	}
 
 	outputs, err := processor.ProcessPoints(
 		inputs,
-		[]PointPolicyType{PointsPolicyFinishPos},
+		[]PointPolicyType{PointPolicyFinishPos},
 		awards,
 		nil,
 	)
@@ -231,21 +231,21 @@ func TestPointSystemProcessorProcessPoints_FinishPolicySortsByFinishPosition(t *
 			classID: 1,
 			points:  25,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   103,
 			classID: 1,
 			points:  18,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   101,
 			classID: 1,
 			points:  15,
 			msg:     fmt.Sprintf("for pos %d", 3),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -290,13 +290,13 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 	}
 
 	awards := map[PointPolicyType][]PointType{
-		PointsPolicyFinishPos:        {25, 18, 15},
-		PointsPolicyQualificationPos: {5, 3, 1},
+		PointPolicyFinishPos:        {25, 18, 15},
+		PointPolicyQualificationPos: {5, 3, 1},
 	}
 
 	outputs, err := processor.ProcessPoints(
 		inputs,
-		[]PointPolicyType{PointsPolicyFinishPos, PointsPolicyQualificationPos},
+		[]PointPolicyType{PointPolicyFinishPos, PointPolicyQualificationPos},
 		awards,
 		nil,
 	)
@@ -310,14 +310,14 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 			classID: 1,
 			points:  25,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   201,
 			classID: 1,
 			points:  5,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyQualificationPos,
+			origin:  PointPolicyQualificationPos,
 		},
 		// raceDistPct is only relevant for finish position points,
 		// not qualification points, so points are granted
@@ -326,7 +326,7 @@ func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *t
 			classID: 1,
 			points:  3,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyQualificationPos,
+			origin:  PointPolicyQualificationPos,
 		},
 	}
 
@@ -370,12 +370,12 @@ func TestPointSystemProcessorProcessPoints_MultipleClassesProcessIndependently(t
 	}
 
 	awards := map[PointPolicyType][]PointType{
-		PointsPolicyFinishPos: {10, 7},
+		PointPolicyFinishPos: {10, 7},
 	}
 
 	outputs, err := processor.ProcessPoints(
 		inputs,
-		[]PointPolicyType{PointsPolicyFinishPos},
+		[]PointPolicyType{PointPolicyFinishPos},
 		awards,
 		nil,
 	)
@@ -389,28 +389,28 @@ func TestPointSystemProcessorProcessPoints_MultipleClassesProcessIndependently(t
 			classID: 1,
 			points:  10,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   301,
 			classID: 1,
 			points:  7,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   401,
 			classID: 2,
 			points:  10,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   402,
 			classID: 2,
 			points:  7,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -444,10 +444,10 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 	}
 
 	awards := map[PointPolicyType][]PointType{
-		PointsPolicyFinishPos: {25, 18},
+		PointPolicyFinishPos: {25, 18},
 	}
 	penalties := map[PointPolicyType]any{
-		PointsPolicyIncidentsExceeded: ThresholdPenaltySettings{
+		PointPolicyIncidentsExceeded: ThresholdPenaltySettings{
 			Threshold:  3,
 			PenaltyPct: 0.1,
 		},
@@ -455,7 +455,7 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 
 	outputs, err := processor.ProcessPoints(
 		inputs,
-		[]PointPolicyType{PointsPolicyFinishPos, PointsPolicyIncidentsExceeded},
+		[]PointPolicyType{PointPolicyFinishPos, PointPolicyIncidentsExceeded},
 		awards,
 		penalties,
 	)
@@ -469,21 +469,21 @@ func TestPointSystemProcessorProcessPoints_AppliesIncidentPenaltySettings(t *tes
 			classID: 1,
 			points:  25,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   502,
 			classID: 1,
 			points:  18,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   502,
 			classID: 1,
 			points:  -2,
 			msg:     "10% reduction for 5 incidents (limit: 3)",
-			origin:  PointsPolicyIncidentsExceeded,
+			origin:  PointPolicyIncidentsExceeded,
 		},
 	}
 
@@ -516,7 +516,7 @@ func TestPointSystemProcessorProcessPoints_AppliesOfftrackExceededPenalties(t *t
 		),
 	}
 	penalties := map[PointPolicyType]any{
-		PointsPolicyOfftracksExceeded: OfftracksExceededSettings{
+		PointPolicyOfftracksExceeded: OfftracksExceededSettings{
 			Threshold:            3,
 			PerExceedancePenalty: 2,
 			GlobalPenalty:        3,
@@ -525,7 +525,7 @@ func TestPointSystemProcessorProcessPoints_AppliesOfftrackExceededPenalties(t *t
 
 	outputs, err := processor.ProcessPoints(
 		inputs,
-		[]PointPolicyType{PointsPolicyOfftracksExceeded},
+		[]PointPolicyType{PointPolicyOfftracksExceeded},
 		nil,
 		penalties,
 	)
@@ -539,7 +539,7 @@ func TestPointSystemProcessorProcessPoints_AppliesOfftrackExceededPenalties(t *t
 			classID: 1,
 			points:  -7,
 			msg:     "7 points penalty for 5 offtracks (limit: 3)",
-			origin:  PointsPolicyOfftracksExceeded,
+			origin:  PointPolicyOfftracksExceeded,
 		},
 	}
 	assertOutputSlicesEqual(t, outputs, expected)

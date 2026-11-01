@@ -2,6 +2,7 @@ package standings
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/grpc/services/importsvc/points"
 )
 
 type (
@@ -30,10 +32,12 @@ type (
 		skipEventIDs         []int32
 	}
 	referenceEventData struct {
-		rawPoints      int32
-		bonusPoints    int32
-		penaltyPoints  int32
-		participations []Participation
+		rawPoints     int32
+		bonusPoints   int32
+		penaltyPoints int32
+		// sum of (positive) penalty points already subtracted from rawPoints
+		skipCalcPenaltyPoints int32
+		participations        []Participation
 	}
 	ComputedStanding struct {
 		ReferenceID  int32
@@ -147,24 +151,21 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 
 			referenceID := input.ReferenceID(booking)
 			eventData := getOrCreateReferenceEventData(eventDataByReferenceID, referenceID)
-			eventData.rawPoints += booking.Points
-			// at this point rawPoints includes all points from the bookings,
-			// including all penalties.
-			// penalties are divided into
-			// - race related penalties (e.g., incidents, offtracks during the race)
-			// - steward penalties (e.g., penalties imposed by race officials)
-			// steward penalties should not affect the skip results calculation
-
-			switch string(booking.SourceType) {
-			case "qualification_pos", "least_incidents", "fastest_lap", "top_n_finishers":
-				eventData.bonusPoints += booking.Points
-			case "penalty_points":
+			policy, isPolicy := bookingPolicyType(booking)
+			switch {
+			case isPolicy && policy.IsPenalty():
 				// booking points are negative, for standings we want positives
-				eventData.penaltyPoints += -booking.Points
-				// raw point will be used to compute skip results,
-				// we don't want to count penalty points to be towards that.
-				// they are subtracted after the skip result from the total
-				eventData.rawPoints -= booking.Points
+				penalty := -booking.Points
+				eventData.penaltyPoints += penalty
+				if bookingAffectsSkipCalc(booking) {
+					eventData.skipCalcPenaltyPoints += penalty
+					eventData.rawPoints -= penalty
+				}
+			case isPolicy && policy.IsBonus():
+				eventData.bonusPoints += booking.Points
+				eventData.rawPoints += booking.Points
+			default:
+				eventData.rawPoints += booking.Points
 			}
 		}
 
@@ -240,6 +241,28 @@ func (c *ComputeStandings) Compute(input *ComputeStandingsInput) (
 	return computedStandingsSlice(workByReferenceID)
 }
 
+func bookingPolicyType(booking *models.BookingEntry) (points.PointPolicyType, bool) {
+	var policy points.PointPolicyType
+	if err := policy.UnmarshalText([]byte(booking.SourceType)); err != nil {
+		return 0, false
+	}
+	return policy, true
+}
+
+// bookingAffectsSkipCalc reads the flag stored in the booking metadata
+// (see points.MetaType). Bookings without the flag don't affect the skip calc.
+func bookingAffectsSkipCalc(booking *models.BookingEntry) bool {
+	var meta struct {
+		Data struct {
+			AffectsSkipCalc bool
+		}
+	}
+	if err := json.Unmarshal(booking.MetadataJSON.Val, &meta); err != nil {
+		return false
+	}
+	return meta.Data.AffectsSkipCalc
+}
+
 //nolint:whitespace // editor/linter issue
 func debug(
 	eventID int32,
@@ -296,7 +319,9 @@ func computeTotalPenalties(
 			if referenceID != referenceIDFunc(booking) {
 				continue
 			}
-			if string(booking.SourceType) == "penalty_points" {
+			// penalties affecting the skip calculation are already part of rawPoints
+			policy, ok := bookingPolicyType(booking)
+			if ok && policy.IsPenalty() && !bookingAffectsSkipCalc(booking) {
 				totalPenalties += -booking.Points
 			}
 		}

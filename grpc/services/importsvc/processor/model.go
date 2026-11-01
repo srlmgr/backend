@@ -261,19 +261,21 @@ func mapPolicyType(policy commonv1.PointPolicy) (points.PointPolicyType, error) 
 	//nolint:exhaustive // allow unknown policy types for forward compatibility
 	switch policy {
 	case commonv1.PointPolicy_POINT_POLICY_FINISH_POS:
-		return points.PointsPolicyFinishPos, nil
+		return points.PointPolicyFinishPos, nil
 	case commonv1.PointPolicy_POINT_POLICY_FASTEST_LAP:
-		return points.PointsPolicyFastestLap, nil
+		return points.PointPolicyFastestLap, nil
 	case commonv1.PointPolicy_POINT_POLICY_LEAST_INCIDENTS:
-		return points.PointsPolicyLeastIncidents, nil
+		return points.PointPolicyLeastIncidents, nil
 	case commonv1.PointPolicy_POINT_POLICY_INCIDENTS_EXCEEDED:
-		return points.PointsPolicyIncidentsExceeded, nil
+		return points.PointPolicyIncidentsExceeded, nil
 	case commonv1.PointPolicy_POINT_POLICY_OFFTRACKS_EXCEEDED:
-		return points.PointsPolicyOfftracksExceeded, nil
+		return points.PointPolicyOfftracksExceeded, nil
 	case commonv1.PointPolicy_POINT_POLICY_QUALIFICATION_POS:
-		return points.PointsPolicyQualificationPos, nil
+		return points.PointPolicyQualificationPos, nil
 	case commonv1.PointPolicy_POINT_POLICY_TOP_N_FINISHER:
-		return points.PointsPolicyTopNFinishers, nil
+		return points.PointPolicyTopNFinishers, nil
+	case commonv1.PointPolicy_POINT_POLICY_STEWARD_PENALTY:
+		return points.PointPolicyStewardPenalty, nil
 	default:
 		return 0, fmt.Errorf("unsupported point policy: %s", policy.String())
 	}
@@ -305,8 +307,9 @@ func upsertThresholdPenalties(
 	for idx, rule := range rules {
 		//nolint:lll // long line
 		raceSettings.PenaltySettings[idx].Arguments[policyType] = points.ThresholdPenaltySettings{
-			Threshold:  int32(rule.GetThreshold()),
-			PenaltyPct: rule.GetPenaltyPercent(),
+			Threshold:       int32(rule.GetThreshold()),
+			PenaltyPct:      rule.GetPenaltyPercent(),
+			AffectsSkipCalc: rule.GetAffectsSkipCalc(),
 		}
 	}
 }
@@ -323,6 +326,7 @@ func upsertOfftracksExceededPenalties(
 			Threshold:            int32(rule.GetThreshold()),
 			PerExceedancePenalty: points.PointType(rule.GetPerExceedancePenalty()),
 			GlobalPenalty:        points.PointType(rule.GetGlobalPenalty()),
+			AffectsSkipCalc:      rule.GetAffectsSkipCalc(),
 		}
 		raceSettings.PenaltySettings[idx].Arguments[policyType] = settings
 	}
@@ -375,207 +379,4 @@ func (epi *EventProcInfo) ResolverFunc(ctx context.Context) points.ResolveGridID
 		}
 		return race.SequenceNo - 1, grid.SequenceNo - 1, nil
 	}
-}
-
-//nolint:whitespace,unused //editor/linter issue, to be deleted later
-func (e *EventProcInfoCollector) fakePointSystemSettings(
-	ps *models.PointSystem,
-	season *models.Season,
-) *points.PointSystemSettings {
-	switch ps.Name {
-	case "Standard", "VRPC":
-		return e.StandardPointSystemSettings(season)
-	case "VRGES":
-		return e.VRGESPointSystemSettings()
-	default:
-		return e.StandardPointSystemSettings(season)
-	}
-}
-
-//nolint:whitespace,funlen // tmp method will be replaced by database values later
-func (e *EventProcInfoCollector) StandardPointSystemSettings(
-	season *models.Season,
-) *points.PointSystemSettings {
-	settings := &points.PointSystemSettings{
-		Eligibility: points.EligibilitySettings{
-			RaceDistPct: 0.75,
-		},
-		Races: []points.RaceSettings{
-			{
-				Policies: []points.PointPolicyType{
-					points.PointsPolicyFinishPos,
-					points.PointsPolicyQualificationPos,
-					points.PointsPolicyLeastIncidents,
-					points.PointsPolicyFastestLap,
-				},
-				AwardSettings: []points.RankedPolicySettings{
-					{
-						Points: map[points.PointPolicyType][]points.PointType{
-							points.PointsPolicyFinishPos: {
-								100,
-								95,
-								92,
-								90,
-								88,
-								86,
-								84,
-								82,
-								80,
-								78,
-								76,
-								74,
-								72,
-								70,
-								68,
-								66,
-								64,
-								62,
-								60,
-								58,
-								56,
-								54,
-								52,
-								50,
-								48,
-								46,
-								44,
-								42,
-								40,
-							},
-							points.PointsPolicyQualificationPos: {3, 2, 1},
-							points.PointsPolicyLeastIncidents:   {3, 2, 1},
-							points.PointsPolicyFastestLap:       {1},
-						},
-					},
-				},
-				PenaltySettings: []points.PointPenaltySettings{
-					{Arguments: map[points.PointPolicyType]any{}},
-				},
-			},
-			{
-				Policies: []points.PointPolicyType{
-					points.PointsPolicyFinishPos,
-					points.PointsPolicyLeastIncidents,
-					points.PointsPolicyFastestLap,
-				},
-				AwardSettings: []points.RankedPolicySettings{
-					{
-						Points: map[points.PointPolicyType][]points.PointType{
-							points.PointsPolicyFinishPos: {
-								100,
-								95,
-								92,
-								90,
-								88,
-								86,
-								84,
-								82,
-								80,
-								78,
-								76,
-								74,
-								72,
-								70,
-								68,
-								66,
-								64,
-								62,
-								60,
-								58,
-								56,
-								54,
-								52,
-								50,
-								48,
-								46,
-								44,
-								42,
-								40,
-							},
-
-							points.PointsPolicyLeastIncidents: {3, 2, 1},
-							points.PointsPolicyFastestLap:     {1},
-						},
-					},
-				},
-				PenaltySettings: []points.PointPenaltySettings{
-					{Arguments: map[points.PointPolicyType]any{}},
-				},
-			},
-		},
-	}
-	return settings
-}
-
-//nolint:lll,funlen // tmp method will be replaced by database values later
-func (e *EventProcInfoCollector) VRGESPointSystemSettings() *points.PointSystemSettings {
-	settings := &points.PointSystemSettings{
-		Eligibility: points.EligibilitySettings{
-			RaceDistPct: 0.75,
-		},
-		Races: []points.RaceSettings{
-			{
-				Policies: []points.PointPolicyType{
-					points.PointsPolicyFinishPos,
-					points.PointsPolicyLeastIncidents,
-					points.PointsPolicyIncidentsExceeded,
-				},
-				AwardSettings: []points.RankedPolicySettings{
-					{
-						Points: map[points.PointPolicyType][]points.PointType{
-							points.PointsPolicyFinishPos: {
-								50,
-								45,
-								41,
-								38,
-								36,
-								34,
-								32,
-								30,
-								28,
-								26,
-								25,
-								24,
-								23,
-								22,
-								21,
-								20,
-								19,
-								18,
-								17,
-								16,
-								15,
-								14,
-								13,
-								12,
-								11,
-								10,
-								9,
-								8,
-								7,
-								6,
-								5,
-								4,
-								3,
-								2,
-								1,
-							},
-							points.PointsPolicyLeastIncidents: {3, 2, 1},
-						},
-					},
-				},
-				PenaltySettings: []points.PointPenaltySettings{
-					{
-						Arguments: map[points.PointPolicyType]any{
-							points.PointsPolicyIncidentsExceeded: points.ThresholdPenaltySettings{
-								Threshold:  30,
-								PenaltyPct: 0.1,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	return settings
 }

@@ -95,18 +95,18 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 			len(race1.PenaltySettings),
 		)
 	}
-	if got := race1.AwardSettings[0].Points[points.PointsPolicyFinishPos]; len(got) != 3 ||
+	if got := race1.AwardSettings[0].Points[points.PointPolicyFinishPos]; len(got) != 3 ||
 		got[0] != 10 {
 		t.Fatalf("unexpected race 1 grid 0 finish points: %+v", got)
 	}
-	pen, ok := race1.PenaltySettings[1].Arguments[points.PointsPolicyIncidentsExceeded].(points.ThresholdPenaltySettings)
+	pen, ok := race1.PenaltySettings[1].Arguments[points.PointPolicyIncidentsExceeded].(points.ThresholdPenaltySettings)
 	if !ok {
 		t.Fatal("expected incidents exceeded penalty settings in race 1 grid 1")
 	}
 	if pen.Threshold != 1 || pen.PenaltyPct != 0.5 {
 		t.Fatalf("unexpected incidents penalty config: %+v", pen)
 	}
-	offtracksPenalty, ok := race1.PenaltySettings[0].Arguments[points.PointsPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
+	offtracksPenalty, ok := race1.PenaltySettings[0].Arguments[points.PointPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
 	if !ok {
 		t.Fatal("expected offtracks exceeded penalty settings in race 1 grid 0")
 	}
@@ -117,7 +117,7 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 	}) {
 		t.Fatalf("unexpected offtracks penalty config: %+v", offtracksPenalty)
 	}
-	offtracksPenalty, ok = race1.PenaltySettings[1].Arguments[points.PointsPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
+	offtracksPenalty, ok = race1.PenaltySettings[1].Arguments[points.PointPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
 	if !ok {
 		t.Fatal("expected offtracks exceeded penalty settings in race 1 grid 1")
 	}
@@ -139,7 +139,7 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 			len(race2.PenaltySettings),
 		)
 	}
-	if got := race2.AwardSettings[0].Points[points.PointsPolicyFastestLap]; len(got) != 1 ||
+	if got := race2.AwardSettings[0].Points[points.PointPolicyFastestLap]; len(got) != 1 ||
 		got[0] != 1 {
 		t.Fatalf("unexpected race 2 fastest lap points: %+v", got)
 	}

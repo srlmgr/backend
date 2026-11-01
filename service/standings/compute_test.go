@@ -2,9 +2,11 @@
 package standings
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/aarondl/opt/null"
+	"github.com/stephenafamo/bob/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/srlmgr/backend/db/models"
@@ -88,7 +90,7 @@ func TestComputeCountsMultiRaceParticipationPerRace(t *testing.T) {
 			bookingEntry(40, 401, 1, 5, "finish_pos"),
 			bookingEntry(40, 401, 2, 7, "finish_pos"),
 			bookingEntry(40, 402, 2, 5, "top_n_finishers"),
-			bookingEntry(40, 402, 2, -2, "penalty_points"),
+			bookingEntry(40, 402, 2, -2, "steward_penalty"),
 		},
 		Participations: []Participation{
 			testParticipation{raceGridID: 401, referenceID: 1, finishPosition: 1},
@@ -297,7 +299,7 @@ func TestComputeBreaksTiesByFinishPositionsThenPenaltyThenBonus(t *testing.T) {
 		EventIDs: []int32{30},
 		Bookings: []*models.BookingEntry{
 			bookingEntry(30, 300, 1, 10, "finish_pos"),
-			bookingEntry(30, 300, 1, -2, "penalty_points"),
+			bookingEntry(30, 300, 1, -2, "steward_penalty"),
 			bookingEntry(30, 300, 2, 10, "finish_pos"),
 		},
 		Participations: []Participation{
@@ -394,7 +396,7 @@ func TestComputeWithSkipEvents(t *testing.T) {
 		EventIDs: []int32{10, 20, 30},
 		Bookings: []*models.BookingEntry{
 			bookingEntry(10, 100, 1, 7, "finish_pos"),
-			bookingEntry(10, 100, 1, -7, "penalty_points"),
+			bookingEntry(10, 100, 1, -7, "steward_penalty"),
 			bookingEntry(10, 100, 2, 10, "finish_pos"),
 			bookingEntry(20, 200, 1, 5, "finish_pos"),
 			bookingEntry(20, 200, 2, 5, "finish_pos"),
@@ -516,9 +518,9 @@ func TestComputeStandings_Compute(t *testing.T) {
 				EventIDs: tt.input.eventIDs,
 				Bookings: []*models.BookingEntry{
 					bookingEntry(10, 100, 1, 7, "finish_pos"),
-					bookingEntry(10, 100, 1, -7, "penalty_points"),
+					bookingEntry(10, 100, 1, -7, "steward_penalty"),
 					bookingEntry(20, 200, 1, 5, "finish_pos"),
-					bookingEntry(20, 200, 1, -1, "penalty_points"),
+					bookingEntry(20, 200, 1, -1, "steward_penalty"),
 					bookingEntry(30, 200, 1, 6, "finish_pos"),
 				},
 				// not needed here
@@ -565,9 +567,9 @@ func TestComputeWithSingleDriver(t *testing.T) {
 		EventIDs: []int32{10, 20, 30},
 		Bookings: []*models.BookingEntry{
 			bookingEntry(10, 100, 1, 7, "finish_pos"),
-			bookingEntry(10, 100, 1, -7, "penalty_points"),
+			bookingEntry(10, 100, 1, -7, "steward_penalty"),
 			bookingEntry(20, 200, 1, 5, "finish_pos"),
-			bookingEntry(20, 200, 1, -1, "penalty_points"),
+			bookingEntry(20, 200, 1, -1, "steward_penalty"),
 			bookingEntry(30, 200, 1, 6, "finish_pos"),
 		},
 		// not needed here
@@ -590,6 +592,37 @@ func TestComputeWithSingleDriver(t *testing.T) {
 	assert.Equal(t, int32(0), check.StandingData.BonusPoints, "unexpected bonus points")
 	assert.Equal(t, int32(8), check.StandingData.PenaltyPoints, "unexpected penalty points")
 	assert.Equal(t, []int32{20}, check.SkipEventIDs, "wrong skip event IDs")
+}
+
+func TestComputeSkipAffectingPenalty(t *testing.T) {
+	affecting := bookingEntry(10, 100, 1, -7, "incidents_exceeded")
+	affecting.MetadataJSON = types.JSON[json.RawMessage]{
+		Val: json.RawMessage(`{"Version":1,"Data":{"AffectsSkipCalc":true}}`),
+	}
+	actual := NewComputeStandings().Compute(&ComputeStandingsInput{
+		EventIDs: []int32{10, 20, 30},
+		Bookings: []*models.BookingEntry{
+			bookingEntry(10, 100, 1, 7, "finish_pos"),
+			affecting,
+			bookingEntry(20, 200, 1, 5, "finish_pos"),
+			bookingEntry(20, 200, 1, -1, "incidents_exceeded"),
+			bookingEntry(30, 300, 1, 6, "finish_pos"),
+		},
+		ReferenceID: func(booking *models.BookingEntry) int32 {
+			return booking.DriverID.GetOrZero()
+		},
+		NumSkip:  1,
+		SkipMode: SkipModeAlways,
+	})
+
+	if len(actual) != 1 {
+		t.Fatalf("expected 1 standings entry, got %d", len(actual))
+	}
+	check := actual[0]
+	// event 10 has raw 0 and is skipped; the other penalty is applied at the end
+	assert.Equal(t, []int32{10}, check.SkipEventIDs, "wrong skip event IDs")
+	assert.Equal(t, int32(10), check.StandingData.TotalPoints, "unexpected total points")
+	assert.Equal(t, int32(8), check.StandingData.PenaltyPoints, "unexpected penalty points")
 }
 
 func assertComputedStanding(
