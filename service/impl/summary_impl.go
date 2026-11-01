@@ -226,33 +226,32 @@ func (s *summaryImpl) summaryByPrimary(
 	summaries := make([]*summary.SummaryEntry, 0)
 	for k, v := range work {
 		rawPoints := lo.SumBy(v, s.pointCat(func(p points.PointPolicyType) bool {
-			return p == points.PointsPolicyFinishPos
+			return p == points.PointPolicyFinishPos
 		}))
 
 		bonusPoints := lo.SumBy(v, s.pointCat(func(p points.PointPolicyType) bool {
-			return slices.Contains([]points.PointPolicyType{
-				points.PointsPolicyFastestLap,
-				points.PointsPolicyQualificationPos,
-				points.PointsPolicyTopNFinishers,
-				points.PointsPolicyLeastIncidents,
-			}, p)
+			return p.IsBonus()
 		}))
 		// note: penaltyPoints are negative in bookings!
-		penaltyPoints := lo.SumBy(v, s.pointCat(func(p points.PointPolicyType) bool {
-			return slices.Contains([]points.PointPolicyType{
-				points.PointsPolicyPenalty,
-				points.PointsPolicyIncidentsExceeded,
-				points.PointsPolicyOfftracksExceeded,
-			}, p)
+		stewardPenaltyPoints := lo.SumBy(v, s.pointCat(func(p points.PointPolicyType) bool {
+			return p.IsStewardPenalty()
+		}))
+		racePenaltyPoints := lo.SumBy(v, s.pointCat(func(p points.PointPolicyType) bool {
+			return p.IsRacePenalty()
 		}))
 		localSums := &summary.SummaryEntry{
 			ReferenceID: int(k),
 			CarClassID:  int(v[0].CarClassID.GetOrZero()),
 			Points: summary.PointSummary{
-				RawPoints:     int(rawPoints),
-				BonusPoints:   int(bonusPoints),
-				PenaltyPoints: -int(penaltyPoints),
-				TotalPoints:   int(rawPoints + bonusPoints + penaltyPoints),
+				RawPoints:            int(rawPoints),
+				BonusPoints:          int(bonusPoints),
+				PenaltyPoints:        -int(stewardPenaltyPoints + racePenaltyPoints),
+				StewardPenaltyPoints: -int(stewardPenaltyPoints),
+				RacePenaltyPoints:    -int(racePenaltyPoints),
+				TotalPoints: int(rawPoints +
+					bonusPoints +
+					stewardPenaltyPoints +
+					racePenaltyPoints),
 			},
 		}
 		summaries = append(summaries, localSums)
@@ -264,6 +263,9 @@ func (s *summaryImpl) summaryByPrimary(
 	return summaries
 }
 
+// note: work is already pre-filtered to contain only bookings relevant
+// for the secondary summary
+//
 //nolint:whitespace // editor/linter issue
 func (s *summaryImpl) summaryBySecondary(
 	work map[int32][]*models.BookingEntry,

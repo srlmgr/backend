@@ -103,7 +103,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 		for _, policyType := range policies {
 			//nolint:exhaustive // only position based here
 			switch policyType {
-			case PointsPolicyFinishPos, PointsPolicyTopNFinishers:
+			case PointPolicyFinishPos, PointPolicyTopNFinishers:
 				worker := &standardPosBasedProcessor{policyType: policyType}
 				pInput := p.eligibleForPositionPoints(lo.Clone(eligibleInputs))
 				slices.SortFunc(
@@ -114,7 +114,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
-			case PointsPolicyQualificationPos:
+			case PointPolicyQualificationPos:
 				worker := &standardPosBasedProcessor{policyType: policyType}
 				pInput := lo.Clone(eligibleInputs)
 				slices.SortFunc(
@@ -125,7 +125,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
 
-			case PointsPolicyFastestLap:
+			case PointPolicyFastestLap:
 				worker := &standardPosBasedProcessor{policyType: policyType}
 				pInput := lo.Filter(lo.Clone(eligibleInputs),
 					func(inp Input, _ int) bool {
@@ -139,7 +139,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 				polSettings := awardSettings[policyType]
 				ret = append(ret, worker.Process(pInput, polSettings)...)
 
-			case PointsPolicyLeastIncidents:
+			case PointPolicyLeastIncidents:
 				worker := &standardPosBasedProcessor{policyType: policyType}
 				pInput := p.eligibleForPositionPoints(lo.Clone(eligibleInputs))
 				slices.SortFunc(
@@ -161,7 +161,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 		for _, policyType := range policies {
 			//nolint:exhaustive // may be extended with addition policies
 			switch policyType {
-			case PointsPolicyIncidentsExceeded:
+			case PointPolicyIncidentsExceeded:
 				polSettings, ok := penaltySettings[policyType].(ThresholdPenaltySettings)
 				if !ok {
 					continue
@@ -170,7 +170,7 @@ func (p *PointSystemProcessor) ProcessPoints(
 					ret,
 					p.handleIncidentsExceededPolicy(ret, polSettings, eligibleInputs)...,
 				)
-			case PointsPolicyOfftracksExceeded:
+			case PointPolicyOfftracksExceeded:
 				polSettings, ok := penaltySettings[policyType].(OfftracksExceededSettings)
 				if !ok {
 					continue
@@ -192,7 +192,7 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 ) []Output {
 	// here we are interested in output produced by PointsPolicyFinishPos
 	filtered := lo.Filter(outputs, func(output Output, _ int) bool {
-		return output.Origin() == PointsPolicyFinishPos
+		return output.Origin() == PointPolicyFinishPos
 	})
 	byRef := lo.SliceToMap(filtered, func(item Output) (int32, PointType) {
 		return item.ReferenceID(), item.Points()
@@ -214,13 +214,14 @@ func (p *PointSystemProcessor) handleIncidentsExceededPolicy(
 					points:  PointType(math.Round(float64(points) * -penaltyPct)),
 					msg: fmt.Sprintf("%d%% reduction for %d incidents (limit: %d)",
 						int(penaltyPct*100), inp.Incidents(), threshold),
-					origin: PointsPolicyIncidentsExceeded,
+					origin: PointPolicyIncidentsExceeded,
 					meta: MetaType{
 						Version: 1,
 						Data: IncidentExceededMeta{
-							Incidents:  int(inp.Incidents()),
-							Limit:      int(threshold),
-							PenaltyPct: penaltyPct,
+							Incidents:       int(inp.Incidents()),
+							Limit:           int(threshold),
+							PenaltyPct:      penaltyPct,
+							AffectsSkipCalc: settings.AffectsSkipCalc,
 						},
 					},
 				}
@@ -261,7 +262,7 @@ func (p *PointSystemProcessor) handleOfftrackExceededPolicy(
 			points:  penalty,
 			msg: fmt.Sprintf("%g points penalty for %d offtracks (limit: %d)",
 				-penalty, offtracks, settings.Threshold),
-			origin: PointsPolicyOfftracksExceeded,
+			origin: PointPolicyOfftracksExceeded,
 			meta: MetaType{
 				Version: 1,
 				Data: OfftrackExceededMeta{
@@ -269,6 +270,7 @@ func (p *PointSystemProcessor) handleOfftrackExceededPolicy(
 					Limit:                int(settings.Threshold),
 					PerExceedancePenalty: settings.PerExceedancePenalty,
 					GlobalPenalty:        settings.GlobalPenalty,
+					AffectsSkipCalc:      settings.AffectsSkipCalc,
 				},
 			},
 		})

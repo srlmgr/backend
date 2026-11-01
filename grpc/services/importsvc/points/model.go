@@ -32,14 +32,25 @@ type (
 		Name      string
 		Arguments map[PointPolicyType]any
 	}
-	ThresholdPenaltySettings struct {
-		Threshold  int32
-		PenaltyPct float64
+	// StewardPenaltySettings represents a penalty imposed by the steward.
+	// AffectsSkipCalc: if true, skip_calc_points will be reduced by this penalty
+	StewardPenaltySettings struct {
+		AffectsSkipCalc bool // if true, skip_calc_points will be reduced by this penalty
 	}
+	// Race penalty if incidents exceed a certain threshold
+	// AffectsSkipCalc: if true, skip_calc_points will be reduced by this penalty
+	ThresholdPenaltySettings struct {
+		Threshold       int32
+		PenaltyPct      float64
+		AffectsSkipCalc bool
+	}
+	// Race penalty if offtracks exceed a certain threshold
+	// AffectsSkipCalc: if true, skip_calc_points will be reduced by this penalty
 	OfftracksExceededSettings struct {
 		Threshold            int32
 		PerExceedancePenalty PointType
 		GlobalPenalty        PointType
+		AffectsSkipCalc      bool
 	}
 	RaceSettings struct {
 		Name            string
@@ -48,8 +59,9 @@ type (
 		PenaltySettings []PointPenaltySettings
 	}
 
-	PointPolicyType int
-	PointPolicy     interface {
+	PointPolicyType  int
+	PointPolicyClass int
+	PointPolicy      interface {
 		Type() PointPolicyType
 	}
 	Input interface {
@@ -89,12 +101,15 @@ type (
 		Incidents  int // e.g. number of incidents, penalties, etc. depending on the policy
 		Limit      int
 		PenaltyPct float64
+		// AffectsSkipCalc is read back by the standings computation
+		AffectsSkipCalc bool
 	}
 	OfftrackExceededMeta struct {
 		Offtracks            int
 		Limit                int
 		PerExceedancePenalty PointType
 		GlobalPenalty        PointType
+		AffectsSkipCalc      bool
 	}
 	defaultInputImpl struct {
 		finishPosition int32
@@ -113,29 +128,36 @@ type (
 )
 
 const (
-	PointsPolicyFinishPos PointPolicyType = iota
-	PointsPolicyFastestLap
-	PointsPolicyLeastIncidents
-	PointsPolicyIncidentsExceeded
-	PointsPolicyQualificationPos
-	PointsPolicyTopNFinishers
-	PointsPolicyPenalty
-	PointsPolicyCustom
-	PointsPolicyOfftracksExceeded
+	PointPolicyFinishPos PointPolicyType = iota
+	PointPolicyFastestLap
+	PointPolicyLeastIncidents
+	PointPolicyIncidentsExceeded
+	PointPolicyQualificationPos
+	PointPolicyTopNFinishers
+	PointPolicyStewardPenalty
+	PointPolicyManualAdjustment
+	PointPolicyOfftracksExceeded
+)
+
+const (
+	PointPolicyClassPosition = iota
+	PointPolicyClassBonus
+	PointPolicyClassRacePenalty
+	PointPolicyClassStewardPenalty
 )
 
 var (
 	_                       Input = (*defaultInputImpl)(nil)
 	stringToPointPolicyType       = map[string]PointPolicyType{
-		"finish_pos":         PointsPolicyFinishPos,
-		"fastest_lap":        PointsPolicyFastestLap,
-		"least_incidents":    PointsPolicyLeastIncidents,
-		"incidents_exceeded": PointsPolicyIncidentsExceeded,
-		"qualification_pos":  PointsPolicyQualificationPos,
-		"top_n_finishers":    PointsPolicyTopNFinishers,
-		"penalty_points":     PointsPolicyPenalty,
-		"custom":             PointsPolicyCustom,
-		"offtracks_exceeded": PointsPolicyOfftracksExceeded,
+		"finish_pos":         PointPolicyFinishPos,
+		"fastest_lap":        PointPolicyFastestLap,
+		"least_incidents":    PointPolicyLeastIncidents,
+		"incidents_exceeded": PointPolicyIncidentsExceeded,
+		"qualification_pos":  PointPolicyQualificationPos,
+		"top_n_finishers":    PointPolicyTopNFinishers,
+		"steward_penalty":    PointPolicyStewardPenalty,
+		"manual_adjustment":  PointPolicyManualAdjustment,
+		"offtracks_exceeded": PointPolicyOfftracksExceeded,
 	}
 	pointPolicyTypeToString = func() map[PointPolicyType]string {
 		m := make(map[PointPolicyType]string)
@@ -170,6 +192,45 @@ func (p PointPolicyType) String() string {
 		return fmt.Sprintf("unknown(%d)", p)
 	}
 	return str
+}
+
+func (p PointPolicyType) IsPenalty() bool {
+	return p.IsStewardPenalty() || p.IsRacePenalty()
+}
+
+func (p PointPolicyType) IsStewardPenalty() bool {
+	//nolint:exhaustive // default case handles non-penalty policies
+	switch p {
+	case PointPolicyStewardPenalty:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p PointPolicyType) IsRacePenalty() bool {
+	//nolint:exhaustive // default case handles non-penalty policies
+	switch p {
+	case PointPolicyIncidentsExceeded,
+		PointPolicyOfftracksExceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p PointPolicyType) IsBonus() bool {
+	//nolint:exhaustive // default case handles non-bonus policies
+	switch p {
+	case
+		PointPolicyFastestLap,
+		PointPolicyLeastIncidents,
+		PointPolicyQualificationPos,
+		PointPolicyTopNFinishers:
+		return true
+	default:
+		return false
+	}
 }
 
 func NewInput(opts ...InputOpt) Input {

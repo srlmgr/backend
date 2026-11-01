@@ -31,16 +31,16 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 		Eligibility: EligibilitySettings{},
 		Races: []RaceSettings{
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {10, 7},
+							PointPolicyFinishPos: {10, 7},
 						},
 					},
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {5, 3},
+							PointPolicyFinishPos: {5, 3},
 						},
 					},
 				},
@@ -50,11 +50,11 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 				},
 			},
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {20, 15},
+							PointPolicyFinishPos: {20, 15},
 						},
 					},
 				},
@@ -138,14 +138,14 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 			classID: 1,
 			points:  5,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   11,
 			classID: 1,
 			points:  3,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -155,14 +155,14 @@ func TestEventProcessorProcessAll_ProcessesEachGridWithResolvedRaceAndGrid(t *te
 			classID: 2,
 			points:  20,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   22,
 			classID: 2,
 			points:  15,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -177,11 +177,11 @@ func TestEventProcessorProcessAll_ClampsResolvedIndexesToLastConfiguredRaceAndGr
 		Eligibility: EligibilitySettings{},
 		Races: []RaceSettings{
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {3, 2},
+							PointPolicyFinishPos: {3, 2},
 						},
 					},
 				},
@@ -190,16 +190,16 @@ func TestEventProcessorProcessAll_ClampsResolvedIndexesToLastConfiguredRaceAndGr
 				},
 			},
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {6, 4},
+							PointPolicyFinishPos: {6, 4},
 						},
 					},
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {50, 40},
+							PointPolicyFinishPos: {50, 40},
 						},
 					},
 				},
@@ -256,14 +256,14 @@ func TestEventProcessorProcessAll_ClampsResolvedIndexesToLastConfiguredRaceAndGr
 			classID: 1,
 			points:  50,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   701,
 			classID: 1,
 			points:  40,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -277,22 +277,22 @@ func TestEventProcessorProcessAll_WhenRaceNoIsBeyondConfigured_UsesLastRaceSetti
 		Eligibility: EligibilitySettings{},
 		Races: []RaceSettings{
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {8, 6},
+							PointPolicyFinishPos: {8, 6},
 						},
 					},
 				},
 				PenaltySettings: []PointPenaltySettings{{Arguments: map[PointPolicyType]any{}}},
 			},
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {30, 20},
+							PointPolicyFinishPos: {30, 20},
 						},
 					},
 				},
@@ -346,14 +346,14 @@ func TestEventProcessorProcessAll_WhenRaceNoIsBeyondConfigured_UsesLastRaceSetti
 			classID: 1,
 			points:  30,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   9001,
 			classID: 1,
 			points:  20,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 	}
 
@@ -370,23 +370,23 @@ func TestEventProcessorProcessAll_WhenGridNoIsBeyondConfigured_UsesLastGridAward
 		Eligibility: EligibilitySettings{},
 		Races: []RaceSettings{
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos, PointsPolicyIncidentsExceeded},
+				Policies: []PointPolicyType{PointPolicyFinishPos, PointPolicyIncidentsExceeded},
 				AwardSettings: []RankedPolicySettings{
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {11, 9},
+							PointPolicyFinishPos: {11, 9},
 						},
 					},
 					{
 						Points: map[PointPolicyType][]PointType{
-							PointsPolicyFinishPos: {100, 70},
+							PointPolicyFinishPos: {100, 70},
 						},
 					},
 				},
 				PenaltySettings: []PointPenaltySettings{
 					{
 						Arguments: map[PointPolicyType]any{
-							PointsPolicyIncidentsExceeded: ThresholdPenaltySettings{
+							PointPolicyIncidentsExceeded: ThresholdPenaltySettings{
 								Threshold:  3,
 								PenaltyPct: 0.1,
 							},
@@ -394,7 +394,7 @@ func TestEventProcessorProcessAll_WhenGridNoIsBeyondConfigured_UsesLastGridAward
 					},
 					{
 						Arguments: map[PointPolicyType]any{
-							PointsPolicyIncidentsExceeded: ThresholdPenaltySettings{
+							PointPolicyIncidentsExceeded: ThresholdPenaltySettings{
 								Threshold:  1,
 								PenaltyPct: 0.5,
 							},
@@ -452,21 +452,21 @@ func TestEventProcessorProcessAll_WhenGridNoIsBeyondConfigured_UsesLastGridAward
 			classID: 1,
 			points:  100,
 			msg:     fmt.Sprintf("for pos %d", 1),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   9102,
 			classID: 1,
 			points:  70,
 			msg:     fmt.Sprintf("for pos %d", 2),
-			origin:  PointsPolicyFinishPos,
+			origin:  PointPolicyFinishPos,
 		},
 		workOutput{
 			refID:   9102,
 			classID: 1,
 			points:  -35,
 			msg:     "50% reduction for 3 incidents (limit: 1)",
-			origin:  PointsPolicyIncidentsExceeded,
+			origin:  PointPolicyIncidentsExceeded,
 		},
 	}
 
@@ -480,9 +480,9 @@ func TestEventProcessorProcessAll_ReturnsResolverError(t *testing.T) {
 		Eligibility: EligibilitySettings{},
 		Races: []RaceSettings{
 			{
-				Policies: []PointPolicyType{PointsPolicyFinishPos},
+				Policies: []PointPolicyType{PointPolicyFinishPos},
 				AwardSettings: []RankedPolicySettings{
-					{Points: map[PointPolicyType][]PointType{PointsPolicyFinishPos: {1}}},
+					{Points: map[PointPolicyType][]PointType{PointPolicyFinishPos: {1}}},
 				},
 				PenaltySettings: []PointPenaltySettings{{Arguments: map[PointPolicyType]any{}}},
 			},

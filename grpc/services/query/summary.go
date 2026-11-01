@@ -123,6 +123,7 @@ func (s *service) convertByRequest(
 				BonusPoints:   int32(item.Points.BonusPoints),
 				PenaltyPoints: int32(item.Points.PenaltyPoints),
 				TotalPoints:   int32(item.Points.TotalPoints),
+				PointDetails:  s.createPointDetails(item),
 			}
 		})
 	}
@@ -141,6 +142,30 @@ func (s *service) convertByRequest(
 		return nil
 	default:
 		return nil
+	}
+}
+
+//nolint:whitespace // editor/linter issue
+func (s *service) createPointDetails(
+	item *summary.SummaryEntry,
+) []*commonv1.PointDetail {
+	return []*commonv1.PointDetail{
+		{
+			Type:   commonv1.PointPolicyClass_POINT_POLICY_CLASS_POSITION,
+			Points: int32(item.Points.RawPoints),
+		},
+		{
+			Type:   commonv1.PointPolicyClass_POINT_POLICY_CLASS_BONUS,
+			Points: int32(item.Points.BonusPoints),
+		},
+		{
+			Type:   commonv1.PointPolicyClass_POINT_POLICY_CLASS_RACE_PENALTY,
+			Points: int32(item.Points.RacePenaltyPoints),
+		},
+		{
+			Type:   commonv1.PointPolicyClass_POINT_POLICY_CLASS_STEWARD_PENALTY,
+			Points: int32(item.Points.StewardPenaltyPoints),
+		},
 	}
 }
 

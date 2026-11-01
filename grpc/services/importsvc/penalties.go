@@ -130,21 +130,21 @@ func (s *service) DeletePenalty(
 			return err
 		}
 
-		if entry.SourceType != mytypes.SourceType("penalty_points") {
+		if entry.SourceType != mytypes.SourceType("steward_penalty") {
 			return connect.NewError(connect.CodeFailedPrecondition,
-				fmt.Errorf("booking entry %d is not a penalty entry", penaltyID))
+				fmt.Errorf("booking entry %d is not a steward penalty entry", penaltyID))
 		}
 
 		return s.repo.BookingEntries().DeleteByID(txCtx, penaltyID)
 	}); err != nil {
-		l.Error("failed to delete penalty booking entry", log.ErrorField(err))
+		l.Error("failed to delete steward penalty booking entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
-			codes.Error, "failed to delete penalty booking entry",
+			codes.Error, "failed to delete steward penalty booking entry",
 		)
 		return nil, s.toRPCError(err)
 	}
 
-	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "penalty deleted")
+	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "steward penalty deleted")
 	return connect.NewResponse(&importv1.DeletePenaltyResponse{}), nil
 }
 
@@ -193,7 +193,7 @@ func (s *service) buildPenaltyBookingEntry(
 		DriverID:     resolvedTarget.driverID,
 		TeamID:       resolvedTarget.teamID,
 		CarClassID:   carClassID,
-		SourceType:   omit.From(mytypes.SourceType("penalty_points")),
+		SourceType:   omit.From(mytypes.SourceType("steward_penalty")),
 		Points:       omit.From(penaltyPoints),
 		Description:  omit.From(req.GetReason()),
 		IsManual:     omit.From(true),
@@ -282,6 +282,7 @@ func (s *service) resolvePenaltyTarget(
 			return nil, err
 		}
 		data.eventID = race.EventID
+		data.raceID = omitnull.From(grid.RaceID)
 		data.raceGridID = omitnull.From(raceGridID)
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument,

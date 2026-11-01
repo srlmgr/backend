@@ -214,10 +214,10 @@ func toBookingSourceType(sourceType mytypes.SourceType) commonv1.BookingSourceTy
 		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_INCIDENTS_EXCEEDED
 	case "offtracks_exceeded":
 		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_OFFTRACKS_EXCEEDED
-	case "penalty_points":
-		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_PENALTY_POINTS
 	case "team_contribution":
 		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_TEAM_CONTRIBUTION
+	case "steward_penalty":
+		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_STEWARD_PENALTY
 	default:
 		return commonv1.BookingSourceType_BOOKING_SOURCE_TYPE_UNSPECIFIED
 	}
