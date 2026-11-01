@@ -78,7 +78,10 @@ func (r *bookingEntriesRepository) DeleteByID(ctx context.Context, id int32) err
 	return err
 }
 
-func (r *bookingEntriesRepository) DeleteByTeamID(ctx context.Context, teamID int32) (int64, error) {
+func (r *bookingEntriesRepository) DeleteByTeamID(
+	ctx context.Context,
+	teamID int32,
+) (int64, error) {
 	res, err := models.BookingEntries.Delete(dm.Where(models.BookingEntries.Columns.TeamID.EQ(psql.Arg(teamID)))).
 		Exec(ctx, r.getExecutor(ctx))
 	if err != nil {
