@@ -75,6 +75,7 @@ func (r *cachedTeamsRepository) Create(
 		return nil, err
 	}
 	r.byID.SetAndPublish(ctx, entity.ID, entity, cache.ActionUpdated)
+	r.bySeasonID.DeleteAndPublish(ctx, entity.SeasonID)
 	return entity, nil
 }
 
@@ -88,6 +89,8 @@ func (r *cachedTeamsRepository) Update(
 	if err != nil {
 		return nil, err
 	}
+
+	r.bySeasonID.DeleteAndPublish(ctx, entity.SeasonID)
 	r.byID.DeleteAndPublish(ctx, id)
 	return entity, nil
 }
@@ -98,6 +101,13 @@ func (r *cachedTeamsRepository) DeleteByID(
 ) error {
 	if err := r.TeamsRepository.DeleteByID(ctx, id); err != nil {
 		return err
+	}
+	if t, ok := r.byID.Get(ctx, id); ok {
+		r.bySeasonID.DeleteAndPublish(ctx, t.SeasonID)
+	} else {
+		// if we can't identify the team by ID we flush the entire
+		// season cache to ensure consistency.
+		r.bySeasonID.Flush()
 	}
 	r.byID.DeleteAndPublish(ctx, id)
 	return nil

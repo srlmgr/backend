@@ -128,7 +128,7 @@ func (s *service) UpdateTeam(
 	}), nil
 }
 
-//nolint:whitespace // editor/linter issue
+//nolint:whitespace,funlen // editor/linter issue, funlen accepted
 func (s *service) DeleteTeam(
 	ctx context.Context,
 	req *connect.Request[v1.DeleteTeamRequest]) (
@@ -138,12 +138,28 @@ func (s *service) DeleteTeam(
 	l.Debug("DeleteTeam")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
-		err = s.repo.Teams().TeamDrivers().DeleteByTeamID(
-			ctx,
-			int32(req.Msg.GetTeamId()),
-		)
-		if err != nil {
-			return err
+		if req.Msg.Cascade {
+			_, err = s.repo.BookingEntries().DeleteByTeamID(
+				ctx,
+				int32(req.Msg.GetTeamId()),
+			)
+			if err != nil {
+				return err
+			}
+			_, err = s.repo.ResultEntries().DeleteByTeamID(
+				ctx,
+				int32(req.Msg.GetTeamId()),
+			)
+			if err != nil {
+				return err
+			}
+			err = s.repo.Teams().TeamDrivers().DeleteByTeamID(
+				ctx,
+				int32(req.Msg.GetTeamId()),
+			)
+			if err != nil {
+				return err
+			}
 		}
 		err = s.repo.Teams().Teams().DeleteByID(
 			ctx,

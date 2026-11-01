@@ -35,6 +35,7 @@ type Repository interface {
 	) ([]*models.BookingEntry, error)
 	LoadByRaceID(ctx context.Context, raceID int32) ([]*models.BookingEntry, error)
 	DeleteByID(ctx context.Context, id int32) error
+	DeleteByTeamID(ctx context.Context, teamID int32) (int64, error)
 	DeleteNonManualByEvent(ctx context.Context, eventID int32) error
 	Create(ctx context.Context, input *models.BookingEntrySetter) (*models.BookingEntry, error)
 	CreateMany(
@@ -75,6 +76,18 @@ func (r *bookingEntriesRepository) DeleteByID(ctx context.Context, id int32) err
 	_, err := models.BookingEntries.Delete(dm.Where(models.BookingEntries.Columns.ID.EQ(psql.Arg(id)))).
 		Exec(ctx, r.getExecutor(ctx))
 	return err
+}
+
+func (r *bookingEntriesRepository) DeleteByTeamID(
+	ctx context.Context,
+	teamID int32,
+) (int64, error) {
+	res, err := models.BookingEntries.Delete(dm.Where(models.BookingEntries.Columns.TeamID.EQ(psql.Arg(teamID)))).
+		Exec(ctx, r.getExecutor(ctx))
+	if err != nil {
+		return 0, err
+	}
+	return res, nil
 }
 
 func (r *bookingEntriesRepository) Create(

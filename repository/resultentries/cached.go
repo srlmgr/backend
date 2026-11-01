@@ -57,3 +57,55 @@ func (r *cachedRepository) LoadByRaceGridID(
 	r.byIDType.Set(ctx, searchKey, entries)
 	return entries, nil
 }
+
+//nolint:whitespace // editor/linter issue
+func (r *cachedRepository) DeleteByTeamID(ctx context.Context, teamID int32) (
+	int64, error,
+) {
+	num, err := r.Repository.DeleteByTeamID(ctx, teamID)
+	if num > 0 {
+		// we don't collect the affected events, instead we flush the cache
+		r.byIDType.Flush()
+	}
+	return num, err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *cachedRepository) DeleteByRaceGridID(
+	ctx context.Context,
+	gridID int32,
+) error {
+	err := r.Repository.DeleteByRaceGridID(ctx, gridID)
+	if err == nil {
+		// we don't collect the affected events, instead we flush the cache
+		r.byIDType.Flush()
+	}
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *cachedRepository) DeleteByRaceGridIDs(
+	ctx context.Context,
+	gridIDs []int32,
+) error {
+	err := r.Repository.DeleteByRaceGridIDs(ctx, gridIDs)
+	if err == nil {
+		// we don't collect the affected events, instead we flush the cache
+		r.byIDType.Flush()
+	}
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *cachedRepository) Update(
+	ctx context.Context,
+	id int32,
+	input *models.ResultEntrySetter,
+) (*models.ResultEntry, error) {
+	entity, err := r.Repository.Update(ctx, id, input)
+	if err == nil {
+		// we don't collect the affected events, instead we flush the cache
+		r.byIDType.Flush()
+	}
+	return entity, err
+}
