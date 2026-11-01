@@ -123,6 +123,22 @@ func (r *cachedRepository) DeleteByID(ctx context.Context, id int32) error {
 }
 
 //nolint:whitespace // editor/linter issue
+func (r *cachedRepository) DeleteByTeamID(ctx context.Context, teamID int32) (
+	int64, error,
+) {
+	var err error
+	var num int64
+	if num, err = r.Repository.DeleteByTeamID(ctx, teamID); err != nil {
+		return 0, err
+	}
+	if num > 0 {
+		// we don't collect the affected events, instead we flush the cache
+		r.byIDType.Flush()
+	}
+	return num, nil
+}
+
+//nolint:whitespace // editor/linter issue
 func (r *cachedRepository) DeleteNonManualByEvent(
 	ctx context.Context, eventID int32,
 ) error {
