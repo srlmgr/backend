@@ -9,7 +9,7 @@ require (
 	connectrpc.com/grpchealth v1.5.0
 	connectrpc.com/grpcreflect v1.3.1
 	connectrpc.com/otelconnect v0.12.0
-	github.com/a-h/templ v0.3.1070
+	github.com/a-h/templ v0.3.1100
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/dgraph-io/badger/v4 v4.9.6
@@ -22,7 +22,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jaswdr/faker/v2 v2.10.0
 	github.com/lib/pq v1.12.3
-	github.com/open-policy-agent/opa v1.21.3
+	github.com/open-policy-agent/opa v1.21.4
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.53.0
 	github.com/shopspring/decimal v1.6.0
@@ -52,7 +52,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.37.0
-	google.golang.org/grpc v1.84.0
+	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/zapfilter v1.7.0
@@ -65,7 +65,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/andybalholm/brotli v1.2.6 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
