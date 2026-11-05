@@ -3,11 +3,10 @@ package importsvc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/samber/lo"
@@ -26,16 +25,12 @@ type (
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) CleanupProcessingData(
 	ctx context.Context,
-	req *connect.Request[importv1.CleanupProcessingDataRequest]) (
-	*connect.Response[importv1.CleanupProcessingDataResponse], error,
-) {
+	req *importv1.CleanupProcessingDataRequest,
+) (*importv1.CleanupProcessingDataResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CleanupProcessingData")
 
-	var msg *importv1.CleanupProcessingDataRequest
-	if req != nil {
-		msg = req.Msg
-	}
+	msg := req
 
 	var cleanup cleanupFunc
 	var event *models.Event
@@ -45,12 +40,12 @@ func (s *service) CleanupProcessingData(
 		eventID := int32(msg.CleanupTarget.GetEventId())
 		if eventID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target event_id must not be zero"))
+				"target event_id must not be zero")
 		}
 		event = s.resolveEventByID(eventID)
 		if event == nil {
 			return nil, connect.NewError(connect.CodeNotFound,
-				errors.New("event not found"))
+				"event not found")
 		}
 		cleanup = s.cleanupByEvent(eventID, msg.IncludeManualEdits)
 
@@ -58,12 +53,12 @@ func (s *service) CleanupProcessingData(
 		raceID := int32(msg.CleanupTarget.GetRaceId())
 		if raceID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target race_id must not be zero"))
+				"target race_id must not be zero")
 		}
 		event = s.resolveEventByRaceID(raceID)
 		if event == nil {
 			return nil, connect.NewError(connect.CodeNotFound,
-				errors.New("event not found"))
+				"event not found")
 		}
 		cleanup = s.cleanupByRace(raceID, msg.IncludeManualEdits)
 
@@ -71,18 +66,18 @@ func (s *service) CleanupProcessingData(
 		raceGridID := int32(msg.CleanupTarget.GetRaceGridId())
 		if raceGridID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target race_grid_id must not be zero"))
+				"target race_grid_id must not be zero")
 		}
 		event = s.resolveEventByGridID(raceGridID)
 		if event == nil {
 			return nil, connect.NewError(connect.CodeNotFound,
-				errors.New("event not found"))
+				"event not found")
 		}
 		cleanup = s.cleanupByGrid(raceGridID, msg.IncludeManualEdits)
 
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target scope event_id, race_id, or race_grid_id is required"))
+			"target scope event_id, race_id, or race_grid_id is required")
 	}
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
@@ -121,7 +116,7 @@ func (s *service) CleanupProcessingData(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "cleanup processing data completed")
-	return connect.NewResponse(&importv1.CleanupProcessingDataResponse{}), nil
+	return &importv1.CleanupProcessingDataResponse{}, nil
 }
 
 func (s *service) resolveEventByID(eventID int32) *models.Event {

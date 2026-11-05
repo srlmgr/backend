@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -20,8 +19,8 @@ import (
 //nolint:whitespace,lll // editor/linter issue, readability
 func (s *service) ListCarManufacturers(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarManufacturersRequest],
-) (*connect.Response[queryv1.ListCarManufacturersResponse], error) {
+	req *queryv1.ListCarManufacturersRequest,
+) (*queryv1.ListCarManufacturersResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListCarManufacturers")
 
@@ -29,7 +28,7 @@ func (s *service) ListCarManufacturers(
 	if err != nil {
 		l.Error("failed to load car manufacturers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car manufacturers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.CarManufacturer, 0, len(manufacturers))
@@ -40,7 +39,7 @@ func (s *service) ListCarManufacturers(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car manufacturers loaded")
-	return connect.NewResponse(&queryv1.ListCarManufacturersResponse{Items: items}), nil
+	return &queryv1.ListCarManufacturersResponse{Items: items}, nil
 }
 
 // GetCarManufacturer returns a car manufacturer by ID.
@@ -48,22 +47,22 @@ func (s *service) ListCarManufacturers(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetCarManufacturer(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetCarManufacturerRequest],
-) (*connect.Response[queryv1.GetCarManufacturerResponse], error) {
+	req *queryv1.GetCarManufacturerRequest,
+) (*queryv1.GetCarManufacturerResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetCarManufacturer", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetCarManufacturer", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Cars().CarManufacturers().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Cars().CarManufacturers().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load car manufacturer", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car manufacturer")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car manufacturer loaded")
-	return connect.NewResponse(&queryv1.GetCarManufacturerResponse{
+	return &queryv1.GetCarManufacturerResponse{
 		CarManufacturer: s.conversion.CarManufacturerToCarManufacturer(item),
-	}), nil
+	}, nil
 }
 
 // ListCarModels returns a list of car model v2 records,
@@ -72,10 +71,10 @@ func (s *service) GetCarManufacturer(
 //nolint:whitespace // editor/linter issue
 func (s *service) ListCarModels(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarModelsRequest],
-) (*connect.Response[queryv1.ListCarModelsResponse], error) {
+	req *queryv1.ListCarModelsRequest,
+) (*queryv1.ListCarModelsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListCarModels", log.Uint32("manufacturer_id", req.Msg.GetManufacturerId()))
+	l.Debug("ListCarModels", log.Uint32("manufacturer_id", req.GetManufacturerId()))
 
 	modelsRepo := s.repo.Cars().CarModels()
 
@@ -84,7 +83,7 @@ func (s *service) ListCarModels(
 		err   error
 	)
 
-	if manufacturerID := int32(req.Msg.GetManufacturerId()); manufacturerID != 0 {
+	if manufacturerID := int32(req.GetManufacturerId()); manufacturerID != 0 {
 		items, err = modelsRepo.LoadByManufacturerID(ctx, manufacturerID)
 	} else {
 		items, err = modelsRepo.LoadAll(ctx)
@@ -95,7 +94,7 @@ func (s *service) ListCarModels(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load car model v2 records",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	out := make([]*commonv1.CarModel, 0, len(items))
@@ -106,7 +105,7 @@ func (s *service) ListCarModels(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 records loaded")
-	return connect.NewResponse(&queryv1.ListCarModelsResponse{Items: out}), nil
+	return &queryv1.ListCarModelsResponse{Items: out}, nil
 }
 
 // GetCarModel returns a car model v2 by ID.
@@ -114,22 +113,22 @@ func (s *service) ListCarModels(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetCarModel(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetCarModelRequest],
-) (*connect.Response[queryv1.GetCarModelResponse], error) {
+	req *queryv1.GetCarModelRequest,
+) (*queryv1.GetCarModelResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetCarModel", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetCarModel", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Cars().CarModels().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Cars().CarModels().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load car model v2", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car model v2")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 loaded")
-	return connect.NewResponse(&queryv1.GetCarModelResponse{
+	return &queryv1.GetCarModelResponse{
 		CarModel: s.conversion.CarModelToCarModel(item),
-	}), nil
+	}, nil
 }
 
 // ListCarModelVariants returns a list of car model variants,
@@ -138,10 +137,10 @@ func (s *service) GetCarModel(
 //nolint:whitespace,lll // editor/linter issue
 func (s *service) ListCarModelVariants(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarModelVariantsRequest],
-) (*connect.Response[queryv1.ListCarModelVariantsResponse], error) {
+	req *queryv1.ListCarModelVariantsRequest,
+) (*queryv1.ListCarModelVariantsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListCarModelVariants", log.Uint32("model_id", req.Msg.GetModelId()))
+	l.Debug("ListCarModelVariants", log.Uint32("model_id", req.GetModelId()))
 
 	variantsRepo := s.repo.Cars().CarModelVariants()
 
@@ -150,7 +149,7 @@ func (s *service) ListCarModelVariants(
 		err   error
 	)
 
-	if modelID := int32(req.Msg.GetModelId()); modelID != 0 {
+	if modelID := int32(req.GetModelId()); modelID != 0 {
 		items, err = variantsRepo.LoadByModelID(ctx, modelID)
 	} else {
 		items, err = variantsRepo.LoadAll(ctx)
@@ -161,7 +160,7 @@ func (s *service) ListCarModelVariants(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load car model variants",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	out := make([]*commonv1.CarModelVariant, 0, len(items))
@@ -172,7 +171,7 @@ func (s *service) ListCarModelVariants(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variants loaded")
-	return connect.NewResponse(&queryv1.ListCarModelVariantsResponse{Items: out}), nil
+	return &queryv1.ListCarModelVariantsResponse{Items: out}, nil
 }
 
 // GetCarModelVariant returns a car model variant by ID.
@@ -180,35 +179,35 @@ func (s *service) ListCarModelVariants(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetCarModelVariant(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetCarModelVariantRequest],
-) (*connect.Response[queryv1.GetCarModelVariantResponse], error) {
+	req *queryv1.GetCarModelVariantRequest,
+) (*queryv1.GetCarModelVariantResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetCarModelVariant", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetCarModelVariant", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Cars().CarModelVariants().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Cars().CarModelVariants().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load car model variant", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car model variant")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	aliases, aliasErr := s.repo.Cars().SimulationCarAliases().LoadByVariantID(
 		ctx,
-		int32(req.Msg.GetId()),
+		int32(req.GetId()),
 	)
 	if aliasErr != nil {
 		l.Error("failed to load simulation car aliases", log.ErrorField(aliasErr))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load simulation car aliases",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
+		return nil, s.conversion.ToConnectError(aliasErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variant loaded")
-	return connect.NewResponse(&queryv1.GetCarModelVariantResponse{
+	return &queryv1.GetCarModelVariantResponse{
 		CarModelVariant:   s.conversion.CarModelVariantToCarModelVariant(item),
 		SimulationAliases: s.conversion.SimulationCarAliasToProto(aliases),
-	}), nil
+	}, nil
 }
 
 // ListCarClasses returns a list of all car classes.
@@ -216,8 +215,8 @@ func (s *service) GetCarModelVariant(
 //nolint:whitespace // editor/linter issue
 func (s *service) ListCarClasses(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarClassesRequest],
-) (*connect.Response[queryv1.ListCarClassesResponse], error) {
+	req *queryv1.ListCarClassesRequest,
+) (*queryv1.ListCarClassesResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListCarClasses")
 
@@ -225,7 +224,7 @@ func (s *service) ListCarClasses(
 	if err != nil {
 		l.Error("failed to load car classes", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car classes")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.CarClass, 0, len(carClasses))
@@ -236,7 +235,7 @@ func (s *service) ListCarClasses(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car classes loaded")
-	return connect.NewResponse(&queryv1.ListCarClassesResponse{Items: items}), nil
+	return &queryv1.ListCarClassesResponse{Items: items}, nil
 }
 
 // GetCarClass returns a car class by ID.
@@ -244,22 +243,22 @@ func (s *service) ListCarClasses(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetCarClass(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetCarClassRequest],
-) (*connect.Response[queryv1.GetCarClassResponse], error) {
+	req *queryv1.GetCarClassRequest,
+) (*queryv1.GetCarClassResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetCarClass", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetCarClass", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Cars().CarClasses().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Cars().CarClasses().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load car class", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car class")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class loaded")
-	return connect.NewResponse(&queryv1.GetCarClassResponse{
+	return &queryv1.GetCarClassResponse{
 		CarClass: s.conversion.CarClassToCarClass(item),
-	}), nil
+	}, nil
 }
 
 // ListCarClassModelVariants returns a list of car model variants
@@ -268,31 +267,31 @@ func (s *service) GetCarClass(
 //nolint:whitespace // editor/linter issue
 func (s *service) ListCarClassModelVariants(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListCarClassModelVariantsRequest],
-) (*connect.Response[queryv1.ListCarClassModelVariantsResponse], error) {
+	req *queryv1.ListCarClassModelVariantsRequest,
+) (*queryv1.ListCarClassModelVariantsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListCarClassModelVariants", log.Uint32("classID", req.Msg.GetClassId()))
+	l.Debug("ListCarClassModelVariants", log.Uint32("classID", req.GetClassId()))
 
 	carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
-		ctx, int32(req.Msg.GetClassId()),
+		ctx, int32(req.GetClassId()),
 	)
 	if err != nil {
 		l.Error("failed to load car model variants for car class", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load car model variants for car class",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(
 		codes.Ok, "car model variants loaded for car class",
 	)
-	return connect.NewResponse(&queryv1.ListCarClassModelVariantsResponse{
+	return &queryv1.ListCarClassModelVariantsResponse{
 		Items: lo.Map(
 			carModelVariants,
 			func(m *models.CarModelVariant, _ int) *commonv1.CarModelVariant {
 				return s.conversion.CarModelVariantToCarModelVariant(m)
 			},
 		),
-	}), nil
+	}, nil
 }

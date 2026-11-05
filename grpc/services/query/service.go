@@ -1,7 +1,7 @@
 package query
 
 import (
-	queryv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/query/v1/queryv1connect"
+	queryv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/query/v1/queryv1connect"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/srlmgr/backend/grpc/services/conversion"

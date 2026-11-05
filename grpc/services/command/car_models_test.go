@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/authn"
 	rootrepo "github.com/srlmgr/backend/repository"
@@ -42,25 +42,25 @@ func TestCreateCarModelSuccess(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 	mfID := seedCarModelFixtures(t, repo)
 
-	resp, err := svc.CreateCarModel(ctx, connect.NewRequest(&v1.CreateCarModelRequest{
+	resp, err := svc.CreateCarModel(ctx, &v1.CreateCarModelRequest{
 		ManufacturerId: uint32(mfID),
 		Name:           "GT3",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetCarModel().GetName() != "GT3" {
-		t.Fatalf("unexpected name: %q", resp.Msg.GetCarModel().GetName())
+	if resp.GetCarModel().GetName() != "GT3" {
+		t.Fatalf("unexpected name: %q", resp.GetCarModel().GetName())
 	}
-	if resp.Msg.GetCarModel().GetManufacturerId() != uint32(mfID) {
+	if resp.GetCarModel().GetManufacturerId() != uint32(mfID) {
 		t.Fatalf(
 			"unexpected manufacturer_id: got %d want %d",
-			resp.Msg.GetCarModel().GetManufacturerId(),
+			resp.GetCarModel().GetManufacturerId(),
 			mfID,
 		)
 	}
 
-	id := int32(resp.Msg.GetCarModel().GetId())
+	id := int32(resp.GetCarModel().GetId())
 	stored, err := repo.Cars().CarModels().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created car model v2: %v", err)
@@ -81,10 +81,10 @@ func TestCreateCarModelFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.CreateCarModel(
 		context.Background(),
-		connect.NewRequest(&v1.CreateCarModelRequest{
+		&v1.CreateCarModelRequest{
 			ManufacturerId: uint32(mfID),
 			Name:           "GT4",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -105,10 +105,10 @@ func TestCreateCarModelFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateCarModel(
 		context.Background(),
-		connect.NewRequest(&v1.CreateCarModelRequest{
+		&v1.CreateCarModelRequest{
 			ManufacturerId: 1,
 			Name:           "LMP2",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -132,15 +132,15 @@ func TestUpdateCarModelSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial car model v2: %v", err)
 	}
 
-	resp, err := svc.UpdateCarModel(ctx, connect.NewRequest(&v1.UpdateCarModelRequest{
+	resp, err := svc.UpdateCarModel(ctx, &v1.UpdateCarModelRequest{
 		CarModelId: uint32(initial.ID),
 		Name:       "GTE Pro",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetCarModel().GetName() != "GTE Pro" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetCarModel().GetName())
+	if resp.GetCarModel().GetName() != "GTE Pro" {
+		t.Fatalf("unexpected updated name: %q", resp.GetCarModel().GetName())
 	}
 
 	after, err := repo.Cars().CarModels().LoadByID(context.Background(), initial.ID)
@@ -164,10 +164,10 @@ func TestUpdateCarModelFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateCarModel(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateCarModelRequest{
+		&v1.UpdateCarModelRequest{
 			CarModelId: 999,
 			Name:       "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -185,10 +185,10 @@ func TestUpdateCarModelFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.UpdateCarModel(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateCarModelRequest{
+		&v1.UpdateCarModelRequest{
 			CarModelId: uint32(second.ID),
 			Name:       "GT3",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -217,14 +217,14 @@ func TestDeleteCarModelSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteCarModel(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteCarModelRequest{
+		&v1.DeleteCarModelRequest{
 			CarModelId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 

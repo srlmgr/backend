@@ -7,7 +7,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -20,17 +19,17 @@ import (
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) ListSeasonDrivers(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonDriversRequest],
-) (*connect.Response[queryv1.ListSeasonDriversResponse], error) {
+	req *queryv1.ListSeasonDriversRequest,
+) (*queryv1.ListSeasonDriversResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	seasonID := int32(req.Msg.GetSeasonId())
+	seasonID := int32(req.GetSeasonId())
 	l.Debug("ListSeasonDrivers", log.Int32("season_id", seasonID))
 
 	seasonDrivers, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(ctx, seasonID)
 	if err != nil {
 		l.Error("failed to load season drivers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season drivers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	sort.Slice(seasonDrivers, func(i, j int) bool {
@@ -50,10 +49,8 @@ func (s *service) ListSeasonDrivers(
 	if loadDriversErr != nil {
 		l.Error("failed to load drivers", log.ErrorField(loadDriversErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load drivers")
-		return nil, connect.NewError(
-			s.conversion.MapErrorToRPCCode(loadDriversErr),
-			loadDriversErr,
-		)
+		return nil, s.conversion.ToConnectError(loadDriversErr)
+
 	}
 
 	carData, loadCarDataErr := s.loadCarDataForSeasonDriversWithVariants(
@@ -62,20 +59,18 @@ func (s *service) ListSeasonDrivers(
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")
-		return nil, connect.NewError(
-			s.conversion.MapErrorToRPCCode(loadCarDataErr),
-			loadCarDataErr,
-		)
+		return nil, s.conversion.ToConnectError(loadCarDataErr)
+
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season drivers loaded")
-	return connect.NewResponse(&queryv1.ListSeasonDriversResponse{
+	return &queryv1.ListSeasonDriversResponse{
 		Items: []*queryv1.SeasonDriverContainer{{
 			SeasonDrivers: seasonDriverProto,
 			Drivers:       toDriverProto(s.conversion, driverItems),
 			CarData:       carData,
 		}},
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue

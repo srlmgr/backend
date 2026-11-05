@@ -5,7 +5,6 @@ import (
 	"context"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -18,10 +17,10 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListTrackLayouts(
 	ctx context.Context,
-	req *connect.Request[queryv1.FrontendServiceListTrackLayoutsRequest],
-) (*connect.Response[queryv1.FrontendServiceListTrackLayoutsResponse], error) {
+	req *queryv1.FrontendServiceListTrackLayoutsRequest,
+) (*queryv1.FrontendServiceListTrackLayoutsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	simulationID := int32(req.Msg.GetSimulationId())
+	simulationID := int32(req.GetSimulationId())
 	l.Debug("ListTrackLayouts", log.Int32("simulation_id", simulationID))
 
 	queries := s.repo.Queries().QueryTrackLayouts()
@@ -44,13 +43,13 @@ func (s *service) ListTrackLayouts(
 	if err != nil {
 		l.Error("failed to load track layouts", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track layouts")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layouts loaded")
-	return connect.NewResponse(&queryv1.FrontendServiceListTrackLayoutsResponse{
+	return &queryv1.FrontendServiceListTrackLayoutsResponse{
 		Items: trackLayouts,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace //  editor/linter issue

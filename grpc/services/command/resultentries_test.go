@@ -9,7 +9,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/srlmgr/backend/authn"
@@ -134,38 +134,38 @@ func TestCreateResultEntrySuccess(t *testing.T) {
 	driver := seedDriver(t, repo, "ext-001", "Alex Tester")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
+	resp, err := svc.CreateResultEntry(ctx, &v1.CreateResultEntryRequest{
 		RaceGridId:        uint32(grid.ID),
 		DriverId:          uint32(driver.ID),
 		FinishingPosition: 2,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetResultEntry() == nil {
+	if resp.GetResultEntry() == nil {
 		t.Fatal("expected non-nil result entry in response")
 	}
-	if resp.Msg.GetResultEntry().GetRaceGridId() != uint32(grid.ID) {
+	if resp.GetResultEntry().GetRaceGridId() != uint32(grid.ID) {
 		t.Fatalf(
 			"unexpected race_grid_id: got %d want %d",
-			resp.Msg.GetResultEntry().GetRaceGridId(),
+			resp.GetResultEntry().GetRaceGridId(),
 			uint32(grid.ID),
 		)
 	}
-	if resp.Msg.GetResultEntry().GetFinishingPosition() != 2 {
+	if resp.GetResultEntry().GetFinishingPosition() != 2 {
 		t.Fatalf(
 			"unexpected finishing_position: got %d want 2",
-			resp.Msg.GetResultEntry().GetFinishingPosition(),
+			resp.GetResultEntry().GetFinishingPosition(),
 		)
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL {
-		t.Fatalf("unexpected state: got %v", resp.Msg.GetResultEntry().GetState())
+	if resp.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL {
+		t.Fatalf("unexpected state: got %v", resp.GetResultEntry().GetState())
 	}
 
 	// Verify the created entry has the correct user set.
-	id := int32(resp.Msg.GetResultEntry().GetId())
+	id := int32(resp.GetResultEntry().GetId())
 	stored, loadErr := repo.ResultEntries().LoadByID(context.Background(), id)
 	if loadErr != nil {
 		t.Fatalf("failed to load created result entry: %v", loadErr)
@@ -195,13 +195,13 @@ func TestCreateResultEntryFailureDuplicateRaceDriver(t *testing.T) {
 
 	_, err := svc.CreateResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.CreateResultEntryRequest{
+		&v1.CreateResultEntryRequest{
 			RaceGridId:        1,
 			DriverId:          1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
 			State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -228,24 +228,24 @@ func TestCreateResultEntrySuccessDifferentDriver(t *testing.T) {
 	driver2 := seedDriver(t, repo, "ext-002", "Bob Racer")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	_, err := svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
+	_, err := svc.CreateResultEntry(ctx, &v1.CreateResultEntryRequest{
 		RaceGridId:        uint32(grid.ID),
 		DriverId:          uint32(driver1.ID),
 		FinishingPosition: 1,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error creating first entry: %v", err)
 	}
 
-	_, err = svc.CreateResultEntry(ctx, connect.NewRequest(&v1.CreateResultEntryRequest{
+	_, err = svc.CreateResultEntry(ctx, &v1.CreateResultEntryRequest{
 		RaceGridId:        uint32(grid.ID),
 		DriverId:          uint32(driver2.ID),
 		FinishingPosition: 2,
 		CompletedLaps:     20,
 		State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error creating second entry with different driver: %v", err)
 	}
@@ -262,12 +262,12 @@ func TestCreateResultEntryFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.CreateResultEntryRequest{
+		&v1.CreateResultEntryRequest{
 			RaceGridId:        1,
 			FinishingPosition: 1,
 			CompletedLaps:     20,
 			State:             commonv1.ResultEntryState_RESULT_ENTRY_STATE_NORMAL,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -303,22 +303,22 @@ func TestUpdateResultEntrySuccess(t *testing.T) {
 	// Sleep briefly so UpdatedAt can advance.
 	time.Sleep(10 * time.Millisecond)
 
-	resp, err := svc.UpdateResultEntry(ctx, connect.NewRequest(&v1.UpdateResultEntryRequest{
+	resp, err := svc.UpdateResultEntry(ctx, &v1.UpdateResultEntryRequest{
 		ResultEntryId: uint32(initial.ID),
 		State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
 		AdminNotes:    "disqualified for contact",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetResultEntry() == nil {
+	if resp.GetResultEntry() == nil {
 		t.Fatal("expected non-nil result entry in response")
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
-		t.Fatalf("unexpected state: got %v", resp.Msg.GetResultEntry().GetState())
+	if resp.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
+		t.Fatalf("unexpected state: got %v", resp.GetResultEntry().GetState())
 	}
-	if resp.Msg.GetResultEntry().GetAdminNotes() != "disqualified for contact" {
-		t.Fatalf("unexpected admin_notes: got %q", resp.Msg.GetResultEntry().GetAdminNotes())
+	if resp.GetResultEntry().GetAdminNotes() != "disqualified for contact" {
+		t.Fatalf("unexpected admin_notes: got %q", resp.GetResultEntry().GetAdminNotes())
 	}
 
 	after, err := repo.ResultEntries().LoadByID(context.Background(), initial.ID)
@@ -349,10 +349,10 @@ func TestUpdateResultEntryFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateResultEntryRequest{
+		&v1.UpdateResultEntryRequest{
 			ResultEntryId: 999999,
 			State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -378,16 +378,16 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	_ = batch
 	resp, err := svc.UpdateResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateResultEntryRequest{
+		&v1.UpdateResultEntryRequest{
 			ResultEntryId: uint32(entry.ID),
 			State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
-		t.Fatalf("expected dq state, got: %v", resp.Msg.GetResultEntry().GetState())
+	if resp.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ {
+		t.Fatalf("expected dq state, got: %v", resp.GetResultEntry().GetState())
 	}
 
 	stored, loadErr := repo.ResultEntries().LoadByID(context.Background(), entry.ID)
@@ -415,14 +415,14 @@ func TestDeleteResultEntrySuccess(t *testing.T) {
 	_ = batch
 	resp, err := svc.DeleteResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteResultEntryRequest{
+		&v1.DeleteResultEntryRequest{
 			ResultEntryId: uint32(entry.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -443,9 +443,9 @@ func TestDeleteResultEntryFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteResultEntry(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteResultEntryRequest{
+		&v1.DeleteResultEntryRequest{
 			ResultEntryId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

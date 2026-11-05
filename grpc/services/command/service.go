@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 
-	commandv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/command/v1/commandv1connect"
+	commandv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/command/v1/commandv1connect"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/grpc/services/conversion"

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -84,21 +84,20 @@ func (b eventSetterBuilder) Build(msg eventRequest) (*eventSetter, error) {
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateEvent(
 	ctx context.Context,
-	req *connect.Request[v1.CreateEventRequest]) (
-	*connect.Response[v1.CreateEventResponse], error,
-) {
+	req *v1.CreateEventRequest,
+) (*v1.CreateEventResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateEvent")
-	setter, err := (eventSetterBuilder{}).Build(req.Msg)
+	setter, err := (eventSetterBuilder{}).Build(req)
 	if err != nil {
 		l.Error("invalid event status fields", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid event status fields")
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	// convenience: if point system ID is not set, use season's default point system ID
 	if setter.PointSystemID.IsZero() {
-		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.Msg.GetSeasonId()))
+		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.GetSeasonId()))
 		if sErr == nil {
 			setter.PointSystemID = omit.From(season.PointSystemID)
 		}
@@ -113,33 +112,32 @@ func (s *service) CreateEvent(
 	}); txErr != nil {
 		l.Error("failed to create event", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "event created")
-	return connect.NewResponse(&v1.CreateEventResponse{
+	return &v1.CreateEventResponse{
 		Event: s.conversion.EventToEvent(newEvent),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateEvent(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateEventRequest]) (
-	*connect.Response[v1.UpdateEventResponse], error,
-) {
+	req *v1.UpdateEventRequest,
+) (*v1.UpdateEventResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateEvent")
-	setter, err := (eventSetterBuilder{}).Build(req.Msg)
+	setter, err := (eventSetterBuilder{}).Build(req)
 	if err != nil {
 		l.Error("invalid event status fields", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid event status fields")
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	// convenience: if point system ID is not set, use season's default point system ID
 	if setter.PointSystemID.IsZero() {
-		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.Msg.GetSeasonId()))
+		season, sErr := s.repo.Seasons().LoadByID(ctx, int32(req.GetSeasonId()))
 		if sErr == nil {
 			setter.PointSystemID = omit.From(season.PointSystemID)
 		}
@@ -150,51 +148,50 @@ func (s *service) UpdateEvent(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newEvent, err = s.repo.Events().Update(
 			ctx,
-			int32(req.Msg.GetEventId()),
+			int32(req.GetEventId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update event", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "event updated")
-	return connect.NewResponse(&v1.UpdateEventResponse{
+	return &v1.UpdateEventResponse{
 		Event: s.conversion.EventToEvent(newEvent),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteEvent(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteEventRequest]) (
-	*connect.Response[v1.DeleteEventResponse], error,
-) {
+	req *v1.DeleteEventRequest,
+) (*v1.DeleteEventResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteEvent")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if relErr := helper.DeleteEventRelated(
-			ctx, int32(req.Msg.GetEventId()),
+			ctx, int32(req.GetEventId()),
 		); relErr != nil {
 			return relErr
 		}
 
 		err = s.repo.Events().DeleteByID(
 			ctx,
-			int32(req.Msg.GetEventId()),
+			int32(req.GetEventId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete event", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "event deleted")
-	return connect.NewResponse(&v1.DeleteEventResponse{
+	return &v1.DeleteEventResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

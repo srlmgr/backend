@@ -8,7 +8,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/authn"
@@ -108,7 +108,7 @@ func TestCreateSeasonSuccess(t *testing.T) {
 	startsAt := timestamppb.New(time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC))
 	endsAt := timestamppb.New(time.Date(2024, 11, 30, 0, 0, 0, 0, time.UTC))
 
-	resp, err := svc.CreateSeason(ctx, connect.NewRequest(&v1.CreateSeasonRequest{
+	resp, err := svc.CreateSeason(ctx, &v1.CreateSeasonRequest{
 		SeriesId:      uint32(series.ID),
 		Name:          "2024 GT3 Season",
 		PointSystemId: uint32(ps.ID),
@@ -116,38 +116,38 @@ func TestCreateSeasonSuccess(t *testing.T) {
 		Status:        "active",
 		StartsAt:      startsAt,
 		EndsAt:        endsAt,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeason().GetName() != "2024 GT3 Season" {
-		t.Fatalf("unexpected season name: %q", resp.Msg.GetSeason().GetName())
+	if resp.GetSeason().GetName() != "2024 GT3 Season" {
+		t.Fatalf("unexpected season name: %q", resp.GetSeason().GetName())
 	}
-	if resp.Msg.GetSeason().GetSeriesId() != uint32(series.ID) {
+	if resp.GetSeason().GetSeriesId() != uint32(series.ID) {
 		t.Fatalf(
 			"unexpected series id: got %d want %d",
-			resp.Msg.GetSeason().GetSeriesId(),
+			resp.GetSeason().GetSeriesId(),
 			series.ID,
 		)
 	}
-	if resp.Msg.GetSeason().GetPointSystemId() != uint32(ps.ID) {
+	if resp.GetSeason().GetPointSystemId() != uint32(ps.ID) {
 		t.Fatalf(
 			"unexpected point_system id: got %d want %d",
-			resp.Msg.GetSeason().GetPointSystemId(),
+			resp.GetSeason().GetPointSystemId(),
 			ps.ID,
 		)
 	}
-	if got := resp.Msg.GetSeason().
+	if got := resp.GetSeason().
 		GetStartsAt(); got == nil ||
 		!got.AsTime().Equal(startsAt.AsTime()) {
 
 		t.Fatalf("unexpected starts_at response value: %+v", got)
 	}
-	if got := resp.Msg.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
+	if got := resp.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
 		t.Fatalf("unexpected ends_at response value: %+v", got)
 	}
 
-	id := int32(resp.Msg.GetSeason().GetId())
+	id := int32(resp.GetSeason().GetId())
 	stored, err := repo.Seasons().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created season: %v", err)
@@ -186,11 +186,11 @@ func TestCreateSeasonFailureDuplicateNameSameSeries(t *testing.T) {
 
 	_, err := svc.CreateSeason(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeasonRequest{
+		&v1.CreateSeasonRequest{
 			SeriesId:      uint32(series.ID),
 			Name:          "Season 1",
 			PointSystemId: uint32(ps.ID),
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -210,19 +210,19 @@ func TestCreateSeasonSuccessDuplicateNameDifferentSeries(t *testing.T) {
 
 	resp, err := svc.CreateSeason(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeasonRequest{
+		&v1.CreateSeasonRequest{
 			SeriesId:      uint32(secondSeries.ID),
 			Name:          "Season 1",
 			PointSystemId: uint32(ps.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeason().GetSeriesId() != uint32(secondSeries.ID) {
+	if resp.GetSeason().GetSeriesId() != uint32(secondSeries.ID) {
 		t.Fatalf(
 			"unexpected series id: got %d want %d",
-			resp.Msg.GetSeason().GetSeriesId(),
+			resp.GetSeason().GetSeriesId(),
 			secondSeries.ID,
 		)
 	}
@@ -239,11 +239,11 @@ func TestCreateSeasonFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateSeason(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeasonRequest{
+		&v1.CreateSeasonRequest{
 			SeriesId:      1,
 			Name:          "Season X",
 			PointSystemId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -271,27 +271,27 @@ func TestUpdateSeasonSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial season: %v", err)
 	}
 
-	resp, err := svc.UpdateSeason(ctx, connect.NewRequest(&v1.UpdateSeasonRequest{
+	resp, err := svc.UpdateSeason(ctx, &v1.UpdateSeasonRequest{
 		SeasonId:      uint32(initial.ID),
 		Name:          "2023 LMP2 Updated",
 		PointSystemId: uint32(ps.ID),
 		Status:        "completed",
 		StartsAt:      startsAt,
 		EndsAt:        endsAt,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeason().GetName() != "2023 LMP2 Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetSeason().GetName())
+	if resp.GetSeason().GetName() != "2023 LMP2 Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetSeason().GetName())
 	}
-	if got := resp.Msg.GetSeason().
+	if got := resp.GetSeason().
 		GetStartsAt(); got == nil ||
 		!got.AsTime().Equal(startsAt.AsTime()) {
 
 		t.Fatalf("unexpected updated starts_at response value: %+v", got)
 	}
-	if got := resp.Msg.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
+	if got := resp.GetSeason().GetEndsAt(); got == nil || !got.AsTime().Equal(endsAt.AsTime()) {
 		t.Fatalf("unexpected updated ends_at response value: %+v", got)
 	}
 
@@ -325,10 +325,10 @@ func TestUpdateSeasonFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateSeason(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSeasonRequest{
+		&v1.UpdateSeasonRequest{
 			SeasonId: 999,
 			Name:     "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -348,10 +348,10 @@ func TestUpdateSeasonFailureDuplicateNameSameSeries(t *testing.T) {
 
 	_, err := svc.UpdateSeason(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSeasonRequest{
+		&v1.UpdateSeasonRequest{
 			SeasonId: uint32(second.ID),
 			Name:     first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -382,14 +382,14 @@ func TestDeleteSeasonSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteSeason(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeasonRequest{
+		&v1.DeleteSeasonRequest{
 			SeasonId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -410,9 +410,9 @@ func TestDeleteSeasonFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteSeason(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeasonRequest{
+		&v1.DeleteSeasonRequest{
 			SeasonId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -436,10 +436,10 @@ func TestSetSeasonCarClassesSuccess(t *testing.T) {
 
 	resp, err := svc.SetSeasonCarClasses(
 		context.Background(),
-		connect.NewRequest(&v1.SetSeasonCarClassesRequest{
+		&v1.SetSeasonCarClassesRequest{
 			SeasonId:    uint32(season.ID),
 			CarClassIds: []uint32{uint32(cc.ID)},
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -460,10 +460,10 @@ func TestSetSeasonCarClassesFailureTransactionError(t *testing.T) {
 
 	_, err := svc.SetSeasonCarClasses(
 		context.Background(),
-		connect.NewRequest(&v1.SetSeasonCarClassesRequest{
+		&v1.SetSeasonCarClassesRequest{
 			SeasonId:    1,
 			CarClassIds: []uint32{1},
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

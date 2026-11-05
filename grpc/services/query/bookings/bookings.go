@@ -8,7 +8,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -24,25 +24,25 @@ var errInvalidBookingSelector = fmt.Errorf("invalid booking selector")
 //nolint:whitespace // editor/linter issue
 func (s *service) GetBookingEntries(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetBookingEntriesRequest],
-) (*connect.Response[queryv1.GetBookingEntriesResponse], error) {
+	req *queryv1.GetBookingEntriesRequest,
+) (*queryv1.GetBookingEntriesResponse, error) {
 	l := s.logger.WithCtx(ctx)
 
-	bookingItems, err := s.loadBookingEntriesByScope(ctx, req.Msg)
+	bookingItems, err := s.loadBookingEntriesByScope(ctx, req)
 	if err != nil {
 		if errors.Is(err, errInvalidBookingSelector) {
 			l.Error("invalid booking selector")
 			trace.SpanFromContext(ctx).SetStatus(
 				codes.Error, "invalid booking selector",
 			)
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 
 		l.Error("failed to load booking entries", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load booking entries",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	response, err := s.buildResponse(ctx, bookingItems)
@@ -51,11 +51,11 @@ func (s *service) GetBookingEntries(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to build booking entries response",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "booking entries loaded")
-	return connect.NewResponse(response), nil
+	return response, nil
 }
 
 func (s *service) loadBookingEntriesByScope(

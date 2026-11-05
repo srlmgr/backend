@@ -10,7 +10,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob/types"
@@ -29,30 +29,29 @@ import (
 //nolint:whitespace,funlen,gocyclo // editor/linter issue
 func (s *service) UploadResultsFile(
 	ctx context.Context,
-	req *connect.Request[importv1.UploadResultsFileRequest],
-) (
-	*connect.Response[importv1.UploadResultsFileResponse], error,
+	req *importv1.UploadResultsFileRequest,
+) (*importv1.UploadResultsFileResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UploadResultsFile")
 
-	gridID := int32(req.Msg.GetRaceGridId())
+	gridID := int32(req.GetRaceGridId())
 
 	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("race_grid_id is required"))
+			"race_grid_id is required")
 	}
-	if len(req.Msg.GetPayload()) == 0 {
+	if len(req.GetPayload()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("payload is required"))
+			"payload is required")
 	}
 
 	formats, err := conversion.ImportFormatsFromProto(
-		[]commonv1.ImportFormat{req.Msg.GetImportFormat()},
+		[]commonv1.ImportFormat{req.GetImportFormat()},
 	)
 	if err != nil || len(formats) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("invalid import_format: %w", err))
+			fmt.Errorf("invalid import_format: %w", err).Error())
 	}
 	importFormat := formats[0]
 
@@ -61,7 +60,7 @@ func (s *service) UploadResultsFile(
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	// TODO: activate later if state check is in effect
@@ -71,18 +70,16 @@ func (s *service) UploadResultsFile(
 		conversion.EventProcessingStateMappingError,
 		conversion.EventProcessingStateRawImported,
 	}, event.ProcessingState) {
-		return nil, connect.NewError(
+		return nil, connect.Errorf(
 			connect.CodeFailedPrecondition,
-			fmt.Errorf(
-				"cannot upload results file in current processing state: %s",
-				event.ProcessingState,
-			),
+			"cannot upload results file in current processing state: %s",
+			event.ProcessingState,
 		)
 	}
 	ep := processor.NewEventProcInfoCollector(s.repo)
 	epi, err := ep.ForEvent(ctx, event.ID)
 	if err != nil {
-		return nil, err
+		return nil, s.conversion.ToConnectError(err)
 	}
 	importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, epi)
 	if err != nil {
@@ -91,22 +88,20 @@ func (s *service) UploadResultsFile(
 			codes.Error,
 			"failed to resolve import processor",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	//nolint:lll // readability
 	supportedFormats, err := decodeRaceSimImportFormats(simulation.SupportedImportFormats.Val)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	selectedFormat, ok := findRaceSimImportFormat(supportedFormats, importFormat)
 	if !ok {
-		return nil, connect.NewError(
+		return nil, connect.Errorf(
 			connect.CodeInvalidArgument,
-			fmt.Errorf(
-				"import format %q is not supported by simulation %q",
-				importFormat,
-				simulation.Name,
-			),
+			"import format %q is not supported by simulation %q",
+			importFormat,
+			simulation.Name,
 		)
 	}
 
@@ -118,7 +113,7 @@ func (s *service) UploadResultsFile(
 				importer.ErrUnsupportedFormat,
 				simulation.Name,
 				importFormat,
-			),
+			).Error(),
 		)
 	}
 
@@ -135,7 +130,7 @@ func (s *service) UploadResultsFile(
 		// - remove data from previous steps
 		// - store resultEntries
 		inputs, inpErr := processImportPayload(
-			ctx, importProcessor, importFormat, req.Msg.GetPayload(),
+			ctx, importProcessor, importFormat, req.GetPayload(),
 		)
 		if inpErr != nil {
 			return fmt.Errorf("process import payload: %w", inpErr)
@@ -174,7 +169,7 @@ func (s *service) UploadResultsFile(
 			zipPayload, zipErr := mergeImportBatchZipPayload(
 				existingPayload,
 				entryName,
-				req.Msg.GetPayload(),
+				req.GetPayload(),
 			)
 			if zipErr != nil {
 				return fmt.Errorf("build import batch zip payload: %w", zipErr)
@@ -273,14 +268,14 @@ func (s *service) UploadResultsFile(
 	}); txErr != nil {
 		l.Error("failed to upload results file", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to upload results file")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "results file uploaded")
-	return connect.NewResponse(&importv1.UploadResultsFileResponse{
+	return &importv1.UploadResultsFileResponse{
 		RaceGridId:      uint32(batch.RaceGridID),
 		ProcessingState: toState,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue

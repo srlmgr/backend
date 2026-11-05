@@ -6,7 +6,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"go.opentelemetry.io/otel/codes"
@@ -57,14 +57,13 @@ func convertSetSeasonDriversInput(
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) SetSeasonDrivers(
 	ctx context.Context,
-	req *connect.Request[v1.SetSeasonDriversRequest]) (
-	*connect.Response[v1.SetSeasonDriversResponse], error,
-) {
+	req *v1.SetSeasonDriversRequest,
+) (*v1.SetSeasonDriversResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("SetSeasonDrivers")
 
-	seasonID := int32(req.Msg.GetSeasonId())
-	inputs := convertSetSeasonDriversInput(req.Msg)
+	seasonID := int32(req.GetSeasonId())
+	inputs := convertSetSeasonDriversInput(req)
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		existing, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(ctx, seasonID)
@@ -107,23 +106,22 @@ func (s *service) SetSeasonDrivers(
 	}); txErr != nil {
 		l.Error("failed to set season drivers", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to set season drivers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season drivers set")
-	return connect.NewResponse(&v1.SetSeasonDriversResponse{}), nil
+	return &v1.SetSeasonDriversResponse{}, nil
 }
 
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) AddSeasonDriver(
 	ctx context.Context,
-	req *connect.Request[v1.AddSeasonDriverRequest]) (
-	*connect.Response[v1.AddSeasonDriverResponse], error,
-) {
+	req *v1.AddSeasonDriverRequest,
+) (*v1.AddSeasonDriverResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("AddSeasonDriver")
 
-	carModelVariantID := int32(req.Msg.GetCarModelVariantId())
+	carModelVariantID := int32(req.GetCarModelVariantId())
 	if carModelVariantID <= 0 {
 		err := fmt.Errorf(
 			"invalid car_model_variant_id %d: must be greater than 0",
@@ -131,24 +129,24 @@ func (s *service) AddSeasonDriver(
 		)
 		l.Error("invalid season driver payload", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid season driver payload")
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
-	seasonID := int32(req.Msg.GetSeasonId())
-	driverID := int32(req.Msg.GetDriverId())
+	seasonID := int32(req.GetSeasonId())
+	driverID := int32(req.GetDriverId())
 
 	existing, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(ctx, seasonID)
 	if err != nil {
 		l.Error("failed to load season drivers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season drivers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	for _, item := range existing {
 		if item.DriverID == driverID && item.LeftAt.IsNull() {
 			l.Debug("driver is already active in season, skipping")
 			trace.SpanFromContext(ctx).
 				SetStatus(codes.Ok, "driver is already active in season, skipping")
-			return connect.NewResponse(&v1.AddSeasonDriverResponse{}), nil
+			return &v1.AddSeasonDriverResponse{}, nil
 		}
 	}
 
@@ -157,13 +155,13 @@ func (s *service) AddSeasonDriver(
 			DriverID:          omit.From(driverID),
 			SeasonID:          omit.From(seasonID),
 			CarModelVariantID: omit.From(carModelVariantID),
-			CarNumber:         omit.From(req.Msg.GetCarNumber()),
-			IsGuestStarter:    omit.From(req.Msg.GetIsGuestDriver()),
+			CarNumber:         omit.From(req.GetCarNumber()),
+			IsGuestStarter:    omit.From(req.GetIsGuestDriver()),
 			CreatedBy:         omit.From(s.execUser(ctx)),
 			UpdatedBy:         omit.From(s.execUser(ctx)),
 		}
-		if req.Msg.HasJoinedAt() {
-			setter.JoinedAt = omit.From(req.Msg.GetJoinedAt().AsTime())
+		if req.HasJoinedAt() {
+			setter.JoinedAt = omit.From(req.GetJoinedAt().AsTime())
 		}
 
 		_, err := s.repo.Drivers().SeasonDrivers().Create(ctx, setter)
@@ -171,30 +169,29 @@ func (s *service) AddSeasonDriver(
 	}); txErr != nil {
 		l.Error("failed to add season driver", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to add season driver")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season driver added")
-	return connect.NewResponse(&v1.AddSeasonDriverResponse{}), nil
+	return &v1.AddSeasonDriverResponse{}, nil
 }
 
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) RemoveSeasonDriver(
 	ctx context.Context,
-	req *connect.Request[v1.RemoveSeasonDriverRequest]) (
-	*connect.Response[v1.RemoveSeasonDriverResponse], error,
-) {
+	req *v1.RemoveSeasonDriverRequest,
+) (*v1.RemoveSeasonDriverResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("RemoveSeasonDriver")
 
-	seasonID := int32(req.Msg.GetSeasonId())
-	driverID := int32(req.Msg.GetDriverId())
+	seasonID := int32(req.GetSeasonId())
+	driverID := int32(req.GetDriverId())
 
 	existing, err := s.repo.Drivers().SeasonDrivers().LoadBySeasonID(ctx, seasonID)
 	if err != nil {
 		l.Error("failed to load season drivers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season drivers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	var toClose *models.SeasonDriver
@@ -209,12 +206,12 @@ func (s *service) RemoveSeasonDriver(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Ok, "driver is not active in season, skipping",
 		)
-		return connect.NewResponse(&v1.RemoveSeasonDriverResponse{}), nil
+		return &v1.RemoveSeasonDriverResponse{}, nil
 	}
 
 	leftAt := time.Now()
-	if req.Msg.HasLeftAt() {
-		leftAt = req.Msg.GetLeftAt().AsTime()
+	if req.HasLeftAt() {
+		leftAt = req.GetLeftAt().AsTime()
 	}
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
@@ -233,33 +230,32 @@ func (s *service) RemoveSeasonDriver(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to remove season driver",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season driver removed")
-	return connect.NewResponse(&v1.RemoveSeasonDriverResponse{}), nil
+	return &v1.RemoveSeasonDriverResponse{}, nil
 }
 
 //nolint:whitespace,dupl // editor/linter issue
 func (s *service) DeleteSeasonDriver(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteSeasonDriverRequest]) (
-	*connect.Response[v1.DeleteSeasonDriverResponse], error,
-) {
+	req *v1.DeleteSeasonDriverRequest,
+) (*v1.DeleteSeasonDriverResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteSeasonDriver")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		return s.repo.Drivers().SeasonDrivers().DeleteByID(
 			ctx,
-			int32(req.Msg.GetId()),
+			int32(req.GetId()),
 		)
 	}); txErr != nil {
 		l.Error("failed to delete season driver", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete season driver")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season driver deleted")
-	return connect.NewResponse(&v1.DeleteSeasonDriverResponse{}), nil
+	return &v1.DeleteSeasonDriverResponse{}, nil
 }

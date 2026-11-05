@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/samber/lo"
@@ -26,21 +25,20 @@ import (
 //nolint:whitespace,funlen,gocyclo // editor/linter issue, lots of work to do here
 func (s *service) ComputeBookingEntries(
 	ctx context.Context,
-	req *connect.Request[importv1.ComputeBookingEntriesRequest],
-) (
-	*connect.Response[importv1.ComputeBookingEntriesResponse], error,
+	req *importv1.ComputeBookingEntriesRequest,
+) (*importv1.ComputeBookingEntriesResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ComputeBookingEntries (auto detect)")
 
-	eventID := int32(req.Msg.GetEventId())
+	eventID := int32(req.GetEventId())
 
 	// Load the event to capture current processing state.
 	event, err := s.repo.Events().LoadByID(ctx, eventID)
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	// Collect result entries across all races for this event.
@@ -48,7 +46,7 @@ func (s *service) ComputeBookingEntries(
 	if err != nil {
 		l.Error("failed to load race grids", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race grids")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	var resultEntries []*models.ResultEntry
@@ -57,7 +55,7 @@ func (s *service) ComputeBookingEntries(
 		if loadErr != nil {
 			l.Error("failed to load result entries", log.ErrorField(loadErr))
 			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load result entries")
-			return nil, connect.NewError(s.conversion.MapErrorToRPCCode(loadErr), loadErr)
+			return nil, s.conversion.ToConnectError(loadErr)
 		}
 		resultEntries = append(resultEntries, entries...)
 	}
@@ -70,7 +68,7 @@ func (s *service) ComputeBookingEntries(
 	ep := processor.NewEventProcInfoCollector(s.repo)
 	epi, err = ep.ForEvent(ctx, eventID)
 	if err != nil {
-		return nil, err
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	teamDrivers, err := s.repo.Queries().QueryTeamDrivers().FindBySeason(
@@ -95,7 +93,7 @@ func (s *service) ComputeBookingEntries(
 	if err != nil {
 		l.Error("failed to compute event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to compute event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	// TODO: remove debugs
 	l.Debug("event computed", log.Int("num_outputs", len(outputs)))
@@ -167,13 +165,13 @@ func (s *service) ComputeBookingEntries(
 		l.Error("failed to compute booking entries", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).
 			SetStatus(codes.Error, "failed to compute booking entries")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "booking entries computed")
-	return connect.NewResponse(&importv1.ComputeBookingEntriesResponse{
+	return &importv1.ComputeBookingEntriesResponse{
 		CreatedEntries: createdEntries,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue

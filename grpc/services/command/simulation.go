@@ -9,7 +9,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	bobtypes "github.com/stephenafamo/bob/types"
 	"go.opentelemetry.io/otel/codes"
@@ -61,18 +61,17 @@ func (r racingSimSetterBuilder) Build(msg simulationRequest) (*simSetter, error)
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateSimulation(
 	ctx context.Context,
-	req *connect.Request[v1.CreateSimulationRequest]) (
-	*connect.Response[v1.CreateSimulationResponse], error,
-) {
+	req *v1.CreateSimulationRequest,
+) (*v1.CreateSimulationResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateSimulation")
-	setter, err := (racingSimSetterBuilder{}).Build(req.Msg)
+	setter, err := (racingSimSetterBuilder{}).Build(req)
 	if err != nil {
 		l.Error("invalid simulation supported formats", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "invalid simulation supported formats",
 		)
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var newSim *models.RacingSim
@@ -87,29 +86,28 @@ func (s *service) CreateSimulation(
 	}); txErr != nil {
 		l.Error("failed to create simulation", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create simulation")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation created")
-	return connect.NewResponse(&v1.CreateSimulationResponse{
+	return &v1.CreateSimulationResponse{
 		Simulation: s.conversion.RacingSimToSimulation(newSim),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateSimulation(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateSimulationRequest]) (
-	*connect.Response[v1.UpdateSimulationResponse], error,
-) {
+	req *v1.UpdateSimulationRequest,
+) (*v1.UpdateSimulationResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateSimulation")
-	setter, err := (racingSimSetterBuilder{}).Build(req.Msg)
+	setter, err := (racingSimSetterBuilder{}).Build(req)
 	if err != nil {
 		l.Error("invalid simulation supported formats", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "invalid simulation supported formats",
 		)
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var newSim *models.RacingSim
@@ -118,43 +116,42 @@ func (s *service) UpdateSimulation(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newSim, err = s.repo.RacingSims().Update(
 			ctx,
-			int32(req.Msg.GetSimulationId()),
+			int32(req.GetSimulationId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update simulation", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update simulation")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation updated")
-	return connect.NewResponse(&v1.UpdateSimulationResponse{
+	return &v1.UpdateSimulationResponse{
 		Simulation: s.conversion.RacingSimToSimulation(newSim),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteSimulation(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteSimulationRequest]) (
-	*connect.Response[v1.DeleteSimulationResponse], error,
-) {
+	req *v1.DeleteSimulationRequest,
+) (*v1.DeleteSimulationResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteSimulation")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.RacingSims().DeleteByID(
 			ctx,
-			int32(req.Msg.GetSimulationId()),
+			int32(req.GetSimulationId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete simulation", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete simulation")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation deleted")
-	return connect.NewResponse(&v1.DeleteSimulationResponse{
+	return &v1.DeleteSimulationResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

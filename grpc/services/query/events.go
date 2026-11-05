@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,10 +18,10 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListEvents(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListEventsRequest],
-) (*connect.Response[queryv1.ListEventsResponse], error) {
+	req *queryv1.ListEventsRequest,
+) (*queryv1.ListEventsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListEvents", log.Uint32("season_id", req.Msg.GetSeasonId()))
+	l.Debug("ListEvents", log.Uint32("season_id", req.GetSeasonId()))
 
 	eventsRepo := s.repo.Events()
 
@@ -31,7 +30,7 @@ func (s *service) ListEvents(
 		err        error
 	)
 
-	if seasonID := int32(req.Msg.GetSeasonId()); seasonID != 0 {
+	if seasonID := int32(req.GetSeasonId()); seasonID != 0 {
 		eventItems, err = eventsRepo.LoadBySeasonID(ctx, seasonID)
 	} else {
 		eventItems, err = eventsRepo.LoadAll(ctx)
@@ -40,7 +39,7 @@ func (s *service) ListEvents(
 	if err != nil {
 		l.Error("failed to load events", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load events")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.Event, 0, len(eventItems))
@@ -51,7 +50,7 @@ func (s *service) ListEvents(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "events loaded")
-	return connect.NewResponse(&queryv1.ListEventsResponse{Items: items}), nil
+	return &queryv1.ListEventsResponse{Items: items}, nil
 }
 
 // GetEvent returns an event by ID.
@@ -59,20 +58,20 @@ func (s *service) ListEvents(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetEvent(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetEventRequest],
-) (*connect.Response[queryv1.GetEventResponse], error) {
+	req *queryv1.GetEventRequest,
+) (*queryv1.GetEventResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetEvent", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetEvent", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Events().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Events().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "event loaded")
-	return connect.NewResponse(&queryv1.GetEventResponse{
+	return &queryv1.GetEventResponse{
 		Event: s.conversion.EventToEvent(item),
-	}), nil
+	}, nil
 }

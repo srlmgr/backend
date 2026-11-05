@@ -8,7 +8,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -44,7 +44,7 @@ func TestSetSeasonDriversSuccessReplacesEntries(t *testing.T) {
 	}
 
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserEditor})
-	resp, err := svc.SetSeasonDrivers(ctx, connect.NewRequest(&v1.SetSeasonDriversRequest{
+	resp, err := svc.SetSeasonDrivers(ctx, &v1.SetSeasonDriversRequest{
 		SeasonId: uint32(season.ID),
 		Drivers: []*v1.SetSeasonDriver{
 			{
@@ -53,11 +53,11 @@ func TestSetSeasonDriversSuccessReplacesEntries(t *testing.T) {
 				CarNumber:         "27",
 			},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg == nil {
+	if resp == nil {
 		t.Fatal("expected non-nil response message")
 	}
 
@@ -92,17 +92,17 @@ func TestAddSeasonDriverSuccess(t *testing.T) {
 	joinedAt := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.AddSeasonDriver(ctx, connect.NewRequest(&v1.AddSeasonDriverRequest{
+	resp, err := svc.AddSeasonDriver(ctx, &v1.AddSeasonDriverRequest{
 		DriverId:          uint32(driver.ID),
 		SeasonId:          uint32(season.ID),
 		CarModelVariantId: uint32(carModelVariant.ID),
 		CarNumber:         "12",
 		JoinedAt:          timestamppb.New(joinedAt),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg == nil {
+	if resp == nil {
 		t.Fatal("expected non-nil response message")
 	}
 
@@ -141,12 +141,12 @@ func TestAddSeasonDriverFailureInvalidCarModelID(t *testing.T) {
 
 	_, err := svc.AddSeasonDriver(
 		context.Background(),
-		connect.NewRequest(&v1.AddSeasonDriverRequest{
+		&v1.AddSeasonDriverRequest{
 			DriverId:          uint32(driver.ID),
 			SeasonId:          uint32(season.ID),
 			CarModelVariantId: uint32(0), // invalid car model ID
 			CarNumber:         "12",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -183,16 +183,16 @@ func TestRemoveSeasonDriverSuccess(t *testing.T) {
 	leftAt := time.Now().UTC().Truncate(time.Second)
 	resp, err := svc.RemoveSeasonDriver(
 		context.Background(),
-		connect.NewRequest(&v1.RemoveSeasonDriverRequest{
+		&v1.RemoveSeasonDriverRequest{
 			SeasonId: uint32(season.ID),
 			DriverId: uint32(driver.ID),
 			LeftAt:   timestamppb.New(leftAt),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg == nil {
+	if resp == nil {
 		t.Fatal("expected non-nil response message")
 	}
 
@@ -234,12 +234,12 @@ func TestDeleteSeasonDriverSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteSeasonDriver(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeasonDriverRequest{Id: uint32(created.ID)}),
+		&v1.DeleteSeasonDriverRequest{Id: uint32(created.ID)},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg == nil {
+	if resp == nil {
 		t.Fatal("expected non-nil response message")
 	}
 
@@ -260,7 +260,7 @@ func TestDeleteSeasonDriverFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteSeasonDriver(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeasonDriverRequest{Id: 1}),
+		&v1.DeleteSeasonDriverRequest{Id: 1},
 	)
 	if err == nil {
 		t.Fatal("expected error")

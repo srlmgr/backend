@@ -7,7 +7,6 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -91,12 +90,11 @@ func (b carModelVariantSetterBuilder) Build(
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateCarManufacturer(
 	ctx context.Context,
-	req *connect.Request[v1.CreateCarManufacturerRequest]) (
-	*connect.Response[v1.CreateCarManufacturerResponse], error,
-) {
+	req *v1.CreateCarManufacturerRequest,
+) (*v1.CreateCarManufacturerResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateCarManufacturer")
-	setter := (carManufacturerSetterBuilder{}).Build(req.Msg)
+	setter := (carManufacturerSetterBuilder{}).Build(req)
 
 	var newCarManufacturer *models.CarManufacturer
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -107,24 +105,23 @@ func (s *service) CreateCarManufacturer(
 	}); txErr != nil {
 		l.Error("failed to create car manufacturer", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create car manufacturer")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car manufacturer created")
-	return connect.NewResponse(&v1.CreateCarManufacturerResponse{
+	return &v1.CreateCarManufacturerResponse{
 		CarManufacturer: s.conversion.CarManufacturerToCarManufacturer(newCarManufacturer),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateCarManufacturer(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateCarManufacturerRequest]) (
-	*connect.Response[v1.UpdateCarManufacturerResponse], error,
-) {
+	req *v1.UpdateCarManufacturerRequest,
+) (*v1.UpdateCarManufacturerResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateCarManufacturer")
-	setter := (carManufacturerSetterBuilder{}).Build(req.Msg)
+	setter := (carManufacturerSetterBuilder{}).Build(req)
 
 	var newCarManufacturer *models.CarManufacturer
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -132,58 +129,56 @@ func (s *service) UpdateCarManufacturer(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarManufacturer, err = s.repo.Cars().CarManufacturers().Update(
 			ctx,
-			int32(req.Msg.GetCarManufacturerId()),
+			int32(req.GetCarManufacturerId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update car manufacturer", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update car manufacturer")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car manufacturer updated")
-	return connect.NewResponse(&v1.UpdateCarManufacturerResponse{
+	return &v1.UpdateCarManufacturerResponse{
 		CarManufacturer: s.conversion.CarManufacturerToCarManufacturer(newCarManufacturer),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteCarManufacturer(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteCarManufacturerRequest]) (
-	*connect.Response[v1.DeleteCarManufacturerResponse], error,
-) {
+	req *v1.DeleteCarManufacturerRequest,
+) (*v1.DeleteCarManufacturerResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteCarManufacturer")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Cars().CarManufacturers().DeleteByID(
 			ctx,
-			int32(req.Msg.GetCarManufacturerId()),
+			int32(req.GetCarManufacturerId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete car manufacturer", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete car manufacturer")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car manufacturer deleted")
-	return connect.NewResponse(&v1.DeleteCarManufacturerResponse{
+	return &v1.DeleteCarManufacturerResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateCarModel(
 	ctx context.Context,
-	req *connect.Request[v1.CreateCarModelRequest]) (
-	*connect.Response[v1.CreateCarModelResponse], error,
-) {
+	req *v1.CreateCarModelRequest,
+) (*v1.CreateCarModelResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateCarModel")
-	setter := (carModelSetterBuilder{}).Build(req.Msg)
+	setter := (carModelSetterBuilder{}).Build(req)
 
 	var newCarModel *models.CarModel
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -194,24 +189,23 @@ func (s *service) CreateCarModel(
 	}); txErr != nil {
 		l.Error("failed to create car model v2", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create car model v2")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 created")
-	return connect.NewResponse(&v1.CreateCarModelResponse{
+	return &v1.CreateCarModelResponse{
 		CarModel: s.conversion.CarModelToCarModel(newCarModel),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateCarModel(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateCarModelRequest]) (
-	*connect.Response[v1.UpdateCarModelResponse], error,
-) {
+	req *v1.UpdateCarModelRequest,
+) (*v1.UpdateCarModelResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateCarModel")
-	setter := (carModelSetterBuilder{}).Build(req.Msg)
+	setter := (carModelSetterBuilder{}).Build(req)
 
 	var newCarModel *models.CarModel
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -219,58 +213,56 @@ func (s *service) UpdateCarModel(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarModel, err = s.repo.Cars().CarModels().Update(
 			ctx,
-			int32(req.Msg.GetCarModelId()),
+			int32(req.GetCarModelId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update car model v2", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update car model v2")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 updated")
-	return connect.NewResponse(&v1.UpdateCarModelResponse{
+	return &v1.UpdateCarModelResponse{
 		CarModel: s.conversion.CarModelToCarModel(newCarModel),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteCarModel(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteCarModelRequest]) (
-	*connect.Response[v1.DeleteCarModelResponse], error,
-) {
+	req *v1.DeleteCarModelRequest,
+) (*v1.DeleteCarModelResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteCarModel")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Cars().CarModels().DeleteByID(
 			ctx,
-			int32(req.Msg.GetCarModelId()),
+			int32(req.GetCarModelId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete car model v2", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete car model v2")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model v2 deleted")
-	return connect.NewResponse(&v1.DeleteCarModelResponse{
+	return &v1.DeleteCarModelResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateCarModelVariant(
 	ctx context.Context,
-	req *connect.Request[v1.CreateCarModelVariantRequest]) (
-	*connect.Response[v1.CreateCarModelVariantResponse], error,
-) {
+	req *v1.CreateCarModelVariantRequest,
+) (*v1.CreateCarModelVariantResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateCarModelVariant")
-	setter := (carModelVariantSetterBuilder{}).Build(req.Msg)
+	setter := (carModelVariantSetterBuilder{}).Build(req)
 
 	var newCarModelVariant *models.CarModelVariant
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -283,24 +275,23 @@ func (s *service) CreateCarModelVariant(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to create car model variant",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variant created")
-	return connect.NewResponse(&v1.CreateCarModelVariantResponse{
+	return &v1.CreateCarModelVariantResponse{
 		CarModelVariant: s.conversion.CarModelVariantToCarModelVariant(newCarModelVariant),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateCarModelVariant(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateCarModelVariantRequest]) (
-	*connect.Response[v1.UpdateCarModelVariantResponse], error,
-) {
+	req *v1.UpdateCarModelVariantRequest,
+) (*v1.UpdateCarModelVariantResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateCarModelVariant")
-	setter := (carModelVariantSetterBuilder{}).Build(req.Msg)
+	setter := (carModelVariantSetterBuilder{}).Build(req)
 
 	var newCarModelVariant *models.CarModelVariant
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -308,7 +299,7 @@ func (s *service) UpdateCarModelVariant(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarModelVariant, err = s.repo.Cars().CarModelVariants().Update(
 			ctx,
-			int32(req.Msg.GetCarModelVariantId()),
+			int32(req.GetCarModelVariantId()),
 			setter,
 		)
 		if err != nil {
@@ -317,7 +308,7 @@ func (s *service) UpdateCarModelVariant(
 		setters := s.createCarAliasSetters(
 			ctx,
 			newCarModelVariant.ID,
-			req.Msg.GetSimulationAliases(),
+			req.GetSimulationAliases(),
 		)
 		aliases, aliasErr := s.repo.Cars().SimulationCarAliases().
 			ReplaceForVariantID(
@@ -332,28 +323,27 @@ func (s *service) UpdateCarModelVariant(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to update car model variant",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variant updated")
-	return connect.NewResponse(&v1.UpdateCarModelVariantResponse{
+	return &v1.UpdateCarModelVariantResponse{
 		CarModelVariant: s.conversion.CarModelVariantToCarModelVariant(newCarModelVariant),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteCarModelVariant(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteCarModelVariantRequest]) (
-	*connect.Response[v1.DeleteCarModelVariantResponse], error,
-) {
+	req *v1.DeleteCarModelVariantRequest,
+) (*v1.DeleteCarModelVariantResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteCarModelVariant")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Cars().CarModelVariants().DeleteByID(
 			ctx,
-			int32(req.Msg.GetCarModelVariantId()),
+			int32(req.GetCarModelVariantId()),
 		)
 		return err
 	}); txErr != nil {
@@ -361,13 +351,13 @@ func (s *service) DeleteCarModelVariant(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to delete car model variant",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variant deleted")
-	return connect.NewResponse(&v1.DeleteCarModelVariantResponse{
+	return &v1.DeleteCarModelVariantResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
@@ -394,15 +384,14 @@ func (s *service) createCarAliasSetters(
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) SetSimulationCarAliases(
 	ctx context.Context,
-	req *connect.Request[v1.SetSimulationCarAliasesRequest]) (
-	*connect.Response[v1.SetSimulationCarAliasesResponse], error,
-) {
+	req *v1.SetSimulationCarAliasesRequest,
+) (*v1.SetSimulationCarAliasesResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("SetSimulationCarAliases")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		carModelVariantID := int32(req.Msg.GetCarModelVariantId())
-		simulationID := int32(req.Msg.GetSimulationId())
+		carModelVariantID := int32(req.GetCarModelVariantId())
+		simulationID := int32(req.GetSimulationId())
 
 		existing, err := s.repo.Cars().SimulationCarAliases().LoadBySimulationID(
 			ctx, simulationID,
@@ -423,7 +412,7 @@ func (s *service) SetSimulationCarAliases(
 		}
 
 		user := s.execUser(ctx)
-		for _, externalName := range req.Msg.GetExternalName() {
+		for _, externalName := range req.GetExternalName() {
 			_, err := s.repo.Cars().
 				SimulationCarAliases().
 				Create(ctx, &models.SimulationCarAliasSetter{
@@ -445,11 +434,11 @@ func (s *service) SetSimulationCarAliases(
 			codes.Error,
 			"failed to set simulation car aliases",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation car aliases set")
-	return connect.NewResponse(&v1.SetSimulationCarAliasesResponse{Updated: true}), nil
+	return &v1.SetSimulationCarAliasesResponse{Updated: true}, nil
 }
 
 type carClassRequest interface {
@@ -476,12 +465,11 @@ func (b carClassSetterBuilder) Build(
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateCarClass(
 	ctx context.Context,
-	req *connect.Request[v1.CreateCarClassRequest]) (
-	*connect.Response[v1.CreateCarClassResponse], error,
-) {
+	req *v1.CreateCarClassRequest,
+) (*v1.CreateCarClassResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateCarClass")
-	setter := (carClassSetterBuilder{}).Build(req.Msg)
+	setter := (carClassSetterBuilder{}).Build(req)
 
 	var newCarClass *models.CarClass
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -492,24 +480,23 @@ func (s *service) CreateCarClass(
 	}); txErr != nil {
 		l.Error("failed to create car class", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create car class")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class created")
-	return connect.NewResponse(&v1.CreateCarClassResponse{
+	return &v1.CreateCarClassResponse{
 		CarClass: s.conversion.CarClassToCarClass(newCarClass),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateCarClass(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateCarClassRequest]) (
-	*connect.Response[v1.UpdateCarClassResponse], error,
-) {
+	req *v1.UpdateCarClassRequest,
+) (*v1.UpdateCarClassResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateCarClass")
-	setter := (carClassSetterBuilder{}).Build(req.Msg)
+	setter := (carClassSetterBuilder{}).Build(req)
 
 	var newCarClass *models.CarClass
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -517,54 +504,53 @@ func (s *service) UpdateCarClass(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newCarClass, err = s.repo.Cars().CarClasses().Update(
 			ctx,
-			int32(req.Msg.GetCarClassId()),
+			int32(req.GetCarClassId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update car class", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update car class")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class updated")
-	return connect.NewResponse(&v1.UpdateCarClassResponse{
+	return &v1.UpdateCarClassResponse{
 		CarClass: s.conversion.CarClassToCarClass(newCarClass),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteCarClass(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteCarClassRequest]) (
-	*connect.Response[v1.DeleteCarClassResponse], error,
-) {
+	req *v1.DeleteCarClassRequest,
+) (*v1.DeleteCarClassResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteCarClass")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Cars().CarClasses().DeleteByID(
 			ctx,
-			int32(req.Msg.GetCarClassId()),
+			int32(req.GetCarClassId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete car class", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete car class")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car class deleted")
-	return connect.NewResponse(&v1.DeleteCarClassResponse{
+	return &v1.DeleteCarClassResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) AssignCarModelVariantToCarClass(
 	ctx context.Context,
-	req *connect.Request[v1.AssignCarModelVariantToCarClassRequest]) (
-	*connect.Response[v1.AssignCarModelVariantToCarClassResponse], error,
+	req *v1.AssignCarModelVariantToCarClassRequest,
+) (*v1.AssignCarModelVariantToCarClassResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("AssignCarModelVariantToCarClass")
@@ -572,28 +558,28 @@ func (s *service) AssignCarModelVariantToCarClass(
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		return s.repo.Cars().CarClasses().AssignCarModelVariant(
 			ctx,
-			int32(req.Msg.GetCarClassId()),
-			int32(req.Msg.GetCarModelVariantId()),
+			int32(req.GetCarClassId()),
+			int32(req.GetCarModelVariantId()),
 		)
 	}); txErr != nil {
 		l.Error("failed to assign car model variant to car class", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to assign car model variant to car class",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(
 		codes.Ok, "car model variant assigned to car class",
 	)
-	return connect.NewResponse(&v1.AssignCarModelVariantToCarClassResponse{}), nil
+	return &v1.AssignCarModelVariantToCarClassResponse{}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UnassignCarModelVariantFromCarClass(
 	ctx context.Context,
-	req *connect.Request[v1.UnassignCarModelVariantFromCarClassRequest]) (
-	*connect.Response[v1.UnassignCarModelVariantFromCarClassResponse], error,
+	req *v1.UnassignCarModelVariantFromCarClassRequest,
+) (*v1.UnassignCarModelVariantFromCarClassResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UnassignCarModelVariantFromCarClass")
@@ -601,8 +587,8 @@ func (s *service) UnassignCarModelVariantFromCarClass(
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		return s.repo.Cars().CarClasses().UnassignCarModelVariant(
 			ctx,
-			int32(req.Msg.GetCarClassId()),
-			int32(req.Msg.GetCarModelVariantId()),
+			int32(req.GetCarClassId()),
+			int32(req.GetCarModelVariantId()),
 		)
 	}); txErr != nil {
 		l.Error("failed to unassign car model variant from car class",
@@ -610,9 +596,9 @@ func (s *service) UnassignCarModelVariantFromCarClass(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to unassign car model variant from car class",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model unassigned from car class")
-	return connect.NewResponse(&v1.UnassignCarModelVariantFromCarClassResponse{}), nil
+	return &v1.UnassignCarModelVariantFromCarClassResponse{}, nil
 }

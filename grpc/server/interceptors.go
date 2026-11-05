@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/otelconnect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/trace"
@@ -16,87 +16,53 @@ import (
 )
 
 //nolint:whitespace // multiline signature for line-length compliance
-func newConnectHandlerOptions(
+func newConnectInterceptors(
 	ctx context.Context,
 	cfg *Config,
 	pool *pgxpool.Pool,
 	logger *log.Logger,
-	authnInterceptor connect.Interceptor,
-) ([]connect.HandlerOption, error) {
+	authnInterceptor connect.ServerInterceptor,
+) ([]connect.ServerInterceptor, error) {
 	authzInterceptor, err := authz.NewInterceptor(ctx, cfg.Authz, pool, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create authorization interceptor: %w", err)
 	}
 
-	telemetryInterceptor, err := otelconnect.NewInterceptor()
+	telemetryInterceptor, err := otelconnect.NewServerInterceptor()
 	if err != nil {
 		return nil, fmt.Errorf("create connect telemetry interceptor: %w", err)
 	}
 
-	return []connect.HandlerOption{
-		connect.WithInterceptors(
-			authnInterceptor,
-			authzInterceptor,
-			newConnectLoggingInterceptor(logger.Named("rpc")),
-			telemetryInterceptor,
-			newConnectTraceIDInterceptor(),
-		),
+	return []connect.ServerInterceptor{
+		authnInterceptor,
+		authzInterceptor,
+		newConnectLoggingInterceptor(logger.Named("rpc")),
+		telemetryInterceptor,
+		newConnectTraceIDInterceptor(),
 	}, nil
 }
 
 const traceIDHeader = "x-trace-id"
 
-func newConnectTraceIDInterceptor() connect.Interceptor {
-	return &connectTraceIDInterceptor{}
-}
-
-type connectTraceIDInterceptor struct{}
-
-//nolint:whitespace //editor/linter issue
-func (i *connectTraceIDInterceptor) WrapUnary(
-	next connect.UnaryFunc,
-) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		resp, err := next(ctx, req)
-
-		traceID := traceIDFromContext(ctx)
-		if traceID == "" {
-			return resp, err
-		}
-		var connectErr *connect.Error
-		if errors.As(err, &connectErr) {
-			connectErr.Meta().Set(traceIDHeader, traceID)
-			return resp, connectErr
-		}
-
-		if resp != nil && resp.Header() != nil {
-			resp.Header().Set(traceIDHeader, traceID)
-		}
-
-		return resp, err
-	}
-}
-
-//nolint:whitespace //editor/linter issue
-func (i *connectTraceIDInterceptor) WrapStreamingHandler(
-	next connect.StreamingHandlerFunc,
-) connect.StreamingHandlerFunc {
-	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		if traceID := traceIDFromContext(ctx); traceID != "" {
-			if conn.ResponseHeader() != nil {
-				conn.ResponseHeader().Set(traceIDHeader, traceID)
+// newConnectTraceIDInterceptor adds the trace id as response header.
+// The header is set before the handler runs so it is sent with both
+// successful and error responses.
+func newConnectTraceIDInterceptor() connect.ServerInterceptor {
+	return func(next connect.ServerFunc) connect.ServerFunc {
+		//nolint:whitespace // multiline callback signature for line-length compliance
+		return func(
+			ctx context.Context,
+			spec connect.Spec,
+			stream connect.ServerStream,
+		) error {
+			if traceID := traceIDFromContext(ctx); traceID != "" {
+				if callInfo, ok := connect.CallInfoForServerContext(ctx); ok {
+					callInfo.ResponseHeader().Set(traceIDHeader, traceID)
+				}
 			}
+			return next(ctx, spec, stream)
 		}
-
-		return next(ctx, conn)
 	}
-}
-
-//nolint:whitespace //editor/linter issue
-func (i *connectTraceIDInterceptor) WrapStreamingClient(
-	next connect.StreamingClientFunc,
-) connect.StreamingClientFunc {
-	return next
 }
 
 func traceIDFromContext(ctx context.Context) string {
@@ -108,36 +74,44 @@ func traceIDFromContext(ctx context.Context) string {
 	return spanContext.TraceID().String()
 }
 
-//nolint:whitespace //editor/linter issue
-func newConnectLoggingInterceptor(logger *log.Logger) connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+func newConnectLoggingInterceptor(logger *log.Logger) connect.ServerInterceptor {
+	return func(next connect.ServerFunc) connect.ServerFunc {
+		//nolint:whitespace // multiline callback signature for line-length compliance
 		return func(
 			ctx context.Context,
-			req connect.AnyRequest,
-		) (
-			connect.AnyResponse,
-			error,
-		) {
+			spec connect.Spec,
+			stream connect.ServerStream,
+		) error {
+			if spec.StreamType != connect.StreamTypeUnary {
+				return next(ctx, spec, stream)
+			}
+
 			start := time.Now()
-			resp, err := next(ctx, req)
+			err := next(ctx, spec, stream)
 			l := logger.WithCtx(ctx)
 
 			fields := []log.Field{
-				log.String("procedure", req.Spec().Procedure),
-				log.String("protocol", req.Peer().Protocol),
-				log.String("peer_address", req.Peer().Addr),
-				log.String("http_method", req.HTTPMethod()),
-				log.Duration("duration", time.Since(start)),
+				log.String("procedure", spec.Procedure),
 			}
+			if callInfo, ok := connect.CallInfoForServerContext(ctx); ok {
+				fields = append(fields,
+					log.String("protocol", callInfo.Protocol),
+					log.String("peer_address", callInfo.PeerAddr),
+				)
+			}
+			if httpInfo, ok := connecthttp.ServerInfoForContext(ctx); ok {
+				fields = append(fields, log.String("http_method", httpInfo.HTTPMethod()))
+			}
+			fields = append(fields, log.Duration("duration", time.Since(start)))
 
 			if err != nil {
 				fields = append(fields, log.String("code", connect.CodeOf(err).String()))
 				l.Error("rpc failed", append(fields, log.ErrorField(err))...)
-				return resp, err
+				return err
 			}
 
 			l.Info("rpc completed", fields...)
-			return resp, nil
+			return nil
 		}
-	})
+	}
 }

@@ -7,7 +7,6 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/shopspring/decimal"
@@ -92,12 +91,11 @@ func (b trackLayoutSetterBuilder) Build(msg trackLayoutRequest) *trackLayoutSett
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateTrack(
 	ctx context.Context,
-	req *connect.Request[v1.CreateTrackRequest]) (
-	*connect.Response[v1.CreateTrackResponse], error,
-) {
+	req *v1.CreateTrackRequest,
+) (*v1.CreateTrackResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateTrack")
-	setter := (trackSetterBuilder{}).Build(req.Msg)
+	setter := (trackSetterBuilder{}).Build(req)
 
 	var newTrack *models.Track
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -108,24 +106,23 @@ func (s *service) CreateTrack(
 	}); txErr != nil {
 		l.Error("failed to create track", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create track")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track created")
-	return connect.NewResponse(&v1.CreateTrackResponse{
+	return &v1.CreateTrackResponse{
 		Track: s.conversion.TrackToTrack(newTrack),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateTrack(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateTrackRequest]) (
-	*connect.Response[v1.UpdateTrackResponse], error,
-) {
+	req *v1.UpdateTrackRequest,
+) (*v1.UpdateTrackResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateTrack")
-	setter := (trackSetterBuilder{}).Build(req.Msg)
+	setter := (trackSetterBuilder{}).Build(req)
 
 	var newTrack *models.Track
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -133,58 +130,56 @@ func (s *service) UpdateTrack(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newTrack, err = s.repo.Tracks().Tracks().Update(
 			ctx,
-			int32(req.Msg.GetTrackId()),
+			int32(req.GetTrackId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update track", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update track")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track updated")
-	return connect.NewResponse(&v1.UpdateTrackResponse{
+	return &v1.UpdateTrackResponse{
 		Track: s.conversion.TrackToTrack(newTrack),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteTrack(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteTrackRequest]) (
-	*connect.Response[v1.DeleteTrackResponse], error,
-) {
+	req *v1.DeleteTrackRequest,
+) (*v1.DeleteTrackResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteTrack")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Tracks().Tracks().DeleteByID(
 			ctx,
-			int32(req.Msg.GetTrackId()),
+			int32(req.GetTrackId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete track", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete track")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track deleted")
-	return connect.NewResponse(&v1.DeleteTrackResponse{
+	return &v1.DeleteTrackResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateTrackLayout(
 	ctx context.Context,
-	req *connect.Request[v1.CreateTrackLayoutRequest]) (
-	*connect.Response[v1.CreateTrackLayoutResponse], error,
-) {
+	req *v1.CreateTrackLayoutRequest,
+) (*v1.CreateTrackLayoutResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateTrackLayout")
-	setter := (trackLayoutSetterBuilder{}).Build(req.Msg)
+	setter := (trackLayoutSetterBuilder{}).Build(req)
 
 	var newTrackLayout *models.TrackLayout
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -197,7 +192,7 @@ func (s *service) CreateTrackLayout(
 		setters := s.createTrackAliasSetters(
 			ctx,
 			newTrackLayout.ID,
-			req.Msg.GetSimulationAliases(),
+			req.GetSimulationAliases(),
 		)
 		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
 			ReplaceForLayoutID(
@@ -210,36 +205,35 @@ func (s *service) CreateTrackLayout(
 	}); txErr != nil {
 		l.Error("failed to create track layout", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create track layout")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layout created")
-	return connect.NewResponse(&v1.CreateTrackLayoutResponse{
+	return &v1.CreateTrackLayoutResponse{
 		TrackLayout: s.conversion.TrackLayoutToTrackLayout(newTrackLayout),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateTrackLayout(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateTrackLayoutRequest]) (
-	*connect.Response[v1.UpdateTrackLayoutResponse], error,
-) {
+	req *v1.UpdateTrackLayoutRequest,
+) (*v1.UpdateTrackLayoutResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateTrackLayout")
-	setter := (trackLayoutSetterBuilder{}).Build(req.Msg)
+	setter := (trackLayoutSetterBuilder{}).Build(req)
 
 	var newTrackLayout *models.TrackLayout
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		setters := s.createTrackAliasSetters(
 			ctx,
-			int32(req.Msg.GetTrackLayoutId()),
-			req.Msg.GetSimulationAliases(),
+			int32(req.GetTrackLayoutId()),
+			req.GetSimulationAliases(),
 		)
 		aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
 			ReplaceForLayoutID(
 				ctx,
-				int32(req.Msg.GetTrackLayoutId()),
+				int32(req.GetTrackLayoutId()),
 				setters,
 			)
 		_ = aliases // currently not used
@@ -250,20 +244,20 @@ func (s *service) UpdateTrackLayout(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newTrackLayout, err = s.repo.Tracks().TrackLayouts().Update(
 			ctx,
-			int32(req.Msg.GetTrackLayoutId()),
+			int32(req.GetTrackLayoutId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update track layout", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update track layout")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layout updated")
-	return connect.NewResponse(&v1.UpdateTrackLayoutResponse{
+	return &v1.UpdateTrackLayoutResponse{
 		TrackLayout: s.conversion.TrackLayoutToTrackLayout(newTrackLayout),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
@@ -290,49 +284,48 @@ func (s *service) createTrackAliasSetters(
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteTrackLayout(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteTrackLayoutRequest]) (
-	*connect.Response[v1.DeleteTrackLayoutResponse], error,
-) {
+	req *v1.DeleteTrackLayoutRequest,
+) (*v1.DeleteTrackLayoutResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteTrackLayout")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Tracks().SimulationTrackLayoutAliases().DeleteByLayoutID(
 			ctx,
-			int32(req.Msg.GetTrackLayoutId()),
+			int32(req.GetTrackLayoutId()),
 		)
 		if err != nil {
 			return err
 		}
 		err = s.repo.Tracks().TrackLayouts().DeleteByID(
 			ctx,
-			int32(req.Msg.GetTrackLayoutId()),
+			int32(req.GetTrackLayoutId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete track layout", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete track layout")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layout deleted")
-	return connect.NewResponse(&v1.DeleteTrackLayoutResponse{
+	return &v1.DeleteTrackLayoutResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) SetSimulationTrackLayoutAliases(
 	ctx context.Context,
-	req *connect.Request[v1.SetSimulationTrackLayoutAliasesRequest]) (
-	*connect.Response[v1.SetSimulationTrackLayoutAliasesResponse], error,
+	req *v1.SetSimulationTrackLayoutAliasesRequest,
+) (*v1.SetSimulationTrackLayoutAliasesResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("SetSimulationTrackLayoutAliases")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		trackLayoutID := int32(req.Msg.GetTrackLayoutId())
-		simulationID := int32(req.Msg.GetSimulationId())
+		trackLayoutID := int32(req.GetTrackLayoutId())
+		simulationID := int32(req.GetSimulationId())
 
 		existing, err := s.repo.Tracks().
 			SimulationTrackLayoutAliases().
@@ -353,7 +346,7 @@ func (s *service) SetSimulationTrackLayoutAliases(
 		}
 
 		user := s.execUser(ctx)
-		for _, externalName := range req.Msg.GetExternalName() {
+		for _, externalName := range req.GetExternalName() {
 			_, err := s.repo.Tracks().
 				SimulationTrackLayoutAliases().
 				Create(ctx, &models.SimulationTrackLayoutAliasSetter{
@@ -373,11 +366,11 @@ func (s *service) SetSimulationTrackLayoutAliases(
 		l.Error("failed to set simulation track layout aliases", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).
 			SetStatus(codes.Error, "failed to set simulation track layout aliases")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "simulation track layout aliases set")
-	return connect.NewResponse(&v1.SetSimulationTrackLayoutAliasesResponse{
+	return &v1.SetSimulationTrackLayoutAliasesResponse{
 		Updated: true,
-	}), nil
+	}, nil
 }

@@ -9,7 +9,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/authn"
 	mytypes "github.com/srlmgr/backend/db/mytypes"
@@ -75,21 +75,21 @@ func TestCreateSimulationSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateSimulation(ctx, connect.NewRequest(&v1.CreateSimulationRequest{
+	resp, err := svc.CreateSimulation(ctx, &v1.CreateSimulationRequest{
 		Name:     "rFactor 2",
 		IsActive: true,
 		SupportedFormats: []*commonv1.ImportConfig{
 			{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSimulation().GetName() != "rFactor 2" {
-		t.Fatalf("unexpected simulation name: %q", resp.Msg.GetSimulation().GetName())
+	if resp.GetSimulation().GetName() != "rFactor 2" {
+		t.Fatalf("unexpected simulation name: %q", resp.GetSimulation().GetName())
 	}
 
-	id := int32(resp.Msg.GetSimulation().GetId())
+	id := int32(resp.GetSimulation().GetId())
 	stored, err := repo.RacingSims().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created simulation: %v", err)
@@ -115,9 +115,9 @@ func TestCreateSimulationFailureInvalidFormat(t *testing.T) {
 
 	_, err := svc.CreateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSimulationRequest{
+		&v1.CreateSimulationRequest{
 			SupportedFormats: []*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}},
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -133,13 +133,13 @@ func TestCreateSimulationFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.CreateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSimulationRequest{
+		&v1.CreateSimulationRequest{
 			Name:     "duplicate-sim",
 			IsActive: true,
 			SupportedFormats: []*commonv1.ImportConfig{
 				{Format: commonv1.ImportFormat_IMPORT_FORMAT_JSON},
 			},
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -172,9 +172,9 @@ func TestCreateSimulationFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSimulationRequest{
+		&v1.CreateSimulationRequest{
 			Name: "ACC",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -197,19 +197,19 @@ func TestUpdateSimulationSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial simulation: %v", err)
 	}
 
-	resp, err := svc.UpdateSimulation(ctx, connect.NewRequest(&v1.UpdateSimulationRequest{
+	resp, err := svc.UpdateSimulation(ctx, &v1.UpdateSimulationRequest{
 		SimulationId: uint32(initial.ID),
 		Name:         "iRacing Updated",
 		IsActive:     true,
 		SupportedFormats: []*commonv1.ImportConfig{
 			{Format: commonv1.ImportFormat_IMPORT_FORMAT_CSV},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSimulation().GetName() != "iRacing Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetSimulation().GetName())
+	if resp.GetSimulation().GetName() != "iRacing Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetSimulation().GetName())
 	}
 
 	after, err := repo.RacingSims().LoadByID(context.Background(), initial.ID)
@@ -241,10 +241,10 @@ func TestUpdateSimulationFailureInvalidFormat(t *testing.T) {
 
 	_, err := svc.UpdateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSimulationRequest{
+		&v1.UpdateSimulationRequest{
 			SimulationId:     uint32(initial.ID),
 			SupportedFormats: []*commonv1.ImportConfig{{Format: commonv1.ImportFormat(99)}},
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -259,10 +259,10 @@ func TestUpdateSimulationFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSimulationRequest{
+		&v1.UpdateSimulationRequest{
 			SimulationId: 999,
 			Name:         "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -279,10 +279,10 @@ func TestUpdateSimulationFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.UpdateSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSimulationRequest{
+		&v1.UpdateSimulationRequest{
 			SimulationId: uint32(second.ID),
 			Name:         first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -310,14 +310,14 @@ func TestDeleteSimulationSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSimulationRequest{
+		&v1.DeleteSimulationRequest{
 			SimulationId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -338,9 +338,9 @@ func TestDeleteSimulationFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteSimulation(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSimulationRequest{
+		&v1.DeleteSimulationRequest{
 			SimulationId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

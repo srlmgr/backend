@@ -8,7 +8,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -107,15 +107,14 @@ func raceSessionTypeToString(st commonv1.RaceSessionType) (string, error) {
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateRace(
 	ctx context.Context,
-	req *connect.Request[v1.CreateRaceRequest]) (
-	*connect.Response[v1.CreateRaceResponse], error,
-) {
+	req *v1.CreateRaceRequest,
+) (*v1.CreateRaceResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateRace")
 
-	setter, err := (raceSetterBuilder{}).Build(req.Msg)
+	setter, err := (raceSetterBuilder{}).Build(req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var newRace *models.Race
@@ -127,27 +126,26 @@ func (s *service) CreateRace(
 	}); txErr != nil {
 		l.Error("failed to create race", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create race")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race created")
-	return connect.NewResponse(&v1.CreateRaceResponse{
+	return &v1.CreateRaceResponse{
 		Race: s.conversion.RaceToRace(newRace),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateRace(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateRaceRequest]) (
-	*connect.Response[v1.UpdateRaceResponse], error,
-) {
+	req *v1.UpdateRaceRequest,
+) (*v1.UpdateRaceResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateRace")
 
-	setter, err := (raceSetterBuilder{}).Build(req.Msg)
+	setter, err := (raceSetterBuilder{}).Build(req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var newRace *models.Race
@@ -156,69 +154,67 @@ func (s *service) UpdateRace(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newRace, err = s.repo.Races().Races().Update(
 			ctx,
-			int32(req.Msg.GetRaceId()),
+			int32(req.GetRaceId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update race", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update race")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race updated")
-	return connect.NewResponse(&v1.UpdateRaceResponse{
+	return &v1.UpdateRaceResponse{
 		Race: s.conversion.RaceToRace(newRace),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteRace(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteRaceRequest]) (
-	*connect.Response[v1.DeleteRaceResponse], error,
-) {
+	req *v1.DeleteRaceRequest,
+) (*v1.DeleteRaceResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteRace")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if relErr := helper.DeleteRaceRelated(
-			ctx, int32(req.Msg.GetRaceId()),
+			ctx, int32(req.GetRaceId()),
 		); relErr != nil {
 			return relErr
 		}
 
 		err = s.repo.Races().Races().DeleteByID(
 			ctx,
-			int32(req.Msg.GetRaceId()),
+			int32(req.GetRaceId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete race", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete race")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race deleted")
-	return connect.NewResponse(&v1.DeleteRaceResponse{
+	return &v1.DeleteRaceResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateRaceGrid(
 	ctx context.Context,
-	req *connect.Request[v1.CreateRaceGridRequest]) (
-	*connect.Response[v1.CreateRaceGridResponse], error,
-) {
+	req *v1.CreateRaceGridRequest,
+) (*v1.CreateRaceGridResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateRaceGrid")
 
-	setter, err := (raceGridSetterBuilder{}).Build(req.Msg)
+	setter, err := (raceGridSetterBuilder{}).Build(req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
-	if raceID := req.Msg.GetRaceId(); raceID != 0 {
+	if raceID := req.GetRaceId(); raceID != 0 {
 		setter.RaceID = omit.From(int32(raceID))
 	}
 
@@ -231,27 +227,26 @@ func (s *service) CreateRaceGrid(
 	}); txErr != nil {
 		l.Error("failed to create race grid", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create race grid")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race grid created")
-	return connect.NewResponse(&v1.CreateRaceGridResponse{
+	return &v1.CreateRaceGridResponse{
 		RaceGrid: s.conversion.RaceGridToRaceGrid(newRaceGrid),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateRaceGrid(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateRaceGridRequest]) (
-	*connect.Response[v1.UpdateRaceGridResponse], error,
-) {
+	req *v1.UpdateRaceGridRequest,
+) (*v1.UpdateRaceGridResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateRaceGrid")
 
-	setter, err := (raceGridSetterBuilder{}).Build(req.Msg)
+	setter, err := (raceGridSetterBuilder{}).Build(req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var newRaceGrid *models.RaceGrid
@@ -260,52 +255,51 @@ func (s *service) UpdateRaceGrid(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newRaceGrid, err = s.repo.Races().RaceGrids().Update(
 			ctx,
-			int32(req.Msg.GetRaceGridId()),
+			int32(req.GetRaceGridId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update race grid", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update race grid")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race grid updated")
-	return connect.NewResponse(&v1.UpdateRaceGridResponse{
+	return &v1.UpdateRaceGridResponse{
 		RaceGrid: s.conversion.RaceGridToRaceGrid(newRaceGrid),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteRaceGrid(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteRaceGridRequest]) (
-	*connect.Response[v1.DeleteRaceGridResponse], error,
-) {
+	req *v1.DeleteRaceGridRequest,
+) (*v1.DeleteRaceGridResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteRaceGrid")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if relErr := helper.DeleteRaceGridRelated(
 			ctx,
-			int32(req.Msg.GetRaceGridId()),
+			int32(req.GetRaceGridId()),
 		); relErr != nil {
 			return relErr
 		}
 
 		err = s.repo.Races().RaceGrids().DeleteByID(
 			ctx,
-			int32(req.Msg.GetRaceGridId()),
+			int32(req.GetRaceGridId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete race grid", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete race grid")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race grid deleted")
-	return connect.NewResponse(&v1.DeleteRaceGridResponse{
+	return &v1.DeleteRaceGridResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

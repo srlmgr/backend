@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -20,46 +20,46 @@ const maxSeasonTargetValue = uint32(1<<31 - 1)
 //nolint:whitespace // editor/linter issue
 func (s *service) ResolveSeasonTarget(
 	ctx context.Context,
-	req *connect.Request[queryv1.ResolveSeasonTargetRequest],
-) (*connect.Response[queryv1.ResolveSeasonTargetResponse], error) {
+	req *queryv1.ResolveSeasonTargetRequest,
+) (*queryv1.ResolveSeasonTargetResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ResolveSeasonTarget",
-		log.Uint32("season_id", req.Msg.GetSeasonId()),
-		log.Uint32("event_no", req.Msg.GetEventNo()),
-		log.Uint32("race_no", req.Msg.GetRaceNo()),
-		log.Uint32("race_grid_no", req.Msg.GetRaceGridNo()),
+		log.Uint32("season_id", req.GetSeasonId()),
+		log.Uint32("event_no", req.GetEventNo()),
+		log.Uint32("race_no", req.GetRaceNo()),
+		log.Uint32("race_grid_no", req.GetRaceGridNo()),
 	)
 
-	if req.Msg.GetSeasonId() == 0 {
+	if req.GetSeasonId() == 0 {
 		err := fmt.Errorf("season_id is required")
 		l.Error("invalid ResolveSeasonTarget request", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, err.Error())
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
-	if req.Msg.GetSeasonId() > maxSeasonTargetValue ||
-		req.Msg.GetEventNo() > maxSeasonTargetValue ||
-		req.Msg.GetRaceNo() > maxSeasonTargetValue ||
-		req.Msg.GetRaceGridNo() > maxSeasonTargetValue {
+	if req.GetSeasonId() > maxSeasonTargetValue ||
+		req.GetEventNo() > maxSeasonTargetValue ||
+		req.GetRaceNo() > maxSeasonTargetValue ||
+		req.GetRaceGridNo() > maxSeasonTargetValue {
 		err := fmt.Errorf("season target values must not exceed %d", maxSeasonTargetValue)
 		l.Error("invalid ResolveSeasonTarget request", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, err.Error())
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
-	target, err := s.resolveSeasonTarget(ctx, req.Msg)
+	target, err := s.resolveSeasonTarget(ctx, req)
 	if err != nil {
 		l.Error("failed to resolve season target", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to resolve season target")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season target resolved")
-	return connect.NewResponse(&queryv1.ResolveSeasonTargetResponse{
+	return &queryv1.ResolveSeasonTargetResponse{
 		EventId:    uint32(target.EventID),
 		RaceId:     uint32(target.RaceID),
 		RaceGridId: uint32(target.RaceGridID),
-	}), nil
+	}, nil
 }
 
 // resolveSeasonTarget selects the resolver matching the deepest given parameter.

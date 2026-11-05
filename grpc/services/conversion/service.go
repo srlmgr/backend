@@ -9,7 +9,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -751,6 +751,13 @@ func (s *ConvService) RaceGridToRaceGrid(model *models.RaceGrid) *commonv1.RaceG
 		SessionType: sessionType,
 		SequenceNo:  model.SequenceNo,
 	}
+}
+
+// ToConnectError wraps err into a connect error with the code from
+// MapErrorToRPCCode. The error message is sent to the client and err is kept
+// as cause for errors.Is/errors.As on the server side.
+func (s *ConvService) ToConnectError(err error) *connect.Error {
+	return connect.NewError(s.MapErrorToRPCCode(err), err.Error()).WithCause(err)
 }
 
 //nolint:gocyclo,funlen,lll // many different error types to check for

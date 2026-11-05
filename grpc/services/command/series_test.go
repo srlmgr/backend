@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 
@@ -90,27 +90,27 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	sim := seedSimulation(t, repo, "rFactor 2")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateSeries(ctx, connect.NewRequest(&v1.CreateSeriesRequest{
+	resp, err := svc.CreateSeries(ctx, &v1.CreateSeriesRequest{
 		SimulationId: uint32(sim.ID),
 		Name:         "GT Sprint",
 		Description:  "Main GT series",
 		IsActive:     true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeries().GetName() != "GT Sprint" {
-		t.Fatalf("unexpected series name: %q", resp.Msg.GetSeries().GetName())
+	if resp.GetSeries().GetName() != "GT Sprint" {
+		t.Fatalf("unexpected series name: %q", resp.GetSeries().GetName())
 	}
-	if resp.Msg.GetSeries().GetSimulationId() != uint32(sim.ID) {
+	if resp.GetSeries().GetSimulationId() != uint32(sim.ID) {
 		t.Fatalf(
 			"unexpected simulation id: got %d want %d",
-			resp.Msg.GetSeries().GetSimulationId(),
+			resp.GetSeries().GetSimulationId(),
 			sim.ID,
 		)
 	}
 
-	id := int32(resp.Msg.GetSeries().GetId())
+	id := int32(resp.GetSeries().GetId())
 	stored, err := repo.Series().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created series: %v", err)
@@ -138,20 +138,20 @@ func TestCreateSeriesSuccessDuplicateNameDifferentSimulation(t *testing.T) {
 
 	resp, err := svc.CreateSeries(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeriesRequest{
+		&v1.CreateSeriesRequest{
 			SimulationId: uint32(secondSim.ID),
 			Name:         "GT3",
 			Description:  "Same name, different simulation",
 			IsActive:     true,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeries().GetSimulationId() != uint32(secondSim.ID) {
+	if resp.GetSeries().GetSimulationId() != uint32(secondSim.ID) {
 		t.Fatalf(
 			"unexpected simulation id: got %d want %d",
-			resp.Msg.GetSeries().GetSimulationId(),
+			resp.GetSeries().GetSimulationId(),
 			secondSim.ID,
 		)
 	}
@@ -167,12 +167,12 @@ func TestCreateSeriesFailureDuplicateNameSameSimulation(t *testing.T) {
 
 	_, err := svc.CreateSeries(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeriesRequest{
+		&v1.CreateSeriesRequest{
 			SimulationId: uint32(sim.ID),
 			Name:         "GT4",
 			Description:  "Duplicate within same simulation",
 			IsActive:     true,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -196,10 +196,10 @@ func TestCreateSeriesFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateSeries(
 		context.Background(),
-		connect.NewRequest(&v1.CreateSeriesRequest{
+		&v1.CreateSeriesRequest{
 			SimulationId: 1,
 			Name:         "Prototype",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -223,18 +223,18 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial series: %v", err)
 	}
 
-	resp, err := svc.UpdateSeries(ctx, connect.NewRequest(&v1.UpdateSeriesRequest{
+	resp, err := svc.UpdateSeries(ctx, &v1.UpdateSeriesRequest{
 		SeriesId:     uint32(initial.ID),
 		SimulationId: uint32(sim.ID),
 		Name:         "Porsche Cup Updated",
 		Description:  "Updated description",
 		IsActive:     true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetSeries().GetName() != "Porsche Cup Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetSeries().GetName())
+	if resp.GetSeries().GetName() != "Porsche Cup Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetSeries().GetName())
 	}
 
 	after, err := repo.Series().LoadByID(context.Background(), initial.ID)
@@ -262,11 +262,11 @@ func TestUpdateSeriesFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateSeries(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSeriesRequest{
+		&v1.UpdateSeriesRequest{
 			SeriesId:     999,
 			SimulationId: uint32(sim.ID),
 			Name:         "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -284,10 +284,10 @@ func TestUpdateSeriesFailureDuplicateNameSameSimulation(t *testing.T) {
 
 	_, err := svc.UpdateSeries(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateSeriesRequest{
+		&v1.UpdateSeriesRequest{
 			SeriesId: uint32(second.ID),
 			Name:     first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -316,14 +316,14 @@ func TestDeleteSeriesSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteSeries(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeriesRequest{
+		&v1.DeleteSeriesRequest{
 			SeriesId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -344,9 +344,9 @@ func TestDeleteSeriesFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteSeries(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteSeriesRequest{
+		&v1.DeleteSeriesRequest{
 			SeriesId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

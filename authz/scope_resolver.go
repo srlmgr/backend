@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -31,15 +31,16 @@ func newScopeResolver(pool *pgxpool.Pool) *scopeResolver {
 //nolint:whitespace // multiline signature for line-length compliance
 func (r *scopeResolver) Resolve(
 	ctx context.Context,
-	req connect.AnyRequest,
+	header *connect.Header,
+	req any,
 	policy ProcedurePolicy,
 ) (ResourceScope, error) {
 	scope := ResourceScope{
-		SeriesID:     strings.TrimSpace(req.Header().Get("x-series-id")),
-		SimulationID: strings.TrimSpace(req.Header().Get("x-simulation-id")),
+		SeriesID:     strings.TrimSpace(header.Get("x-series-id")),
+		SimulationID: strings.TrimSpace(header.Get("x-simulation-id")),
 	}
 
-	msg, ok := req.Any().(proto.Message)
+	msg, ok := req.(proto.Message)
 	if ok {
 		r.enrichFromMessage(msg, &scope)
 	}
@@ -152,7 +153,7 @@ func extractIDField(msg proto.Message, names ...string) string {
 			continue
 		}
 		value := ref.Get(fd)
-		//exhaustive:ignore We only handle scalar IDs that can map to scope values.
+		//nolint:exhaustive // We only handle scalar IDs that can map to scope values.
 		switch fd.Kind() {
 		case protoreflect.StringKind:
 			if s := strings.TrimSpace(value.String()); s != "" {

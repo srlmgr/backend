@@ -7,7 +7,6 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"go.opentelemetry.io/otel/codes"
@@ -92,12 +91,11 @@ func resultStateToString(state commonv1.ResultEntryState) string {
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateResultEntry(
 	ctx context.Context,
-	req *connect.Request[v1.CreateResultEntryRequest]) (
-	*connect.Response[v1.CreateResultEntryResponse], error,
-) {
+	req *v1.CreateResultEntryRequest,
+) (*v1.CreateResultEntryResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateResultEntry")
-	setter := (resultEntrySetterBuilder{}).Build(req.Msg)
+	setter := (resultEntrySetterBuilder{}).Build(req)
 
 	var newEntry *models.ResultEntry
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -108,24 +106,23 @@ func (s *service) CreateResultEntry(
 	}); txErr != nil {
 		l.Error("failed to create result entry", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create result entry")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "result entry created")
-	return connect.NewResponse(&v1.CreateResultEntryResponse{
+	return &v1.CreateResultEntryResponse{
 		ResultEntry: s.conversion.ResultEntryToResultEntry(newEntry),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateResultEntry(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateResultEntryRequest]) (
-	*connect.Response[v1.UpdateResultEntryResponse], error,
-) {
+	req *v1.UpdateResultEntryRequest,
+) (*v1.UpdateResultEntryResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateResultEntry")
-	setter := (resultEntrySetterBuilder{}).Build(req.Msg)
+	setter := (resultEntrySetterBuilder{}).Build(req)
 
 	var newEntry *models.ResultEntry
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -133,45 +130,44 @@ func (s *service) UpdateResultEntry(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newEntry, err = s.repo.ResultEntries().Update(
 			ctx,
-			int32(req.Msg.GetResultEntryId()),
+			int32(req.GetResultEntryId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update result entry", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update result entry")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "result entry updated")
-	return connect.NewResponse(&v1.UpdateResultEntryResponse{
+	return &v1.UpdateResultEntryResponse{
 		ResultEntry: s.conversion.ResultEntryToResultEntry(newEntry),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteResultEntry(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteResultEntryRequest]) (
-	*connect.Response[v1.DeleteResultEntryResponse], error,
-) {
+	req *v1.DeleteResultEntryRequest,
+) (*v1.DeleteResultEntryResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteResultEntry")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.ResultEntries().DeleteByID(
 			ctx,
-			int32(req.Msg.GetResultEntryId()),
+			int32(req.GetResultEntryId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete result entry", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete result entry")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "result entry deleted")
-	return connect.NewResponse(&v1.DeleteResultEntryResponse{
+	return &v1.DeleteResultEntryResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

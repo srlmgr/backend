@@ -7,7 +7,7 @@ import (
 	"time"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
@@ -44,13 +44,13 @@ func TestListEventsEmpty(t *testing.T) {
 
 	resp, err := svc.ListEvents(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListEventsRequest{}),
+		&queryv1.ListEventsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -69,13 +69,13 @@ func TestListEventsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListEvents(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListEventsRequest{}),
+		&queryv1.ListEventsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -108,15 +108,15 @@ func TestListEventsBySeasonID(t *testing.T) {
 
 	resp, err := svc.ListEvents(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListEventsRequest{
+		&queryv1.ListEventsRequest{
 			SeasonId: uint32(season1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -141,15 +141,15 @@ func TestGetEventSuccess(t *testing.T) {
 
 	resp, err := svc.GetEvent(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetEventRequest{
+		&queryv1.GetEventRequest{
 			Id: uint32(event.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetEvent()
+	got := resp.GetEvent()
 	if got.GetId() != uint32(event.ID) {
 		t.Errorf("expected id %d, got %d", event.ID, got.GetId())
 	}
@@ -166,9 +166,9 @@ func TestGetEventNotFound(t *testing.T) {
 
 	_, err := svc.GetEvent(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetEventRequest{
+		&queryv1.GetEventRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

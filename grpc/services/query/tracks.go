@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,8 +18,8 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListTracks(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListTracksRequest],
-) (*connect.Response[queryv1.ListTracksResponse], error) {
+	req *queryv1.ListTracksRequest,
+) (*queryv1.ListTracksResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListTracks")
 
@@ -28,7 +27,7 @@ func (s *service) ListTracks(
 	if err != nil {
 		l.Error("failed to load tracks", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load tracks")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "tracks loaded")
 
@@ -39,9 +38,9 @@ func (s *service) ListTracks(
 		}
 	}
 
-	return connect.NewResponse(&queryv1.ListTracksResponse{
+	return &queryv1.ListTracksResponse{
 		Items: items,
-	}), nil
+	}, nil
 }
 
 // GetTrack returns a track by ID.
@@ -49,22 +48,22 @@ func (s *service) ListTracks(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetTrack(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetTrackRequest],
-) (*connect.Response[queryv1.GetTrackResponse], error) {
+	req *queryv1.GetTrackRequest,
+) (*queryv1.GetTrackResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetTrack", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetTrack", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Tracks().Tracks().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Tracks().Tracks().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load track", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track loaded")
 
-	return connect.NewResponse(&queryv1.GetTrackResponse{
+	return &queryv1.GetTrackResponse{
 		Track: s.conversion.TrackToTrack(item),
-	}), nil
+	}, nil
 }
 
 // ListTrackLayouts returns a list of track layouts, optionally filtered by track ID.
@@ -72,10 +71,10 @@ func (s *service) GetTrack(
 //nolint:whitespace // editor/linter issue
 func (s *service) ListTrackLayouts(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListTrackLayoutsRequest],
-) (*connect.Response[queryv1.ListTrackLayoutsResponse], error) {
+	req *queryv1.ListTrackLayoutsRequest,
+) (*queryv1.ListTrackLayoutsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListTrackLayouts", log.Uint32("track_id", req.Msg.GetTrackId()))
+	l.Debug("ListTrackLayouts", log.Uint32("track_id", req.GetTrackId()))
 
 	layoutsRepo := s.repo.Tracks().TrackLayouts()
 
@@ -84,7 +83,7 @@ func (s *service) ListTrackLayouts(
 		err         error
 	)
 
-	if trackID := int32(req.Msg.GetTrackId()); trackID != 0 {
+	if trackID := int32(req.GetTrackId()); trackID != 0 {
 		layoutItems, err = layoutsRepo.LoadByTrackID(ctx, trackID)
 	} else {
 		layoutItems, err = layoutsRepo.LoadAll(ctx)
@@ -93,7 +92,7 @@ func (s *service) ListTrackLayouts(
 	if err != nil {
 		l.Error("failed to load track layouts", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track layouts")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layouts loaded")
 
@@ -104,9 +103,9 @@ func (s *service) ListTrackLayouts(
 		}
 	}
 
-	return connect.NewResponse(&queryv1.ListTrackLayoutsResponse{
+	return &queryv1.ListTrackLayoutsResponse{
 		Items: items,
-	}), nil
+	}, nil
 }
 
 // GetTrackLayout returns a track layout by ID.
@@ -114,31 +113,31 @@ func (s *service) ListTrackLayouts(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetTrackLayout(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetTrackLayoutRequest],
-) (*connect.Response[queryv1.GetTrackLayoutResponse], error) {
+	req *queryv1.GetTrackLayoutRequest,
+) (*queryv1.GetTrackLayoutResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetTrackLayout", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetTrackLayout", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Tracks().TrackLayouts().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Tracks().TrackLayouts().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load track layout", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track layout")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	aliases, aliasErr := s.repo.Tracks().SimulationTrackLayoutAliases().
-		LoadByLayoutID(ctx, int32(req.Msg.GetId()))
+		LoadByLayoutID(ctx, int32(req.GetId()))
 	if aliasErr != nil {
 		l.Error("failed to load track layout aliases", log.ErrorField(aliasErr))
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to load track layout aliases",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(aliasErr), aliasErr)
+		return nil, s.conversion.ToConnectError(aliasErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "track layout loaded")
 
-	return connect.NewResponse(&queryv1.GetTrackLayoutResponse{
+	return &queryv1.GetTrackLayoutResponse{
 		TrackLayout:       s.conversion.TrackLayoutToTrackLayout(item),
 		SimulationAliases: s.conversion.SimulationTrackAliasToProto(aliases),
-	}), nil
+	}, nil
 }
