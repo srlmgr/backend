@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/log"
 )
@@ -108,7 +108,7 @@ func NewInterceptor(
 	ctx context.Context,
 	cfg *Config,
 	l *log.Logger,
-) (connect.Interceptor, error) {
+) (connect.ServerInterceptor, error) {
 	m, err := NewManager(ctx, cfg, l)
 	if err != nil {
 		return nil, err
@@ -117,25 +117,47 @@ func NewInterceptor(
 }
 
 //nolint:whitespace // multiline callback signature for line-length compliance
-func (m *manager) Interceptor() connect.Interceptor {
+func (m *manager) Interceptor() connect.ServerInterceptor {
 	if !m.cfg.Enabled {
-		return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(next connect.ServerFunc) connect.ServerFunc {
 			return next
-		})
+		}
 	}
 
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(next connect.ServerFunc) connect.ServerFunc {
 		return func(
 			ctx context.Context,
-			req connect.AnyRequest,
-		) (connect.AnyResponse, error) {
-			principalCtx, err := m.authenticate(ctx, req)
-			if err != nil {
-				return nil, m.toConnectError(err)
+			spec connect.Spec,
+			stream connect.ServerStream,
+		) error {
+			if spec.StreamType != connect.StreamTypeUnary {
+				return next(ctx, spec, stream)
 			}
-			return next(principalCtx, req)
+			var headers http.Header
+			callInfo, ok := connect.CallInfoForServerContext(ctx)
+			if ok {
+				headers = toHTTPHeader(callInfo.RequestHeader())
+			}
+			principalCtx, err := m.authenticate(ctx, headers, spec.Procedure)
+			if err != nil {
+				return m.toConnectError(err, callInfo)
+			}
+			return next(principalCtx, spec, stream)
 		}
-	})
+	}
+}
+
+// toHTTPHeader copies connect request metadata into an http.Header so the
+// credential and cookie helpers can be shared with plain HTTP handlers.
+func toHTTPHeader(h *connect.Header) http.Header {
+	out := http.Header{}
+	if h == nil {
+		return out
+	}
+	for k, v := range h.All() {
+		out[k] = append([]string(nil), v...)
+	}
+	return out
 }
 
 func (m *manager) RegisterHTTPHandlers(mux *http.ServeMux) {
@@ -209,25 +231,26 @@ func (m *manager) CurrentPrincipalFromRequest(
 	return session.Principal, true, nil
 }
 
-func (m *manager) toConnectError(err error) error {
+func (m *manager) toConnectError(err error, callInfo *connect.CallInfo) error {
 	var authErr *authError
 	if !errors.As(err, &authErr) {
-		return connect.NewError(connect.CodeUnauthenticated, err)
+		return connect.NewError(connect.CodeUnauthenticated, err.Error()).WithCause(err)
 	}
 
-	connectErr := connect.NewError(connect.CodeUnauthenticated, authErr.err)
-	if authErr.clearCookie {
-		connectErr.Meta().Add("Set-Cookie", m.clearSessionCookie().String())
+	if authErr.clearCookie && callInfo != nil {
+		callInfo.ResponseHeader().Add("Set-Cookie", m.clearSessionCookie().String())
 	}
-	return connectErr
+	return connect.NewError(connect.CodeUnauthenticated, authErr.err.Error()).
+		WithCause(authErr.err)
 }
 
 //nolint:whitespace,funlen // auth flow intentionally explicit; editor/linter issue
 func (m *manager) authenticate(
 	ctx context.Context,
-	req connect.AnyRequest,
+	headers http.Header,
+	procedure string,
 ) (context.Context, error) {
-	cred, err := selectCredential(req.Header())
+	cred, err := selectCredential(headers)
 	if err != nil {
 		return nil, err
 	}
@@ -244,12 +267,12 @@ func (m *manager) authenticate(
 		return nil, fmt.Errorf("unsupported authentication source")
 	}
 
-	sessionID, err := m.readSessionID(req.Header())
+	sessionID, err := m.readSessionID(headers)
 	if err != nil {
 		return nil, err
 	}
 	if sessionID == "" {
-		if IsAnonymousProcedure(req.Spec().Procedure) {
+		if IsAnonymousProcedure(procedure) {
 			return ctx, nil
 		}
 		return nil, errors.New("missing authentication credentials")

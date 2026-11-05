@@ -8,7 +8,6 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/samber/lo"
@@ -87,16 +86,15 @@ func (b seasonSetterBuilder) Build(msg seasonRequest) *seasonSetter {
 //nolint:whitespace // editor/linter issue
 func (s *service) CreateSeason(
 	ctx context.Context,
-	req *connect.Request[v1.CreateSeasonRequest]) (
-	*connect.Response[v1.CreateSeasonResponse], error,
-) {
+	req *v1.CreateSeasonRequest,
+) (*v1.CreateSeasonResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreateSeason")
-	setter := (seasonSetterBuilder{}).Build(req.Msg)
+	setter := (seasonSetterBuilder{}).Build(req)
 
 	var newSeason *models.Season
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
-		setter.SeriesID = omit.From(int32(req.Msg.GetSeriesId()))
+		setter.SeriesID = omit.From(int32(req.GetSeriesId()))
 		setter.CreatedBy = omit.From(s.execUser(ctx))
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newSeason, err = s.repo.Seasons().Create(ctx, setter)
@@ -104,24 +102,23 @@ func (s *service) CreateSeason(
 	}); txErr != nil {
 		l.Error("failed to create season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create season")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season created")
-	return connect.NewResponse(&v1.CreateSeasonResponse{
+	return &v1.CreateSeasonResponse{
 		Season: s.conversion.SeasonToSeason(newSeason),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdateSeason(
 	ctx context.Context,
-	req *connect.Request[v1.UpdateSeasonRequest]) (
-	*connect.Response[v1.UpdateSeasonResponse], error,
-) {
+	req *v1.UpdateSeasonRequest,
+) (*v1.UpdateSeasonResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdateSeason")
-	setter := (seasonSetterBuilder{}).Build(req.Msg)
+	setter := (seasonSetterBuilder{}).Build(req)
 
 	var newSeason *models.Season
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -129,28 +126,27 @@ func (s *service) UpdateSeason(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newSeason, err = s.repo.Seasons().Update(
 			ctx,
-			int32(req.Msg.GetSeasonId()),
+			int32(req.GetSeasonId()),
 			setter,
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to update season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update season")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season updated")
-	return connect.NewResponse(&v1.UpdateSeasonResponse{
+	return &v1.UpdateSeasonResponse{
 		Season: s.conversion.SeasonToSeason(newSeason),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) SetSeasonCarClasses(
 	ctx context.Context,
-	req *connect.Request[v1.SetSeasonCarClassesRequest]) (
-	*connect.Response[v1.SetSeasonCarClassesResponse], error,
-) {
+	req *v1.SetSeasonCarClassesRequest,
+) (*v1.SetSeasonCarClassesResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("SetSeasonCarClasses")
 
@@ -158,12 +154,12 @@ func (s *service) SetSeasonCarClasses(
 		toSetCarModelVariantIDs := make([]int32, 0)
 		collectCarModelVariants := func() error {
 			if err := s.repo.Seasons().SetCarModelVariants(
-				ctx, int32(req.Msg.GetSeasonId()), []int32{},
+				ctx, int32(req.GetSeasonId()), []int32{},
 			); err != nil {
 				return err
 			}
 
-			for _, carClassID := range lo.Uniq(req.Msg.GetCarClassIds()) {
+			for _, carClassID := range lo.Uniq(req.GetCarClassIds()) {
 				carModelVariants, err := s.repo.Cars().CarModelVariants().LoadByCarClassID(
 					ctx, int32(carClassID),
 				)
@@ -179,7 +175,7 @@ func (s *service) SetSeasonCarClasses(
 			}
 			return nil
 		}
-		switch req.Msg.UpdateMode {
+		switch req.UpdateMode {
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_UNSPECIFIED:
 			// do nothing
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_REPLACE:
@@ -189,7 +185,7 @@ func (s *service) SetSeasonCarClasses(
 			}
 		case v1.SeasonCarModelsUpdateMode_SEASON_CAR_MODELS_UPDATE_MODE_INSERT_WHEN_EMPTY:
 			existingCarModelVariants, err := s.repo.Cars().CarModelVariants().LoadBySeasonID(
-				ctx, int32(req.Msg.GetSeasonId()),
+				ctx, int32(req.GetSeasonId()),
 			)
 			if err != nil {
 				return err
@@ -203,7 +199,7 @@ func (s *service) SetSeasonCarClasses(
 		if len(toSetCarModelVariantIDs) > 0 {
 			if err := s.repo.Seasons().SetCarModelVariants(
 				ctx,
-				int32(req.Msg.GetSeasonId()),
+				int32(req.GetSeasonId()),
 				toSetCarModelVariantIDs,
 			); err != nil {
 				return err
@@ -211,8 +207,8 @@ func (s *service) SetSeasonCarClasses(
 		}
 		return s.repo.Seasons().SetCarClasses(
 			ctx,
-			int32(req.Msg.GetSeasonId()),
-			lo.Map(lo.Uniq(req.Msg.GetCarClassIds()),
+			int32(req.GetSeasonId()),
+			lo.Map(lo.Uniq(req.GetCarClassIds()),
 				func(id uint32, _ int) int32 { return int32(id) }),
 		)
 	}); txErr != nil {
@@ -220,27 +216,26 @@ func (s *service) SetSeasonCarClasses(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to set car classes for season",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car classes set for season")
-	return connect.NewResponse(&v1.SetSeasonCarClassesResponse{}), nil
+	return &v1.SetSeasonCarClassesResponse{}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) SetSeasonCarModelVariants(
 	ctx context.Context,
-	req *connect.Request[v1.SetSeasonCarModelVariantsRequest]) (
-	*connect.Response[v1.SetSeasonCarModelVariantsResponse], error,
-) {
+	req *v1.SetSeasonCarModelVariantsRequest,
+) (*v1.SetSeasonCarModelVariantsResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("SetSeasonCarModelVariants")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		return s.repo.Seasons().SetCarModelVariants(
 			ctx,
-			int32(req.Msg.GetSeasonId()),
-			lo.Map(lo.Uniq(req.Msg.GetCarModelVariantIds()),
+			int32(req.GetSeasonId()),
+			lo.Map(lo.Uniq(req.GetCarModelVariantIds()),
 				func(id uint32, _ int) int32 { return int32(id) }),
 		)
 	}); txErr != nil {
@@ -248,36 +243,35 @@ func (s *service) SetSeasonCarModelVariants(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to set car model variants for season",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "car model variants set for season")
-	return connect.NewResponse(&v1.SetSeasonCarModelVariantsResponse{}), nil
+	return &v1.SetSeasonCarModelVariantsResponse{}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeleteSeason(
 	ctx context.Context,
-	req *connect.Request[v1.DeleteSeasonRequest]) (
-	*connect.Response[v1.DeleteSeasonResponse], error,
-) {
+	req *v1.DeleteSeasonRequest,
+) (*v1.DeleteSeasonResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeleteSeason")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		err = s.repo.Seasons().DeleteByID(
 			ctx,
-			int32(req.Msg.GetSeasonId()),
+			int32(req.GetSeasonId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete season", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete season")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season deleted")
-	return connect.NewResponse(&v1.DeleteSeasonResponse{
+	return &v1.DeleteSeasonResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

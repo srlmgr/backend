@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,10 +18,10 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListSeasons(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonsRequest],
-) (*connect.Response[queryv1.ListSeasonsResponse], error) {
+	req *queryv1.ListSeasonsRequest,
+) (*queryv1.ListSeasonsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListSeasons", log.Uint32("series_id", req.Msg.GetSeriesId()))
+	l.Debug("ListSeasons", log.Uint32("series_id", req.GetSeriesId()))
 
 	seasonsRepo := s.repo.Seasons()
 
@@ -31,7 +30,7 @@ func (s *service) ListSeasons(
 		err         error
 	)
 
-	if seriesID := int32(req.Msg.GetSeriesId()); seriesID != 0 {
+	if seriesID := int32(req.GetSeriesId()); seriesID != 0 {
 		seasonItems, err = seasonsRepo.LoadBySeriesID(ctx, seriesID)
 	} else {
 		seasonItems, err = seasonsRepo.LoadAll(ctx)
@@ -40,7 +39,7 @@ func (s *service) ListSeasons(
 	if err != nil {
 		l.Error("failed to load seasons", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load seasons")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.Season, 0, len(seasonItems))
@@ -51,7 +50,7 @@ func (s *service) ListSeasons(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "seasons loaded")
-	return connect.NewResponse(&queryv1.ListSeasonsResponse{Items: items}), nil
+	return &queryv1.ListSeasonsResponse{Items: items}, nil
 }
 
 // GetSeason returns a season by ID.
@@ -59,20 +58,20 @@ func (s *service) ListSeasons(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetSeason(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSeasonRequest],
-) (*connect.Response[queryv1.GetSeasonResponse], error) {
+	req *queryv1.GetSeasonRequest,
+) (*queryv1.GetSeasonResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetSeason", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetSeason", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Seasons().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Seasons().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load season", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season loaded")
-	return connect.NewResponse(&queryv1.GetSeasonResponse{
+	return &queryv1.GetSeasonResponse{
 		Season: s.conversion.SeasonToSeason(item),
-	}), nil
+	}, nil
 }

@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,10 +18,10 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListSeries(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeriesRequest],
-) (*connect.Response[queryv1.ListSeriesResponse], error) {
+	req *queryv1.ListSeriesRequest,
+) (*queryv1.ListSeriesResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListSeries", log.Uint32("simulation_id", req.Msg.GetSimulationId()))
+	l.Debug("ListSeries", log.Uint32("simulation_id", req.GetSimulationId()))
 
 	seriesRepo := s.repo.Series()
 
@@ -31,7 +30,7 @@ func (s *service) ListSeries(
 		err         error
 	)
 
-	if simulationID := int32(req.Msg.GetSimulationId()); simulationID != 0 {
+	if simulationID := int32(req.GetSimulationId()); simulationID != 0 {
 		seriesItems, err = seriesRepo.LoadBySimulationID(ctx, simulationID)
 	} else {
 		seriesItems, err = seriesRepo.LoadAll(ctx)
@@ -40,7 +39,7 @@ func (s *service) ListSeries(
 	if err != nil {
 		l.Error("failed to load series", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load series")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.Series, 0, len(seriesItems))
@@ -51,7 +50,7 @@ func (s *service) ListSeries(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "series loaded")
-	return connect.NewResponse(&queryv1.ListSeriesResponse{Items: items}), nil
+	return &queryv1.ListSeriesResponse{Items: items}, nil
 }
 
 // GetSeries returns a series by ID.
@@ -59,20 +58,20 @@ func (s *service) ListSeries(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetSeries(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSeriesRequest],
-) (*connect.Response[queryv1.GetSeriesResponse], error) {
+	req *queryv1.GetSeriesRequest,
+) (*queryv1.GetSeriesResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetSeries", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetSeries", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Series().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Series().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load series", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load series")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "series loaded")
-	return connect.NewResponse(&queryv1.GetSeriesResponse{
+	return &queryv1.GetSeriesResponse{
 		Series: s.conversion.SeriesToSeries(item),
-	}), nil
+	}, nil
 }

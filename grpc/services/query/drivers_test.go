@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
@@ -40,13 +40,13 @@ func TestListDriversEmpty(t *testing.T) {
 
 	resp, err := svc.ListDrivers(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListDriversRequest{}),
+		&queryv1.ListDriversRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -58,13 +58,13 @@ func TestListDriversReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListDrivers(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListDriversRequest{}),
+		&queryv1.ListDriversRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -89,15 +89,15 @@ func TestGetDriverSuccess(t *testing.T) {
 
 	resp, err := svc.GetDriver(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetDriverRequest{
+		&queryv1.GetDriverRequest{
 			Id: uint32(d.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetDriver()
+	got := resp.GetDriver()
 	if got.GetId() != uint32(d.ID) {
 		t.Errorf("expected id %d, got %d", d.ID, got.GetId())
 	}
@@ -144,16 +144,16 @@ func TestGetDriverSuccessWithAliases(t *testing.T) {
 
 	resp, err := svc.GetDriver(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetDriverRequest{
+		&queryv1.GetDriverRequest{
 			Id:             uint32(d.ID),
 			IncludeAliases: true,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	aliases := resp.Msg.GetAliases()
+	aliases := resp.GetAliases()
 	if len(aliases) != 1 {
 		t.Fatalf("expected 1 alias group, got %d", len(aliases))
 	}
@@ -167,12 +167,12 @@ func TestGetDriverSuccessWithAliases(t *testing.T) {
 		t.Fatalf("unexpected aliases: %#v", got)
 	}
 
-	if resp.Msg.GetDriver().GetId() != uint32(d.ID) {
-		t.Fatalf("expected driver id %d, got %d", d.ID, resp.Msg.GetDriver().GetId())
+	if resp.GetDriver().GetId() != uint32(d.ID) {
+		t.Fatalf("expected driver id %d, got %d", d.ID, resp.GetDriver().GetId())
 	}
-	if resp.Msg.GetDriver().GetName() != "Alias Driver" {
+	if resp.GetDriver().GetName() != "Alias Driver" {
 		t.Fatalf("expected driver name %q, got %q", "Alias Driver",
-			resp.Msg.GetDriver().GetName())
+			resp.GetDriver().GetName())
 	}
 }
 
@@ -181,9 +181,9 @@ func TestGetDriverNotFound(t *testing.T) {
 
 	_, err := svc.GetDriver(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetDriverRequest{
+		&queryv1.GetDriverRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -17,20 +16,20 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *standingsService) GetStandings(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetStandingsRequest],
-) (*connect.Response[queryv1.GetStandingsResponse], error) {
+	req *queryv1.GetStandingsRequest,
+) (*queryv1.GetStandingsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	eventID := int32(req.Msg.GetEventId())
+	eventID := int32(req.GetEventId())
 	l.Debug("GetStandings for event",
 		log.Int32("event_id", eventID),
-		log.Int("skip_mode", int(req.Msg.GetSkipMode())),
+		log.Int("skip_mode", int(req.GetSkipMode())),
 	)
 	standingsData, err := s.svc.StandingsService().GetEventStandings(
 		ctx, int(eventID),
-		conversion.SkipModeFromProto(req.Msg.GetSkipMode()),
+		conversion.SkipModeFromProto(req.GetSkipMode()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	primary := lo.Map(standingsData.Primary,
@@ -43,10 +42,10 @@ func (s *standingsService) GetStandings(
 		})
 
 	resp := &queryv1.GetStandingsResponse{
-		EventId:            req.Msg.GetEventId(),
+		EventId:            req.GetEventId(),
 		PrimaryStandings:   primary,
 		SecondaryStandings: secondary,
 	}
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "standings loaded")
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }

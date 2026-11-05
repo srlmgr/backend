@@ -1,7 +1,7 @@
 package admin
 
 import (
-	adminv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/admin/v1/adminv1connect"
+	adminv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/admin/v1/adminv1connect"
 
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"

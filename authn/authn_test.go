@@ -12,8 +12,7 @@ import (
 	"testing"
 	"time"
 
-	connect "connectrpc.com/connect"
-	"google.golang.org/protobuf/types/known/emptypb"
+	connect "connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/log"
 )
@@ -80,12 +79,12 @@ func TestManagerAuthenticate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			req := connect.NewRequest(&emptypb.Empty{})
+			headers := http.Header{}
 			for k, v := range tc.headers {
-				req.Header().Set(k, v)
+				headers.Set(k, v)
 			}
 
-			gotCtx, err := tc.manager.authenticate(context.Background(), req)
+			gotCtx, err := tc.manager.authenticate(context.Background(), headers, "")
 			if tc.expectErr != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tc.expectErr)
@@ -131,14 +130,14 @@ func TestNewInterceptor(t *testing.T) {
 		}
 
 		called := false
-		wrapped := interceptor.WrapUnary(
-			func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		wrapped := interceptor(
+			func(context.Context, connect.Spec, connect.ServerStream) error {
 				called = true
-				return connect.NewResponse(&emptypb.Empty{}), nil
+				return nil
 			},
 		)
 
-		_, err = wrapped(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+		err = wrapped(context.Background(), connect.Spec{}, nil)
 		if err != nil {
 			t.Fatalf("wrapped unary error = %v", err)
 		}
@@ -159,13 +158,13 @@ func TestNewInterceptor(t *testing.T) {
 			t.Fatalf("NewInterceptor() error = %v", err)
 		}
 
-		wrapped := interceptor.WrapUnary(
-			func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				return connect.NewResponse(&emptypb.Empty{}), nil
+		wrapped := interceptor(
+			func(context.Context, connect.Spec, connect.ServerStream) error {
+				return nil
 			},
 		)
 
-		_, err = wrapped(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+		err = wrapped(context.Background(), connect.Spec{}, nil)
 		if err == nil {
 			t.Fatal("expected unauthenticated error")
 		}

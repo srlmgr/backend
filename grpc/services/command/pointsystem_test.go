@@ -8,7 +8,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
@@ -64,7 +64,7 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreatePointSystem(ctx, connect.NewRequest(&v1.CreatePointSystemRequest{
+	resp, err := svc.CreatePointSystem(ctx, &v1.CreatePointSystemRequest{
 		Name:        "Sprint Points",
 		Description: "Points for sprint races",
 		Eligibility: &commonv1.PointEligibility{
@@ -107,35 +107,35 @@ func TestCreatePointSystemSuccess(t *testing.T) {
 				},
 			},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetPointSystem().GetName() != "Sprint Points" {
-		t.Fatalf("unexpected point system name: %q", resp.Msg.GetPointSystem().GetName())
+	if resp.GetPointSystem().GetName() != "Sprint Points" {
+		t.Fatalf("unexpected point system name: %q", resp.GetPointSystem().GetName())
 	}
-	if resp.Msg.GetPointSystem().GetDescription() != "Points for sprint races" {
+	if resp.GetPointSystem().GetDescription() != "Points for sprint races" {
 		t.Fatalf(
 			"unexpected point system description: %q",
-			resp.Msg.GetPointSystem().GetDescription(),
+			resp.GetPointSystem().GetDescription(),
 		)
 	}
-	if !resp.Msg.GetPointSystem().GetEligibility().GetGuests() {
+	if !resp.GetPointSystem().GetEligibility().GetGuests() {
 		t.Fatal("expected guests eligibility to round-trip")
 	}
-	if len(resp.Msg.GetPointSystem().GetRaceSettings()) != 2 {
+	if len(resp.GetPointSystem().GetRaceSettings()) != 2 {
 		t.Fatalf(
 			"unexpected race settings count: %d",
-			len(resp.Msg.GetPointSystem().GetRaceSettings()),
+			len(resp.GetPointSystem().GetRaceSettings()),
 		)
 	}
-	if resp.Msg.GetPointSystem().GetRaceSettings()[0].GetName() != "Settings for race 1" {
+	if resp.GetPointSystem().GetRaceSettings()[0].GetName() != "Settings for race 1" {
 		t.Fatalf(
 			"unexpected first race setting name: %q",
-			resp.Msg.GetPointSystem().GetRaceSettings()[0].GetName(),
+			resp.GetPointSystem().GetRaceSettings()[0].GetName(),
 		)
 	}
-	id := int32(resp.Msg.GetPointSystem().GetId())
+	id := int32(resp.GetPointSystem().GetId())
 	stored, err := repo.PointSystems().PointSystems().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created point system: %v", err)
@@ -163,7 +163,7 @@ func TestCreatePointSystemWithOfftracksExceededPolicyPersists(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	resp, err := svc.CreatePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.CreatePointSystemRequest{
+		&v1.CreatePointSystemRequest{
 			Name: "Offtracks Points",
 			RaceSettings: []*commonv1.PointRaceSettings{
 				{
@@ -186,13 +186,13 @@ func TestCreatePointSystemWithOfftracksExceededPolicyPersists(t *testing.T) {
 					},
 				},
 			},
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error creating point system: %v", err)
 	}
 
-	policies := resp.Msg.GetPointSystem().GetRaceSettings()[0].GetPolicies()
+	policies := resp.GetPointSystem().GetRaceSettings()[0].GetPolicies()
 	if len(policies) != 1 {
 		t.Fatalf("unexpected persisted policy count: %d", len(policies))
 	}
@@ -216,7 +216,7 @@ func TestCreatePointSystemWithOfftracksExceededPolicyPersists(t *testing.T) {
 
 	stored, err := repo.PointSystems().PointSystems().LoadByID(
 		context.Background(),
-		int32(resp.Msg.GetPointSystem().GetId()),
+		int32(resp.GetPointSystem().GetId()),
 	)
 	if err != nil {
 		t.Fatalf("failed to reload point system: %v", err)
@@ -236,9 +236,9 @@ func TestCreatePointSystemFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.CreatePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.CreatePointSystemRequest{
+		&v1.CreatePointSystemRequest{
 			Name: "duplicate-ps",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -259,9 +259,9 @@ func TestCreatePointSystemFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreatePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.CreatePointSystemRequest{
+		&v1.CreatePointSystemRequest{
 			Name: "tx-fail-ps",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -311,7 +311,7 @@ func TestUpdatePointSystemSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial point system: %v", err)
 	}
 
-	resp, err := svc.UpdatePointSystem(ctx, connect.NewRequest(&v1.UpdatePointSystemRequest{
+	resp, err := svc.UpdatePointSystem(ctx, &v1.UpdatePointSystemRequest{
 		PointSystemId: uint32(initial.ID),
 		Name:          "Updated Points",
 		Description:   "Updated description",
@@ -334,17 +334,17 @@ func TestUpdatePointSystemSuccess(t *testing.T) {
 				},
 			},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetPointSystem().GetName() != "Updated Points" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetPointSystem().GetName())
+	if resp.GetPointSystem().GetName() != "Updated Points" {
+		t.Fatalf("unexpected updated name: %q", resp.GetPointSystem().GetName())
 	}
-	if len(resp.Msg.GetPointSystem().GetRaceSettings()) != 1 {
+	if len(resp.GetPointSystem().GetRaceSettings()) != 1 {
 		t.Fatalf(
 			"unexpected updated race settings count: %d",
-			len(resp.Msg.GetPointSystem().GetRaceSettings()),
+			len(resp.GetPointSystem().GetRaceSettings()),
 		)
 	}
 
@@ -382,10 +382,10 @@ func TestUpdatePointSystemFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdatePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.UpdatePointSystemRequest{
+		&v1.UpdatePointSystemRequest{
 			PointSystemId: 999,
 			Name:          "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -402,10 +402,10 @@ func TestUpdatePointSystemFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.UpdatePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.UpdatePointSystemRequest{
+		&v1.UpdatePointSystemRequest{
 			PointSystemId: uint32(second.ID),
 			Name:          first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -433,14 +433,14 @@ func TestDeletePointSystemSuccess(t *testing.T) {
 
 	resp, err := svc.DeletePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.DeletePointSystemRequest{
+		&v1.DeletePointSystemRequest{
 			PointSystemId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -461,9 +461,9 @@ func TestDeletePointSystemFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeletePointSystem(
 		context.Background(),
-		connect.NewRequest(&v1.DeletePointSystemRequest{
+		&v1.DeletePointSystemRequest{
 			PointSystemId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

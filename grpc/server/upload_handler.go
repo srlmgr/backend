@@ -14,7 +14,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	connect "connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/authz"
@@ -36,8 +36,8 @@ type currentPrincipalResolver interface {
 type uploadResultsService interface {
 	UploadResultsFile(
 		ctx context.Context,
-		req *connect.Request[importv1.UploadResultsFileRequest],
-	) (*connect.Response[importv1.UploadResultsFileResponse], error)
+		req *importv1.UploadResultsFileRequest,
+	) (*importv1.UploadResultsFileResponse, error)
 }
 
 type multipartUploadHandler struct {
@@ -127,18 +127,18 @@ func (h *multipartUploadHandler) handleUpload(w http.ResponseWriter, r *http.Req
 		upload := uploads[i]
 		resp, serviceErr := h.service.UploadResultsFile(
 			authn.AddPrincipal(r.Context(), &principal),
-			connect.NewRequest(&importv1.UploadResultsFileRequest{
+			&importv1.UploadResultsFileRequest{
 				RaceGridId:   uint32(raceGridID),
 				ImportFormat: upload.format,
 				Payload:      upload.payload,
-			}),
+			},
 		)
 		if serviceErr != nil {
 			writeUploadServiceError(w, serviceErr)
 			return
 		}
 
-		processingStates = append(processingStates, resp.Msg.GetProcessingState())
+		processingStates = append(processingStates, resp.GetProcessingState())
 	}
 
 	w.Header().Set("Content-Type", "application/json")

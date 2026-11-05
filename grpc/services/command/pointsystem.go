@@ -6,7 +6,6 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/shopspring/decimal"
@@ -97,12 +96,11 @@ func (s *service) replacePointRules(
 //nolint:whitespace // editor/linter issue
 func (s *service) CreatePointSystem(
 	ctx context.Context,
-	req *connect.Request[v1.CreatePointSystemRequest]) (
-	*connect.Response[v1.CreatePointSystemResponse], error,
-) {
+	req *v1.CreatePointSystemRequest,
+) (*v1.CreatePointSystemResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("CreatePointSystem")
-	setter := (pointSystemSetterBuilder{}).Build(req.Msg)
+	setter := (pointSystemSetterBuilder{}).Build(req)
 
 	var newPointSystem *models.PointSystem
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -112,11 +110,11 @@ func (s *service) CreatePointSystem(
 		if err != nil {
 			return err
 		}
-		return s.replacePointRules(ctx, newPointSystem.ID, req.Msg.GetRaceSettings())
+		return s.replacePointRules(ctx, newPointSystem.ID, req.GetRaceSettings())
 	}); txErr != nil {
 		l.Error("failed to create point system", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to create point system")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	loadedPointSystem, loadErr := s.repo.PointSystems().
@@ -125,25 +123,24 @@ func (s *service) CreatePointSystem(
 	if loadErr != nil {
 		l.Error("failed to reload point system", log.ErrorField(loadErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to reload point system")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(loadErr), loadErr)
+		return nil, s.conversion.ToConnectError(loadErr)
 	}
 	newPointSystem = loadedPointSystem
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "point system created")
-	return connect.NewResponse(&v1.CreatePointSystemResponse{
+	return &v1.CreatePointSystemResponse{
 		PointSystem: s.conversion.PointSystemToPointSystem(newPointSystem),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdatePointSystem(
 	ctx context.Context,
-	req *connect.Request[v1.UpdatePointSystemRequest]) (
-	*connect.Response[v1.UpdatePointSystemResponse], error,
-) {
+	req *v1.UpdatePointSystemRequest,
+) (*v1.UpdatePointSystemResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdatePointSystem")
-	setter := (pointSystemSetterBuilder{}).Build(req.Msg)
+	setter := (pointSystemSetterBuilder{}).Build(req)
 
 	var newPointSystem *models.PointSystem
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
@@ -151,20 +148,20 @@ func (s *service) UpdatePointSystem(
 		setter.UpdatedBy = omit.From(s.execUser(ctx))
 		newPointSystem, err = s.repo.PointSystems().PointSystems().Update(
 			ctx,
-			int32(req.Msg.GetPointSystemId()),
+			int32(req.GetPointSystemId()),
 			setter,
 		)
 		if err != nil {
 			return err
 		}
-		if req.Msg.RaceSettings != nil {
-			return s.replacePointRules(ctx, newPointSystem.ID, req.Msg.RaceSettings)
+		if req.RaceSettings != nil {
+			return s.replacePointRules(ctx, newPointSystem.ID, req.RaceSettings)
 		}
 		return nil
 	}); txErr != nil {
 		l.Error("failed to update point system", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to update point system")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	loadedPointSystem, loadErr := s.repo.PointSystems().
@@ -173,46 +170,45 @@ func (s *service) UpdatePointSystem(
 	if loadErr != nil {
 		l.Error("failed to reload point system", log.ErrorField(loadErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to reload point system")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(loadErr), loadErr)
+		return nil, s.conversion.ToConnectError(loadErr)
 	}
 	newPointSystem = loadedPointSystem
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "point system updated")
-	return connect.NewResponse(&v1.UpdatePointSystemResponse{
+	return &v1.UpdatePointSystemResponse{
 		PointSystem: s.conversion.PointSystemToPointSystem(newPointSystem),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeletePointSystem(
 	ctx context.Context,
-	req *connect.Request[v1.DeletePointSystemRequest]) (
-	*connect.Response[v1.DeletePointSystemResponse], error,
-) {
+	req *v1.DeletePointSystemRequest,
+) (*v1.DeletePointSystemResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeletePointSystem")
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) (err error) {
 		if delErr := s.repo.PointSystems().PointRules().DeleteByPointSystemID(
 			ctx,
-			int32(req.Msg.GetPointSystemId()),
+			int32(req.GetPointSystemId()),
 		); delErr != nil {
 			return delErr
 		}
 
 		err = s.repo.PointSystems().PointSystems().DeleteByID(
 			ctx,
-			int32(req.Msg.GetPointSystemId()),
+			int32(req.GetPointSystemId()),
 		)
 		return err
 	}); txErr != nil {
 		l.Error("failed to delete point system", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to delete point system")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "point system deleted")
-	return connect.NewResponse(&v1.DeletePointSystemResponse{
+	return &v1.DeletePointSystemResponse{
 		Deleted: true,
-	}), nil
+	}, nil
 }

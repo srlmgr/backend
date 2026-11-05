@@ -7,7 +7,7 @@ import (
 	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"go.opentelemetry.io/otel/codes"
@@ -23,17 +23,16 @@ import (
 //nolint:whitespace,funlen,gocyclo // editor/linter issue
 func (s *service) ResolveMappings(
 	ctx context.Context,
-	req *connect.Request[importv1.ResolveMappingsRequest],
-) (
-	*connect.Response[importv1.ResolveMappingsResponse], error,
+	req *importv1.ResolveMappingsRequest,
+) (*importv1.ResolveMappingsResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ResolveMappings")
 
-	gridID := int32(req.Msg.GetRaceGridId())
+	gridID := int32(req.GetRaceGridId())
 	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("race_grid_id is required"))
+			"race_grid_id is required")
 	}
 
 	// Load event to get current processing state.
@@ -41,12 +40,12 @@ func (s *service) ResolveMappings(
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 	ep := processor.NewEventProcInfoCollector(s.repo)
 	epi, err := ep.ForEvent(ctx, event.ID)
 	if err != nil {
-		return nil, err
+		return nil, s.conversion.ToConnectError(err)
 	}
 	execUser := s.execUser(ctx)
 	var unresolvedMappings int32
@@ -137,13 +136,13 @@ func (s *service) ResolveMappings(
 	}); txErr != nil {
 		l.Error("failed to resolve mappings", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to resolve mappings")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "mappings resolved")
-	return connect.NewResponse(&importv1.ResolveMappingsResponse{
+	return &importv1.ResolveMappingsResponse{
 		UnresolvedMappings: unresolvedMappings,
-	}), nil
+	}, nil
 }
 
 func countMappingErrors(entries []*models.ResultEntry) int {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 
@@ -110,15 +110,15 @@ func TestGetResultEntrySuccess(t *testing.T) {
 	_ = batch // batch is not directly relevant to this test, but seeded for completeness
 	resp, err := svc.GetResultEntry(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetResultEntryRequest{
+		&queryv1.GetResultEntryRequest{
 			ResultEntryId: uint32(entry.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetResultEntry()
+	got := resp.GetResultEntry()
 	if got.GetId() != uint32(entry.ID) {
 		t.Errorf("expected id %d, got %d", entry.ID, got.GetId())
 	}
@@ -135,9 +135,9 @@ func TestGetResultEntryNotFound(t *testing.T) {
 
 	_, err := svc.GetResultEntry(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetResultEntryRequest{
+		&queryv1.GetResultEntryRequest{
 			ResultEntryId: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

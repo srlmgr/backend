@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	adminv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/admin/v1/adminv1connect"
-	commandv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/command/v1/commandv1connect"
-	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/import/v1/importv1connect"
-	queryv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/query/v1/queryv1connect"
-	connect "connectrpc.com/connect"
-	"connectrpc.com/grpchealth"
-	"connectrpc.com/grpcreflect"
+	adminv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/admin/v1/adminv1connect"
+	commandv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/command/v1/commandv1connect"
+	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/import/v1/importv1connect"
+	queryv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/query/v1/queryv1connect"
+	connect "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/grpchealth/v2"
+	"connectrpc.com/grpcreflect/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -83,7 +84,7 @@ func newHTTPServer(
 		return nil, fmt.Errorf("create authentication manager: %w", err)
 	}
 
-	handlerOptions, err := newConnectHandlerOptions(
+	interceptors, err := newConnectInterceptors(
 		ctx,
 		cfg,
 		pool,
@@ -113,9 +114,10 @@ func newHTTPServer(
 		repo,
 		importHandler,
 	)
-	registerConnectHandlers(mux, txManager, repo, cfg.Services, logger, handlerOptions...)
-	registerHealthServer(mux)
-	registerReflectionServer(mux)
+	apiServer := registerConnectHandlers(
+		mux, txManager, repo, cfg.Services, logger, interceptors...,
+	)
+	registerHealthAndReflection(mux, apiServer)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -251,54 +253,72 @@ func registerConnectHandlers(
 	repo repository.Repository,
 	svc service.Service,
 	logger *log.Logger,
-	opts ...connect.HandlerOption,
-) {
+	interceptors ...connect.ServerInterceptor,
+) *connect.Server {
 	tracer := otel.Tracer("backend.grpc")
-	adminPath, adminHandler := adminv1connect.NewAdminServiceHandler(
+	server := connect.NewServer(interceptors...)
+	adminv1connect.RegisterAdminServiceHandler(
+		server,
 		adminservice.New(repo, txManager, logger.Named("services.admin")),
-		opts...,
 	)
-	commandPath, commandHandler := commandv1connect.NewCommandServiceHandler(
+	commandv1connect.RegisterCommandServiceHandler(
+		server,
 		commandservice.New(repo, txManager, logger.Named("services.command")),
-		opts...,
 	)
-	importPath, importHandler := importv1connect.NewImportServiceHandler(
+	importv1connect.RegisterImportServiceHandler(
+		server,
 		importservice.New(repo, txManager, logger.Named("services.import")),
-		opts...,
 	)
-	queryPath, queryHandler := queryv1connect.NewQueryServiceHandler(
+	queryv1connect.RegisterQueryServiceHandler(
+		server,
 		queryservice.New(repo, svc, txManager, logger.Named("services.query"), tracer),
-		opts...,
 	)
-	frontendPath, frontendHandler := queryv1connect.NewFrontendServiceHandler(
+	queryv1connect.RegisterFrontendServiceHandler(
+		server,
 		frontendservice.New(repo, logger.Named("services.frontend"), tracer),
-		opts...,
 	)
-	bookingsPath, bookingsHandler := queryv1connect.NewBookingsServiceHandler(
+	queryv1connect.RegisterBookingsServiceHandler(
+		server,
 		bookingservice.New(repo, logger.Named("services.bookings"), tracer),
-		opts...,
 	)
-	standingsPath, standingsHandler := queryv1connect.NewStandingsServiceHandler(
+	queryv1connect.RegisterStandingsServiceHandler(
+		server,
 		standingsservice.New(repo, svc, logger.Named("services.standings"), tracer),
-		opts...,
 	)
 
-	mux.Handle(adminPath, adminHandler)
-	mux.Handle(commandPath, commandHandler)
-	mux.Handle(importPath, importHandler)
-	mux.Handle(queryPath, queryHandler)
-	mux.Handle(frontendPath, frontendHandler)
-	mux.Handle(bookingsPath, bookingsHandler)
-	mux.Handle(standingsPath, standingsHandler)
+	// v2 limits reads to 4 MiB per message by default; v1 was unbounded.
+	// Keep the v1 behavior since UploadResultsFile carries file payloads.
+	connecthttp.Mount(mux, server, connecthttp.WithReadMaxBytes(0))
+	return server
 }
 
-func registerHealthServer(mux *http.ServeMux) {
-	checker := grpchealth.NewStaticChecker()
-	mux.Handle(grpchealth.NewHandler(checker))
+// registerHealthAndReflection serves gRPC health and reflection on a separate
+// connect server so they bypass the authn/authz interceptors (as in v1).
+// Reflection lists the services of both servers.
+func registerHealthAndReflection(mux *http.ServeMux, apiServer *connect.Server) {
+	server := connect.NewServer()
+	grpchealth.Register(server, grpchealth.NewStaticChecker())
+	grpcreflect.Register(server, grpcreflect.WithNamer(grpcreflect.NamerFunc(
+		func() []string { return serviceNames(apiServer, server) },
+	)))
+	connecthttp.Mount(mux, server)
 }
 
-func registerReflectionServer(mux *http.ServeMux) {
-	checker := grpcreflect.NewStaticReflector()
-	mux.Handle(grpcreflect.NewHandlerV1(checker))
-	mux.Handle(grpcreflect.NewHandlerV1Alpha(checker))
+func serviceNames(servers ...*connect.Server) []string {
+	var names []string
+	seen := map[string]struct{}{}
+	for _, srv := range servers {
+		for spec := range srv.Specs() {
+			name, _, ok := strings.Cut(strings.TrimPrefix(spec.Procedure, "/"), "/")
+			if !ok {
+				continue
+			}
+			if _, dup := seen[name]; dup {
+				continue
+			}
+			seen[name] = struct{}{}
+			names = append(names, name)
+		}
+	}
+	return names
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/repository/repoerrors"
@@ -39,17 +39,17 @@ func TestCreateCarClassSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateCarClass(ctx, connect.NewRequest(&v1.CreateCarClassRequest{
+	resp, err := svc.CreateCarClass(ctx, &v1.CreateCarClassRequest{
 		Name: "GT3",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetCarClass().GetName() != "GT3" {
-		t.Fatalf("unexpected name: %q", resp.Msg.GetCarClass().GetName())
+	if resp.GetCarClass().GetName() != "GT3" {
+		t.Fatalf("unexpected name: %q", resp.GetCarClass().GetName())
 	}
 
-	id := int32(resp.Msg.GetCarClass().GetId())
+	id := int32(resp.GetCarClass().GetId())
 	stored, err := repo.Cars().CarClasses().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created car class: %v", err)
@@ -69,9 +69,9 @@ func TestCreateCarClassFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.CreateCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.CreateCarClassRequest{
+		&v1.CreateCarClassRequest{
 			Name: "GT4",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate name error")
@@ -91,15 +91,15 @@ func TestUpdateCarClassSuccess(t *testing.T) {
 		t.Fatalf("failed to load car class before update: %v", err)
 	}
 
-	resp, err := svc.UpdateCarClass(ctx, connect.NewRequest(&v1.UpdateCarClassRequest{
+	resp, err := svc.UpdateCarClass(ctx, &v1.UpdateCarClassRequest{
 		CarClassId: uint32(initial.ID),
 		Name:       "GT3 New",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetCarClass().GetName() != "GT3 New" {
-		t.Fatalf("unexpected name: %q", resp.Msg.GetCarClass().GetName())
+	if resp.GetCarClass().GetName() != "GT3 New" {
+		t.Fatalf("unexpected name: %q", resp.GetCarClass().GetName())
 	}
 
 	after, err := repo.Cars().CarClasses().LoadByID(context.Background(), initial.ID)
@@ -123,10 +123,10 @@ func TestUpdateCarClassFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateCarClassRequest{
+		&v1.UpdateCarClassRequest{
 			CarClassId: 999,
 			Name:       "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -143,10 +143,10 @@ func TestUpdateCarClassFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.UpdateCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateCarClassRequest{
+		&v1.UpdateCarClassRequest{
 			CarClassId: uint32(second.ID),
 			Name:       "GT3",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -174,14 +174,14 @@ func TestDeleteCarClassSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteCarClassRequest{
+		&v1.DeleteCarClassRequest{
 			CarClassId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -202,10 +202,10 @@ func TestAssignCarModelVariantToCarClassSuccess(t *testing.T) {
 
 	resp, err := svc.AssignCarModelVariantToCarClass(
 		ctx,
-		connect.NewRequest(&v1.AssignCarModelVariantToCarClassRequest{
+		&v1.AssignCarModelVariantToCarClassRequest{
 			CarClassId:        uint32(cc.ID),
 			CarModelVariantId: uint32(modVariant.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -225,10 +225,10 @@ func TestAssignCarModelToCarClassTwiceIsNotAnError(t *testing.T) {
 
 	_, err := svc.AssignCarModelVariantToCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.AssignCarModelVariantToCarClassRequest{
+		&v1.AssignCarModelVariantToCarClassRequest{
 			CarClassId:        uint32(cc.ID),
 			CarModelVariantId: uint32(modVariant.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("first assignment failed: %v", err)
@@ -236,10 +236,10 @@ func TestAssignCarModelToCarClassTwiceIsNotAnError(t *testing.T) {
 
 	_, err = svc.AssignCarModelVariantToCarClass(
 		context.Background(),
-		connect.NewRequest(&v1.AssignCarModelVariantToCarClassRequest{
+		&v1.AssignCarModelVariantToCarClassRequest{
 			CarClassId:        uint32(cc.ID),
 			CarModelVariantId: uint32(modVariant.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatal("error is not expected on second assignment")

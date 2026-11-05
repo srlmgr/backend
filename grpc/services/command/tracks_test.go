@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
@@ -131,21 +131,21 @@ func TestCreateTrackSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateTrack(ctx, connect.NewRequest(&v1.CreateTrackRequest{
+	resp, err := svc.CreateTrack(ctx, &v1.CreateTrackRequest{
 		Name:    "Silverstone",
 		Country: "United Kingdom",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTrack().GetName() != "Silverstone" {
-		t.Fatalf("unexpected track name: %q", resp.Msg.GetTrack().GetName())
+	if resp.GetTrack().GetName() != "Silverstone" {
+		t.Fatalf("unexpected track name: %q", resp.GetTrack().GetName())
 	}
-	if resp.Msg.GetTrack().GetCountry() != "United Kingdom" {
-		t.Fatalf("unexpected country: %q", resp.Msg.GetTrack().GetCountry())
+	if resp.GetTrack().GetCountry() != "United Kingdom" {
+		t.Fatalf("unexpected country: %q", resp.GetTrack().GetCountry())
 	}
 
-	id := int32(resp.Msg.GetTrack().GetId())
+	id := int32(resp.GetTrack().GetId())
 	stored, err := repo.Tracks().Tracks().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created track: %v", err)
@@ -165,9 +165,9 @@ func TestCreateTrackFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.CreateTrack(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTrackRequest{
+		&v1.CreateTrackRequest{
 			Name: "Nürburgring",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -188,9 +188,9 @@ func TestCreateTrackFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateTrack(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTrackRequest{
+		&v1.CreateTrackRequest{
 			Name: "Zandvoort",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -213,16 +213,16 @@ func TestUpdateTrackSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial track: %v", err)
 	}
 
-	resp, err := svc.UpdateTrack(ctx, connect.NewRequest(&v1.UpdateTrackRequest{
+	resp, err := svc.UpdateTrack(ctx, &v1.UpdateTrackRequest{
 		TrackId: uint32(initial.ID),
 		Name:    "Brands Hatch Updated",
 		Country: "United Kingdom",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTrack().GetName() != "Brands Hatch Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetTrack().GetName())
+	if resp.GetTrack().GetName() != "Brands Hatch Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetTrack().GetName())
 	}
 
 	after, err := repo.Tracks().Tracks().LoadByID(context.Background(), initial.ID)
@@ -246,10 +246,10 @@ func TestUpdateTrackFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateTrack(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateTrackRequest{
+		&v1.UpdateTrackRequest{
 			TrackId: 999,
 			Name:    "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -266,10 +266,10 @@ func TestUpdateTrackFailureDuplicateName(t *testing.T) {
 
 	_, err := svc.UpdateTrack(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateTrackRequest{
+		&v1.UpdateTrackRequest{
 			TrackId: uint32(second.ID),
 			Name:    "Circuit de la Sarthe",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -297,14 +297,14 @@ func TestDeleteTrackSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteTrack(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteTrackRequest{
+		&v1.DeleteTrackRequest{
 			TrackId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -325,9 +325,9 @@ func TestDeleteTrackFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteTrack(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteTrackRequest{
+		&v1.DeleteTrackRequest{
 			TrackId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -377,16 +377,16 @@ func TestSetSimulationTrackLayoutAliasesFlushAndFill(t *testing.T) {
 
 	resp, err := svc.SetSimulationTrackLayoutAliases(
 		ctx,
-		connect.NewRequest(&v1.SetSimulationTrackLayoutAliasesRequest{
+		&v1.SetSimulationTrackLayoutAliasesRequest{
 			TrackLayoutId: uint32(layout.ID),
 			SimulationId:  uint32(sim.ID),
 			ExternalName:  []string{"new-layout-alias-1"},
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetUpdated() {
+	if !resp.GetUpdated() {
 		t.Fatal("expected updated=true")
 	}
 
@@ -431,29 +431,29 @@ func TestCreateTrackLayoutSuccess(t *testing.T) {
 	track := seedTrack(t, repo, "Spa-Francorchamps")
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateTrackLayout(ctx, connect.NewRequest(&v1.CreateTrackLayoutRequest{
+	resp, err := svc.CreateTrackLayout(ctx, &v1.CreateTrackLayoutRequest{
 		TrackId:      uint32(track.ID),
 		Name:         "Grand Prix",
 		LengthMeters: 7004,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTrackLayout().GetName() != "Grand Prix" {
-		t.Fatalf("unexpected layout name: %q", resp.Msg.GetTrackLayout().GetName())
+	if resp.GetTrackLayout().GetName() != "Grand Prix" {
+		t.Fatalf("unexpected layout name: %q", resp.GetTrackLayout().GetName())
 	}
-	if resp.Msg.GetTrackLayout().GetTrackId() != uint32(track.ID) {
+	if resp.GetTrackLayout().GetTrackId() != uint32(track.ID) {
 		t.Fatalf(
 			"unexpected track_id: got %d want %d",
-			resp.Msg.GetTrackLayout().GetTrackId(),
+			resp.GetTrackLayout().GetTrackId(),
 			track.ID,
 		)
 	}
-	if resp.Msg.GetTrackLayout().GetLengthMeters() != 7004 {
-		t.Fatalf("unexpected length_meters: %d", resp.Msg.GetTrackLayout().GetLengthMeters())
+	if resp.GetTrackLayout().GetLengthMeters() != 7004 {
+		t.Fatalf("unexpected length_meters: %d", resp.GetTrackLayout().GetLengthMeters())
 	}
 
-	id := int32(resp.Msg.GetTrackLayout().GetId())
+	id := int32(resp.GetTrackLayout().GetId())
 	stored, err := repo.Tracks().TrackLayouts().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created track layout: %v", err)
@@ -477,10 +477,10 @@ func TestCreateTrackLayoutFailureDuplicateNameSameTrack(t *testing.T) {
 
 	_, err := svc.CreateTrackLayout(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTrackLayoutRequest{
+		&v1.CreateTrackLayoutRequest{
 			TrackId: uint32(track.ID),
 			Name:    "Grand Prix",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -501,16 +501,16 @@ func TestUpdateTrackLayoutSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial track layout: %v", err)
 	}
 
-	resp, err := svc.UpdateTrackLayout(ctx, connect.NewRequest(&v1.UpdateTrackLayoutRequest{
+	resp, err := svc.UpdateTrackLayout(ctx, &v1.UpdateTrackLayoutRequest{
 		TrackLayoutId: uint32(initial.ID),
 		TrackId:       uint32(track.ID),
 		Name:          "Grand Prix Updated",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTrackLayout().GetName() != "Grand Prix Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetTrackLayout().GetName())
+	if resp.GetTrackLayout().GetName() != "Grand Prix Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetTrackLayout().GetName())
 	}
 
 	after, err := repo.Tracks().TrackLayouts().LoadByID(context.Background(), initial.ID)
@@ -534,10 +534,10 @@ func TestUpdateTrackLayoutFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateTrackLayout(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateTrackLayoutRequest{
+		&v1.UpdateTrackLayoutRequest{
 			TrackLayoutId: 999,
 			Name:          "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -554,14 +554,14 @@ func TestDeleteTrackLayoutSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteTrackLayout(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteTrackLayoutRequest{
+		&v1.DeleteTrackLayoutRequest{
 			TrackLayoutId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -579,18 +579,18 @@ func TestCreateTrackLayoutSuccessDuplicateNameDifferentTrack(t *testing.T) {
 
 	resp, err := svc.CreateTrackLayout(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTrackLayoutRequest{
+		&v1.CreateTrackLayoutRequest{
 			TrackId: uint32(secondTrack.ID),
 			Name:    "International",
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error for same name on different track: %v", err)
 	}
-	if resp.Msg.GetTrackLayout().GetTrackId() != uint32(secondTrack.ID) {
+	if resp.GetTrackLayout().GetTrackId() != uint32(secondTrack.ID) {
 		t.Fatalf(
 			"unexpected track_id: got %d want %d",
-			resp.Msg.GetTrackLayout().GetTrackId(),
+			resp.GetTrackLayout().GetTrackId(),
 			secondTrack.ID,
 		)
 	}

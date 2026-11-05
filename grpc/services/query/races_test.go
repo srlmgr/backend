@@ -7,7 +7,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
@@ -43,13 +43,13 @@ func TestListRacesEmpty(t *testing.T) {
 
 	resp, err := svc.ListRaces(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRacesRequest{}),
+		&queryv1.ListRacesRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -69,13 +69,13 @@ func TestListRacesReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListRaces(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRacesRequest{}),
+		&queryv1.ListRacesRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -110,15 +110,15 @@ func TestListRacesByEventID(t *testing.T) {
 
 	resp, err := svc.ListRaces(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRacesRequest{
+		&queryv1.ListRacesRequest{
 			EventId: uint32(event1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -144,15 +144,15 @@ func TestGetRaceSuccess(t *testing.T) {
 
 	resp, err := svc.GetRace(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetRaceRequest{
+		&queryv1.GetRaceRequest{
 			Id: uint32(race.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetRace()
+	got := resp.GetRace()
 	if got.GetId() != uint32(race.ID) {
 		t.Errorf("expected id %d, got %d", race.ID, got.GetId())
 	}
@@ -176,9 +176,9 @@ func TestGetRaceNotFound(t *testing.T) {
 
 	_, err := svc.GetRace(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetRaceRequest{
+		&queryv1.GetRaceRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -198,13 +198,13 @@ func TestListRaceGridsEmpty(t *testing.T) {
 
 	resp, err := svc.ListRaceGrids(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRaceGridsRequest{}),
+		&queryv1.ListRaceGridsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -224,13 +224,13 @@ func TestListRaceGridsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListRaceGrids(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRaceGridsRequest{}),
+		&queryv1.ListRaceGridsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -265,15 +265,15 @@ func TestListRaceGridsByRaceID(t *testing.T) {
 
 	resp, err := svc.ListRaceGrids(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListRaceGridsRequest{
+		&queryv1.ListRaceGridsRequest{
 			RaceId: uint32(race1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}

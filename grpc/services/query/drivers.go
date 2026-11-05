@@ -6,7 +6,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -20,23 +20,23 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListDrivers(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListDriversRequest],
-) (*connect.Response[queryv1.ListDriversResponse], error) {
+	req *queryv1.ListDriversRequest,
+) (*queryv1.ListDriversResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListDrivers")
 	var driverItems []*models.Driver
 	var err error
-	switch req.Msg.Filter.(type) {
+	switch req.Filter.(type) {
 	case *queryv1.ListDriversRequest_SeasonId:
 		l.Debug("ListDrivers by seasonID",
-			log.Uint32("seasonID", req.Msg.GetSeasonId()))
-		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+			log.Uint32("seasonID", req.GetSeasonId()))
+		return nil, connect.NewError(connect.CodeUnimplemented, "")
 	case *queryv1.ListDriversRequest_TeamId:
 		l.Debug("ListDrivers by teamID",
-			log.Uint32("teamID", req.Msg.GetTeamId()))
-		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+			log.Uint32("teamID", req.GetTeamId()))
+		return nil, connect.NewError(connect.CodeUnimplemented, "")
 	case *queryv1.ListDriversRequest_MultipleDrivers:
-		ids := lo.Map(req.Msg.GetMultipleDrivers().GetDriverIds(),
+		ids := lo.Map(req.GetMultipleDrivers().GetDriverIds(),
 			func(id uint32, _ int) int32 {
 				return int32(id)
 			})
@@ -47,7 +47,7 @@ func (s *service) ListDrivers(
 	if err != nil {
 		l.Error("failed to load drivers", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load drivers")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.Driver, 0, len(driverItems))
@@ -58,7 +58,7 @@ func (s *service) ListDrivers(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "drivers loaded")
-	return connect.NewResponse(&queryv1.ListDriversResponse{Items: items}), nil
+	return &queryv1.ListDriversResponse{Items: items}, nil
 }
 
 // GetDriver returns a driver by ID.
@@ -66,10 +66,10 @@ func (s *service) ListDrivers(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetDriver(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetDriverRequest],
-) (*connect.Response[queryv1.GetDriverResponse], error) {
+	req *queryv1.GetDriverRequest,
+) (*queryv1.GetDriverResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetDriver", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetDriver", log.Uint32("id", req.GetId()))
 
 	driverRepo := s.repo.Drivers().Drivers()
 	aliasRepo := s.repo.Drivers().SimulationDriverAliases()
@@ -77,27 +77,27 @@ func (s *service) GetDriver(
 		item *models.Driver
 		err  error
 	)
-	item, err = driverRepo.LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err = driverRepo.LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load driver", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load driver")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "driver loaded")
 	response := &queryv1.GetDriverResponse{
 		Driver: s.conversion.DriverToDriver(item),
 	}
-	if req.Msg.GetIncludeAliases() {
-		aliases, err := aliasRepo.GetDriverAliases(ctx, int32(req.Msg.GetId()))
+	if req.GetIncludeAliases() {
+		aliases, err := aliasRepo.GetDriverAliases(ctx, int32(req.GetId()))
 		if err != nil {
 			l.Error("failed to load driver aliases", log.ErrorField(err))
 			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load driver aliases")
-			return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+			return nil, s.conversion.ToConnectError(err)
 		}
 		response.Aliases = simulationDriverAliasesToProto(aliases)
 	}
-	return connect.NewResponse(response), nil
+	return response, nil
 }
 
 // GetSeasonDriver returns a season driver by ID.
@@ -105,22 +105,22 @@ func (s *service) GetDriver(
 //nolint:whitespace,dupl // editor/linter issue, dupl with other services likely
 func (s *service) GetSeasonDriver(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSeasonDriverRequest],
-) (*connect.Response[queryv1.GetSeasonDriverResponse], error) {
+	req *queryv1.GetSeasonDriverRequest,
+) (*queryv1.GetSeasonDriverResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetSeasonDriver", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetSeasonDriver", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Drivers().SeasonDrivers().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Drivers().SeasonDrivers().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load season driver", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season driver")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season driver loaded")
-	return connect.NewResponse(&queryv1.GetSeasonDriverResponse{
+	return &queryv1.GetSeasonDriverResponse{
 		SeasonDriver: s.conversion.SeasonDriverToSeasonDriver(item),
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace // editor/linter issue

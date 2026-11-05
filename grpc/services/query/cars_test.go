@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
@@ -83,13 +83,13 @@ func TestListCarManufacturersEmpty(t *testing.T) {
 
 	resp, err := svc.ListCarManufacturers(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarManufacturersRequest{}),
+		&queryv1.ListCarManufacturersRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -101,13 +101,13 @@ func TestListCarManufacturersReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListCarManufacturers(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarManufacturersRequest{}),
+		&queryv1.ListCarManufacturersRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -132,22 +132,22 @@ func TestGetCarManufacturerSuccess(t *testing.T) {
 
 	resp, err := svc.GetCarManufacturer(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarManufacturerRequest{
+		&queryv1.GetCarManufacturerRequest{
 			Id: uint32(m.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetCarManufacturer().GetId() != uint32(m.ID) {
-		t.Errorf("expected id %d, got %d", m.ID, resp.Msg.GetCarManufacturer().GetId())
+	if resp.GetCarManufacturer().GetId() != uint32(m.ID) {
+		t.Errorf("expected id %d, got %d", m.ID, resp.GetCarManufacturer().GetId())
 	}
-	if resp.Msg.GetCarManufacturer().GetName() != "Apex Motorsports" {
+	if resp.GetCarManufacturer().GetName() != "Apex Motorsports" {
 		t.Errorf(
 			"expected name %q, got %q",
 			"Apex Motorsports",
-			resp.Msg.GetCarManufacturer().GetName(),
+			resp.GetCarManufacturer().GetName(),
 		)
 	}
 }
@@ -157,9 +157,9 @@ func TestGetCarManufacturerNotFound(t *testing.T) {
 
 	_, err := svc.GetCarManufacturer(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarManufacturerRequest{
+		&queryv1.GetCarManufacturerRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -179,13 +179,13 @@ func TestListCarModelsEmpty(t *testing.T) {
 
 	resp, err := svc.ListCarModels(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelsRequest{}),
+		&queryv1.ListCarModelsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -198,13 +198,13 @@ func TestListCarModelsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListCarModels(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelsRequest{}),
+		&queryv1.ListCarModelsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -232,15 +232,15 @@ func TestListCarModelsByManufacturerID(t *testing.T) {
 
 	resp, err := svc.ListCarModels(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelsRequest{
+		&queryv1.ListCarModelsRequest{
 			ManufacturerId: uint32(mfr1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -260,26 +260,26 @@ func TestGetCarModelSuccess(t *testing.T) {
 
 	resp, err := svc.GetCarModel(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarModelRequest{
+		&queryv1.GetCarModelRequest{
 			Id: uint32(cm.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetCarModel().GetId() != uint32(cm.ID) {
-		t.Errorf("expected id %d, got %d", cm.ID, resp.Msg.GetCarModel().GetId())
+	if resp.GetCarModel().GetId() != uint32(cm.ID) {
+		t.Errorf("expected id %d, got %d", cm.ID, resp.GetCarModel().GetId())
 	}
-	if resp.Msg.GetCarModel().GetManufacturerId() != uint32(mfr.ID) {
+	if resp.GetCarModel().GetManufacturerId() != uint32(mfr.ID) {
 		t.Errorf(
 			"expected manufacturer id %d, got %d",
 			mfr.ID,
-			resp.Msg.GetCarModel().GetManufacturerId(),
+			resp.GetCarModel().GetManufacturerId(),
 		)
 	}
-	if resp.Msg.GetCarModel().GetName() != "Success V2 Model" {
-		t.Errorf("expected name %q, got %q", "Success V2 Model", resp.Msg.GetCarModel().GetName())
+	if resp.GetCarModel().GetName() != "Success V2 Model" {
+		t.Errorf("expected name %q, got %q", "Success V2 Model", resp.GetCarModel().GetName())
 	}
 }
 
@@ -288,7 +288,7 @@ func TestGetCarModelNotFound(t *testing.T) {
 
 	_, err := svc.GetCarModel(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarModelRequest{Id: 99999}),
+		&queryv1.GetCarModelRequest{Id: 99999},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -308,13 +308,13 @@ func TestListCarModelVariantsEmpty(t *testing.T) {
 
 	resp, err := svc.ListCarModelVariants(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{}),
+		&queryv1.ListCarModelVariantsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -328,13 +328,13 @@ func TestListCarModelVariantsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListCarModelVariants(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{}),
+		&queryv1.ListCarModelVariantsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -363,15 +363,15 @@ func TestListCarModelVariantsByModelID(t *testing.T) {
 
 	resp, err := svc.ListCarModelVariants(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarModelVariantsRequest{
+		&queryv1.ListCarModelVariantsRequest{
 			ModelId: uint32(model1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -392,29 +392,29 @@ func TestGetCarModelVariantSuccess(t *testing.T) {
 
 	resp, err := svc.GetCarModelVariant(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarModelVariantRequest{
+		&queryv1.GetCarModelVariantRequest{
 			Id: uint32(variant.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetCarModelVariant().GetId() != uint32(variant.ID) {
-		t.Errorf("expected id %d, got %d", variant.ID, resp.Msg.GetCarModelVariant().GetId())
+	if resp.GetCarModelVariant().GetId() != uint32(variant.ID) {
+		t.Errorf("expected id %d, got %d", variant.ID, resp.GetCarModelVariant().GetId())
 	}
-	if resp.Msg.GetCarModelVariant().GetModelId() != uint32(model.ID) {
+	if resp.GetCarModelVariant().GetModelId() != uint32(model.ID) {
 		t.Errorf(
 			"expected model id %d, got %d",
 			model.ID,
-			resp.Msg.GetCarModelVariant().GetModelId(),
+			resp.GetCarModelVariant().GetModelId(),
 		)
 	}
-	if resp.Msg.GetCarModelVariant().GetName() != "Success Variant" {
+	if resp.GetCarModelVariant().GetName() != "Success Variant" {
 		t.Errorf(
 			"expected name %q, got %q",
 			"Success Variant",
-			resp.Msg.GetCarModelVariant().GetName(),
+			resp.GetCarModelVariant().GetName(),
 		)
 	}
 }
@@ -424,7 +424,7 @@ func TestGetCarModelVariantNotFound(t *testing.T) {
 
 	_, err := svc.GetCarModelVariant(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarModelVariantRequest{Id: 99999}),
+		&queryv1.GetCarModelVariantRequest{Id: 99999},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -463,13 +463,13 @@ func TestListCarClassesEmpty(t *testing.T) {
 
 	resp, err := svc.ListCarClasses(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarClassesRequest{}),
+		&queryv1.ListCarClassesRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -481,13 +481,13 @@ func TestListCarClassesReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListCarClasses(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListCarClassesRequest{}),
+		&queryv1.ListCarClassesRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -512,19 +512,19 @@ func TestGetCarClassSuccess(t *testing.T) {
 
 	resp, err := svc.GetCarClass(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarClassRequest{
+		&queryv1.GetCarClassRequest{
 			Id: uint32(cc.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetCarClass().GetId() != uint32(cc.ID) {
-		t.Errorf("expected id %d, got %d", cc.ID, resp.Msg.GetCarClass().GetId())
+	if resp.GetCarClass().GetId() != uint32(cc.ID) {
+		t.Errorf("expected id %d, got %d", cc.ID, resp.GetCarClass().GetId())
 	}
-	if resp.Msg.GetCarClass().GetName() != "LMP2" {
-		t.Errorf("expected name %q, got %q", "LMP2", resp.Msg.GetCarClass().GetName())
+	if resp.GetCarClass().GetName() != "LMP2" {
+		t.Errorf("expected name %q, got %q", "LMP2", resp.GetCarClass().GetName())
 	}
 }
 
@@ -533,9 +533,9 @@ func TestGetCarClassNotFound(t *testing.T) {
 
 	_, err := svc.GetCarClass(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetCarClassRequest{
+		&queryv1.GetCarClassRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

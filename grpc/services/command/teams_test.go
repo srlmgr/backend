@@ -8,7 +8,7 @@ import (
 	"time"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/srlmgr/backend/authn"
@@ -127,29 +127,29 @@ func TestCreateTeamSuccess(t *testing.T) {
 	joinedAt := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateTeam(ctx, connect.NewRequest(&v1.CreateTeamRequest{
+	resp, err := svc.CreateTeam(ctx, &v1.CreateTeamRequest{
 		SeasonId:          uint32(season.ID),
 		Name:              "Alpine Racing",
 		IsActive:          true,
 		CarModelVariantId: uint32(carModelVariant.ID),
 		CarNumber:         "36",
 		JoinedAt:          timestamppb.New(joinedAt),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTeam().GetName() != "Alpine Racing" {
-		t.Fatalf("unexpected team name: %q", resp.Msg.GetTeam().GetName())
+	if resp.GetTeam().GetName() != "Alpine Racing" {
+		t.Fatalf("unexpected team name: %q", resp.GetTeam().GetName())
 	}
-	if resp.Msg.GetTeam().GetSeasonId() != uint32(season.ID) {
+	if resp.GetTeam().GetSeasonId() != uint32(season.ID) {
 		t.Fatalf(
 			"unexpected season id: got %d want %d",
-			resp.Msg.GetTeam().GetSeasonId(),
+			resp.GetTeam().GetSeasonId(),
 			season.ID,
 		)
 	}
 
-	id := int32(resp.Msg.GetTeam().GetId())
+	id := int32(resp.GetTeam().GetId())
 	stored, err := repo.Teams().Teams().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created team: %v", err)
@@ -191,19 +191,19 @@ func TestCreateTeamSuccessDuplicateNameDifferentSeason(t *testing.T) {
 
 	resp, err := svc.CreateTeam(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTeamRequest{
+		&v1.CreateTeamRequest{
 			SeasonId: uint32(secondSeason.ID),
 			Name:     "Ferrari 296 GT3",
 			IsActive: true,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTeam().GetSeasonId() != uint32(secondSeason.ID) {
+	if resp.GetTeam().GetSeasonId() != uint32(secondSeason.ID) {
 		t.Fatalf(
 			"unexpected season id: got %d want %d",
-			resp.Msg.GetTeam().GetSeasonId(),
+			resp.GetTeam().GetSeasonId(),
 			secondSeason.ID,
 		)
 	}
@@ -223,10 +223,10 @@ func TestCreateTeamFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateTeam(
 		context.Background(),
-		connect.NewRequest(&v1.CreateTeamRequest{
+		&v1.CreateTeamRequest{
 			SeasonId: 1,
 			Name:     "Prototype Team",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -258,7 +258,7 @@ func TestUpdateTeamSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial team: %v", err)
 	}
 
-	resp, err := svc.UpdateTeam(ctx, connect.NewRequest(&v1.UpdateTeamRequest{
+	resp, err := svc.UpdateTeam(ctx, &v1.UpdateTeamRequest{
 		TeamId:            uint32(initial.ID),
 		SeasonId:          uint32(season.ID),
 		Name:              "Toyota Gazoo Racing Updated",
@@ -267,12 +267,12 @@ func TestUpdateTeamSuccess(t *testing.T) {
 		CarNumber:         "7",
 		JoinedAt:          timestamppb.New(joinedAt),
 		LeftAt:            timestamppb.New(leftAt),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetTeam().GetName() != "Toyota Gazoo Racing Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetTeam().GetName())
+	if resp.GetTeam().GetName() != "Toyota Gazoo Racing Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetTeam().GetName())
 	}
 
 	after, err := repo.Teams().Teams().LoadByID(context.Background(), initial.ID)
@@ -311,10 +311,10 @@ func TestUpdateTeamFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateTeam(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateTeamRequest{
+		&v1.UpdateTeamRequest{
 			TeamId: 999,
 			Name:   "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -334,14 +334,14 @@ func TestDeleteTeamSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteTeam(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteTeamRequest{
+		&v1.DeleteTeamRequest{
 			TeamId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -362,9 +362,9 @@ func TestDeleteTeamFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteTeam(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteTeamRequest{
+		&v1.DeleteTeamRequest{
 			TeamId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

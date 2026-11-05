@@ -3,12 +3,10 @@ package importsvc
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob/types"
@@ -23,38 +21,35 @@ import (
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) FinalizeEventProcessing(
 	ctx context.Context,
-	req *connect.Request[importv1.FinalizeEventProcessingRequest],
-) (
-	*connect.Response[importv1.FinalizeEventProcessingResponse], error,
+	req *importv1.FinalizeEventProcessingRequest,
+) (*importv1.FinalizeEventProcessingResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("FinalizeEventProcessing")
 
-	eventID := int32(req.Msg.GetEventId())
+	eventID := int32(req.GetEventId())
 
 	// Load event and verify it can be finalized.
 	event, err := s.repo.Events().LoadByID(ctx, eventID)
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	if event.ProcessingState == conversion.EventProcessingStateFinalized {
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("event is already finalized"))
+			"event is already finalized")
 	}
 	if event.ProcessingState == conversion.EventProcessingStateDraft ||
 		event.ProcessingState == conversion.EventProcessingStateRawImported ||
 		event.ProcessingState == conversion.EventProcessingStatePreprocessed ||
 		event.ProcessingState == conversion.EventProcessingStateDriverEntriesComputed {
 		//nolint:lll // readability
-		return nil, connect.NewError(
+		return nil, connect.Errorf(
 			connect.CodeFailedPrecondition,
-			fmt.Errorf(
-				"event processing state %q is not ready for finalization: expected team_entries_computed",
-				event.ProcessingState,
-			),
+			"event processing state %q is not ready for finalization: expected team_entries_computed",
+			event.ProcessingState,
 		)
 	}
 
@@ -69,7 +64,7 @@ func (s *service) FinalizeEventProcessing(
 	if err != nil {
 		l.Error("failed to load grids", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load grids")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
@@ -124,11 +119,11 @@ func (s *service) FinalizeEventProcessing(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to finalize event processing",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "event processing finalized")
-	return connect.NewResponse(&importv1.FinalizeEventProcessingResponse{
+	return &importv1.FinalizeEventProcessingResponse{
 		ProcessingState: toState,
-	}), nil
+	}, nil
 }

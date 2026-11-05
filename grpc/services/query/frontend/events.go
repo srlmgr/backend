@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -18,17 +17,17 @@ import (
 //nolint:whitespace,gocyclo,funlen // editor/linter issue
 func (s *service) ListSeasonEvents(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonEventsRequest],
-) (*connect.Response[queryv1.ListSeasonEventsResponse], error) {
+	req *queryv1.ListSeasonEventsRequest,
+) (*queryv1.ListSeasonEventsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	seasonID := int32(req.Msg.GetSeasonId())
+	seasonID := int32(req.GetSeasonId())
 	l.Debug("ListSeasonEvents", log.Int32("season_id", seasonID))
 
 	events, err := s.repo.Events().LoadBySeasonID(ctx, seasonID)
 	if err != nil {
 		l.Error("failed to load season events", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season events")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trackLayoutIDSet := make(map[int32]struct{}, len(events))
@@ -51,10 +50,8 @@ func (s *service) ListSeasonEvents(
 		if loadTrackLayoutsErr != nil {
 			l.Error("failed to load track layouts", log.ErrorField(loadTrackLayoutsErr))
 			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load track layouts")
-			return nil, connect.NewError(
-				s.conversion.MapErrorToRPCCode(loadTrackLayoutsErr),
-				loadTrackLayoutsErr,
-			)
+			return nil, s.conversion.ToConnectError(loadTrackLayoutsErr)
+
 		}
 
 		for _, item := range dbTrackLayouts {
@@ -76,10 +73,8 @@ func (s *service) ListSeasonEvents(
 		if loadTracksErr != nil {
 			l.Error("failed to load tracks", log.ErrorField(loadTracksErr))
 			trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load tracks")
-			return nil, connect.NewError(
-				s.conversion.MapErrorToRPCCode(loadTracksErr),
-				loadTracksErr,
-			)
+			return nil, s.conversion.ToConnectError(loadTracksErr)
+
 		}
 
 		for _, item := range dbTracks {
@@ -97,7 +92,7 @@ func (s *service) ListSeasonEvents(
 			log.Int32("season_id", seasonID),
 		)
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(seasonErr), seasonErr)
+		return nil, s.conversion.ToConnectError(seasonErr)
 	}
 
 	seriesItems, seriesErr := s.repo.Series().LoadByIDs(ctx, []int32{season.SeriesID})
@@ -108,7 +103,7 @@ func (s *service) ListSeasonEvents(
 			log.Int32("series_id", season.SeriesID),
 		)
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load series")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(seriesErr), seriesErr)
+		return nil, s.conversion.ToConnectError(seriesErr)
 	}
 
 	var seriesProto *commonv1.Series
@@ -132,9 +127,9 @@ func (s *service) ListSeasonEvents(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season events loaded")
-	return connect.NewResponse(&queryv1.ListSeasonEventsResponse{
+	return &queryv1.ListSeasonEventsResponse{
 		Events: eventContainers,
 		Season: s.conversion.SeasonToSeason(season),
 		Series: seriesProto,
-	}), nil
+	}, nil
 }

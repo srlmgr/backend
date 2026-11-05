@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
@@ -57,26 +57,26 @@ func TestCreateDriverSuccess(t *testing.T) {
 	svc, repo := newDBBackedTestService(t)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateDriver(ctx, connect.NewRequest(&v1.CreateDriverRequest{
+	resp, err := svc.CreateDriver(ctx, &v1.CreateDriverRequest{
 		ExternalId: "99",
 		Name:       "Lewis Hamilton",
 		IsActive:   true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetDriver().GetName() != "Lewis Hamilton" {
-		t.Fatalf("unexpected driver name: %q", resp.Msg.GetDriver().GetName())
+	if resp.GetDriver().GetName() != "Lewis Hamilton" {
+		t.Fatalf("unexpected driver name: %q", resp.GetDriver().GetName())
 	}
-	if resp.Msg.GetDriver().GetExternalId() != "99" {
+	if resp.GetDriver().GetExternalId() != "99" {
 		t.Fatalf(
 			"unexpected external id: got %q want %q",
-			resp.Msg.GetDriver().GetExternalId(),
+			resp.GetDriver().GetExternalId(),
 			"99",
 		)
 	}
 
-	id := int32(resp.Msg.GetDriver().GetId())
+	id := int32(resp.GetDriver().GetId())
 	stored, err := repo.Drivers().Drivers().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created driver: %v", err)
@@ -99,11 +99,11 @@ func TestCreateDriverFailureDuplicateExternalID(t *testing.T) {
 
 	_, err := svc.CreateDriver(
 		context.Background(),
-		connect.NewRequest(&v1.CreateDriverRequest{
+		&v1.CreateDriverRequest{
 			ExternalId: "100",
 			Name:       "Carlos Sainz",
 			IsActive:   true,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -124,10 +124,10 @@ func TestCreateDriverFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateDriver(
 		context.Background(),
-		connect.NewRequest(&v1.CreateDriverRequest{
+		&v1.CreateDriverRequest{
 			ExternalId: "1",
 			Name:       "Test Driver",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -150,17 +150,17 @@ func TestUpdateDriverSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial driver: %v", err)
 	}
 
-	resp, err := svc.UpdateDriver(ctx, connect.NewRequest(&v1.UpdateDriverRequest{
+	resp, err := svc.UpdateDriver(ctx, &v1.UpdateDriverRequest{
 		DriverId:   uint32(initial.ID),
 		ExternalId: "200",
 		Name:       "Sebastian Vettel Updated",
 		IsActive:   true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetDriver().GetName() != "Sebastian Vettel Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetDriver().GetName())
+	if resp.GetDriver().GetName() != "Sebastian Vettel Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetDriver().GetName())
 	}
 
 	after, err := repo.Drivers().Drivers().LoadByID(context.Background(), initial.ID)
@@ -184,10 +184,10 @@ func TestUpdateDriverFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateDriver(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateDriverRequest{
+		&v1.UpdateDriverRequest{
 			DriverId: 999,
 			Name:     "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -204,11 +204,11 @@ func TestUpdateDriverFailureDuplicateExternalID(t *testing.T) {
 
 	_, err := svc.UpdateDriver(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateDriverRequest{
+		&v1.UpdateDriverRequest{
 			DriverId:   uint32(second.ID),
 			ExternalId: "300",
 			Name:       second.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -236,14 +236,14 @@ func TestDeleteDriverSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteDriver(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteDriverRequest{
+		&v1.DeleteDriverRequest{
 			DriverId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -264,9 +264,9 @@ func TestDeleteDriverFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteDriver(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteDriverRequest{
+		&v1.DeleteDriverRequest{
 			DriverId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -315,16 +315,16 @@ func TestSetSimulationDriverAliasesFlushAndFill(t *testing.T) {
 
 	resp, err := svc.SetSimulationDriverAliases(
 		ctx,
-		connect.NewRequest(&v1.SetSimulationDriverAliasesRequest{
+		&v1.SetSimulationDriverAliasesRequest{
 			DriverId:           uint32(driver.ID),
 			SimulationId:       uint32(sim.ID),
 			SimulationDriverId: []string{"new-driver-id-1"},
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetUpdated() {
+	if !resp.GetUpdated() {
 		t.Fatal("expected updated=true")
 	}
 

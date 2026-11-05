@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/srlmgr/backend/grpc/services/conversion"
 )
@@ -31,25 +31,25 @@ func TestResolveSeasonTarget(t *testing.T) {
 
 	resp, err := svc.ResolveSeasonTarget(
 		context.Background(),
-		connect.NewRequest(&queryv1.ResolveSeasonTargetRequest{
+		&queryv1.ResolveSeasonTargetRequest{
 			SeasonId:   uint32(season.ID),
 			EventNo:    4,
 			RaceNo:     2,
 			RaceGridNo: 3,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("ResolveSeasonTarget() failed: %v", err)
 	}
-	matches := resp.Msg.GetEventId() == uint32(event.ID) &&
-		resp.Msg.GetRaceId() == uint32(race.ID) &&
-		resp.Msg.GetRaceGridId() == uint32(raceGrid.ID)
+	matches := resp.GetEventId() == uint32(event.ID) &&
+		resp.GetRaceId() == uint32(race.ID) &&
+		resp.GetRaceGridId() == uint32(raceGrid.ID)
 	if !matches {
 		t.Errorf(
 			"ResolveSeasonTarget() = event=%d race=%d grid=%d, want event=%d race=%d grid=%d",
-			resp.Msg.GetEventId(),
-			resp.Msg.GetRaceId(),
-			resp.Msg.GetRaceGridId(),
+			resp.GetEventId(),
+			resp.GetRaceId(),
+			resp.GetRaceGridId(),
 			event.ID,
 			race.ID,
 			raceGrid.ID,
@@ -62,7 +62,7 @@ func TestResolveSeasonTargetRequiresSeasonID(t *testing.T) {
 
 	_, err := svc.ResolveSeasonTarget(
 		context.Background(),
-		connect.NewRequest(&queryv1.ResolveSeasonTargetRequest{}),
+		&queryv1.ResolveSeasonTargetRequest{},
 	)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf(

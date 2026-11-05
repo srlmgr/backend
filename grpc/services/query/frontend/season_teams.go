@@ -7,7 +7,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,17 +18,17 @@ import (
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) ListSeasonTeams(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonTeamsRequest],
-) (*connect.Response[queryv1.ListSeasonTeamsResponse], error) {
+	req *queryv1.ListSeasonTeamsRequest,
+) (*queryv1.ListSeasonTeamsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	seasonID := int32(req.Msg.GetSeasonId())
+	seasonID := int32(req.GetSeasonId())
 	l.Debug("ListSeasonTeams", log.Int32("season_id", seasonID))
 
 	seasonTeams, err := s.repo.Teams().Teams().LoadBySeasonID(ctx, seasonID)
 	if err != nil {
 		l.Error("failed to load season teams", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load season teams")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	sort.Slice(seasonTeams, func(i, j int) bool {
@@ -55,17 +54,15 @@ func (s *service) ListSeasonTeams(
 	if loadCarDataErr != nil {
 		l.Error("failed to load car data", log.ErrorField(loadCarDataErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load car data")
-		return nil, connect.NewError(
-			s.conversion.MapErrorToRPCCode(loadCarDataErr),
-			loadCarDataErr,
-		)
+		return nil, s.conversion.ToConnectError(loadCarDataErr)
+
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "season teams loaded")
-	return connect.NewResponse(&queryv1.ListSeasonTeamsResponse{
+	return &queryv1.ListSeasonTeamsResponse{
 		Items: []*queryv1.SeasonTeamContainer{{
 			Teams:   seasonTeamProto,
 			CarData: carData,
 		}},
-	}), nil
+	}, nil
 }

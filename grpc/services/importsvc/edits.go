@@ -3,13 +3,11 @@ package importsvc
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"time"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob/types"
@@ -24,22 +22,21 @@ import (
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) ApplyResultEdits(
 	ctx context.Context,
-	req *connect.Request[importv1.ApplyResultEditsRequest],
-) (
-	*connect.Response[importv1.ApplyResultEditsResponse], error,
+	req *importv1.ApplyResultEditsRequest,
+) (*importv1.ApplyResultEditsResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ApplyResultEdits")
 
-	gridID := int32(req.Msg.GetRaceGridId())
+	gridID := int32(req.GetRaceGridId())
 
 	if gridID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("race_id is required"))
+			"race_id is required")
 	}
-	if len(req.Msg.GetEditedRows()) == 0 {
+	if len(req.GetEditedRows()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("edited_rows must not be empty"))
+			"edited_rows must not be empty")
 	}
 
 	// Load event to get current processing state.
@@ -47,7 +44,7 @@ func (s *service) ApplyResultEdits(
 	if err != nil {
 		l.Error("failed to load event", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load event")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	// Resolve the import batch for the race.
@@ -55,7 +52,7 @@ func (s *service) ApplyResultEdits(
 	if err != nil {
 		l.Error("failed to load import batch", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load import batch")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	fromState := batch.ProcessingState
@@ -66,10 +63,10 @@ func (s *service) ApplyResultEdits(
 	var updatedRows int32
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
-		for _, row := range req.Msg.GetEditedRows() {
+		for _, row := range req.GetEditedRows() {
 			if row.GetId() == 0 {
 				return connect.NewError(connect.CodeInvalidArgument,
-					errors.New("result entry id is required in edited_rows"))
+					"result entry id is required in edited_rows")
 			}
 
 			// Verify the entry belongs to the correct race.
@@ -78,9 +75,9 @@ func (s *service) ApplyResultEdits(
 				return loadErr
 			}
 			if existing.RaceGridID != gridID {
-				return connect.NewError(connect.CodeInvalidArgument,
-					fmt.Errorf("result entry %d does not belong to race %d",
-						row.GetId(), gridID))
+				return connect.Errorf(connect.CodeInvalidArgument,
+					"result entry %d does not belong to race %d",
+					row.GetId(), gridID)
 			}
 
 			setter := buildResultEntrySetterFromProto(row, execUser)
@@ -138,13 +135,13 @@ func (s *service) ApplyResultEdits(
 	}); txErr != nil {
 		l.Error("failed to apply result edits", log.ErrorField(txErr))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to apply result edits")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(txErr), txErr)
+		return nil, s.conversion.ToConnectError(txErr)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "result edits applied")
-	return connect.NewResponse(&importv1.ApplyResultEditsResponse{
+	return &importv1.ApplyResultEditsResponse{
 		UpdatedRows: updatedRows,
-	}), nil
+	}, nil
 }
 
 //nolint:whitespace,lll // editor/linter issue

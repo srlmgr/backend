@@ -3,11 +3,11 @@ module github.com/srlmgr/backend
 go 1.27
 
 require (
-	buf.build/gen/go/srlmgr/api/connectrpc/go v1.21.0-20261101152004-442e194399ca.1
+	buf.build/gen/go/srlmgr/api/connectrpc/go/v2 v2.0.2-20261101152004-442e194399ca.1
 	buf.build/gen/go/srlmgr/api/protocolbuffers/go v1.36.12-20261101152004-442e194399ca.2
-	connectrpc.com/connect v1.21.1
-	connectrpc.com/grpchealth v1.5.0
-	connectrpc.com/grpcreflect v1.3.1
+	connectrpc.com/connect/v2 v2.0.2
+	connectrpc.com/grpchealth/v2 v2.0.0
+	connectrpc.com/grpcreflect/v2 v2.0.0
 	connectrpc.com/otelconnect v0.12.0
 	github.com/a-h/templ v0.3.1100
 	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
@@ -59,7 +59,7 @@ require (
 )
 
 require (
-	connectrpc.com/connect/v2 v2.0.0 // indirect
+	connectrpc.com/connect v1.21.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect

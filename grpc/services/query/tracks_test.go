@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 func TestListTracksEmpty(t *testing.T) {
@@ -15,13 +15,13 @@ func TestListTracksEmpty(t *testing.T) {
 
 	resp, err := svc.ListTracks(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTracksRequest{}),
+		&queryv1.ListTracksRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -33,13 +33,13 @@ func TestListTracksReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListTracks(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTracksRequest{}),
+		&queryv1.ListTracksRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -64,19 +64,19 @@ func TestGetTrackSuccess(t *testing.T) {
 
 	resp, err := svc.GetTrack(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTrackRequest{
+		&queryv1.GetTrackRequest{
 			Id: uint32(track.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetTrack().GetId() != uint32(track.ID) {
-		t.Errorf("expected id %d, got %d", track.ID, resp.Msg.GetTrack().GetId())
+	if resp.GetTrack().GetId() != uint32(track.ID) {
+		t.Errorf("expected id %d, got %d", track.ID, resp.GetTrack().GetId())
 	}
-	if resp.Msg.GetTrack().GetName() != "Silverstone" {
-		t.Errorf("expected name %q, got %q", "Silverstone", resp.Msg.GetTrack().GetName())
+	if resp.GetTrack().GetName() != "Silverstone" {
+		t.Errorf("expected name %q, got %q", "Silverstone", resp.GetTrack().GetName())
 	}
 }
 
@@ -85,9 +85,9 @@ func TestGetTrackNotFound(t *testing.T) {
 
 	_, err := svc.GetTrack(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTrackRequest{
+		&queryv1.GetTrackRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -107,13 +107,13 @@ func TestListTrackLayoutsEmpty(t *testing.T) {
 
 	resp, err := svc.ListTrackLayouts(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTrackLayoutsRequest{}),
+		&queryv1.ListTrackLayoutsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -126,13 +126,13 @@ func TestListTrackLayoutsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListTrackLayouts(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTrackLayoutsRequest{}),
+		&queryv1.ListTrackLayoutsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -148,15 +148,15 @@ func TestListTrackLayoutsByTrackID(t *testing.T) {
 
 	resp, err := svc.ListTrackLayouts(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTrackLayoutsRequest{
+		&queryv1.ListTrackLayoutsRequest{
 			TrackId: uint32(track1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -176,22 +176,22 @@ func TestGetTrackLayoutSuccess(t *testing.T) {
 
 	resp, err := svc.GetTrackLayout(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTrackLayoutRequest{
+		&queryv1.GetTrackLayoutRequest{
 			Id: uint32(layout.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.Msg.GetTrackLayout().GetId() != uint32(layout.ID) {
-		t.Errorf("expected id %d, got %d", layout.ID, resp.Msg.GetTrackLayout().GetId())
+	if resp.GetTrackLayout().GetId() != uint32(layout.ID) {
+		t.Errorf("expected id %d, got %d", layout.ID, resp.GetTrackLayout().GetId())
 	}
-	if resp.Msg.GetTrackLayout().GetTrackId() != uint32(track.ID) {
-		t.Errorf("expected track_id %d, got %d", track.ID, resp.Msg.GetTrackLayout().GetTrackId())
+	if resp.GetTrackLayout().GetTrackId() != uint32(track.ID) {
+		t.Errorf("expected track_id %d, got %d", track.ID, resp.GetTrackLayout().GetTrackId())
 	}
-	if resp.Msg.GetTrackLayout().GetName() != "Full Circuit" {
-		t.Errorf("expected name %q, got %q", "Full Circuit", resp.Msg.GetTrackLayout().GetName())
+	if resp.GetTrackLayout().GetName() != "Full Circuit" {
+		t.Errorf("expected name %q, got %q", "Full Circuit", resp.GetTrackLayout().GetName())
 	}
 }
 
@@ -200,9 +200,9 @@ func TestGetTrackLayoutNotFound(t *testing.T) {
 
 	_, err := svc.GetTrackLayout(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTrackLayoutRequest{
+		&queryv1.GetTrackLayoutRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

@@ -9,7 +9,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/authn"
@@ -119,32 +119,32 @@ func TestCreateRaceSuccess(t *testing.T) {
 	event := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Round 1", 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateRace(ctx, connect.NewRequest(&v1.CreateRaceRequest{
+	resp, err := svc.CreateRace(ctx, &v1.CreateRaceRequest{
 		EventId:     uint32(event.ID),
 		Name:        "Qualifying 1",
 		SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING,
 		SequenceNo:  1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetRace().GetName() != "Qualifying 1" {
-		t.Fatalf("unexpected race name: %q", resp.Msg.GetRace().GetName())
+	if resp.GetRace().GetName() != "Qualifying 1" {
+		t.Fatalf("unexpected race name: %q", resp.GetRace().GetName())
 	}
-	if resp.Msg.GetRace().GetEventId() != uint32(event.ID) {
-		t.Fatalf("unexpected event_id: got %d want %d", resp.Msg.GetRace().GetEventId(), event.ID)
+	if resp.GetRace().GetEventId() != uint32(event.ID) {
+		t.Fatalf("unexpected event_id: got %d want %d", resp.GetRace().GetEventId(), event.ID)
 	}
-	if resp.Msg.GetRace().
+	if resp.GetRace().
 		GetSessionType() !=
 		commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING {
 
-		t.Fatalf("unexpected session_type: got %v", resp.Msg.GetRace().GetSessionType())
+		t.Fatalf("unexpected session_type: got %v", resp.GetRace().GetSessionType())
 	}
-	if resp.Msg.GetRace().GetSequenceNo() != 1 {
-		t.Fatalf("unexpected sequence_no: got %d want 1", resp.Msg.GetRace().GetSequenceNo())
+	if resp.GetRace().GetSequenceNo() != 1 {
+		t.Fatalf("unexpected sequence_no: got %d want 1", resp.GetRace().GetSequenceNo())
 	}
 
-	id := int32(resp.Msg.GetRace().GetId())
+	id := int32(resp.GetRace().GetId())
 	stored, err := repo.Races().Races().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created race: %v", err)
@@ -174,12 +174,12 @@ func TestCreateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 
 	_, err := svc.CreateRace(
 		context.Background(),
-		connect.NewRequest(&v1.CreateRaceRequest{
+		&v1.CreateRaceRequest{
 			EventId:     uint32(event.ID),
 			Name:        "Race 1",
 			SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING,
 			SequenceNo:  2,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -202,12 +202,12 @@ func TestCreateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 
 	_, err := svc.CreateRace(
 		context.Background(),
-		connect.NewRequest(&v1.CreateRaceRequest{
+		&v1.CreateRaceRequest{
 			EventId:     uint32(event.ID),
 			Name:        "Race 2",
 			SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING,
 			SequenceNo:  1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate sequence error")
@@ -231,18 +231,18 @@ func TestCreateRaceSuccessDuplicateNameDifferentEvent(t *testing.T) {
 
 	resp, err := svc.CreateRace(
 		context.Background(),
-		connect.NewRequest(&v1.CreateRaceRequest{
+		&v1.CreateRaceRequest{
 			EventId:     uint32(event2.ID),
 			Name:        "Race 1",
 			SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING,
 			SequenceNo:  1,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetRace().GetEventId() != uint32(event2.ID) {
-		t.Fatalf("unexpected event_id: got %d want %d", resp.Msg.GetRace().GetEventId(), event2.ID)
+	if resp.GetRace().GetEventId() != uint32(event2.ID) {
+		t.Fatalf("unexpected event_id: got %d want %d", resp.GetRace().GetEventId(), event2.ID)
 	}
 }
 
@@ -257,12 +257,12 @@ func TestCreateRaceFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateRace(
 		context.Background(),
-		connect.NewRequest(&v1.CreateRaceRequest{
+		&v1.CreateRaceRequest{
 			EventId:     1,
 			Name:        "Race 1",
 			SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_QUALIFYING,
 			SequenceNo:  1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -295,23 +295,23 @@ func TestUpdateRaceSuccess(t *testing.T) {
 	// Sleep briefly so UpdatedAt can advance
 	time.Sleep(10 * time.Millisecond)
 
-	resp, err := svc.UpdateRace(ctx, connect.NewRequest(&v1.UpdateRaceRequest{
+	resp, err := svc.UpdateRace(ctx, &v1.UpdateRaceRequest{
 		RaceId:      uint32(initial.ID),
 		Name:        "Heat 1 Updated",
 		SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE,
 		SequenceNo:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetRace().GetName() != "Heat 1 Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetRace().GetName())
+	if resp.GetRace().GetName() != "Heat 1 Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetRace().GetName())
 	}
-	if resp.Msg.GetRace().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE {
-		t.Fatalf("unexpected session_type: got %v", resp.Msg.GetRace().GetSessionType())
+	if resp.GetRace().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE {
+		t.Fatalf("unexpected session_type: got %v", resp.GetRace().GetSessionType())
 	}
-	if resp.Msg.GetRace().GetSequenceNo() != 2 {
-		t.Fatalf("unexpected sequence_no: got %d want 2", resp.Msg.GetRace().GetSequenceNo())
+	if resp.GetRace().GetSequenceNo() != 2 {
+		t.Fatalf("unexpected sequence_no: got %d want 2", resp.GetRace().GetSequenceNo())
 	}
 
 	after, err := repo.Races().Races().LoadByID(context.Background(), initial.ID)
@@ -348,10 +348,10 @@ func TestUpdateRaceFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateRace(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateRaceRequest{
+		&v1.UpdateRaceRequest{
 			RaceId: 999999,
 			Name:   "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -375,10 +375,10 @@ func TestUpdateRaceFailureDuplicateNameSameEvent(t *testing.T) {
 
 	_, err := svc.UpdateRace(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateRaceRequest{
+		&v1.UpdateRaceRequest{
 			RaceId: uint32(second.ID),
 			Name:   first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -414,10 +414,10 @@ func TestUpdateRaceFailureDuplicateSequenceSameEvent(t *testing.T) {
 
 	_, err := svc.UpdateRace(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateRaceRequest{
+		&v1.UpdateRaceRequest{
 			RaceId:     uint32(second.ID),
 			SequenceNo: first.SequenceNo,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate sequence error")
@@ -440,14 +440,14 @@ func TestDeleteRaceSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteRace(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteRaceRequest{
+		&v1.DeleteRaceRequest{
 			RaceId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -468,9 +468,9 @@ func TestDeleteRaceFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteRace(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteRaceRequest{
+		&v1.DeleteRaceRequest{
 			RaceId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -534,26 +534,26 @@ func TestCreateRaceGridSuccess(t *testing.T) {
 	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
-	resp, err := svc.CreateRaceGrid(ctx, connect.NewRequest(&v1.CreateRaceGridRequest{
+	resp, err := svc.CreateRaceGrid(ctx, &v1.CreateRaceGridRequest{
 		RaceId:      uint32(race.ID),
 		Name:        "Grid 1",
 		SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE,
 		SequenceNo:  1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetRaceGrid().GetName() != "Grid 1" {
-		t.Fatalf("unexpected race grid name: %q", resp.Msg.GetRaceGrid().GetName())
+	if resp.GetRaceGrid().GetName() != "Grid 1" {
+		t.Fatalf("unexpected race grid name: %q", resp.GetRaceGrid().GetName())
 	}
-	if resp.Msg.GetRaceGrid().GetRaceId() != uint32(race.ID) {
-		t.Fatalf("unexpected race_id: got %d want %d", resp.Msg.GetRaceGrid().GetRaceId(), race.ID)
+	if resp.GetRaceGrid().GetRaceId() != uint32(race.ID) {
+		t.Fatalf("unexpected race_id: got %d want %d", resp.GetRaceGrid().GetRaceId(), race.ID)
 	}
-	if resp.Msg.GetRaceGrid().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE {
-		t.Fatalf("unexpected session_type: got %v", resp.Msg.GetRaceGrid().GetSessionType())
+	if resp.GetRaceGrid().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_RACE {
+		t.Fatalf("unexpected session_type: got %v", resp.GetRaceGrid().GetSessionType())
 	}
 
-	id := int32(resp.Msg.GetRaceGrid().GetId())
+	id := int32(resp.GetRaceGrid().GetId())
 	stored, err := repo.Races().RaceGrids().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created race grid: %v", err)
@@ -590,23 +590,23 @@ func TestUpdateRaceGridSuccess(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	resp, err := svc.UpdateRaceGrid(ctx, connect.NewRequest(&v1.UpdateRaceGridRequest{
+	resp, err := svc.UpdateRaceGrid(ctx, &v1.UpdateRaceGridRequest{
 		RaceGridId:  uint32(initial.ID),
 		Name:        "Grid 1 Updated",
 		SessionType: commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT,
 		SequenceNo:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetRaceGrid().GetName() != "Grid 1 Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetRaceGrid().GetName())
+	if resp.GetRaceGrid().GetName() != "Grid 1 Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetRaceGrid().GetName())
 	}
-	if resp.Msg.GetRaceGrid().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT {
-		t.Fatalf("unexpected session_type: got %v", resp.Msg.GetRaceGrid().GetSessionType())
+	if resp.GetRaceGrid().GetSessionType() != commonv1.RaceSessionType_RACE_SESSION_TYPE_HEAT {
+		t.Fatalf("unexpected session_type: got %v", resp.GetRaceGrid().GetSessionType())
 	}
-	if resp.Msg.GetRaceGrid().GetSequenceNo() != 2 {
-		t.Fatalf("unexpected sequence_no: got %d want 2", resp.Msg.GetRaceGrid().GetSequenceNo())
+	if resp.GetRaceGrid().GetSequenceNo() != 2 {
+		t.Fatalf("unexpected sequence_no: got %d want 2", resp.GetRaceGrid().GetSequenceNo())
 	}
 
 	after, err := repo.Races().RaceGrids().LoadByID(context.Background(), initial.ID)
@@ -643,10 +643,10 @@ func TestUpdateRaceGridFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateRaceGrid(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateRaceGridRequest{
+		&v1.UpdateRaceGridRequest{
 			RaceGridId: 999999,
 			Name:       "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -670,14 +670,14 @@ func TestDeleteRaceGridSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteRaceGrid(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteRaceGridRequest{
+		&v1.DeleteRaceGridRequest{
 			RaceGridId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -698,9 +698,9 @@ func TestDeleteRaceGridFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteRaceGrid(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteRaceGridRequest{
+		&v1.DeleteRaceGridRequest{
 			RaceGridId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

@@ -5,7 +5,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -15,21 +14,20 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) GetPreprocessPreview(
 	ctx context.Context,
-	req *connect.Request[importv1.GetPreprocessPreviewRequest],
-) (
-	*connect.Response[importv1.GetPreprocessPreviewResponse], error,
+	req *importv1.GetPreprocessPreviewRequest,
+) (*importv1.GetPreprocessPreviewResponse, error,
 ) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("GetPreprocessPreview")
 
-	gridID := int32(req.Msg.GetRaceGridId())
+	gridID := int32(req.GetRaceGridId())
 
 	// Load result entries for the race.
 	entries, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, gridID)
 	if err != nil {
 		l.Error("failed to load result entries", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load result entries")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	// Convert result entries to proto.
@@ -56,8 +54,8 @@ func (s *service) GetPreprocessPreview(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "preprocess preview loaded")
-	return connect.NewResponse(&importv1.GetPreprocessPreviewResponse{
+	return &importv1.GetPreprocessPreviewResponse{
 		Rows:               rows,
 		UnresolvedMappings: unresolvedMappings,
-	}), nil
+	}, nil
 }

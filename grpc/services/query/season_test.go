@@ -9,7 +9,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 
@@ -52,13 +52,13 @@ func TestListSeasonsEmpty(t *testing.T) {
 
 	resp, err := svc.ListSeasons(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListSeasonsRequest{}),
+		&queryv1.ListSeasonsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -93,13 +93,13 @@ func TestListSeasonsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListSeasons(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListSeasonsRequest{}),
+		&queryv1.ListSeasonsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -151,15 +151,15 @@ func TestListSeasonsBySeriesID(t *testing.T) {
 
 	resp, err := svc.ListSeasons(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListSeasonsRequest{
+		&queryv1.ListSeasonsRequest{
 			SeriesId: uint32(series1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -193,15 +193,15 @@ func TestGetSeasonSuccess(t *testing.T) {
 
 	resp, err := svc.GetSeason(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetSeasonRequest{
+		&queryv1.GetSeasonRequest{
 			Id: uint32(season.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetSeason()
+	got := resp.GetSeason()
 	if got.GetId() != uint32(season.ID) {
 		t.Errorf("expected id %d, got %d", season.ID, got.GetId())
 	}
@@ -226,9 +226,9 @@ func TestGetSeasonNotFound(t *testing.T) {
 
 	_, err := svc.GetSeason(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetSeasonRequest{
+		&queryv1.GetSeasonRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

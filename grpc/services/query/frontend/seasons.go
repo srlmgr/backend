@@ -7,7 +7,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -21,16 +20,16 @@ import (
 //nolint:whitespace,gocyclo,funlen // editor/linter issue
 func (s *service) ListSeasonsOverview(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListSeasonsOverviewRequest],
-) (*connect.Response[queryv1.ListSeasonsOverviewResponse], error) {
+	req *queryv1.ListSeasonsOverviewRequest,
+) (*queryv1.ListSeasonsOverviewResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("ListSeasonsOverview",
-		log.Bool("include_inactive", req.Msg.GetIncludeInactive()))
+		log.Bool("include_inactive", req.GetIncludeInactive()))
 
 	seasonsRepo := s.repo.Seasons()
 
 	seasons, err := func() ([]*commonv1.Season, error) {
-		if req.Msg.GetIncludeInactive() {
+		if req.GetIncludeInactive() {
 			items, loadErr := seasonsRepo.LoadAll(ctx)
 			if loadErr != nil {
 				return nil, loadErr
@@ -59,7 +58,7 @@ func (s *service) ListSeasonsOverview(
 	if err != nil {
 		l.Error("failed to load seasons", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load seasons")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	// Collect unique series IDs from seasons.
@@ -78,7 +77,7 @@ func (s *service) ListSeasonsOverview(
 			log.ErrorField(seriesErr),
 		)
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load series")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(seriesErr), seriesErr)
+		return nil, s.conversion.ToConnectError(seriesErr)
 	}
 
 	for _, item := range seriesDBItems {
@@ -100,9 +99,8 @@ func (s *service) ListSeasonsOverview(
 			log.ErrorField(racingSimsErr),
 		)
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load simulations")
-		return nil, connect.NewError(
-			s.conversion.MapErrorToRPCCode(racingSimsErr), racingSimsErr,
-		)
+		return nil, s.conversion.ToConnectError(racingSimsErr)
+
 	}
 	for _, item := range racingSimsDBItems {
 		if converted := s.conversion.RacingSimToSimulation(item); converted != nil {
@@ -111,9 +109,9 @@ func (s *service) ListSeasonsOverview(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "seasons overview loaded")
-	return connect.NewResponse(&queryv1.ListSeasonsOverviewResponse{
+	return &queryv1.ListSeasonsOverviewResponse{
 		Seasons:     seasons,
 		Series:      seriesItems,
 		Simulations: simulations,
-	}), nil
+	}, nil
 }

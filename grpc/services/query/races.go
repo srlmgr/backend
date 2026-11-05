@@ -6,7 +6,6 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,10 +18,10 @@ import (
 //nolint:whitespace // editor/linter issue
 func (s *service) ListRaces(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListRacesRequest],
-) (*connect.Response[queryv1.ListRacesResponse], error) {
+	req *queryv1.ListRacesRequest,
+) (*queryv1.ListRacesResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListRaces", log.Uint32("event_id", req.Msg.GetEventId()))
+	l.Debug("ListRaces", log.Uint32("event_id", req.GetEventId()))
 
 	racesRepo := s.repo.Races().Races()
 
@@ -31,7 +30,7 @@ func (s *service) ListRaces(
 		err       error
 	)
 
-	if eventID := int32(req.Msg.GetEventId()); eventID != 0 {
+	if eventID := int32(req.GetEventId()); eventID != 0 {
 		raceItems, err = racesRepo.LoadByEventID(ctx, eventID)
 	} else {
 		raceItems, err = racesRepo.LoadAll(ctx)
@@ -40,7 +39,7 @@ func (s *service) ListRaces(
 	if err != nil {
 		l.Error("failed to load races", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load races")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.Race, 0, len(raceItems))
@@ -51,7 +50,7 @@ func (s *service) ListRaces(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "races loaded")
-	return connect.NewResponse(&queryv1.ListRacesResponse{Items: items}), nil
+	return &queryv1.ListRacesResponse{Items: items}, nil
 }
 
 // GetRace returns a race by ID.
@@ -59,22 +58,22 @@ func (s *service) ListRaces(
 //nolint:whitespace // editor/linter issue
 func (s *service) GetRace(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetRaceRequest],
-) (*connect.Response[queryv1.GetRaceResponse], error) {
+	req *queryv1.GetRaceRequest,
+) (*queryv1.GetRaceResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("GetRace", log.Uint32("id", req.Msg.GetId()))
+	l.Debug("GetRace", log.Uint32("id", req.GetId()))
 
-	item, err := s.repo.Races().Races().LoadByID(ctx, int32(req.Msg.GetId()))
+	item, err := s.repo.Races().Races().LoadByID(ctx, int32(req.GetId()))
 	if err != nil {
 		l.Error("failed to load race", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race loaded")
-	return connect.NewResponse(&queryv1.GetRaceResponse{
+	return &queryv1.GetRaceResponse{
 		Race: s.conversion.RaceToRace(item),
-	}), nil
+	}, nil
 }
 
 // ListRaceGrids returns a list of race grids.
@@ -82,10 +81,10 @@ func (s *service) GetRace(
 //nolint:whitespace // editor/linter issue
 func (s *service) ListRaceGrids(
 	ctx context.Context,
-	req *connect.Request[queryv1.ListRaceGridsRequest],
-) (*connect.Response[queryv1.ListRaceGridsResponse], error) {
+	req *queryv1.ListRaceGridsRequest,
+) (*queryv1.ListRaceGridsResponse, error) {
 	l := s.logger.WithCtx(ctx)
-	l.Debug("ListRaceGrids", log.Uint32("race_id", req.Msg.GetRaceId()))
+	l.Debug("ListRaceGrids", log.Uint32("race_id", req.GetRaceId()))
 
 	raceGridsRepo := s.repo.Races().RaceGrids()
 
@@ -94,7 +93,7 @@ func (s *service) ListRaceGrids(
 		err           error
 	)
 
-	if raceID := int32(req.Msg.GetRaceId()); raceID != 0 {
+	if raceID := int32(req.GetRaceId()); raceID != 0 {
 		raceGridItems, err = raceGridsRepo.LoadByRaceID(ctx, raceID)
 	} else {
 		raceGridItems, err = raceGridsRepo.LoadAll(ctx)
@@ -103,7 +102,7 @@ func (s *service) ListRaceGrids(
 	if err != nil {
 		l.Error("failed to load race grids", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to load race grids")
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	items := make([]*commonv1.RaceGrid, 0, len(raceGridItems))
@@ -114,5 +113,5 @@ func (s *service) ListRaceGrids(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "race grids loaded")
-	return connect.NewResponse(&queryv1.ListRaceGridsResponse{Items: items}), nil
+	return &queryv1.ListRaceGridsResponse{Items: items}, nil
 }

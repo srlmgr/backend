@@ -9,7 +9,7 @@ import (
 
 	v1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/command/v1"
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -127,7 +127,7 @@ func TestCreateEventSuccess(t *testing.T) {
 	ctx := authn.AddPrincipal(context.Background(), &authn.Principal{Name: testUserTester})
 
 	eventDate := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
-	resp, err := svc.CreateEvent(ctx, connect.NewRequest(&v1.CreateEventRequest{
+	resp, err := svc.CreateEvent(ctx, &v1.CreateEventRequest{
 		SeasonId:        uint32(season.ID),
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Round 1",
@@ -135,29 +135,29 @@ func TestCreateEventSuccess(t *testing.T) {
 		EventDate:       timestamppb.New(eventDate),
 		Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
 		ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetEvent().GetName() != "Round 1" {
-		t.Fatalf("unexpected event name: %q", resp.Msg.GetEvent().GetName())
+	if resp.GetEvent().GetName() != "Round 1" {
+		t.Fatalf("unexpected event name: %q", resp.GetEvent().GetName())
 	}
-	if resp.Msg.GetEvent().GetSeasonId() != uint32(season.ID) {
+	if resp.GetEvent().GetSeasonId() != uint32(season.ID) {
 		t.Fatalf(
 			"unexpected season_id: got %d want %d",
-			resp.Msg.GetEvent().GetSeasonId(),
+			resp.GetEvent().GetSeasonId(),
 			season.ID,
 		)
 	}
-	if resp.Msg.GetEvent().GetTrackLayoutId() != uint32(layout.ID) {
+	if resp.GetEvent().GetTrackLayoutId() != uint32(layout.ID) {
 		t.Fatalf(
 			"unexpected track_layout_id: got %d want %d",
-			resp.Msg.GetEvent().GetTrackLayoutId(),
+			resp.GetEvent().GetTrackLayoutId(),
 			layout.ID,
 		)
 	}
 
-	id := int32(resp.Msg.GetEvent().GetId())
+	id := int32(resp.GetEvent().GetId())
 	stored, err := repo.Events().LoadByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to load created event: %v", err)
@@ -193,7 +193,7 @@ func TestCreateEventFailureDuplicateNameSameSeason(t *testing.T) {
 
 	_, err := svc.CreateEvent(
 		context.Background(),
-		connect.NewRequest(&v1.CreateEventRequest{
+		&v1.CreateEventRequest{
 			SeasonId:        uint32(season.ID),
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
@@ -201,7 +201,7 @@ func TestCreateEventFailureDuplicateNameSameSeason(t *testing.T) {
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
 			Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
 			ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate create error")
@@ -224,7 +224,7 @@ func TestCreateEventSuccessDuplicateNameDifferentSeason(t *testing.T) {
 
 	resp, err := svc.CreateEvent(
 		context.Background(),
-		connect.NewRequest(&v1.CreateEventRequest{
+		&v1.CreateEventRequest{
 			SeasonId:        uint32(season2.ID),
 			TrackLayoutId:   uint32(layout.ID),
 			Name:            "Round 1",
@@ -232,15 +232,15 @@ func TestCreateEventSuccessDuplicateNameDifferentSeason(t *testing.T) {
 			EventDate:       timestamppb.New(time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)),
 			Status:          commonv1.EventStatus_EVENT_STATUS_SCHEDULED,
 			ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_DRAFT,
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetEvent().GetSeasonId() != uint32(season2.ID) {
+	if resp.GetEvent().GetSeasonId() != uint32(season2.ID) {
 		t.Fatalf(
 			"unexpected season_id: got %d want %d",
-			resp.Msg.GetEvent().GetSeasonId(),
+			resp.GetEvent().GetSeasonId(),
 			season2.ID,
 		)
 	}
@@ -257,11 +257,11 @@ func TestCreateEventFailureTransactionError(t *testing.T) {
 
 	_, err := svc.CreateEvent(
 		context.Background(),
-		connect.NewRequest(&v1.CreateEventRequest{
+		&v1.CreateEventRequest{
 			SeasonId:      1,
 			TrackLayoutId: 1,
 			Name:          "Round 1",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -290,19 +290,19 @@ func TestUpdateEventSuccess(t *testing.T) {
 		t.Fatalf("failed to load initial event: %v", err)
 	}
 
-	resp, err := svc.UpdateEvent(ctx, connect.NewRequest(&v1.UpdateEventRequest{
+	resp, err := svc.UpdateEvent(ctx, &v1.UpdateEventRequest{
 		EventId:         uint32(initial.ID),
 		SeasonId:        uint32(season.ID),
 		TrackLayoutId:   uint32(layout.ID),
 		Name:            "Daytona 500 Updated",
 		Status:          commonv1.EventStatus_EVENT_STATUS_COMPLETED,
 		ProcessingState: commonv1.EventProcessingState_EVENT_PROCESSING_STATE_FINALIZED,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Msg.GetEvent().GetName() != "Daytona 500 Updated" {
-		t.Fatalf("unexpected updated name: %q", resp.Msg.GetEvent().GetName())
+	if resp.GetEvent().GetName() != "Daytona 500 Updated" {
+		t.Fatalf("unexpected updated name: %q", resp.GetEvent().GetName())
 	}
 
 	after, err := repo.Events().LoadByID(context.Background(), initial.ID)
@@ -333,10 +333,10 @@ func TestUpdateEventFailureNotFound(t *testing.T) {
 
 	_, err := svc.UpdateEvent(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateEventRequest{
+		&v1.UpdateEventRequest{
 			EventId: 999999,
 			Name:    "missing",
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")
@@ -359,10 +359,10 @@ func TestUpdateEventFailureDuplicateNameSameSeason(t *testing.T) {
 
 	_, err := svc.UpdateEvent(
 		context.Background(),
-		connect.NewRequest(&v1.UpdateEventRequest{
+		&v1.UpdateEventRequest{
 			EventId: uint32(second.ID),
 			Name:    first.Name,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected duplicate update error")
@@ -396,14 +396,14 @@ func TestDeleteEventSuccess(t *testing.T) {
 
 	resp, err := svc.DeleteEvent(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteEventRequest{
+		&v1.DeleteEventRequest{
 			EventId: uint32(initial.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !resp.Msg.GetDeleted() {
+	if !resp.GetDeleted() {
 		t.Fatal("expected deleted=true")
 	}
 
@@ -424,9 +424,9 @@ func TestDeleteEventFailureTransactionError(t *testing.T) {
 
 	_, err := svc.DeleteEvent(
 		context.Background(),
-		connect.NewRequest(&v1.DeleteEventRequest{
+		&v1.DeleteEventRequest{
 			EventId: 1,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error")

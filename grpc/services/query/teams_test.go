@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 
 	"github.com/srlmgr/backend/db/models"
@@ -40,13 +40,13 @@ func TestListTeamsEmpty(t *testing.T) {
 
 	resp, err := svc.ListTeams(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTeamsRequest{}),
+		&queryv1.ListTeamsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetItems()) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(resp.Msg.GetItems()))
+	if len(resp.GetItems()) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(resp.GetItems()))
 	}
 }
 
@@ -63,13 +63,13 @@ func TestListTeamsReturnsAll(t *testing.T) {
 
 	resp, err := svc.ListTeams(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTeamsRequest{}),
+		&queryv1.ListTeamsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -101,15 +101,15 @@ func TestListTeamsBySeasonID(t *testing.T) {
 
 	resp, err := svc.ListTeams(
 		context.Background(),
-		connect.NewRequest(&queryv1.ListTeamsRequest{
+		&queryv1.ListTeamsRequest{
 			SeasonId: uint32(season1.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	items := resp.Msg.GetItems()
+	items := resp.GetItems()
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
@@ -132,15 +132,15 @@ func TestGetTeamSuccess(t *testing.T) {
 
 	resp, err := svc.GetTeam(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTeamRequest{
+		&queryv1.GetTeamRequest{
 			Id: uint32(team.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got := resp.Msg.GetTeam()
+	got := resp.GetTeam()
 	if got.GetId() != uint32(team.ID) {
 		t.Errorf("expected id %d, got %d", team.ID, got.GetId())
 	}
@@ -160,9 +160,9 @@ func TestGetTeamNotFound(t *testing.T) {
 
 	_, err := svc.GetTeam(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTeamRequest{
+		&queryv1.GetTeamRequest{
 			Id: 99999,
-		}),
+		},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -205,15 +205,15 @@ func TestGetTeamMembersSuccess(t *testing.T) {
 
 	resp, err := svc.GetTeamMembers(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTeamMembersRequest{
+		&queryv1.GetTeamMembersRequest{
 			Id: uint32(team.ID),
-		}),
+		},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	members := resp.Msg.GetMembers()
+	members := resp.GetMembers()
 	if len(members) != 2 {
 		t.Fatalf("expected 2 members, got %d", len(members))
 	}
@@ -251,13 +251,13 @@ func TestGetTeamMembersEmpty(t *testing.T) {
 
 	resp, err := svc.GetTeamMembers(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTeamMembersRequest{Id: uint32(team.ID)}),
+		&queryv1.GetTeamMembersRequest{Id: uint32(team.ID)},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.Msg.GetMembers()) != 0 {
-		t.Fatalf("expected empty members, got %d", len(resp.Msg.GetMembers()))
+	if len(resp.GetMembers()) != 0 {
+		t.Fatalf("expected empty members, got %d", len(resp.GetMembers()))
 	}
 }
 
@@ -266,7 +266,7 @@ func TestGetTeamMembersNotFound(t *testing.T) {
 
 	_, err := svc.GetTeamMembers(
 		context.Background(),
-		connect.NewRequest(&queryv1.GetTeamMembersRequest{Id: 99999}),
+		&queryv1.GetTeamMembersRequest{Id: 99999},
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")

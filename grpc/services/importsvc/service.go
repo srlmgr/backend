@@ -3,7 +3,7 @@ package importsvc
 import (
 	"context"
 
-	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/backend/import/v1/importv1connect"
+	importv1connect "buf.build/gen/go/srlmgr/api/connectrpc/go/v2/backend/import/v1/importv1connect"
 
 	"github.com/srlmgr/backend/authn"
 	"github.com/srlmgr/backend/db/models"

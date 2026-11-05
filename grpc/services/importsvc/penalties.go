@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
 	"github.com/samber/lo"
@@ -38,15 +37,12 @@ var (
 //nolint:whitespace // editor/linter issue
 func (s *service) AddPenalty(
 	ctx context.Context,
-	req *connect.Request[importv1.AddPenaltyRequest],
-) (*connect.Response[importv1.AddPenaltyResponse], error) {
+	req *importv1.AddPenaltyRequest,
+) (*importv1.AddPenaltyResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("AddPenalty")
 
-	var msg *importv1.AddPenaltyRequest
-	if req != nil {
-		msg = req.Msg
-	}
+	msg := req
 
 	setter, err := s.buildPenaltyBookingEntry(ctx, msg)
 	if err != nil {
@@ -66,21 +62,18 @@ func (s *service) AddPenalty(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "penalty added")
-	return connect.NewResponse(&importv1.AddPenaltyResponse{}), nil
+	return &importv1.AddPenaltyResponse{}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) UpdatePenalty(
 	ctx context.Context,
-	req *connect.Request[importv1.UpdatePenaltyRequest],
-) (*connect.Response[importv1.UpdatePenaltyResponse], error) {
+	req *importv1.UpdatePenaltyRequest,
+) (*importv1.UpdatePenaltyResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("UpdatePenalty")
 
-	var msg *importv1.UpdatePenaltyRequest
-	if req != nil {
-		msg = req.Msg
-	}
+	msg := req
 
 	setter, err := s.buildPenaltyBookingEntry(ctx, msg)
 	if err != nil {
@@ -92,7 +85,7 @@ func (s *service) UpdatePenalty(
 	}
 
 	if _, err := s.repo.BookingEntries().Update(
-		ctx, int32(req.Msg.PenaltyId), setter,
+		ctx, int32(req.PenaltyId), setter,
 	); err != nil {
 		l.Error("failed to update penalty booking entry", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(
@@ -102,26 +95,26 @@ func (s *service) UpdatePenalty(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "penalty updated")
-	return connect.NewResponse(&importv1.UpdatePenaltyResponse{}), nil
+	return &importv1.UpdatePenaltyResponse{}, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) DeletePenalty(
 	ctx context.Context,
-	req *connect.Request[importv1.DeletePenaltyRequest],
-) (*connect.Response[importv1.DeletePenaltyResponse], error) {
+	req *importv1.DeletePenaltyRequest,
+) (*importv1.DeletePenaltyResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	l.Debug("DeletePenalty")
 
-	if req == nil || req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("request is required"))
+			"request is required")
 	}
 
-	penaltyID := int32(req.Msg.GetPenaltyId())
+	penaltyID := int32(req.GetPenaltyId())
 	if penaltyID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("penalty_id is required"))
+			"penalty_id is required")
 	}
 
 	if err := s.withTx(ctx, func(txCtx context.Context) error {
@@ -131,8 +124,8 @@ func (s *service) DeletePenalty(
 		}
 
 		if entry.SourceType != mytypes.SourceType("steward_penalty") {
-			return connect.NewError(connect.CodeFailedPrecondition,
-				fmt.Errorf("booking entry %d is not a steward penalty entry", penaltyID))
+			return connect.Errorf(connect.CodeFailedPrecondition,
+				"booking entry %d is not a steward penalty entry", penaltyID)
 		}
 
 		return s.repo.BookingEntries().DeleteByID(txCtx, penaltyID)
@@ -145,7 +138,7 @@ func (s *service) DeletePenalty(
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "steward penalty deleted")
-	return connect.NewResponse(&importv1.DeletePenaltyResponse{}), nil
+	return &importv1.DeletePenaltyResponse{}, nil
 }
 
 //nolint:whitespace,funlen // editor/linter issue
@@ -155,19 +148,19 @@ func (s *service) buildPenaltyBookingEntry(
 ) (*models.BookingEntrySetter, error) {
 	if req == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("request is required"))
+			"request is required")
 	}
 
 	target := req.GetTarget()
 	if target == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target is required"))
+			"target is required")
 	}
 
 	penaltyPoints := req.GetPenaltyPoints()
 	if penaltyPoints == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("penalty_points must not be zero"))
+			"penalty_points must not be zero")
 	}
 	if penaltyPoints > 0 {
 		penaltyPoints = -penaltyPoints
@@ -219,7 +212,7 @@ func (s *service) resolvePenaltyTarget(
 ) (*penaltyTargetData, error) {
 	if target == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target is required"))
+			"target is required")
 	}
 
 	data := &penaltyTargetData{}
@@ -228,20 +221,20 @@ func (s *service) resolvePenaltyTarget(
 	case target.HasDriverId():
 		if target.GetDriverId() == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target driver_id must not be zero"))
+				"target driver_id must not be zero")
 		}
 		data.targetType = mytypes.TargetType("driver")
 		data.driverID = omitnull.From(int32(target.GetDriverId()))
 	case target.HasTeamId():
 		if target.GetTeamId() == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target team_id must not be zero"))
+				"target team_id must not be zero")
 		}
 		data.targetType = mytypes.TargetType("team")
 		data.teamID = omitnull.From(int32(target.GetTeamId()))
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target driver_id or team_id is required"))
+			"target driver_id or team_id is required")
 	}
 
 	switch {
@@ -249,7 +242,7 @@ func (s *service) resolvePenaltyTarget(
 		eventID := int32(target.GetEventId())
 		if eventID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target event_id must not be zero"))
+				"target event_id must not be zero")
 		}
 		if _, err := s.repo.Events().LoadByID(ctx, eventID); err != nil {
 			return nil, err
@@ -259,7 +252,7 @@ func (s *service) resolvePenaltyTarget(
 		raceID := int32(target.GetRaceId())
 		if raceID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target race_id must not be zero"))
+				"target race_id must not be zero")
 		}
 		race, err := s.repo.Races().Races().LoadByID(ctx, raceID)
 		if err != nil {
@@ -271,7 +264,7 @@ func (s *service) resolvePenaltyTarget(
 		raceGridID := int32(target.GetRaceGridId())
 		if raceGridID == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("target race_grid_id must not be zero"))
+				"target race_grid_id must not be zero")
 		}
 		grid, err := s.repo.Races().RaceGrids().LoadByID(ctx, raceGridID)
 		if err != nil {
@@ -286,12 +279,12 @@ func (s *service) resolvePenaltyTarget(
 		data.raceGridID = omitnull.From(raceGridID)
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target scope event_id, race_id, or race_grid_id is required"))
+			"target scope event_id, race_id, or race_grid_id is required")
 	}
 
 	if data.eventID == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("target scope resolved to an empty event_id"))
+			"target scope resolved to an empty event_id")
 	}
 
 	return data, nil
@@ -387,5 +380,5 @@ func (s *service) toRPCError(err error) error {
 		return connectErr
 	}
 
-	return connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+	return s.conversion.ToConnectError(err)
 }

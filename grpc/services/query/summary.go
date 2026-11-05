@@ -7,7 +7,7 @@ import (
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	queryv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/query/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -23,35 +23,36 @@ var errInvalidSummarySelector = fmt.Errorf("invalid summary selector")
 //nolint:whitespace,funlen // editor/linter issue
 func (s *service) GetSummary(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSummaryRequest],
-) (*connect.Response[queryv1.GetSummaryResponse], error) {
+	req *queryv1.GetSummaryRequest,
+) (*queryv1.GetSummaryResponse, error) {
 	l := s.logger.WithCtx(ctx)
 	var summaries []*commonv1.Summary
 	var err error
-	switch req.Msg.Selector.Scope.(type) {
+	switch req.Selector.Scope.(type) {
 	case *commonv1.SummarySelector_EventId:
-		l.Debug("GetSummary", log.Uint32("eventID", req.Msg.Selector.GetEventId()))
+		l.Debug("GetSummary", log.Uint32("eventID", req.Selector.GetEventId()))
 		summaries, err = s.getSummaryByEventID(ctx, req)
 
 	case *commonv1.SummarySelector_RaceId:
-		l.Debug("GetSummary", log.Uint32("raceID", req.Msg.Selector.GetRaceId()))
+		l.Debug("GetSummary", log.Uint32("raceID", req.Selector.GetRaceId()))
 		summaries, err = s.getSummaryByRaceID(ctx, req)
 
 	default:
 		l.Error("invalid summary selector")
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "invalid summary selector")
 		return nil, connect.NewError(
-			connect.CodeInvalidArgument, errInvalidSummarySelector,
-		)
+			connect.CodeInvalidArgument, errInvalidSummarySelector.Error(),
+		).WithCause(errInvalidSummarySelector)
+
 	}
 	if err != nil {
 		l.Error("failed to get summary", log.ErrorField(err))
 		trace.SpanFromContext(ctx).SetStatus(codes.Error, "failed to get summary")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	response := &queryv1.GetSummaryResponse{Summaries: summaries}
-	switch req.Msg.GetSelector().GetType() {
+	switch req.GetSelector().GetType() {
 	case commonv1.SummaryTargetType_SUMMARY_TARGET_TYPE_DRIVER:
 		response.Drivers, err = s.loadSummaryDrivers(ctx, summaries)
 	case commonv1.SummaryTargetType_SUMMARY_TARGET_TYPE_TEAM:
@@ -64,19 +65,19 @@ func (s *service) GetSummary(
 		trace.SpanFromContext(ctx).SetStatus(
 			codes.Error, "failed to enrich summary response",
 		)
-		return nil, connect.NewError(s.conversion.MapErrorToRPCCode(err), err)
+		return nil, s.conversion.ToConnectError(err)
 	}
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "summary loaded")
-	return connect.NewResponse(response), nil
+	return response, nil
 }
 
 //nolint:whitespace // editor/linter issue
 func (s *service) getSummaryByEventID(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSummaryRequest],
+	req *queryv1.GetSummaryRequest,
 ) ([]*commonv1.Summary, error) {
-	eventID := req.Msg.GetSelector().GetEventId()
+	eventID := req.GetSelector().GetEventId()
 	res, err := s.svc.SummaryService().GetEventSummary(ctx, int(eventID))
 	if err != nil {
 		s.logger.WithCtx(ctx).Error("failed to get event summary", log.ErrorField(err))
@@ -89,9 +90,9 @@ func (s *service) getSummaryByEventID(
 //nolint:whitespace // editor/linter issue
 func (s *service) getSummaryByRaceID(
 	ctx context.Context,
-	req *connect.Request[queryv1.GetSummaryRequest],
+	req *queryv1.GetSummaryRequest,
 ) ([]*commonv1.Summary, error) {
-	raceID := req.Msg.GetSelector().GetRaceId()
+	raceID := req.GetSelector().GetRaceId()
 	res, err := s.svc.SummaryService().GetRaceSummary(ctx, int(raceID))
 	if err != nil {
 		s.logger.WithCtx(ctx).Error("failed to get race summary", log.ErrorField(err))
@@ -105,7 +106,7 @@ func (s *service) getSummaryByRaceID(
 //
 //nolint:whitespace // editor/linter issue
 func (s *service) convertByRequest(
-	req *connect.Request[queryv1.GetSummaryRequest],
+	req *queryv1.GetSummaryRequest,
 	inp *summary.BaseSummary,
 ) []*commonv1.Summary {
 	if inp == nil {
@@ -127,7 +128,7 @@ func (s *service) convertByRequest(
 			}
 		})
 	}
-	switch req.Msg.GetSelector().GetType() {
+	switch req.GetSelector().GetType() {
 	case commonv1.SummaryTargetType_SUMMARY_TARGET_TYPE_DRIVER:
 		if inp.Season.IsTeamBased {
 			return convert(inp.Secondary)
