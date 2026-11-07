@@ -9,8 +9,9 @@ import (
 var errLoginStateNotFound = errors.New("login state not found")
 
 type loginState struct {
-	Nonce     string
-	ExpiresAt time.Time
+	Nonce       string
+	RedirectURL string
+	ExpiresAt   time.Time
 }
 
 type loginStateStore struct {
