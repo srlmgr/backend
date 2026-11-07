@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
@@ -78,12 +80,16 @@ type server struct {
 	repo     rootrepo.Repository
 	service  service.Service
 	irClient *iRacingClient
+	sessions authn.SessionStore
 
 	serveErrCh chan error
 }
 
-//nolint:funlen // by design
+//nolint:funlen,gocyclo // coordinates the server lifecycle
 func (s *server) startServers() (err error) {
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+	s.ctx = ctx
 	var cacheConfig *cache.Config
 	if strings.TrimSpace(config.CacheConfigFile) != "" {
 		cacheConfig, err = cache.LoadConfig(config.CacheConfigFile)
@@ -97,6 +103,12 @@ func (s *server) startServers() (err error) {
 		postgres.WithTracer(postgres.NewOtlpTracer()),
 	)
 	defer s.pool.Close()
+	var workers sync.WaitGroup
+	defer func() {
+		cancel()
+		workers.Wait()
+		s.closeIRacingClient()
+	}()
 
 	repoOpts := []pgRepos.Option{}
 	serviceOpts := []serviceImpl.Option{}
@@ -111,6 +123,22 @@ func (s *server) startServers() (err error) {
 		serviceOpts = append(serviceOpts, serviceImpl.WithCache(s.ctx, cacheConfig, cm))
 	}
 	s.repo = pgRepos.New(s.pool, repoOpts...)
+	if config.AuthnPersistentSessionsEnabled && config.GRPCEnabled {
+		checkCtx, checkCancel := context.WithTimeout(s.ctx, 10*time.Second)
+		store, storeErr := authn.NewPostgresSessionStore(
+			checkCtx, s.repo.AuthSessions(), rootrepo.NewBobTransactionFromPool(s.pool),
+		)
+		checkCancel()
+		if storeErr != nil {
+			return fmt.Errorf("initialize persistent sessions: %w", storeErr)
+		}
+		s.sessions = store
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			cleanupSessions(ctx, store)
+		}()
+	}
 	s.service = serviceImpl.New(
 		s.repo,
 		log.GetFromContext(s.ctx).Named("service"),
@@ -122,22 +150,24 @@ func (s *server) startServers() (err error) {
 			log.Warn("failed to initialize iRacing client", log.ErrorField(iracingErr))
 		}
 	}
-	s.serveErrCh = make(chan error, 1)
+	s.serveErrCh = make(chan error, 2)
 	if config.GRPCEnabled {
+		workers.Add(1)
 		go func() {
-			err = s.startGRPC()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to start gRPC server: %v\n", err)
-				s.serveErrCh <- err
+			defer workers.Done()
+			if serveErr := s.startGRPC(); serveErr != nil {
+				fmt.Fprintf(os.Stderr, "failed to start gRPC server: %v\n", serveErr)
+				s.serveErrCh <- serveErr
 			}
 		}()
 	}
 	if config.HTMLEnabled {
+		workers.Add(1)
 		go func() {
-			err = s.startHTML()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to start HTML server: %v\n", err)
-				s.serveErrCh <- err
+			defer workers.Done()
+			if serveErr := s.startHTML(); serveErr != nil {
+				fmt.Fprintf(os.Stderr, "failed to start HTML server: %v\n", serveErr)
+				s.serveErrCh <- serveErr
 			}
 		}()
 	}
@@ -150,8 +180,25 @@ func (s *server) startServers() (err error) {
 	case <-s.ctx.Done():
 		fmt.Fprintf(os.Stderr, "context was closed\n")
 	}
-	s.closeIRacingClient()
 	return nil
+}
+
+func cleanupSessions(ctx context.Context, store *authn.PostgresSessionStore) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		cleanupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		_, err := store.CleanupExpired(cleanupCtx, 1000)
+		cancel()
+		if err != nil && ctx.Err() == nil {
+			log.Error("failed to clean up expired sessions", log.ErrorField(err))
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 // initialize the iRacing client and add it to the server context
@@ -179,6 +226,7 @@ func (s *server) startGRPC() error {
 		Services: s.service,
 		Authn: authn.Config{
 			Enabled: config.AuthnEnabled,
+			Store:   s.sessions,
 			IDP: authn.IDPConfig{
 				Enabled:        config.IDPEnabled,
 				IssuerURL:      config.IDPIssuerURL,

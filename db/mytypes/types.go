@@ -6,10 +6,12 @@ import (
 )
 
 type (
-	SourceType   string
-	TargetType   string
-	ImportFormat string
-	TeamDrivers  struct {
+	// SessionIDHash is the SHA-256 hash of a session cookie.
+	SessionIDHash = []byte
+	SourceType    string
+	TargetType    string
+	ImportFormat  string
+	TeamDrivers   struct {
 		DriverIDs []int32 `json:"driverIDs"`
 	}
 	RaceSimImportFormat struct {

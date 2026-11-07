@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	connect "connectrpc.com/connect/v2"
@@ -27,13 +26,19 @@ type manager struct {
 	logger     *log.Logger
 	callback   string
 	cookieName string
-	refreshMu  sync.Map // sessionID -> *sync.Mutex
 }
 
 type authError struct {
 	err         error
 	clearCookie bool
 }
+
+type sessionStoreError struct {
+	err error
+}
+
+func (e *sessionStoreError) Error() string { return e.err.Error() }
+func (e *sessionStoreError) Unwrap() error { return e.err }
 
 type currentUserResponse struct {
 	ID        string `json:"id"`
@@ -232,6 +237,10 @@ func (m *manager) CurrentPrincipalFromRequest(
 }
 
 func (m *manager) toConnectError(err error, callInfo *connect.CallInfo) error {
+	var storeErr *sessionStoreError
+	if errors.As(err, &storeErr) {
+		return connect.NewError(connect.CodeInternal, "session storage unavailable")
+	}
 	var authErr *authError
 	if !errors.As(err, &authErr) {
 		return connect.NewError(connect.CodeUnauthenticated, err.Error()).WithCause(err)
@@ -244,7 +253,7 @@ func (m *manager) toConnectError(err error, callInfo *connect.CallInfo) error {
 		WithCause(authErr.err)
 }
 
-//nolint:whitespace,funlen // auth flow intentionally explicit; editor/linter issue
+//nolint:whitespace // editor/linter issue
 func (m *manager) authenticate(
 	ctx context.Context,
 	headers http.Header,
@@ -282,16 +291,11 @@ func (m *manager) authenticate(
 	if err != nil {
 		m.logger.Warn(
 			"error getting session from ID",
-			log.String("sessionID", sessionID),
 			log.ErrorField(err),
 		)
 		return nil, err
 	}
 	if !found {
-		m.logger.Warn(
-			"sessionID not found",
-			log.String("sessionID", sessionID),
-		)
 		return nil, &authError{err: errors.New("session not found"), clearCookie: true}
 	}
 
@@ -308,12 +312,7 @@ func (m *manager) sessionFromID(
 		if errors.Is(err, errSessionNotFound) {
 			return Session{}, false, nil
 		}
-		m.logger.Warn(
-			"other error getting session from ID",
-			log.String("sessionID", sessionID),
-			log.ErrorField(err),
-		)
-		return Session{}, false, err
+		return Session{}, false, &sessionStoreError{err: err}
 	}
 
 	if m.cfg.IDP.Enabled && shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
@@ -323,44 +322,29 @@ func (m *manager) sessionFromID(
 	return session, true, nil
 }
 
-// refreshOnce serializes refreshes per session. Concurrent callers wait for the
-// running refresh and then reuse its result instead of refreshing again.
-//
 //nolint:whitespace // editor/linter issue
 func (m *manager) refreshOnce(
 	ctx context.Context, sessionID string,
 ) (Session, bool, error) {
-	mu, _ := m.refreshMu.LoadOrStore(sessionID, &sync.Mutex{})
-	//nolint:forcetypeassert,errcheck // only *sync.Mutex is stored
-	lock := mu.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
-
-	session, err := m.sessions.Get(ctx, sessionID)
-	if err != nil {
-		if errors.Is(err, errSessionNotFound) {
-			m.refreshMu.Delete(sessionID)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	update := func(session Session) (Session, bool, error) {
+		if !shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
+			return session, true, nil
+		}
+		if refreshErr := m.refreshSession(ctx, &session); refreshErr != nil {
+			m.logger.Warn("error refreshing session", log.ErrorField(refreshErr))
 			return Session{}, false, nil
 		}
-		return Session{}, false, err
-	}
-
-	if !shouldRefreshToken(session.Expiry, m.cfg.IDP.RefreshSkew) {
 		return session, true, nil
 	}
-
-	if refreshErr := m.refreshSession(ctx, &session); refreshErr != nil {
-		m.logger.Warn(
-			"error refreshing session",
-			log.String("sessionID", session.ID),
-			log.ErrorField(refreshErr),
-		)
-		_ = m.sessions.Delete(ctx, session.ID)
-		m.refreshMu.Delete(sessionID)
-
-		return Session{}, false, nil
+	session, err := m.sessions.Update(ctx, sessionID, update)
+	if err != nil {
+		if errors.Is(err, errSessionNotFound) {
+			return Session{}, false, nil
+		}
+		return Session{}, false, &sessionStoreError{err: err}
 	}
-
 	return session, true, nil
 }
 
@@ -414,7 +398,7 @@ func (m *manager) refreshSession(ctx context.Context, session *Session) error {
 		session.ExpiresAt = time.Now().Add(m.cfg.IDP.SessionTTL)
 	}
 
-	return m.sessions.Put(ctx, *session)
+	return nil
 }
 
 func (m *manager) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -493,6 +477,7 @@ func (m *manager) handleCallback(w http.ResponseWriter, r *http.Request) {
 		session.ExpiresAt = time.Now().Add(m.cfg.IDP.SessionTTL)
 	}
 	if err := m.sessions.Put(r.Context(), session); err != nil {
+		m.logger.Error("unable to persist session", log.ErrorField(err))
 		http.Error(w, "unable to persist session", http.StatusInternalServerError)
 		return
 	}
@@ -513,7 +498,11 @@ func (m *manager) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sessionID != "" {
-		_ = m.sessions.Delete(r.Context(), sessionID)
+		if err := m.sessions.Delete(r.Context(), sessionID); err != nil {
+			m.logger.Error("unable to delete session", log.ErrorField(err))
+			http.Error(w, "unable to invalidate session", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	http.SetCookie(w, m.clearSessionCookie())

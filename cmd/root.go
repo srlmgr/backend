@@ -147,6 +147,10 @@ func registerAuthnFlags(cmd *cobra.Command) {
 		"authn-enabled",
 		true,
 		"enable request authentication")
+	cmd.PersistentFlags().BoolVar(&config.AuthnPersistentSessionsEnabled,
+		"authn-persistent-sessions-enabled",
+		false,
+		"persist OIDC sessions in PostgreSQL")
 	cmd.PersistentFlags().BoolVar(&config.IDPEnabled,
 		"idp-enabled",
 		false,

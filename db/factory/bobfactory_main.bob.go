@@ -19,6 +19,7 @@ import (
 )
 
 type Factory struct {
+	baseAuthSessionMods                AuthSessionModSlice
 	baseBookingEntryMods               BookingEntryModSlice
 	baseCarClassMods                   CarClassModSlice
 	baseCarClassesToCarModelMods       CarClassesToCarModelModSlice
@@ -55,6 +56,44 @@ type Factory struct {
 
 func New() *Factory {
 	return &Factory{}
+}
+
+func (f *Factory) NewAuthSession(mods ...AuthSessionMod) *AuthSessionTemplate {
+	return f.NewAuthSessionWithContext(context.Background(), mods...)
+}
+
+func (f *Factory) NewAuthSessionWithContext(ctx context.Context, mods ...AuthSessionMod) *AuthSessionTemplate {
+	o := &AuthSessionTemplate{f: f}
+
+	if f != nil {
+		f.baseAuthSessionMods.Apply(ctx, o)
+	}
+
+	AuthSessionModSlice(mods).Apply(ctx, o)
+
+	return o
+}
+
+func (f *Factory) FromExistingAuthSession(ctx context.Context, m *models.AuthSession) *AuthSessionTemplate {
+	return f.fromExistingAuthSession(ctx, m)
+}
+
+func (f *Factory) fromExistingAuthSession(ctx context.Context, m *models.AuthSession) *AuthSessionTemplate {
+	o := &AuthSessionTemplate{f: f, alreadyPersisted: true}
+
+	o.ID = func() int32 { return m.ID }
+	o.SessionIDHash = func() []byte { return m.SessionIDHash }
+	o.Principal = func() types.JSON[json.RawMessage] { return m.Principal }
+	o.AccessToken = func() string { return m.AccessToken }
+	o.RefreshToken = func() string { return m.RefreshToken }
+	o.TokenExpiresAt = func() null.Val[time.Time] { return m.TokenExpiresAt }
+	o.ExpiresAt = func() null.Val[time.Time] { return m.ExpiresAt }
+	o.CreatedAt = func() time.Time { return m.CreatedAt }
+	o.UpdatedAt = func() time.Time { return m.UpdatedAt }
+	o.CreatedBy = func() string { return m.CreatedBy }
+	o.UpdatedBy = func() string { return m.UpdatedBy }
+
+	return o
 }
 
 func (f *Factory) NewBookingEntry(mods ...BookingEntryMod) *BookingEntryTemplate {
@@ -1907,6 +1946,14 @@ func (f *Factory) fromExistingTrack(ctx context.Context, m *models.Track) *Track
 	}
 
 	return o
+}
+
+func (f *Factory) ClearBaseAuthSessionMods() {
+	f.baseAuthSessionMods = nil
+}
+
+func (f *Factory) AddBaseAuthSessionMod(mods ...AuthSessionMod) {
+	f.baseAuthSessionMods = append(f.baseAuthSessionMods, mods...)
 }
 
 func (f *Factory) ClearBaseBookingEntryMods() {

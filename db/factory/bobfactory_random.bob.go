@@ -5,6 +5,7 @@ package factory
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -90,6 +91,15 @@ func random_mytypes_ImportFormat(f *faker.Faker, limits ...string) mytypes.Impor
 	}
 
 	return "json"
+}
+
+func random_mytypes_SessionIDHash(f *faker.Faker, limits ...string) []byte {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	hash := sha256.Sum256([]byte(f.UUID().V4()))
+	return hash[:]
 }
 
 func random_mytypes_SourceType(f *faker.Faker, limits ...string) mytypes.SourceType {

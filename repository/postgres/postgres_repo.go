@@ -12,6 +12,7 @@ import (
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/log"
 	rootrepo "github.com/srlmgr/backend/repository"
+	"github.com/srlmgr/backend/repository/authsessions"
 	"github.com/srlmgr/backend/repository/bookingentries"
 	"github.com/srlmgr/backend/repository/cars"
 	"github.com/srlmgr/backend/repository/drivers"
@@ -70,6 +71,7 @@ const (
 )
 
 type repository struct {
+	authSessions         authsessions.Repository
 	racingSims           racingsims.Repository
 	pointSystems         pointsystems.Repository
 	drivers              drivers.Repository
@@ -107,6 +109,7 @@ func New(pool *pgxpool.Pool, opts ...Option) rootrepo.Repository {
 	teamsRepo := setupTeamsRepo(pool, o)
 
 	return &repository{
+		authSessions:         authsessions.New(pool),
 		racingSims:           racingsims.New(pool),
 		pointSystems:         pointsystems.New(pool),
 		drivers:              driversRepo,
@@ -126,6 +129,7 @@ func New(pool *pgxpool.Pool, opts ...Option) rootrepo.Repository {
 	}
 }
 
+func (r *repository) AuthSessions() authsessions.Repository     { return r.authSessions }
 func (r *repository) RacingSims() racingsims.Repository         { return r.racingSims }
 func (r *repository) PointSystems() pointsystems.Repository     { return r.pointSystems }
 func (r *repository) Drivers() drivers.Repository               { return r.drivers }
