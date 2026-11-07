@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/stephenafamo/bob"
 
+	"github.com/srlmgr/backend/repository/authsessions"
 	"github.com/srlmgr/backend/repository/bookingentries"
 	"github.com/srlmgr/backend/repository/cars"
 	"github.com/srlmgr/backend/repository/drivers"
@@ -34,6 +35,7 @@ var ErrNotFound = repoerrors.ErrNotFound
 
 // Repository collects all entity-group repositories.
 type Repository interface {
+	AuthSessions() authsessions.Repository
 	RacingSims() racingsims.Repository
 	PointSystems() pointsystems.Repository
 	Drivers() drivers.Repository

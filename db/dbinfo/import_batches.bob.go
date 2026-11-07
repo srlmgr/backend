@@ -233,7 +233,7 @@ var ImportBatches = Table[
 				Columns: []string{"import_format"},
 				Comment: "",
 			},
-			Expression: "(import_format = ANY (ARRAY['json'::text, 'csv'::text, 'xml'::text]))",
+			Expression: "(import_format = ANY (ARRAY['json'::text, 'csv'::text, 'xml'::text, 'api'::text]))",
 		},
 		ImportBatchesProcessingStateCheck: check{
 			constraint: constraint{

@@ -47,6 +47,17 @@ func TestRandom_int32(t *testing.T) {
 	}
 }
 
+func TestRandom_mytypes_SessionIDHash(t *testing.T) {
+	t.Parallel()
+
+	val1 := random_mytypes_SessionIDHash(nil)
+	val2 := random_mytypes_SessionIDHash(nil)
+
+	if bytes.Equal(val1, val2) {
+		t.Fatalf("random_mytypes_SessionIDHash() returned the same value twice: %v", val1)
+	}
+}
+
 func TestRandom_pq_Int32Array(t *testing.T) {
 	t.Parallel()
 

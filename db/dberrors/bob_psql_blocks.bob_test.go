@@ -31,6 +31,41 @@ func TestCheckConstraintErrors(t *testing.T) {
 		t.Fatal("expected ErrCheckConstraint.Is not to match unique violation")
 	}
 
+	t.Run("AuthSession_ErrCheckAuthSessionsPrincipalObject", func(t *testing.T) {
+		matchingErr := newCheckErr("23514", "auth_sessions_principal_object")
+		if !errors.Is(AuthSessionErrors.ErrCheckAuthSessionsPrincipalObject, matchingErr) {
+			t.Fatalf("expected ErrCheckAuthSessionsPrincipalObject to match constraint %q", "auth_sessions_principal_object")
+		}
+		if !AuthSessionErrors.ErrCheckAuthSessionsPrincipalObject.Is(matchingErr) {
+			t.Fatalf("expected ErrCheckAuthSessionsPrincipalObject.Is to match constraint %q", "auth_sessions_principal_object")
+		}
+
+		nonMatchingErr := newCheckErr("23514", "other_constraint")
+		if errors.Is(AuthSessionErrors.ErrCheckAuthSessionsPrincipalObject, nonMatchingErr) {
+			t.Fatal("expected ErrCheckAuthSessionsPrincipalObject not to match different constraint")
+		}
+		if AuthSessionErrors.ErrCheckAuthSessionsPrincipalObject.Is(nonMatchingErr) {
+			t.Fatal("expected ErrCheckAuthSessionsPrincipalObject.Is not to match different constraint")
+		}
+	})
+	t.Run("AuthSession_ErrCheckAuthSessionsSessionIdHashLength", func(t *testing.T) {
+		matchingErr := newCheckErr("23514", "auth_sessions_session_id_hash_length")
+		if !errors.Is(AuthSessionErrors.ErrCheckAuthSessionsSessionIdHashLength, matchingErr) {
+			t.Fatalf("expected ErrCheckAuthSessionsSessionIdHashLength to match constraint %q", "auth_sessions_session_id_hash_length")
+		}
+		if !AuthSessionErrors.ErrCheckAuthSessionsSessionIdHashLength.Is(matchingErr) {
+			t.Fatalf("expected ErrCheckAuthSessionsSessionIdHashLength.Is to match constraint %q", "auth_sessions_session_id_hash_length")
+		}
+
+		nonMatchingErr := newCheckErr("23514", "other_constraint")
+		if errors.Is(AuthSessionErrors.ErrCheckAuthSessionsSessionIdHashLength, nonMatchingErr) {
+			t.Fatal("expected ErrCheckAuthSessionsSessionIdHashLength not to match different constraint")
+		}
+		if AuthSessionErrors.ErrCheckAuthSessionsSessionIdHashLength.Is(nonMatchingErr) {
+			t.Fatal("expected ErrCheckAuthSessionsSessionIdHashLength.Is not to match different constraint")
+		}
+	})
+
 	t.Run("BookingEntry_ErrCheckBookingEntriesSourceTypeCheck", func(t *testing.T) {
 		matchingErr := newCheckErr("23514", "booking_entries_source_type_check")
 		if !errors.Is(BookingEntryErrors.ErrCheckBookingEntriesSourceTypeCheck, matchingErr) {

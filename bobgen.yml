@@ -35,6 +35,10 @@ aliases:
     down_singular: "series"
 
 replacements:
+  - tables: ["auth_sessions"]
+    match:
+      name: "session_id_hash"
+    replace: "mytypes.SessionIDHash"
   - tables: ["booking_entries"]
     match:
       name: "source_type"
@@ -57,6 +61,14 @@ replacements:
     replace: "mytypes.TeamDrivers"
 
 types:
+  "mytypes.SessionIDHash":
+    alias_of: "[]byte"
+    random_expr_imports: ['"crypto/sha256"']
+    random_expr: |
+      hash := sha256.Sum256([]byte(f.UUID().V4()))
+      return hash[:]
+    compare_expr: "bytes.Equal(AAA, BBB)"
+    compare_expr_imports: ['"bytes"']
   "mytypes.SourceType":
     imports: ['mytypes "github.com/srlmgr/backend/db/mytypes"']
     no_randomization_test: true

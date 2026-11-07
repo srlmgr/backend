@@ -10,6 +10,9 @@ type contextKey string
 var (
 	factoryVisitedCtx = newContextual[map[uintptr]struct{}]("factoryVisited")
 
+	// Relationship Contexts for auth_sessions
+	authSessionWithParentsCascadingCtx = newContextual[bool]("authSessionWithParentsCascading")
+
 	// Relationship Contexts for booking_entries
 	bookingEntryWithParentsCascadingCtx = newContextual[bool]("bookingEntryWithParentsCascading")
 	bookingEntryRelCarClassCtx          = newContextual[bool]("booking_entries.car_classes.booking_entries.booking_entries_car_class_id_fk")

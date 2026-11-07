@@ -20,16 +20,17 @@ var (
 	HTMLExternalURL   string // external URL for HTML server (used for navigation links)
 	HTMLContextPart   string // context part for endpoints (used for navigation links)
 
-	AuthnEnabled               bool
-	IDPEnabled                 bool
-	IDPIssuerURL               string
-	IDPClientID                string
-	IDPClientSecret            string
-	IDPCallbackURL             string
-	IDPFrontendURL             string
-	IDPRefreshSkew             time.Duration
-	AuthnAPITokenFilePath      string
-	AuthnAPITokenRefreshWindow time.Duration
+	AuthnEnabled                   bool
+	AuthnPersistentSessionsEnabled bool
+	IDPEnabled                     bool
+	IDPIssuerURL                   string
+	IDPClientID                    string
+	IDPClientSecret                string
+	IDPCallbackURL                 string
+	IDPFrontendURL                 string
+	IDPRefreshSkew                 time.Duration
+	AuthnAPITokenFilePath          string
+	AuthnAPITokenRefreshWindow     time.Duration
 
 	AuthzEnabled          bool
 	AuthzPolicyPath       string

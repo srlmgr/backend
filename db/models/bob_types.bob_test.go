@@ -19,6 +19,9 @@ import (
 // Set the testDB to enable tests that use the database
 var testDB bob.Transactor[bob.Tx]
 
+// Make sure the type AuthSession runs hooks after queries
+var _ bob.HookableType = &AuthSession{}
+
 // Make sure the type BookingEntry runs hooks after queries
 var _ bob.HookableType = &BookingEntry{}
 
@@ -115,6 +118,12 @@ var _ bob.HookableType = &TrackLayout{}
 // Make sure the type Track runs hooks after queries
 var _ bob.HookableType = &Track{}
 
+// Make sure the type types.JSON[json.RawMessage] satisfies database/sql.Scanner
+var _ sql.Scanner = (*types.JSON[json.RawMessage])(nil)
+
+// Make sure the type types.JSON[json.RawMessage] satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(types.JSON[json.RawMessage])
+
 // Make sure the type mytypes.TargetType satisfies database/sql.Scanner
 var _ sql.Scanner = (*mytypes.TargetType)(nil)
 
@@ -126,12 +135,6 @@ var _ sql.Scanner = (*mytypes.SourceType)(nil)
 
 // Make sure the type mytypes.SourceType satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(mytypes.SourceType)
-
-// Make sure the type types.JSON[json.RawMessage] satisfies database/sql.Scanner
-var _ sql.Scanner = (*types.JSON[json.RawMessage])(nil)
-
-// Make sure the type types.JSON[json.RawMessage] satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(types.JSON[json.RawMessage])
 
 // Make sure the type uuid.UUID satisfies database/sql.Scanner
 var _ sql.Scanner = (*uuid.UUID)(nil)

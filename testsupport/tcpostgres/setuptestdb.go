@@ -87,6 +87,7 @@ func clearTables(pool *pgxpool.Pool, tables []string) error {
 
 func ClearAllTables(pool *pgxpool.Pool) error {
 	tables := []string{
+		"auth_sessions",
 		"booking_entries",
 		"result_entries",
 		"event_processing_audit",
