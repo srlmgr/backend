@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -412,6 +413,10 @@ func (m *manager) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unable to initialize auth flow", http.StatusInternalServerError)
 		return
 	}
+	redirectURL, _ := validatedRedirectURL(
+		m.cfg.IDP.FrontendURL,
+		r.URL.Query().Get("callback_url"),
+	)
 	nonce, err := randomToken(32)
 	if err != nil {
 		http.Error(w, "unable to initialize auth flow", http.StatusInternalServerError)
@@ -419,10 +424,57 @@ func (m *manager) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.states.Put(state, loginState{
-		Nonce:     nonce,
-		ExpiresAt: time.Now().Add(m.cfg.IDP.StateTTL),
+		Nonce:       nonce,
+		RedirectURL: redirectURL,
+		ExpiresAt:   time.Now().Add(m.cfg.IDP.StateTTL),
 	})
 	http.Redirect(w, r, m.idpClient.authCodeURL(state, nonce), http.StatusFound)
+}
+
+//nolint:gocyclo // validatedRedirectURL is explicit and clear
+func validatedRedirectURL(frontendURL, redirectURL string) (string, bool) {
+	if redirectURL == "" || redirectURL != strings.TrimSpace(redirectURL) {
+		return "", false
+	}
+
+	frontend, err := url.Parse(frontendURL)
+	if err != nil || frontend.Scheme == "" || frontend.Host == "" ||
+		frontend.User != nil || frontend.Opaque != "" {
+
+		return "", false
+	}
+	redirect, err := url.Parse(redirectURL)
+	if err != nil || redirect.Scheme == "" || redirect.Host == "" ||
+		redirect.User != nil || redirect.Opaque != "" {
+
+		return "", false
+	}
+	if !strings.EqualFold(frontend.Scheme, redirect.Scheme) ||
+		!strings.EqualFold(frontend.Host, redirect.Host) {
+
+		return "", false
+	}
+
+	frontendPath := cleanURLPath(frontend.Path)
+	redirectPath := cleanURLPath(redirect.Path)
+	if frontendPath != "/" && redirectPath != frontendPath &&
+		!strings.HasPrefix(redirectPath, frontendPath+"/") {
+
+		return "", false
+	}
+
+	return redirectURL, true
+}
+
+func cleanURLPath(urlPath string) string {
+	cleaned := path.Clean(strings.ReplaceAll(urlPath, "\\", "/"))
+	if cleaned == "." {
+		return "/"
+	}
+	if !strings.HasPrefix(cleaned, "/") {
+		return "/" + cleaned
+	}
+	return cleaned
 }
 
 //nolint:funlen // callback flow keeps error handling explicit
@@ -483,7 +535,11 @@ func (m *manager) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, m.sessionCookie(session.ID))
-	http.Redirect(w, r, m.cfg.IDP.FrontendURL, http.StatusFound)
+	redirectURL := stateEntry.RedirectURL
+	if redirectURL == "" {
+		redirectURL = m.cfg.IDP.FrontendURL
+	}
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 func (m *manager) handleLogout(w http.ResponseWriter, r *http.Request) {
