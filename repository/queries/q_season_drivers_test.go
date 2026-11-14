@@ -64,7 +64,8 @@ func Test_querySeasonDrivers_ResolveSeasonDriver(t *testing.T) {
 			when: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), want: seasonDriverA,
 		},
 		{
-			name: "in phase 2 (left edge)", seasonID: season.ID, driverID: driver.ID,
+			name:     "old membership left edge is exclusive and next joined edge inclusive",
+			seasonID: season.ID, driverID: driver.ID,
 			when: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), want: seasonDriverB,
 		},
 		{

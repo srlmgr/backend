@@ -64,6 +64,22 @@ This section will guide you to setup a fully-functional local copy of `backend`
 on your end and teach you how to use it! Make sure you have installed
 [golangci-lint][golangci-install] before following this section!
 
+### Import mapping diagnostics
+
+`GetPreprocessPreview` returns persisted result rows alongside live mapping
+diagnostics for rows marked `mapping_error` and the imported track. It does not
+write any changes. After mappings are corrected, diagnostics may disappear from
+the preview while the persisted row remains marked; call `ResolveMappings` to
+retry and persist the updated row states and IDs. `ResolveMappings` returns the
+updated rows and remaining diagnostics, including session-level track errors.
+Both methods reconstruct the input from the stored import batch; a retry fails
+if a marked row cannot be matched uniquely to the imported data.
+
+`UploadResultsFile` returns the processing state. Use the preview to retrieve
+its detailed diagnostics. A grid without an import batch has no import
+diagnostics; if it contains a row marked `mapping_error`, preview reports the
+missing batch as an error instead.
+
 **Note:** This section relies on the usage of [Makefile][makefile-official]. If you
 can't (or don't) use Makefile, you can follow along by running the internal commands
 from [`backend's` Makefile][makefile-file] (most of which are

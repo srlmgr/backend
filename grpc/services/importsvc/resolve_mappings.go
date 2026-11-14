@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	importv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/import/v1"
@@ -14,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/srlmgr/backend/db/models"
-	"github.com/srlmgr/backend/grpc/services/conversion"
 	"github.com/srlmgr/backend/grpc/services/importsvc/importer"
 	"github.com/srlmgr/backend/grpc/services/importsvc/processor"
 	"github.com/srlmgr/backend/log"
@@ -30,7 +30,7 @@ func (s *service) ResolveMappings(
 	l.Debug("ResolveMappings")
 
 	gridID := int32(req.GetRaceGridId())
-	if gridID == 0 {
+	if gridID <= 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			"race_grid_id is required")
 	}
@@ -48,7 +48,7 @@ func (s *service) ResolveMappings(
 		return nil, s.conversion.ToConnectError(err)
 	}
 	execUser := s.execUser(ctx)
-	var unresolvedMappings int32
+	var resolved *importer.Result
 
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
 		batch, err := s.repo.ImportBatches().LoadByRaceGridID(ctx, gridID)
@@ -56,48 +56,26 @@ func (s *service) ResolveMappings(
 			return err
 		}
 
-		importProcessor, simulation, err := s.resolveProcessorForEvent(ctx, epi)
+		// Parsed rows provide simulation IDs and session data not stored in result entries.
+		input, resolver, err := s.mappingInput(ctx, epi, batch, gridID)
 		if err != nil {
 			return err
-		}
-
-		importFormat := string(batch.ImportFormat)
-		if !importer.SupportsFormat(importProcessor, importFormat) {
-			return fmt.Errorf(
-				"%w: simulation=%q format=%q",
-				importer.ErrUnsupportedFormat,
-				simulation.Name,
-				importFormat,
-			)
-		}
-
-		payload, err := selectImportPayloadForProcessing(batch.Payload, batch.MetadataJSON)
-		if err != nil {
-			return fmt.Errorf("select import payload: %w", err)
-		}
-
-		inputs, err := processImportPayload(ctx, importProcessor, importFormat, payload)
-		if err != nil {
-			return fmt.Errorf("process import payload: %w", err)
-		}
-
-		input, err := selectInputForGrid(epi, inputs, gridID)
-		if err != nil {
-			return fmt.Errorf("select input for race grid %d: %w", gridID, err)
 		}
 
 		existing, err := s.repo.ResultEntries().LoadByRaceGridID(ctx, gridID)
 		if err != nil {
 			return err
 		}
-
-		resolver := importer.NewResolver(
-			importer.NewRepositoryEntityResolver(ctx, s.repo, epi, simulation),
-			epi,
-		)
-		resolved, err := resolver.ResolveNonMapped(input, existing)
+		input, err = parsedInputWithResultEntries(input, existing, epi.Season.IsTeamBased)
+		if err != nil {
+			return err
+		}
+		resolved, err = resolver.ResolveInput(input)
 		if err != nil {
 			return fmt.Errorf("resolve mappings: %w", err)
+		}
+		if err := mergeResolvedEntries(resolved, existing); err != nil {
+			return err
 		}
 
 		now := time.Now()
@@ -109,29 +87,24 @@ func (s *service) ResolveMappings(
 				return errors.New("result entry id is missing")
 			}
 
-			setter := &models.ResultEntrySetter{
-				State:     omit.From(entry.State),
-				UpdatedAt: omit.From(now),
-				UpdatedBy: omit.From(execUser),
-			}
-			if !entry.DriverID.IsNull() {
-				setter.DriverID = omitnull.From(entry.DriverID.GetOr(0))
-			}
-			if !entry.CarModelVariantID.IsNull() {
-				setter.CarModelVariantID = omitnull.From(entry.CarModelVariantID.GetOr(0))
-			}
-
+			setter := buildResolvedResultEntrySetter(entry, now, execUser)
 			if _, err := s.repo.ResultEntries().Update(ctx, entry.ID, setter); err != nil {
 				return fmt.Errorf("update result entry %d: %w", entry.ID, err)
 			}
 		}
 
-		mappingErrorsAfter := countMappingErrors(resolved.Entries)
-		if mappingErrorsAfter < 0 {
-			mappingErrorsAfter = 0
+		for _, mapping := range resolved.Unmapped {
+			if mapping.ResultIndex == nil {
+				continue
+			}
+			index := int(mapping.GetResultIndex())
+			if index < 0 || index >= len(existing) {
+				return fmt.Errorf("unresolved mapping has invalid result index %d", index)
+			}
+			entryID := uint32(existing[index].ID)
+			mapping.ResultEntryId = &entryID
 		}
-		unresolvedMappings = int32(mappingErrorsAfter)
-
+		scopeMappingsToGrid(resolved.Unmapped, uint32(gridID))
 		return nil
 	}); txErr != nil {
 		l.Error("failed to resolve mappings", log.ErrorField(txErr))
@@ -141,19 +114,152 @@ func (s *service) ResolveMappings(
 
 	trace.SpanFromContext(ctx).SetStatus(codes.Ok, "mappings resolved")
 	return &importv1.ResolveMappingsResponse{
-		UnresolvedMappings: unresolvedMappings,
+		Rows:               s.resultEntryRows(resolved.Entries),
+		UnresolvedMappings: resolved.Unmapped,
 	}, nil
 }
 
-func countMappingErrors(entries []*models.ResultEntry) int {
-	count := 0
-	for _, entry := range entries {
+//nolint:whitespace // editor/linter issue
+func parsedInputWithResultEntries(
+	input *importer.ParsedImportPayload,
+	entries []*models.ResultEntry,
+	isTeamBased bool,
+) (*importer.ParsedImportPayload, error) {
+	if input == nil {
+		return nil, errors.New("parsed import input is nil")
+	}
+	if len(input.Results) != len(entries) {
+		return nil, fmt.Errorf(
+			"result entry count %d does not match import row count %d",
+			len(entries),
+			len(input.Results),
+		)
+	}
+
+	entriesInImportOrder := append([]*models.ResultEntry(nil), entries...)
+	for i, entry := range entriesInImportOrder {
 		if entry == nil {
-			continue
-		}
-		if entry.State == conversion.ResultStateMappingError {
-			count++
+			return nil, fmt.Errorf("result entry %d is nil", i)
 		}
 	}
-	return count
+	sort.SliceStable(entriesInImportOrder, func(i, j int) bool {
+		return entriesInImportOrder[i].ID < entriesInImportOrder[j].ID
+	})
+	sourceRows := make(map[*models.ResultEntry]*importer.ResultRow, len(entries))
+	for i, entry := range entriesInImportOrder {
+		if input.Results[i] == nil {
+			return nil, fmt.Errorf("import result row %d is nil", i)
+		}
+		sourceRows[entry] = input.Results[i]
+	}
+
+	updated := *input
+	updated.Results = make([]*importer.ResultRow, len(entries))
+	for i, entry := range entries {
+		updated.Results[i] = resultEntryImportRow(sourceRows[entry], entry, isTeamBased)
+	}
+	return &updated, nil
+}
+
+//nolint:whitespace // editor/linter issue
+func resultEntryImportRow(
+	sourceRow *importer.ResultRow,
+	entry *models.ResultEntry,
+	isTeamBased bool,
+) *importer.ResultRow {
+	row := *sourceRow
+	row.FinPos = int(entry.FinishPosition)
+	row.Car = entry.RawCarName.GetOr("")
+	row.CarNumber = entry.CarNumber.GetOr("")
+	row.StartPos = int(entry.StartPosition.GetOrZero())
+	row.QualiLapTime = int(entry.QualiLapTimeMS.GetOrZero())
+	row.TotalTime = int(entry.TotalTimeMS.GetOrZero())
+	row.FastestLapTime = int(entry.FastestLapTimeMS.GetOrZero())
+	row.Laps = int(entry.LapsCompleted)
+	row.Incidents = int(entry.Incidents.GetOrZero())
+	row.Offtracks = int(entry.Offtracks)
+	if isTeamBased {
+		name := entry.RawTeamName.GetOr("")
+		if row.Name != name {
+			row.TeamID = ""
+		}
+		row.Name = name
+	} else {
+		name := entry.RawDriverName.GetOr("")
+		if row.Name != name {
+			row.DriverID = ""
+		}
+		row.Name = name
+	}
+	if row.Car != sourceRow.Car {
+		row.CarID = ""
+	}
+	return &row
+}
+
+//nolint:whitespace // editor/linter issue
+func mergeResolvedEntries(
+	result *importer.Result,
+	existing []*models.ResultEntry,
+) error {
+	if result == nil {
+		return errors.New("resolved result is nil")
+	}
+	if len(result.Entries) != len(existing) {
+		return fmt.Errorf(
+			"resolved entry count %d does not match existing entry count %d",
+			len(result.Entries),
+			len(existing),
+		)
+	}
+
+	resolvedEntries := result.Entries
+	mergedEntries := make([]*models.ResultEntry, 0, len(existing))
+	for i := 0; len(existing) > 0; i++ {
+		existingEntry := existing[0]
+		if existingEntry == nil {
+			return fmt.Errorf("existing result entry %d is nil", i)
+		}
+		if len(resolvedEntries) == 0 {
+			return fmt.Errorf("resolved result entry %d is missing", i)
+		}
+		resolved := resolvedEntries[0]
+		if resolved == nil {
+			return fmt.Errorf("resolved result entry %d is nil", i)
+		}
+
+		entry := *existingEntry
+		entry.State = resolved.State
+		entry.DriverID = resolved.DriverID
+		entry.TeamID = resolved.TeamID
+		entry.TeamDrivers = resolved.TeamDrivers
+		entry.CarModelVariantID = resolved.CarModelVariantID
+		entry.CarClassID = resolved.CarClassID
+		mergedEntries = append(mergedEntries, &entry)
+		existing = existing[1:]
+		resolvedEntries = resolvedEntries[1:]
+	}
+	if len(resolvedEntries) > 0 {
+		return errors.New("resolved result has extra entries")
+	}
+	result.Entries = mergedEntries
+	return nil
+}
+
+//nolint:whitespace // editor/linter issue
+func buildResolvedResultEntrySetter(
+	entry *models.ResultEntry,
+	now time.Time,
+	execUser string,
+) *models.ResultEntrySetter {
+	return &models.ResultEntrySetter{
+		State:             omit.From(entry.State),
+		DriverID:          omitnull.FromNull(entry.DriverID),
+		TeamID:            omitnull.FromNull(entry.TeamID),
+		TeamDrivers:       omitnull.FromNull(entry.TeamDrivers),
+		CarModelVariantID: omitnull.FromNull(entry.CarModelVariantID),
+		CarClassID:        omitnull.FromNull(entry.CarClassID),
+		UpdatedAt:         omit.From(now),
+		UpdatedBy:         omit.From(execUser),
+	}
 }
