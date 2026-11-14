@@ -45,6 +45,12 @@ type (
 			*models.SeasonDriver, error,
 		)
 	}
+	QuerySeasonCarModelVariant interface {
+		FindBySeasonAndCarModelVariant(
+			ctx context.Context,
+			seasonID, carModelVariantID int32,
+		) (*models.SeasonCarModelVariant, error)
+	}
 	QueryTeamDriver interface {
 		FindBySeasonAndDriver(ctx context.Context, seasonID, driverID int32) (
 			*models.TeamDriver, error,
@@ -76,6 +82,7 @@ type (
 	Queries interface {
 		QueryResolver() Resolver
 		QuerySeasonDrivers() QuerySeasonDriver
+		QuerySeasonCarModelVariants() QuerySeasonCarModelVariant
 		QueryTeamDrivers() QueryTeamDriver
 		QueryCarClasses() QueryCarClass
 		QueryTrackLayouts() QueryTrackLayouts

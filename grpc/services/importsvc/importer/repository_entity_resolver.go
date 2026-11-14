@@ -86,6 +86,9 @@ func (r *RepositoryEntityResolver) ResolveDriver(
 	if err == nil {
 		return uint32(driverID.ID), nil
 	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return 0, fmt.Errorf("resolve driver by name %q: %w", simDriverName, err)
+	}
 
 	return r.resolveBy("driver", simDriverID, simDriverName, resolveArg)
 }
@@ -131,7 +134,41 @@ func (r *RepositoryEntityResolver) ResolveCarClass(
 		return 0, fmt.Errorf("resolve car class: %w", err)
 	}
 	return uint32(carClass.ID), nil
-	// TODO: lookup in classes defined for this season
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *RepositoryEntityResolver) ValidateSeasonCarModelVariant(
+	carModelVariantID uint32,
+) error {
+	if r.epi.Season == nil {
+		return fmt.Errorf("validate car model variant: season is not set")
+	}
+	_, err := r.repos.Queries().QuerySeasonCarModelVariants().
+		FindBySeasonAndCarModelVariant(r.ctx, r.epi.Season.ID, int32(carModelVariantID))
+	return err
+}
+
+//nolint:whitespace // editor/linter issue
+func (r *RepositoryEntityResolver) ResolveSeasonDriver(
+	driverID uint32,
+) (*models.SeasonDriver, error) {
+	if r.epi.Season == nil || r.epi.Event == nil {
+		return nil, fmt.Errorf("resolve season driver: event or season is not set")
+	}
+	return r.repos.Queries().QuerySeasonDrivers().ResolveSeasonDriver(
+		r.ctx,
+		r.epi.Season.ID,
+		int32(driverID),
+		r.epi.Event.EventDate,
+	)
+}
+
+func (r *RepositoryEntityResolver) ResolveTeamCarNumber(teamID uint32) (string, error) {
+	team, err := r.repos.Teams().Teams().LoadByID(r.ctx, int32(teamID))
+	if err != nil {
+		return "", fmt.Errorf("resolve team car number: %w", err)
+	}
+	return team.CarNumber.GetOr(""), nil
 }
 
 //nolint:whitespace // editor/linter issue
@@ -168,12 +205,13 @@ func (r *RepositoryEntityResolver) resolveBy(
 	}
 	if errors.Is(err, repository.ErrNotFound) {
 		return 0, fmt.Errorf(
-			"resolve %s: no %s found for simulation %q by id %q or name %q",
+			"resolve %s: no %s found for simulation %q by id %q or name %q: %w",
 			kind,
 			kind,
 			r.sim.Name,
 			simID,
 			simName,
+			err,
 		)
 	}
 

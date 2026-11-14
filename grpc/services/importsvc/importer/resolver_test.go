@@ -2,15 +2,17 @@
 package importer
 
 import (
-	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	commonv1 "buf.build/gen/go/srlmgr/api/protocolbuffers/go/backend/common/v1"
 	"github.com/aarondl/opt/null"
 
 	"github.com/srlmgr/backend/db/models"
+	"github.com/srlmgr/backend/grpc/services/conversion"
 	"github.com/srlmgr/backend/grpc/services/importsvc/processor"
+	"github.com/srlmgr/backend/repository"
 )
 
 type resolverCall struct {
@@ -24,6 +26,9 @@ type fakeEntityResolver struct {
 	resolveCar      func(simCarID, simCarName string) (uint32, error)
 	resolveCarClass func(ownCarID uint32) (uint32, error)
 	resolveTeam     func(ownDriverID uint32) (uint32, error)
+	validateVariant func(carModelVariantID uint32) error
+	seasonDriver    func(driverID uint32) (*models.SeasonDriver, error)
+	teamCarNumber   func(teamID uint32) (string, error)
 
 	trackCalls    []resolverCall
 	driverCalls   []resolverCall
@@ -58,6 +63,30 @@ func (f *fakeEntityResolver) ResolveCarClass(ownCarID uint32) (uint32, error) {
 func (f *fakeEntityResolver) ResolveTeam(ownDriverID uint32) (uint32, error) {
 	f.teamCalls = append(f.teamCalls, resolverCall{id: fmt.Sprintf("%d", ownDriverID), name: ""})
 	return f.resolveTeam(ownDriverID)
+}
+
+func (f *fakeEntityResolver) ValidateSeasonCarModelVariant(carModelVariantID uint32) error {
+	if f.validateVariant == nil {
+		return nil
+	}
+	return f.validateVariant(carModelVariantID)
+}
+
+//nolint:whitespace // editor/linter issue
+func (f *fakeEntityResolver) ResolveSeasonDriver(
+	driverID uint32,
+) (*models.SeasonDriver, error) {
+	if f.seasonDriver == nil {
+		return &models.SeasonDriver{}, nil
+	}
+	return f.seasonDriver(driverID)
+}
+
+func (f *fakeEntityResolver) ResolveTeamCarNumber(teamID uint32) (string, error) {
+	if f.teamCarNumber == nil {
+		return "", nil
+	}
+	return f.teamCarNumber(teamID)
 }
 
 func TestResolveInputRequiresEntityResolver(t *testing.T) {
@@ -151,7 +180,7 @@ func TestResolveInput(t *testing.T) {
 					return 9, nil
 				},
 				resolveDriver: func(_, _ string) (uint32, error) {
-					return 0, errors.New("driver not found")
+					return 0, repository.ErrNotFound
 				},
 				resolveCar: func(_, _ string) (uint32, error) {
 					return 303, nil
@@ -190,13 +219,13 @@ func TestResolveInput(t *testing.T) {
 			},
 			fake: &fakeEntityResolver{
 				resolveTrack: func(_, _ string) (uint32, error) {
-					return 0, errors.New("track not found")
+					return 0, repository.ErrNotFound
 				},
 				resolveDriver: func(_, _ string) (uint32, error) {
 					return 404, nil
 				},
 				resolveCar: func(_, _ string) (uint32, error) {
-					return 0, errors.New("car not found")
+					return 0, repository.ErrNotFound
 				},
 			},
 			wantTrackID: 0,
@@ -342,6 +371,281 @@ func assertResolverCalls(t *testing.T, kind string, got, want []resolverCall) {
 	}
 }
 
+//nolint:funlen // table-driven mapping validation cases
+func TestResolveInputSeasonValidationAndCarNumber(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name                string
+		carNumber           string
+		driverErr           error
+		variantErr          error
+		carClassErr         error
+		configuredCarNumber string
+		multiclass          bool
+		wantState           string
+		wantMappingTypes    []string
+	}{
+		{
+			name:                "trimmed car number matches",
+			carNumber:           " 12 ",
+			configuredCarNumber: "12",
+			wantState:           conversion.ResultStateNormal,
+		},
+		{
+			name:                "car number mismatch is a validation error",
+			carNumber:           "13",
+			configuredCarNumber: "12",
+			wantState:           conversion.ResultStateMappingError,
+			wantMappingTypes:    []string{"car_number"},
+		},
+		{
+			name:      "empty imported car number skips number validation",
+			carNumber: "",
+			wantState: conversion.ResultStateNormal,
+		},
+		{
+			name:             "driver outside active season is unresolved",
+			driverErr:        repository.ErrNotFound,
+			wantState:        conversion.ResultStateMappingError,
+			wantMappingTypes: []string{"driver"},
+		},
+		{
+			name:             "car variant outside season is unresolved",
+			variantErr:       repository.ErrNotFound,
+			wantState:        conversion.ResultStateMappingError,
+			wantMappingTypes: []string{"car"},
+		},
+		{
+			name:             "car class is resolved through season classes",
+			multiclass:       true,
+			carClassErr:      repository.ErrNotFound,
+			wantState:        conversion.ResultStateMappingError,
+			wantMappingTypes: []string{"car_class"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fake := &fakeEntityResolver{
+				resolveTrack: func(_, _ string) (uint32, error) { return 1, nil },
+				resolveDriver: func(_, _ string) (uint32, error) {
+					return 10, nil
+				},
+				resolveCar: func(_, _ string) (uint32, error) { return 20, nil },
+				resolveCarClass: func(uint32) (uint32, error) {
+					return 30, tc.carClassErr
+				},
+				seasonDriver: func(uint32) (*models.SeasonDriver, error) {
+					if tc.driverErr != nil {
+						return nil, tc.driverErr
+					}
+					return &models.SeasonDriver{CarNumber: tc.configuredCarNumber}, nil
+				},
+				validateVariant: func(uint32) error { return tc.variantErr },
+			}
+			epi := &processor.EventProcInfo{
+				Season: &models.Season{IsMulticlass: tc.multiclass},
+				Event:  &models.Event{EventDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)},
+			}
+			input := &ParsedImportPayload{
+				Results: []*ResultRow{{
+					DriverID:  "source-driver",
+					Name:      "Driver",
+					CarID:     "source-car",
+					Car:       "Car",
+					CarNumber: tc.carNumber,
+				}},
+			}
+
+			result, err := NewResolver(fake, epi).ResolveInput(input)
+			if err != nil {
+				t.Fatalf("ResolveInput returned unexpected error: %v", err)
+			}
+			if got := result.Entries[0].State; got != tc.wantState {
+				t.Fatalf("unexpected state: got %q want %q", got, tc.wantState)
+			}
+			if len(result.Unmapped) != len(tc.wantMappingTypes) {
+				t.Fatalf(
+					"unexpected unresolved mappings: got %d want %d",
+					len(result.Unmapped),
+					len(tc.wantMappingTypes),
+				)
+			}
+			for i, want := range tc.wantMappingTypes {
+				if got := result.Unmapped[i].MappingType; got != want {
+					t.Errorf("unexpected mapping type at %d: got %q want %q", i, got, want)
+				}
+			}
+		})
+	}
+}
+
+//nolint:funlen // table-driven retry validation cases
+func TestResolveNonMappedRevalidatesSeasonAndCarNumber(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name             string
+		carNumber        string
+		configuredNumber string
+		variantErr       error
+		carClassErr      error
+		multiclass       bool
+		wantState        string
+		wantMappingType  string
+	}{
+		{
+			name:             "matching number resolves on retry",
+			carNumber:        " 42 ",
+			configuredNumber: "42",
+			wantState:        conversion.ResultStateNormal,
+		},
+		{
+			name:             "mismatching number remains mapping error",
+			carNumber:        "43",
+			configuredNumber: "42",
+			wantState:        conversion.ResultStateMappingError,
+			wantMappingType:  "car_number",
+		},
+		{
+			name:      "empty number resolves without number comparison",
+			wantState: conversion.ResultStateNormal,
+		},
+		{
+			name:            "variant must still belong to season on retry",
+			variantErr:      repository.ErrNotFound,
+			wantState:       conversion.ResultStateMappingError,
+			wantMappingType: "car",
+		},
+		{
+			name:            "class must still belong to season on retry",
+			carClassErr:     repository.ErrNotFound,
+			multiclass:      true,
+			wantState:       conversion.ResultStateMappingError,
+			wantMappingType: "car_class",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fake := &fakeEntityResolver{
+				resolveTrack: func(_, _ string) (uint32, error) { return 1, nil },
+				resolveDriver: func(_, _ string) (uint32, error) {
+					return 10, nil
+				},
+				resolveCar: func(_, _ string) (uint32, error) { return 20, nil },
+				resolveCarClass: func(uint32) (uint32, error) {
+					return 30, tc.carClassErr
+				},
+				seasonDriver: func(uint32) (*models.SeasonDriver, error) {
+					return &models.SeasonDriver{CarNumber: tc.configuredNumber}, nil
+				},
+				validateVariant: func(uint32) error { return tc.variantErr },
+			}
+			input := &ParsedImportPayload{
+				Results: []*ResultRow{{Name: "Driver", Car: "Car", CarNumber: tc.carNumber}},
+			}
+			existing := []*models.ResultEntry{{
+				State:         conversion.ResultStateMappingError,
+				RawDriverName: null.From("Driver"),
+				RawCarName:    null.From("Car"),
+				CarNumber:     null.From(tc.carNumber),
+			}}
+
+			result, err := NewResolver(fake, &processor.EventProcInfo{
+				Season: &models.Season{IsMulticlass: tc.multiclass},
+				Event:  &models.Event{EventDate: time.Now()},
+			}).ResolveNonMapped(input, existing)
+			if err != nil {
+				t.Fatalf("ResolveNonMapped returned unexpected error: %v", err)
+			}
+			if got := result.Entries[0].State; got != tc.wantState {
+				t.Fatalf("unexpected state: got %q want %q", got, tc.wantState)
+			}
+			if tc.wantMappingType != "" {
+				mappingUnexpected := len(result.Unmapped) != 1
+				if !mappingUnexpected {
+					mappingUnexpected = result.Unmapped[0].MappingType != tc.wantMappingType
+				}
+				if mappingUnexpected {
+					t.Fatalf("unexpected unresolved mappings: %+v", result.Unmapped)
+				}
+			} else if len(result.Unmapped) != 0 {
+				t.Fatalf("unexpected unresolved mappings: %+v", result.Unmapped)
+			}
+		})
+	}
+}
+
+//nolint:funlen // table-driven team number validation cases
+func TestResolveTeamCarNumber(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name        string
+		carNumber   string
+		wantState   string
+		wantMapping bool
+	}{
+		{
+			name:      "configured team number matches",
+			carNumber: " 55 ",
+			wantState: conversion.ResultStateNormal,
+		},
+		{
+			name:        "configured team number mismatch",
+			carNumber:   "56",
+			wantState:   conversion.ResultStateMappingError,
+			wantMapping: true,
+		},
+		{
+			name:      "empty imported team number skips validation",
+			wantState: conversion.ResultStateNormal,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fake := &fakeEntityResolver{
+				resolveTrack:  func(_, _ string) (uint32, error) { return 1, nil },
+				resolveDriver: func(_, _ string) (uint32, error) { return 10, nil },
+				resolveTeam:   func(uint32) (uint32, error) { return 11, nil },
+				resolveCar:    func(_, _ string) (uint32, error) { return 20, nil },
+				teamCarNumber: func(uint32) (string, error) { return "55", nil },
+			}
+			epi := &processor.EventProcInfo{Season: &models.Season{IsTeamBased: true}}
+			input := &ParsedImportPayload{
+				Results: []*ResultRow{{
+					Name:        "Team",
+					CarID:       "source-car",
+					Car:         "Car",
+					CarNumber:   tc.carNumber,
+					TeamDrivers: []*TeamDriver{{DriverID: "source-driver", Name: "Driver"}},
+				}},
+			}
+
+			result, err := NewResolver(fake, epi).ResolveInput(input)
+			if err != nil {
+				t.Fatalf("ResolveInput returned unexpected error: %v", err)
+			}
+			if got := result.Entries[0].State; got != tc.wantState {
+				t.Fatalf("unexpected state: got %q want %q", got, tc.wantState)
+			}
+			if got := len(result.Unmapped) != 0; got != tc.wantMapping {
+				t.Fatalf(
+					"unexpected unresolved mapping presence: got %v want %v",
+					got,
+					tc.wantMapping,
+				)
+			}
+		})
+	}
+}
+
 //nolint:funlen,gocyclo // test code
 func TestResolveInputTeamBased(t *testing.T) {
 	t.Parallel()
@@ -418,7 +722,7 @@ func TestResolveInputTeamBased(t *testing.T) {
 			fake: &fakeEntityResolver{
 				resolveTrack:  func(_, _ string) (uint32, error) { return 9, nil },
 				resolveDriver: func(_, _ string) (uint32, error) { return 501, nil },
-				resolveTeam:   func(_ uint32) (uint32, error) { return 0, errors.New("team not found") },
+				resolveTeam:   func(_ uint32) (uint32, error) { return 0, repository.ErrNotFound },
 				resolveCar:    func(_, _ string) (uint32, error) { return 303, nil },
 			},
 			wantTrackID: 9,
@@ -646,7 +950,7 @@ func TestResolveInputMulticlass(t *testing.T) {
 				resolveTrack:    func(_, _ string) (uint32, error) { return 22, nil },
 				resolveDriver:   func(_, _ string) (uint32, error) { return 102, nil },
 				resolveCar:      func(_, _ string) (uint32, error) { return 303, nil },
-				resolveCarClass: func(_ uint32) (uint32, error) { return 0, errors.New("car class not found") },
+				resolveCarClass: func(_ uint32) (uint32, error) { return 0, repository.ErrNotFound },
 			},
 			wantEntry: &models.ResultEntry{
 				FinishPosition:    2,

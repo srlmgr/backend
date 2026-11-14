@@ -73,6 +73,7 @@ func (r *resultEntriesRepository) LoadByRaceGridID(
 ) ([]*models.ResultEntry, error) {
 	return models.ResultEntries.Query(
 		sm.Where(models.ResultEntries.Columns.RaceGridID.EQ(psql.Arg(raceGridID))),
+		sm.OrderBy(models.ResultEntries.Columns.FinishPosition).Asc(),
 	).All(ctx, r.getExecutor(ctx))
 }
 

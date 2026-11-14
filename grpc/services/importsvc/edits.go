@@ -144,7 +144,7 @@ func (s *service) ApplyResultEdits(
 	}, nil
 }
 
-//nolint:whitespace,lll // editor/linter issue
+//nolint:whitespace,lll,funlen // editor/linter issue
 func buildResultEntrySetterFromProto(
 	row *commonv1.ResultEntry,
 	execUser string,
@@ -190,6 +190,7 @@ func buildResultEntrySetterFromProto(
 	setter.RawCarName = omitnull.From(row.GetRawCarName())
 	setter.RawDriverName = omitnull.From(row.GetRawDriverName())
 	setter.RawTeamName = omitnull.From(row.GetRawTeamName())
+	setter.CarNumber = omitnull.From(row.GetCarNumber())
 	return setter
 }
 
@@ -200,6 +201,8 @@ func resultStateToStr(state commonv1.ResultEntryState) string {
 		return conversion.ResultStateNormal
 	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ:
 		return conversion.ResultStateDQ
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_MAPPING_ERROR:
+		return conversion.ResultStateMappingError
 	default:
 		return ""
 	}
