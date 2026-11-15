@@ -59,6 +59,9 @@ type jsonProcessor struct {
 	teamDriverIDs           TeamDriverIDs
 	lapIncidents            incsBySession
 }
+type lapEvent struct {
+	offtrack, contact, carContact, lostControl int
+}
 
 func newJSONProcessor(ctx context.Context, payload any) (*jsonProcessor, error) {
 	envelope, err := payloadToEventResult(payload)
@@ -89,7 +92,7 @@ func newJSONProcessor(ctx context.Context, payload any) (*jsonProcessor, error) 
 // when no race session exists.
 func (p *jsonProcessor) process() []*processor.ParsedImportPayload {
 	if len(p.raceSessions) == 0 {
-		return []*processor.ParsedImportPayload{p.buildRacePayload(nil, true)}
+		return []*processor.ParsedImportPayload{p.buildRacePayload(nil, true, 0)}
 	}
 	p.collectIncidents()
 
@@ -97,10 +100,14 @@ func (p *jsonProcessor) process() []*processor.ParsedImportPayload {
 	for i := range p.raceSessions {
 		// Qualifying only sets the grid for the first race of a heat; later heats/the
 		// feature race start from their own standings, so quali data must not carry over.
-		built := p.buildRacePayload(&p.raceSessions[i], i == 0)
+		raceSequenceNo := 0
 		if len(p.raceSessions) > 1 {
-			built.RaceSequenceNo = i + 1
+			raceSequenceNo = i + 1
 		}
+		built := p.buildRacePayload(
+			&p.raceSessions[i], i == 0, raceSequenceNo,
+		)
+		built.RaceSequenceNo = raceSequenceNo
 		payloads[i] = built
 	}
 
@@ -108,6 +115,9 @@ func (p *jsonProcessor) process() []*processor.ParsedImportPayload {
 }
 
 func (p *jsonProcessor) collectIncidents() {
+	if !processor.ShouldCollectLapData(p.ctx) {
+		return
+	}
 	if api, ok := irdata.FromContext(p.ctx); ok {
 		// Implementation for computing offtracks goes here.
 		collector := newLapDataCollector(api)
@@ -124,6 +134,7 @@ func (p *jsonProcessor) collectIncidents() {
 func (p *jsonProcessor) buildRacePayload(
 	raceSession *SimSession,
 	includeQuali bool,
+	raceSequenceNo int,
 ) *processor.ParsedImportPayload {
 	hasRace := raceSession != nil
 	hasQuali := p.hasQuali && includeQuali
@@ -147,6 +158,9 @@ func (p *jsonProcessor) buildRacePayload(
 			sessionIncs = []*sessionIncidents{}
 		}
 		offtracks = p.offtracksByEntry(sessionIncs)
+		if processor.OfftrackHeuristicEnabled(p.ctx, raceSequenceNo) {
+			offtracks = p.offtracksByEntryWithHeuristic(sessionIncs, sourceResults, offtracks)
+		}
 	}
 
 	results := make([]*processor.ResultRow, 0, len(sourceResults))
@@ -173,6 +187,36 @@ func (p *jsonProcessor) buildRacePayload(
 	}
 }
 
+//nolint:whitespace // editor/linter issue
+func (p *jsonProcessor) offtracksByEntryWithHeuristic(
+	sessionIncs []*sessionIncidents,
+	results []Result,
+	offtracks map[int]int,
+) map[int]int {
+	lapEvents := p.lapEventsByEntry(sessionIncs)
+	for i := range results {
+		result := &results[i]
+		entryID := result.CustID
+		if p.isTeamRace {
+			entryID = result.TeamID
+		}
+
+		events := lapEvents[entryID]
+		if events == nil {
+			events = &lapEvent{}
+		}
+		knownIncidents := events.offtrack +
+			events.lostControl*2 +
+			events.carContact*4 +
+			events.contact*2
+		hiddenOfftracks := result.Incidents - knownIncidents
+		if hiddenOfftracks > 0 {
+			offtracks[entryID] += hiddenOfftracks
+		}
+	}
+	return offtracks
+}
+
 func (p *jsonProcessor) offtracksByEntry(sessionIncs []*sessionIncidents) map[int]int {
 	ret := make(map[int]int)
 	for _, si := range sessionIncs {
@@ -183,6 +227,34 @@ func (p *jsonProcessor) offtracksByEntry(sessionIncs []*sessionIncidents) map[in
 				}
 			}
 		}
+	}
+	return ret
+}
+
+//nolint:whitespace // editor/linter issue
+func (p *jsonProcessor) lapEventsByEntry(
+	sessionIncs []*sessionIncidents,
+) map[int]*lapEvent {
+	ret := make(map[int]*lapEvent)
+	for _, si := range sessionIncs {
+		lapEvents := &lapEvent{}
+		for _, inc := range si.Incidents {
+			for _, event := range inc.Events {
+				if strings.EqualFold(event, "off track") {
+					lapEvents.offtrack++
+				}
+				if strings.EqualFold(event, "car contact") {
+					lapEvents.carContact++
+				}
+				if strings.EqualFold(event, "contact") {
+					lapEvents.contact++
+				}
+				if strings.EqualFold(event, "lost control") {
+					lapEvents.lostControl++
+				}
+			}
+		}
+		ret[si.RefID] = lapEvents
 	}
 	return ret
 }

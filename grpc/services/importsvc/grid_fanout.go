@@ -8,8 +8,76 @@ import (
 
 	"github.com/srlmgr/backend/db/models"
 	"github.com/srlmgr/backend/grpc/services/importsvc/importer"
+	"github.com/srlmgr/backend/grpc/services/importsvc/points"
 	"github.com/srlmgr/backend/grpc/services/importsvc/processor"
 )
+
+//nolint:whitespace // editor/linter issue
+func withOfftrackHeuristicByRace(
+	ctx context.Context,
+	epi *processor.EventProcInfo,
+	anchorGridID int32,
+) (
+	context.Context,
+	error,
+) {
+	if epi.PointSystemSettings == nil {
+		return importer.WithOfftrackHeuristicByRace(ctx, nil), nil
+	}
+
+	enabledByRace := make(map[int]bool, len(epi.Races)+1)
+	enabled, err := offtrackHeuristicEnabledForGrid(ctx, epi, anchorGridID)
+	if err != nil {
+		return nil, err
+	}
+	enabledByRace[0] = enabled
+
+	for _, race := range epi.Races {
+		grid, ok := lo.Find(epi.Grids, func(grid *models.RaceGrid) bool {
+			return grid.RaceID == race.ID
+		})
+		if !ok {
+			// resolveTargetGridIDs reports this if the import contains the race.
+			continue
+		}
+		enabled, err := offtrackHeuristicEnabledForGrid(ctx, epi, grid.ID)
+		if err != nil {
+			return nil, err
+		}
+		enabledByRace[int(race.SequenceNo)] = enabled
+	}
+
+	return importer.WithOfftrackHeuristicByRace(ctx, enabledByRace), nil
+}
+
+//nolint:whitespace // editor/linter issue
+func offtrackHeuristicEnabledForGrid(
+	ctx context.Context,
+	epi *processor.EventProcInfo,
+	gridID int32,
+) (
+	bool,
+	error,
+) {
+	raceNo, gridNo, err := epi.ResolverFunc(ctx)(gridID)
+	if err != nil {
+		return false, err
+	}
+	if epi.PointSystemSettings == nil || raceNo < 0 {
+		return false, nil
+	}
+	if int(raceNo) >= len(epi.PointSystemSettings.Races) {
+		return false, nil
+	}
+
+	raceSettings := epi.PointSystemSettings.Races[raceNo]
+	if gridNo < 0 || int(gridNo) >= len(raceSettings.PenaltySettings) {
+		return false, nil
+	}
+	settings, ok := raceSettings.PenaltySettings[gridNo].
+		Arguments[points.PointPolicyOfftracksExceeded].(points.OfftracksExceededSettings)
+	return ok && settings.ApplyHeuristic, nil
+}
 
 // processImportPayload processes payload via importProcessor, returning one
 // ParsedImportPayload per detected race. For processors that support heat-race

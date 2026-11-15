@@ -46,7 +46,10 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 		Config: &commonv1.PointPolicySettings_OfftracksExceeded{
 			OfftracksExceeded: &commonv1.OfftrackExceededRuleConfig{
 				Rules: []*commonv1.OfftrackExceededRule{
-					{Threshold: 3, PerExceedancePenalty: 2, GlobalPenalty: 4},
+					{
+						Threshold: 3, PerExceedancePenalty: 2, GlobalPenalty: 4,
+						ApplyHeuristic: true,
+					},
 					{Threshold: 5, PerExceedancePenalty: 1, GlobalPenalty: 0},
 				},
 			},
@@ -114,6 +117,7 @@ func TestPointSystemSettingsFromDB_MapsPoliciesAndGridSettings(t *testing.T) {
 		Threshold:            3,
 		PerExceedancePenalty: 2,
 		GlobalPenalty:        4,
+		ApplyHeuristic:       true,
 	}) {
 		t.Fatalf("unexpected offtracks penalty config: %+v", offtracksPenalty)
 	}

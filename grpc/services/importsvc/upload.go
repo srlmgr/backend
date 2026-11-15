@@ -124,13 +124,18 @@ func (s *service) UploadResultsFile(
 
 	var batch *models.ImportBatch
 	if txErr := s.withTx(ctx, func(ctx context.Context) error {
+		importCtx, heuristicErr := withOfftrackHeuristicByRace(ctx, epi, gridID)
+		if heuristicErr != nil {
+			return fmt.Errorf("configure offtrack heuristic: %w", heuristicErr)
+		}
+
 		// TODO move to own function
 		// - process
 		// - resolve
 		// - remove data from previous steps
 		// - store resultEntries
 		inputs, inpErr := processImportPayload(
-			ctx, importProcessor, importFormat, req.GetPayload(),
+			importCtx, importProcessor, importFormat, req.GetPayload(),
 		)
 		if inpErr != nil {
 			return fmt.Errorf("process import payload: %w", inpErr)
@@ -199,7 +204,7 @@ func (s *service) UploadResultsFile(
 			finalInput := input
 			if selectedFormat.AllowMultipleUploads && len(inputs) == 1 {
 				merged, mergeErr := buildMergedInputFromZip(
-					ctx,
+					importCtx,
 					importProcessor,
 					importFormat,
 					zipPayload,
