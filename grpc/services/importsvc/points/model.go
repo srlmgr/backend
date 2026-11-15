@@ -51,6 +51,7 @@ type (
 		PerExceedancePenalty PointType
 		GlobalPenalty        PointType
 		AffectsSkipCalc      bool
+		ApplyHeuristic       bool
 	}
 	RaceSettings struct {
 		Name            string

@@ -327,6 +327,7 @@ func upsertOfftracksExceededPenalties(
 			PerExceedancePenalty: points.PointType(rule.GetPerExceedancePenalty()),
 			GlobalPenalty:        points.PointType(rule.GetGlobalPenalty()),
 			AffectsSkipCalc:      rule.GetAffectsSkipCalc(),
+			ApplyHeuristic:       rule.GetApplyHeuristic(),
 		}
 		raceSettings.PenaltySettings[idx].Arguments[policyType] = settings
 	}

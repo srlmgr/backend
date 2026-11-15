@@ -53,6 +53,7 @@ func reprocessMappingInput(
 	if err != nil {
 		return nil, fmt.Errorf("select import payload: %w", err)
 	}
+	ctx = importer.WithoutLapDataCollection(ctx)
 	inputs, err := processImportPayload(ctx, importProcessor, format, payload)
 	if err != nil {
 		return nil, fmt.Errorf("process import payload: %w", err)

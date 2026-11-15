@@ -4,6 +4,7 @@ package importsvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stephenafamo/bob/types"
@@ -13,6 +14,52 @@ import (
 	"github.com/srlmgr/backend/grpc/services/importsvc/importer"
 	"github.com/srlmgr/backend/grpc/services/importsvc/processor"
 )
+
+func TestReprocessMappingInputSkipsLapDataCollection(t *testing.T) {
+	payload, err := mergeImportBatchZipPayload(
+		nil,
+		importer.ImportDataAll,
+		[]byte("{}"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	simulation := &models.RacingSim{
+		Name: "test",
+		SupportedImportFormats: types.JSON[json.RawMessage]{
+			Val: json.RawMessage(`[{"format":"json"}]`),
+		},
+	}
+
+	_, err = reprocessMappingInput(
+		context.Background(),
+		lapDataCollectionTestProcessor{},
+		simulation,
+		&models.ImportBatch{ImportFormat: "json", Payload: payload},
+		&processor.EventProcInfo{},
+		7,
+	)
+	if err != nil {
+		t.Fatalf("reprocessMappingInput returned unexpected error: %v", err)
+	}
+}
+
+type lapDataCollectionTestProcessor struct{}
+
+func (lapDataCollectionTestProcessor) SupportedFormats() []importer.ImportFormat {
+	return []importer.ImportFormat{"json"}
+}
+
+func (lapDataCollectionTestProcessor) Process(
+	ctx context.Context,
+	_ importer.ImportFormat,
+	_ any,
+) (*importer.ParsedImportPayload, error) {
+	if importer.ShouldCollectLapData(ctx) {
+		return nil, errors.New("lap-data collection was not disabled")
+	}
+	return &importer.ParsedImportPayload{}, nil
+}
 
 func TestReprocessMappingInputMergesMultipleUploads(t *testing.T) {
 	race := &importer.ParsedImportPayload{

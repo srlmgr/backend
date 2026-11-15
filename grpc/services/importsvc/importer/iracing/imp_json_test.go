@@ -6,7 +6,126 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	importer "github.com/srlmgr/backend/grpc/services/importsvc/importer"
+	"github.com/srlmgr/backend/support/iracing/irdata"
 )
+
+func TestJSONProcessorCollectIncidentsCanBeDisabled(t *testing.T) {
+	t.Parallel()
+
+	ctx := irdata.AddToContext(
+		context.Background(),
+		&irdata.IrData{},
+	)
+	p := &jsonProcessor{
+		ctx: importer.WithoutLapDataCollection(ctx),
+		data: &EventResult{
+			SessionResults: []SimSession{
+				{
+					SimsessionTypeName: "Race",
+					Results:            []Result{{CustID: 42}},
+				},
+			},
+		},
+		lapIncidents: make(incsBySession),
+	}
+
+	p.collectIncidents()
+
+	if len(p.lapIncidents) != 0 {
+		t.Fatalf("expected no lap incidents, got %v", p.lapIncidents)
+	}
+}
+
+//nolint:funlen // table cases cover the heuristic boundaries and opt-in
+func TestJSONProcessorBuildRacePayload_OfftrackHeuristic(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		incidents        int
+		events           []string
+		raceSequenceNo   int
+		enabledByRace    map[int]bool
+		expectedOfftrack int
+	}{
+		{
+			name:             "infers multiple offtracks from one offtrack event",
+			incidents:        3,
+			events:           []string{"off track"},
+			enabledByRace:    map[int]bool{0: true},
+			expectedOfftrack: 3,
+		},
+		{
+			name:             "uses maximum incident values for other events",
+			incidents:        11,
+			events:           []string{"off track", "lost control", "car contact", "contact"},
+			enabledByRace:    map[int]bool{0: true},
+			expectedOfftrack: 3,
+		},
+		{
+			name:             "does not infer negative offtracks",
+			incidents:        8,
+			events:           []string{"off track", "lost control", "car contact", "contact"},
+			enabledByRace:    map[int]bool{0: true},
+			expectedOfftrack: 1,
+		},
+		{
+			name:             "leaves offtracks unchanged when disabled",
+			incidents:        3,
+			events:           []string{"off track"},
+			enabledByRace:    map[int]bool{0: false},
+			expectedOfftrack: 1,
+		},
+		{
+			name:             "uses setting for the matching race sequence",
+			incidents:        3,
+			events:           []string{"off track"},
+			raceSequenceNo:   2,
+			enabledByRace:    map[int]bool{1: true, 2: false},
+			expectedOfftrack: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			p := &jsonProcessor{
+				ctx: importer.WithOfftrackHeuristicByRace(
+					context.Background(),
+					tt.enabledByRace,
+				),
+				data: &EventResult{},
+				lapIncidents: incsBySession{
+					1: {
+						{
+							RefID: 42,
+							Incidents: []*incidentData{
+								{Events: tt.events},
+							},
+						},
+					},
+				},
+			}
+			payload := p.buildRacePayload(
+				&SimSession{
+					SimsessionNumber: 1,
+					Results: []Result{
+						{CustID: 42, Incidents: tt.incidents},
+					},
+				},
+				false,
+				tt.raceSequenceNo,
+			)
+
+			if got := payload.Results[0].Offtracks; got != tt.expectedOfftrack {
+				t.Fatalf("unexpected offtracks: got %d want %d", got, tt.expectedOfftrack)
+			}
+		})
+	}
+}
 
 //nolint:funlen // fixture-heavy parser assertions
 func TestParseJSONRaceAndQualifying(t *testing.T) {

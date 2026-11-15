@@ -78,10 +78,14 @@ func (tm *TokenManager) Login() error {
 		if err := tm.loadAuthInfo(); err != nil {
 			tm.log.Debug("failed to load auth info from file, will try to login",
 				log.ErrorField(err))
-			return tm.doLogin()
+			return tm.doLoginAndSetupRefresh()
 		}
 		tm.log.Info("successfully loaded auth info from file")
 		exp := tm.getExpiresIn(tm.token.AccessToken)
+		if exp.IsZero() {
+			tm.log.Debug("token expiration not found, will try to login")
+			return tm.doLoginAndSetupRefresh()
+		}
 		if exp.After(time.Now()) {
 			tm.log.Debug("token is valid")
 			tm.setupTokenRefresh()
@@ -92,18 +96,19 @@ func (tm *TokenManager) Login() error {
 		if refreshErr := tm.doRefresh(); refreshErr != nil {
 			tm.log.Debug("failed to refresh access token, will try to login with credentials",
 				log.ErrorField(refreshErr))
-			if loginErr := tm.doLogin(); loginErr != nil {
-				return loginErr
-			}
-			tm.setupTokenRefresh()
-			return nil
+			return tm.doLoginAndSetupRefresh()
 		}
 		tm.log.Info("successfully refreshed access token")
 		tm.setupTokenRefresh()
 		return nil
 	}
-	if loginErr := tm.doLogin(); loginErr != nil {
-		return loginErr
+	return tm.doLoginAndSetupRefresh()
+}
+
+func (tm *TokenManager) doLoginAndSetupRefresh() error {
+	if err := tm.doLogin(); err != nil {
+		tm.log.Debug("login failed", log.ErrorField(err))
+		return err
 	}
 	tm.setupTokenRefresh()
 	return nil
