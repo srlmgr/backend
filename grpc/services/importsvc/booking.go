@@ -229,7 +229,13 @@ func (s *bookingProc) computeEvent(
 ) ([]points.GridOutput, error) {
 	pe := points.NewEventProcessor(s.epi.PointSystemSettings)
 	conv := points.NewConverter()
-	byGridID := lo.GroupBy(s.resultEntries, func(item *models.ResultEntry) int32 {
+	eligibleEntries := lo.Filter(
+		s.resultEntries,
+		func(item *models.ResultEntry, _ int) bool {
+			return item != nil && !models.IsResultEntryIgnored(item)
+		},
+	)
+	byGridID := lo.GroupBy(eligibleEntries, func(item *models.ResultEntry) int32 {
 		return item.RaceGridID
 	})
 	gridInputs := make([]points.GridInput, 0)

@@ -147,3 +147,24 @@ func TestMergeResolvedEntriesPreservesExistingFields(t *testing.T) {
 		t.Fatal("merging resolved values mutated the existing entry")
 	}
 }
+
+func TestMergeResolvedEntriesPreservesIgnoredState(t *testing.T) {
+	existing := []*models.ResultEntry{{
+		ID:    12,
+		State: models.ResultEntryStateIgnore,
+	}}
+	result := &importer.Result{Entries: []*models.ResultEntry{{
+		State: "normal",
+	}}}
+
+	if err := mergeResolvedEntries(result, existing); err != nil {
+		t.Fatal(err)
+	}
+	if got := result.Entries[0].State; got != models.ResultEntryStateIgnore {
+		t.Fatalf(
+			"unexpected merged state: got %q want %q",
+			got,
+			models.ResultEntryStateIgnore,
+		)
+	}
+}

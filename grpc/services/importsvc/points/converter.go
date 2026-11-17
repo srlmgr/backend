@@ -21,6 +21,7 @@ func (c *Converter) ResultEntryToInput(re *models.ResultEntry, opts ...InputOpt)
 		WithFinishPosition(re.FinishPosition),
 		WithQualiPosition(re.StartPosition.GetOrZero()),
 		WithIsGuest(re.IsGuestStarter),
+		WithIgnored(models.IsResultEntryIgnored(re)),
 		WithIncidents(re.Incidents.GetOrZero()),
 		WithOfftracks(re.Offtracks),
 		WithLapsCompleted(re.LapsCompleted),

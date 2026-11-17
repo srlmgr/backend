@@ -83,6 +83,8 @@ func resultStateToString(state commonv1.ResultEntryState) string {
 		return conversion.ResultStateNormal
 	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ:
 		return conversion.ResultStateDQ
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE:
+		return conversion.ResultStateIgnore
 	default:
 		return ""
 	}

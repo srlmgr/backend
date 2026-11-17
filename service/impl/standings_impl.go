@@ -259,7 +259,11 @@ func (sp *standingProc) computePrimaryByParam(
 func (sp *standingProc) recomputeFinishPosByClassAndGrid() map[int32][]*models.ResultEntry {
 	ret := make(map[int32][]*models.ResultEntry)
 	// first: split by classID
-	resultsByClass := lo.GroupBy(sp.resultEntries,
+	eligibleEntries := lo.Filter(sp.resultEntries,
+		func(item *models.ResultEntry, _ int) bool {
+			return item != nil && !models.IsResultEntryIgnored(item)
+		})
+	resultsByClass := lo.GroupBy(eligibleEntries,
 		func(item *models.ResultEntry) int32 { return item.CarClassID.GetOrZero() })
 	for classID := range resultsByClass {
 		classResults := resultsByClass[classID]

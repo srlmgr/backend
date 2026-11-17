@@ -203,6 +203,8 @@ func resultStateToStr(state commonv1.ResultEntryState) string {
 		return conversion.ResultStateDQ
 	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_MAPPING_ERROR:
 		return conversion.ResultStateMappingError
+	case commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE:
+		return conversion.ResultStateIgnore
 	default:
 		return ""
 	}

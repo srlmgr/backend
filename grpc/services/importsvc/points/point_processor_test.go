@@ -252,6 +252,56 @@ func TestPointSystemProcessorProcessPoints_FinishPolicySortsByFinishPosition(t *
 	assertOutputSlicesEqual(t, outputs, expected)
 }
 
+func TestPointSystemProcessorProcessPoints_IgnoresExcludedInputs(t *testing.T) {
+	t.Parallel()
+
+	processor := &PointSystemProcessor{
+		settings: &PointSystemSettings{
+			Eligibility: EligibilitySettings{Guests: true},
+		},
+	}
+	inputs := []Input{
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(101),
+			WithFinishPosition(1),
+			WithLapsCompleted(100),
+			WithIgnored(true),
+		),
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(102),
+			WithFinishPosition(2),
+			WithLapsCompleted(100),
+		),
+		NewInput(
+			WithClassID(1),
+			WithReferenceID(103),
+			WithFinishPosition(3),
+			WithLapsCompleted(100),
+		),
+	}
+
+	outputs, err := processor.ProcessPoints(
+		inputs,
+		[]PointPolicyType{PointPolicyFinishPos},
+		map[PointPolicyType][]PointType{PointPolicyFinishPos: {25, 18}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(outputs) != 2 {
+		t.Fatalf("unexpected output count: got %d want 2", len(outputs))
+	}
+	if outputs[0].ReferenceID() != 102 || outputs[0].Points() != 25 {
+		t.Fatalf("unexpected first output: %+v", outputs[0])
+	}
+	if outputs[1].ReferenceID() != 103 || outputs[1].Points() != 18 {
+		t.Fatalf("unexpected second output: %+v", outputs[1])
+	}
+}
+
 func TestPointSystemProcessorProcessPoints_AppliesEligibilityBeforePolicies(t *testing.T) {
 	t.Parallel()
 

@@ -1,5 +1,7 @@
 package conversion
 
+import "github.com/srlmgr/backend/db/models"
+
 // Import format strings as persisted in the database.
 const (
 	ImportFormatJSON = "json"
@@ -38,5 +40,6 @@ const (
 const (
 	ResultStateNormal       = "normal"
 	ResultStateDQ           = "dq"
+	ResultStateIgnore       = models.ResultEntryStateIgnore
 	ResultStateMappingError = "mapping_error"
 )
