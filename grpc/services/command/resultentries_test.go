@@ -75,6 +75,18 @@ func TestResultEntrySetterBuilderBuildDQState(t *testing.T) {
 	}
 }
 
+func TestResultEntrySetterBuilderBuildIgnoreState(t *testing.T) {
+	t.Parallel()
+
+	setter := (resultEntrySetterBuilder{}).Build(&v1.CreateResultEntryRequest{
+		State: commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE,
+	})
+
+	if !setter.State.IsValue() || setter.State.MustGet() != conversion.ResultStateIgnore {
+		t.Fatalf("unexpected ignore state setter value: %+v", setter.State)
+	}
+}
+
 func TestResultEntrySetterBuilderBuildOptionalFieldsUnset(t *testing.T) {
 	t.Parallel()
 
@@ -396,6 +408,42 @@ func TestUpdateResultEntryToDisqualified(t *testing.T) {
 	}
 	if stored.State != conversion.ResultStateDQ {
 		t.Fatalf("expected state 'dq' in DB, got: %q", stored.State)
+	}
+}
+
+func TestUpdateResultEntryToIgnored(t *testing.T) {
+	svc, repo := newDBBackedTestService(t)
+	sim := seedSimulation(t, repo, "Automobilista 2")
+	series := seedSeries(t, repo, sim.ID, "GT4")
+	ps := seedPointSystem(t, repo, "Standard Points")
+	season := seedSeason(t, repo, series.ID, ps.ID, "2025 Season")
+	track := seedTrack(t, repo, "Interlagos")
+	layout := seedTrackLayout(t, repo, track.ID, "GP Layout")
+	event := seedEvent(t, repo, season.ID, ps.ID, layout.ID, "Round 2", 2)
+	race := seedRace(t, repo, event.ID, "Race 1", conversion.RaceSessionTypeRace, 1)
+	grid := seedRaceGrid(t, repo, race.ID, "Grid 1", conversion.RaceSessionTypeRace, 1)
+	entry := seedResultEntry(t, repo, grid.ID, "Bob Racer", 3)
+
+	resp, err := svc.UpdateResultEntry(
+		context.Background(),
+		&v1.UpdateResultEntryRequest{
+			ResultEntryId: uint32(entry.ID),
+			State:         commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE,
+		},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.GetResultEntry().GetState() != commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE {
+		t.Fatalf("expected ignore state, got: %v", resp.GetResultEntry().GetState())
+	}
+
+	stored, loadErr := repo.ResultEntries().LoadByID(context.Background(), entry.ID)
+	if loadErr != nil {
+		t.Fatalf("failed to load result entry after update: %v", loadErr)
+	}
+	if stored.State != conversion.ResultStateIgnore {
+		t.Fatalf("expected state 'ignore' in DB, got: %q", stored.State)
 	}
 }
 

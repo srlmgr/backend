@@ -99,6 +99,9 @@ func ParticipationsFromResultEntries(
 		if entry == nil {
 			continue
 		}
+		if models.IsResultEntryIgnored(entry) {
+			continue
+		}
 		if referenceID(entry) <= 0 {
 			continue
 		}

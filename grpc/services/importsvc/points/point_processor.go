@@ -284,6 +284,9 @@ func (p *PointSystemProcessor) collectEligibleInputs(inputs []Input) []Input {
 	}
 
 	ret := lo.Filter(inputs, func(inp Input, _ int) bool {
+		if inp.Ignored() {
+			return false
+		}
 		if !p.settings.Eligibility.Guests && inp.IsGuest() {
 			return false
 		}

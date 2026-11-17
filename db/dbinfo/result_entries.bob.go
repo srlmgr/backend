@@ -548,7 +548,7 @@ var ResultEntries = Table[
 				Columns: []string{"state"},
 				Comment: "",
 			},
-			Expression: "(state = ANY (ARRAY['mapping_error'::text, 'normal'::text, 'dq'::text]))",
+			Expression: "(state = ANY (ARRAY['mapping_error'::text, 'normal'::text, 'dq'::text, 'ignore'::text]))",
 		},
 		ResultEntriesTotalTimeMSCheck: check{
 			constraint: constraint{

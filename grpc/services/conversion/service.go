@@ -680,6 +680,8 @@ func (s *ConvService) ResultEntryToResultEntry(model *models.ResultEntry) *commo
 		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_DQ
 	case ResultStateMappingError:
 		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_MAPPING_ERROR
+	case ResultStateIgnore:
+		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_IGNORE
 	default:
 		entry.State = commonv1.ResultEntryState_RESULT_ENTRY_STATE_UNSPECIFIED
 	}

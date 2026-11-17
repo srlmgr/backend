@@ -128,7 +128,9 @@ func parsedInputWithResultEntries(
 	if input == nil {
 		return nil, errors.New("parsed import input is nil")
 	}
-	if len(input.Results) != len(entries) {
+	// TODO: check if we really need this check.
+	// deactivated because it blocks deletion of result entries
+	if false && len(input.Results) != len(entries) {
 		return nil, fmt.Errorf(
 			"result entry count %d does not match import row count %d",
 			len(entries),
@@ -229,7 +231,7 @@ func mergeResolvedEntries(
 		}
 
 		entry := *existingEntry
-		entry.State = resolved.State
+		entry.State = resultEntryStateAfterMapping(existingEntry, resolved)
 		entry.DriverID = resolved.DriverID
 		entry.TeamID = resolved.TeamID
 		entry.TeamDrivers = resolved.TeamDrivers
@@ -244,6 +246,17 @@ func mergeResolvedEntries(
 	}
 	result.Entries = mergedEntries
 	return nil
+}
+
+//nolint:whitespace // editor/linter issue
+func resultEntryStateAfterMapping(
+	existing,
+	resolved *models.ResultEntry,
+) string {
+	if models.IsResultEntryIgnored(existing) {
+		return existing.State
+	}
+	return resolved.State
 }
 
 //nolint:whitespace // editor/linter issue

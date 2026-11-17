@@ -21,6 +21,12 @@ func TestParticipationsFromResultEntries(t *testing.T) {
 			DriverID:       null.From(int32(7)),
 			FinishPosition: 1,
 		},
+		{
+			RaceGridID:     30,
+			DriverID:       null.From(int32(9)),
+			FinishPosition: 1,
+			State:          models.ResultEntryStateIgnore,
+		},
 	}, func(entry *models.ResultEntry) int32 {
 		return entry.DriverID.GetOrZero()
 	})

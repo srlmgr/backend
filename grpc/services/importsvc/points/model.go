@@ -73,6 +73,7 @@ type (
 		TeamID() int32
 		TeamDriverIDs() []int32
 		IsGuest() bool
+		Ignored() bool
 		Incidents() int32
 		Offtracks() int32
 		LapsCompleted() int32
@@ -119,6 +120,7 @@ type (
 		driverID       int32
 		teamID         int32
 		isGuest        bool
+		ignored        bool
 		incidents      int32
 		offtracks      int32
 		lapsCompleted  int32
@@ -291,6 +293,13 @@ func WithIsGuest(isGuest bool) InputOpt {
 	}
 }
 
+func WithIgnored(ignored bool) InputOpt {
+	return func(i *defaultInputImpl) *defaultInputImpl {
+		i.ignored = ignored
+		return i
+	}
+}
+
 func WithIncidents(incidents int32) InputOpt {
 	return func(i *defaultInputImpl) *defaultInputImpl {
 		i.incidents = incidents
@@ -333,6 +342,7 @@ func (i defaultInputImpl) ClassID() int32         { return i.classID }
 func (i defaultInputImpl) DriverID() int32        { return i.driverID }
 func (i defaultInputImpl) TeamID() int32          { return i.teamID }
 func (i defaultInputImpl) IsGuest() bool          { return i.isGuest }
+func (i defaultInputImpl) Ignored() bool          { return i.ignored }
 func (i defaultInputImpl) Incidents() int32       { return i.incidents }
 func (i defaultInputImpl) Offtracks() int32       { return i.offtracks }
 func (i defaultInputImpl) LapsCompleted() int32   { return i.lapsCompleted }
